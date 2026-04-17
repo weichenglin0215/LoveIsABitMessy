@@ -1,0 +1,425 @@
+花花世界有點亂
+
+LoveIsABitMessy
+
+本地 AI 角色故事系統　完整工作手冊
+
+Ollama × ComfyUI × ZimgTurbo × 靜態 HTML
+
+
+ 
+
+一、                        宗旨
+規劃一個完整的系統架構，讓使用者能在本地端養角色、根據劇情大綱自動寫故事生圖，並自動發布到社群媒體。
+
+第一層：本地 AI 引擎Ollama本地 LLM 推論模型選擇Llama 3 / Mistral角色卡 (Character Card)人格 / 背景 / 口吻設定
+
+第二層：故事引擎SillyTavern角色對話 UI每日故事排程Python 腳本自動觸發記憶模組存檔連續劇情
+
+第三層：圖片生成Stable Diffusion本地圖片生成 (SDXL)角色一致性LoRA / 固定角色臉自動配圖劇情 → Prompt → 圖
+
+第四層：自動發布Facebook API圖文定時發布Threads API圖文定時發布排程控制Windows Task Scheduler
+
+二、                        系統架構總覽
+整個系統分為四個部分，各自獨立、依序建立：
+
+第一部分　環境準備　建立資料夾結構、安裝所需工具、確認 Ollama 與 ComfyUI 正常運作
+
+第二部分　角色系統　建立「愛情人格特質評量表」詳見” Document/ LPAS愛情人格特質評量表_完整企劃書.docx”。設計角色卡（JSON 格式）、決定人物個性與外貌描述
+
+第三部分　故事生成引擎　Python 腳本呼叫 Ollama 生成每日故事，存成 JSON
+
+第四部分　圖文網頁輸出　Python 腳本呼叫 ComfyUI 生成插圖，組合成 HTML 靜態頁面
+
+本手冊的所有步驟都以「不需要自己寫程式」為前提。你的角色是：提需求 → 讓 Antigravity 產生程式碼 → 測試結果 → 反覆修正。
+
+三、                        第一部分：環境準備
+2-1　建立專案資料夾
+
+步驟 1　在電腦中建立主資料夾
+
+在你想要的位置（例如桌面或 D 槽）建立一個新資料夾，命名為：
+
+LoveIsABitMessy
+
+以下所有工作都在這個資料夾內進行。
+
+💡 資料夾名稱建議使用英文，避免中文路徑在 Python 執行時產生問題。
+
+步驟 2　在主資料夾內建立以下子資料夾結構
+
+用檔案總管手動建立，或之後讓 Antigravity 一次建立。
+
+LoveIsABitMessy/
+├── characters/          ← 存放角色卡 JSON 檔
+├── stories/             ← 存放每日生成的故事 JSON
+├── images/              ← 存放 ComfyUI 生成的插圖
+├── web/                 ← 存放 HTML 故事網頁
+│   └── index.html       ← 首頁（列出所有故事）
+├── comfy_workflows/     ← 存放 ComfyUI workflow JSON
+├── .agent/              ← Antigravity skill 規範文件
+│   └── skills/
+│       └── project-spec/
+│           ├── SPEC.md
+│           └── 角色設計規範.md
+├── generate_story.py    ← 主程式：生故事
+├── generate_image.py    ← 主程式：生圖
+├── build_page.py        ← 主程式：組合 HTML
+└── run_daily.py         ← 一鍵執行全流程
+
+2-2　確認 Ollama 環境
+
+步驟 3　確認 Ollama 已安裝並下載模型
+
+打開「命令提示字元」（CMD），輸入以下指令確認 Ollama 正常：
+
+ollama list
+
+如果看到模型清單表示正常。如果尚未下載模型，執行：
+
+ollama pull llama3
+
+建議也下載一個角色扮演效果較好的模型：
+
+ollama pull dolphin-mistral
+
+💡 dolphin-mistral 對角色扮演的限制較少，比一般 llama3 更適合寫辦公室故事。
+
+步驟 4　確認 Ollama API 可以正常呼叫
+
+在瀏覽器網址列輸入：
+
+http://localhost:11434
+
+如果看到「Ollama is running」表示 API 正常，Python 腳本之後會透過這個位址呼叫它。
+
+2-3　確認 ComfyUI 環境
+
+步驟 5　確認 ComfyUI 已安裝並可正常啟動
+
+找到你的 ComfyUI 資料夾，執行 run_nvidia_gpu.bat（或 run_cpu.bat）。
+
+瀏覽器打開 http://127.0.0.1:8188 確認介面正常出現。
+
+💡 ZimgTurbo 的 workflow 之後會存成 JSON 檔放進 comfy_workflows/ 資料夾，供 Python 腳本呼叫。
+
+步驟 6　匯出 ZimgTurbo 的 workflow JSON
+
+在 ComfyUI 介面中，設定好你的 ZimgTurbo workflow 之後：
+
+點選右上角選單 → Save (API format)
+
+將檔案命名為 character_portrait.json，存入 comfy_workflows/ 資料夾。
+
+💡 「API format」和普通的 Save 不同，Python 腳本需要 API format 版本才能呼叫。
+
+2-4　確認 Python 環境
+
+步驟 7　確認 Python 已安裝
+
+在 CMD 輸入：
+
+python --version
+
+應該看到 Python 3.10 以上的版本號。
+
+如果出現錯誤，請先到 python.org 下載並安裝 Python。
+
+💡 安裝時記得勾選「Add Python to PATH」，這樣 CMD 才能直接使用 python 指令。
+
+步驟 8　安裝所需的 Python 套件
+
+在 CMD 中，先移動到專案資料夾：
+
+cd C:\Users\你的名字\Desktop\LoveIsABitMessy
+
+然後安裝需要的套件：
+
+pip install requests jinja2
+
+💡 requests 用來呼叫 Ollama 和 ComfyUI 的 API；jinja2 用來產生 HTML 模板。
+
+四、                        第二部分：設計角色系統
+3-1　角色卡設計原則
+
+角色卡是一份給 AI 語言模型看的「人物說明書」，決定角色的個性、口吻、與主角的關係。每個角色一個 JSON 檔，存放在 characters/ 資料夾。
+
+這部分是起始工作的重點，目前已經被展開得更詳細，包括「愛情人格特質評量表」，詳見” Document/ LPAS愛情人格特質評量表_完整企劃書.docx”。
+以下關於角色卡的說明可以先忽略，等「愛情人格特質評量表」完成之後再產出。
+
+建議先設計 2～3 個角色，之後熟悉流程再增加。每個角色的「說話口吻」和「個性關鍵字」是影響故事品質最重要的欄位。
+
+3-2　角色卡格式與範例
+
+步驟 9　在 characters/ 資料夾建立第一個角色卡
+
+建立檔案：characters/lin_xiaoqing.json
+
+內容格式會更複雜，以下僅是簡單範例（可請 Antigravity 協助填寫）：
+
+{
+  "id": "lin_xiaoqing",
+  "name": "林曉晴",
+  "age": 27,
+  "position": "行銷企劃專員",
+  "appearance": "短髮、常穿淺色系、細框眼鏡",
+  "personality": "開朗但神經質，工作認真卻常忘東忘西，好奇心強",
+  "speech_style": "說話直接、偶爾驚呼、親切，常說【欸等等】【怎麼可能！】",
+  "relationship": "同部門同事，入職比主角晚一年，私下偶爾一起吃午餐",
+  "habits": ["每天早上必買拿鐵", "桌上養仙人掌叫刺刺", "午休滑小說App"],
+  "image_prompt": "office lady, short black hair, thin glasses, light colored blouse,
+                   warm smile, sitting at desk, natural lighting, realistic"
+}
+
+其中 image_prompt 欄位是給 ComfyUI 生圖用的中文描述，描述這個角色的外貌特徵。
+
+⚠️  image_prompt 可以使用中文或英文。
+
+步驟 10　建立第二個角色卡
+
+依照相同格式，在 characters/ 資料夾建立第二個角色。
+
+建議設計一個個性對比的角色，讓故事更有張力。
+
+例如：冷靜理性的法務專員、活潑外向的業務同事等。
+
+💡 角色個性的多樣性比角色數量更重要，2～3個個性鮮明的角色比10個模糊的角色更好。
+
+3-3　建立角色視覺（ComfyUI）
+
+步驟 11　為每個角色生成基準圖
+
+在 ComfyUI 中，用每個角色的 image_prompt 生成 3～5 張圖。
+
+挑選最符合人物設定的一張，存入 images/ 資料夾，命名為：
+
+images/lin_xiaoqing_base.png
+
+這張圖之後會作為「角色代表圖」出現在 HTML 頁面上。
+
+💡 這個步驟不需要 Python，直接在 ComfyUI 介面手動操作即可。
+
+五、                        第三部分：故事生成引擎
+4-1　建立專案規範文件（SPEC.md）
+
+在開始寫任何程式之前，先建立規範文件，這是防止 AI 亂改的關鍵步驟。
+
+步驟 12　建立 .agent/skills/project-spec/SPEC.md
+
+這份文件告訴 Antigravity 這個專案的所有規則。
+
+內容包含：故事格式規定、檔案命名規則、禁止事項。
+
+將以下內容存入 SPEC.md（可請 Antigravity 協助補充細節）：
+
+---
+name: LoveIsABitMessy 專案規範
+description: 開始任何任務前必讀，所有修改必須符合本規範
+---
+
+# 專案規範
+
+
+##  依照劇本大綱發展
+每個星期會有一份主編規劃好的劇情大綱，AI角色的行為與決定必須根據劇情大綱發展。
+
+
+## 故事格式
+- 每則故事 250～350 字，繁體中文
+- 一定要有開頭情境、對話、結尾感受三個部分
+- 禁止出現不雅內容
+
+## 檔案命名規則
+- 故事檔：stories/YYYY-MM-DD_角色id.json
+- 圖片檔：images/YYYY-MM-DD_角色id.png
+- 網頁檔：web/YYYY-MM-DD.html
+
+## 禁止事項
+- 禁止修改 characters/ 資料夾內的 JSON
+- 禁止更改 HTML 模板的基本結構
+- 禁止新增未在此規範列出的功能
+
+4-2　建立故事生成腳本
+
+步驟 13　請 Antigravity 建立 generate_story.py
+
+打開 Antigravity，建立新的對話，先說：
+
+請先閱讀 .agent/skills/project-spec/SPEC.md
+
+然後說：
+
+請建立 generate_story.py，功能如下：
+
+1. 讀取 characters/ 資料夾中隨機選一個角色的 JSON
+
+2. 組合成 system prompt，呼叫 Ollama API（http://localhost:11434）
+
+3. 生成一則辦公室日常故事，格式符合 SPEC.md
+
+4. 將故事存成 stories/YYYY-MM-DD_角色id.json
+
+💡 讓 Antigravity 寫完之後，先在 CMD 執行一次 python generate_story.py 測試看看。
+
+步驟 14　測試故事生成
+
+在 CMD 執行：
+
+python generate_story.py
+
+成功的話，stories/ 資料夾裡應該出現一個 JSON 檔。
+
+打開 JSON 檔確認故事內容是否符合預期。
+
+💡 如果故事品質不佳，可以修改 SPEC.md 裡的格式要求，再重新執行。
+
+4-3　調整故事品質
+
+步驟 15　修改 system prompt 提升故事品質
+
+如果生成的故事太短、太平淡、或口吻不對，告訴 Antigravity：
+
+故事太短，請在 generate_story.py 的 system prompt 加入以下要求：
+
+- 故事中必須有至少兩句角色的對話
+
+- 結尾要有主角的心理獨白
+
+- 口吻要輕鬆、像在看日系職場漫畫
+
+💡 調整 system prompt 的內容比修改程式邏輯更有效，這是你最主要的調整工具。
+
+六、                        第四部分：圖文網頁輸出
+5-1　建立圖片生成腳本
+
+步驟 16　請 Antigravity 建立 generate_image.py
+
+這個腳本會讀取今天的故事 JSON，抽取角色資訊，
+
+然後呼叫 ComfyUI API 生成對應的插圖。
+
+告訴 Antigravity：
+
+請建立 generate_image.py，功能如下：
+
+1. 讀取今天最新的 stories/YYYY-MM-DD_*.json
+
+2. 讀取對應角色的 image_prompt
+
+3. 載入 comfy_workflows/character_portrait.json
+
+4. 呼叫 ComfyUI API（http://127.0.0.1:8188）生成圖片
+
+5. 將圖片存成 images/YYYY-MM-DD_角色id.png
+
+💡 執行這個腳本前，ComfyUI 必須先在背景執行（瀏覽器開著 8188 介面）。
+
+步驟 17　測試圖片生成
+
+確認 ComfyUI 已啟動後，在 CMD 執行：
+
+python generate_image.py
+
+成功的話，images/ 資料夾裡應該出現今天的插圖。
+
+5-2　建立 HTML 組合腳本
+
+步驟 18　請 Antigravity 建立 HTML 模板與 build_page.py
+
+告訴 Antigravity：
+
+請建立 web/template.html 和 build_page.py，要求：
+
+- 風格：溫暖、清新的辦公室日記風格
+
+- 上方顯示插圖，下方顯示故事文字
+
+- 顯示角色名稱、日期
+
+- 首頁 index.html 列出所有歷史故事的連結
+
+- RWD，手機和電腦都能正常閱覽
+
+💡 可以參考你在花月專案的 CSS 風格，告訴 Antigravity 你喜歡的視覺方向。
+
+步驟 19　測試 HTML 輸出
+
+在 CMD 執行：
+
+python build_page.py
+
+然後用瀏覽器打開 web/index.html，確認頁面外觀正常。
+
+5-3　建立每日一鍵執行腳本
+
+步驟 20　請 Antigravity 建立 run_daily.py
+
+這個腳本會依序執行前三個步驟：
+
+1. python generate_story.py
+
+2. python generate_image.py
+
+3. python build_page.py
+
+之後每天只需要執行一個指令：
+
+python run_daily.py
+
+步驟 21　設定 Windows 工作排程（選用）
+
+如果想讓系統每天自動執行，可以設定 Windows 工作排程器：
+
+開始選單 → 搜尋「工作排程器」→ 建立基本工作
+
+觸發條件：每天 → 設定你想要的時間
+
+動作：啟動程式 → python run_daily.py
+
+工作目錄：LoveIsABitMessy 資料夾的完整路徑
+
+💡 設定排程前，先確認手動執行 run_daily.py 完全正常。
+
+七、                        常見問題與解決方式
+問題：故事品質不穩定、每次風格不同
+
+解法：在 SPEC.md 加入更詳細的故事格式要求，並在每次呼叫 Antigravity 前說「請先閱讀 SPEC.md」。
+
+問題：Antigravity 改了沒要求改的地方
+
+解法：在 SPEC.md 的「禁止事項」區塊加入更多明確禁令。每次新對話開頭都強制要求 AI 先讀 SPEC.md。
+
+問題：ComfyUI API 呼叫失敗
+
+解法：確認 ComfyUI 已在背景執行，且 workflow JSON 是用「Save (API format)」匯出的。
+
+問題：Ollama 回應太慢
+
+解法：4090 跑 7B～13B 模型應該很快。如果慢，檢查 Ollama 是否確實使用 GPU（在 CMD 輸入 ollama ps 查看）。
+
+問題：生成的圖片角色外貌不一致
+
+解法：在 image_prompt 加入更多固定特徵描述，或考慮為每個角色訓練專屬 LoRA。
+
+問題：HTML 頁面在手機上跑版
+
+解法：告訴 Antigravity：「請修正 RWD 問題，參考花月專案的 responsive.css 邏輯」。
+
+八、                        快速參考：重要位址與指令
+Ollama API　http://localhost:11434
+
+ComfyUI 介面　http://127.0.0.1:8188
+
+故事生成　python generate_story.py
+
+圖片生成　python generate_image.py
+
+組合網頁　python build_page.py
+
+每日一鍵執行　python run_daily.py
+
+查看已安裝模型　ollama list
+
+下載模型　ollama pull dolphin-mistral
+
+每次開新的 Antigravity 對話，第一句都說：「請先閱讀 .agent/skills/project-spec/SPEC.md，再開始工作。」這是防止 AI 亂改最有效的習慣。

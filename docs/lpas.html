@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>你是哪一種愛情人格？ - LPAS</title>
+    <!-- 引入 Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <link rel="stylesheet" href="css/lpas_styles.css">
+    <!-- Supabase JS (UMD) -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
+    <script src="js/supabaseClient.js" defer></script>
+    <script src="js/questions.js" defer></script>
+    <script src="js/scoring.js" defer></script>
+    <script src="js/profile_generator.js" defer></script>
+    <script src="js/lpas_app.js" defer></script>
+</head>
+<body data-period="night">
+    <!-- 星點背景特效容器 -->
+    <div id="star-bg"></div>
+    
+    <!-- 音樂控制 (暫不實作播放，僅保留 UI) -->
+    <div id="music-control">
+        <span class="music-icon">🎵</span>
+    </div>
+
+    <main id="app-container">
+        <!-- 1. 首頁 (Landing Page) -->
+        <section id="screen-landing" class="screen active">
+            <h1 class="main-title">你在感情裡，是哪一種人？</h1>
+            <h2 class="sub-title">一份關於你在愛情裡真實樣子的測驗</h2>
+            <div class="desc-text">60題 / 三個情境 / 約8分鐘</div>
+            <button class="btn primary-btn" onclick="app.showScreen('screen-basic-info')">開始測驗</button>
+            <div class="footer-note">本測驗資料全匿名，不收集個人識別資訊</div>
+        </section>
+
+        <!-- 2. 基本資料頁 -->
+        <section id="screen-basic-info" class="screen">
+            <div class="form-container">
+                <h2>基本資料</h2>
+                <div class="form-group">
+                    <label>匿名代號 (選填)</label>
+                    <input type="text" id="input-alias" placeholder="例如：月亮上的貓">
+                </div>
+                <div class="form-group">
+                    <label>年齡區間</label>
+                    <div class="radio-group" id="group-age">
+                        <button class="radio-btn" data-val="18-">18以下</button>
+                        <button class="radio-btn" data-val="18-22">18-22</button>
+                        <button class="radio-btn" data-val="23-27">23-27</button>
+                        <button class="radio-btn" data-val="28-32">28-32</button>
+                        <button class="radio-btn" data-val="33-37">33-37</button>
+                        <button class="radio-btn" data-val="38+">38+</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>是否有過感情經驗</label>
+                    <div class="radio-group" id="group-exp">
+                        <button class="radio-btn" data-val="yes">是</button>
+                        <button class="radio-btn" data-val="no">目前還沒有</button>
+                    </div>
+                </div>
+                <div class="note">以上資料完全匿名，僅用於統計分析</div>
+                <button class="btn secondary-btn submit-info-btn">下一步</button>
+            </div>
+        </section>
+
+        <!-- 3. 作答說明頁 (3段) -->
+        <section id="screen-instructions" class="screen">
+            <div class="instruction-content">
+                <p id="instruction-text"></p>
+                <button class="btn secondary-btn" id="next-instruction-btn">繼續</button>
+            </div>
+        </section>
+
+        <!-- 4. 時期切換頁 -->
+        <section id="screen-transition" class="screen">
+            <h2 id="transition-text" class="fade-text"></h2>
+        </section>
+
+        <!-- 5. 作答頁 -->
+        <section id="screen-question" class="screen">
+            <div class="top-bar">
+                <span id="period-label">初期曖昧</span>
+                <span id="progress-text">1/60</span>
+            </div>
+            <div class="question-container">
+                <h2 id="question-text"></h2>
+            </div>
+            <div class="options-container">
+                <span class="scale-label">同意</span>
+                <div class="likert-scale" id="likert-scale">
+                    <!-- JS 動態生成 7 個圓圈 -->
+                </div>
+                <span class="scale-label">不同意</span>
+            </div>
+            <button class="text-btn back-btn" id="prev-question-btn">上一題</button>
+        </section>
+
+        <!-- 6. 計算中頁面 -->
+        <section id="screen-calculating" class="screen">
+            <div class="calculating-anim"></div>
+            <h2 class="fade-text">正在找到你的樣子……</h2>
+        </section>
+
+        <!-- 7. 結果頁 -->
+        <section id="screen-result" class="screen">
+            <div class="result-container">
+                <div class="result-header">
+                    <h1 id="result-type-name"></h1>
+                    <div id="result-type-code" class="type-code"></div>
+                </div>
+                
+                <div class="result-radar">
+                    <canvas id="radarChart"></canvas>
+                </div>
+                
+                <div class="result-description" id="result-desc">
+                    <!-- 動態載入結果說明 -->
+                </div>
+                
+                <div class="result-actions">
+                    <button class="btn primary-btn" id="download-json-btn">下載角色卡 (JSON)</button>
+                    <button class="btn secondary-btn" id="download-record-btn">下載測驗紀錄 (JSON)</button>
+                    <button class="btn text-btn" id="download-md-btn">複製角色設定 (Markdown)</button>
+                </div>
+                <div id="cloud-save-status" style="margin-top: 16px; font-size: 0.9rem; color: var(--c-text-sec); text-align: center;">☁️ 準備同步至雲端…</div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

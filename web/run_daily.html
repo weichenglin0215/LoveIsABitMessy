@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoveIsABitMessy DEBUG 測試面板</title>
+    <link rel="stylesheet" href="css/lpas_styles.css">
+    <!-- Supabase JS (UMD) -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
+    <script src="js/supabaseClient.js" defer></script>
+    <style>
+        body {
+            display: block;
+            background-color: var(--c-bg-main);
+            padding: 20px;
+            color: white;
+            overflow-y: auto;
+            height: auto;
+        }
+
+        .debug-panel {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--c-bg-card);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid #444;
+        }
+
+        .form-section {
+            margin-bottom: 0px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 3px;
+        }
+
+        .form-label {
+            display: block;
+            margin-top: 20px;
+            margin-bottom: 5px;
+            color: var(--c-accent-light);
+            font-weight: 500;
+        }
+
+        select,
+        input,
+        textarea {
+            width: 100%;
+            padding: 5px;
+            background: #000;
+            border: 1px solid #555;
+            border-radius: 8px;
+            color: #fff;
+            font-family: inherit;
+            margin-bottom: 15px;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .log-area {
+            background: #000;
+            color: hsl(120, 50%, 70%);
+            font-family: 'Courier New', monospace;
+            padding: 10px;
+            border-radius: 8px;
+            height: 600px;
+            overflow-y: scroll;
+            white-space: pre-wrap;
+            font-size: 1.2rem;
+            border: 1px solid #333;
+        }
+
+        .prompt-preview {
+            background: #1a1a1a;
+            padding: 10px;
+            border-radius: 8px;
+            color: #aaa;
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .toggle-row input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+            accent-color: var(--c-accent);
+            transform: scale(1.3);
+            cursor: pointer;
+        }
+
+        .toggle-row label {
+            color: var(--c-text-sec);
+            font-size: 0.9rem;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .cloud-status {
+            font-size: 0.85rem;
+            color: var(--c-text-sec);
+            margin-top: 5px;
+        }
+
+        .server-status-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .server-status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .server-status-dot.online {
+            background: #4caf50;
+            box-shadow: 0 0 6px #4caf50;
+        }
+
+        .server-status-dot.offline {
+            background: #f44336;
+            box-shadow: 0 0 6px #f44336;
+        }
+
+        .server-status-text {
+            font-size: 0.85rem;
+            color: var(--c-text-sec);
+        }
+
+        #start-server-btn {
+            padding: 8px 18px;
+            font-size: 0.85rem;
+            margin-top: 0;
+            background: #2a1a3e;
+            border: 1px solid var(--c-accent);
+            color: var(--c-accent-light);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        #start-server-btn:hover:not(:disabled) {
+            background: var(--c-accent-hover);
+            color: #fff;
+        }
+
+        #start-server-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .status-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #444;
+        }
+
+        .status-item label {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--c-text-sec);
+            margin-bottom: 5px;
+        }
+
+        .status-item select {
+            margin-bottom: 0;
+            padding: 8px;
+            font-size: 0.9rem;
+        }
+
+        .status-item.checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .copy-btn {
+            float: right;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ddd;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 5px;
+        }
+        .copy-btn:hover {
+            background: var(--c-accent-light);
+            color: #000;
+        }
+        .reload-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 0.85rem;
+        }
+        .reload-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .personality-type-tag {
+            display: inline-block;
+            background: rgba(156, 111, 214, 0.2);
+            color: var(--c-accent-light);
+            border: 1px solid rgba(156, 111, 214, 0.4);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            margin-top: 5px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="debug-panel">
+        <h1 style="font-weight: 300; margin-bottom: 30px;">LoveIsABitMessy 系統測試員，請先執行start_debug_server.bat</h1>
+
+        <div class="form-section">
+            <label class="form-label">1. 選擇演員</label>
+            <div class="toggle-row">
+                <input type="checkbox" id="use-local-data">
+                <label for="use-local-data">讀取本機資料 (除錯用)，請先確認 debug_server.py 已上線運作 (localhost:8000)</label>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                <select id="char-select" style="flex: 1; margin-bottom: 0;">
+                    <option value="">載入中...</option>
+                </select>
+                <button class="reload-btn" onclick="initCharacters()">🔄 重新載入角色資料</button>
+            </div>
+            <div id="char-personality-type-display" class="personality-type-tag" style="display:none;"></div>
+            <div id="char-source-status" class="cloud-status">☁️ 預設讀取雲端角色卡</div>
+
+            <div class="status-row">
+                <div class="status-item">
+                    <label>🎭 伴侶狀態</label>
+                    <select id="partner-status">
+                        <option value="曖昧期">曖昧期</option>
+                        <option value="戀愛期" selected>戀愛期</option>
+                        <option value="失戀期">失戀期</option>
+                    </select>
+                </div>
+                <div class="status-item">
+                    <label>👋 新朋友 A 狀態</label>
+                    <select id="friend-a-status">
+                        <option value="無" selected>無</option>
+                        <option value="曖昧期">曖昧期</option>
+                        <option value="戀愛期">戀愛期</option>
+                        <option value="失戀期">失戀期</option>
+                    </select>
+                </div>
+                <div class="status-item">
+                    <label>👋 新朋友 B 狀態</label>
+                    <select id="friend-b-status">
+                        <option value="無" selected>無</option>
+                        <option value="曖昧期">曖昧期</option>
+                        <option value="戀愛期">戀愛期</option>
+                        <option value="失戀期">失戀期</option>
+                    </select>
+                </div>
+                <div class="status-item checkbox-item">
+                    <input type="checkbox" id="others-have-partner">
+                    <label for="others-have-partner" style="margin-bottom:0; font-size: 0.85rem; color: #fff;">女主伴侶或新朋友已經有對象了</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <label class="form-label">2. 設定當日情境 (Scenario)</label>
+            <input type="text" id="input-scenario" placeholder="例如：在雨天的咖啡廳遇到對方、今天辦公室冷氣壞了...">
+        </div>
+
+        <div class="form-section">
+            <label class="form-label">
+                3. 日記提示詞 (generate_story.py prompt)
+                <button class="copy-btn" onclick="copyToClipboard('diary-prompt-box', this)">📋 複製</button>
+            </label>
+            <textarea id="diary-prompt-box" readonly class="prompt-preview" style="min-height:140px;"></textarea>
+        </div>
+
+        <div class="form-section">
+            <label class="form-label">
+                4. 照片提示詞 (generate_image.py prompt)
+                <button class="copy-btn" onclick="copyToClipboard('image-prompt-box', this)">📋 複製</button>
+            </label>
+            <textarea id="image-prompt-box" readonly class="prompt-preview" style="min-height:90px;"></textarea>
+        </div>
+
+        <div class="btn-row">
+            <button class="btn primary-btn" id="run-btn">開始生成：日記與插圖</button>
+            <button class="btn secondary-btn" onclick="location.reload()">重新整理</button>
+        </div>
+
+        <h3 style="margin: 30px 0 10px; font-weight: 400;">系統輸出訊息欄 (Console Logs)</h3>
+        <div class="server-status-row">
+            <span class="server-status-dot offline" id="server-dot"></span>
+            <span class="server-status-text" id="server-status-text">偵測中…</span>
+            <button id="start-server-btn" disabled>🚀 啟動 debug_server.py</button>
+        </div>
+        <div id="log-output" class="log-area">等待啟動... (請確保 debug_server.py 已在 CMD 執行)</div>
+        <div id="diary-cloud-status" class="cloud-status" style="margin-top: 10px;"></div>
+    </div>
+
+    <script>
+        const logBox = document.getElementById('log-output');
+        const charSelect = document.getElementById('char-select');
+        const diaryPromptBox = document.getElementById('diary-prompt-box');
+        const imagePromptBox = document.getElementById('image-prompt-box');
+        const useLocalCheckbox = document.getElementById('use-local-data');
+        const charSourceStatus = document.getElementById('char-source-status');
+        const diaryCloudStatus = document.getElementById('diary-cloud-status');
+        const serverDot = document.getElementById('server-dot');
+        const serverStatusText = document.getElementById('server-status-text');
+        const startServerBtn = document.getElementById('start-server-btn');
+
+        // 記錄雲端角色清單
+        let cloudCharacters = [];
+        let serverOnline = false;
+
+        // ====== 偵測 debug_server 是否在線 ======
+        async function checkServerStatus() {
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 2000);
+                const res = await fetch('http://localhost:8000/api/characters', { signal: controller.signal });
+                clearTimeout(timeout);
+                if (res.ok) {
+                    serverOnline = true;
+                    serverDot.className = 'server-status-dot online';
+                    serverStatusText.textContent = '✅ debug_server.py 已在線 (localhost:8000)';
+                    logBox.innerText += "\n✅ debug_server.py 已在線 (localhost:8000)\n";
+                    startServerBtn.disabled = true;
+                    return true;
+                }
+            } catch (e) {
+                // 連線失敗
+            }
+            serverOnline = false;
+            serverDot.className = 'server-status-dot offline';
+            serverStatusText.textContent = '❌ debug_server.py 未啟動';
+            startServerBtn.disabled = false;
+            return false;
+        }
+
+        // ====== 啟動伺服器按鈕 ======
+        startServerBtn.addEventListener('click', () => {
+            // 產生 bat 檔內容並觸發下載
+            const batContent = '@echo off\r\nchcp 65001 >nul\r\ncd /d "' + getProjectRoot() + '"\r\necho ====================================\r\necho   LoveIsABitMessy - Debug Server\r\necho   http://localhost:8000\r\necho ====================================\r\necho.\r\npython debug_server.py\r\necho.\r\necho === 伺服器已停止 ===\r\npause >nul\r\n';
+            const blob = new Blob([batContent], { type: 'application/bat' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'start_debug_server.bat';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            logBox.innerText = '📥 已下載 start_debug_server.bat\n\n請雙擊執行該檔案以啟動伺服器，然後回到此頁面點選「重新整理」。\n\n若已有 start_debug_server.bat 在專案根目錄，也可直接雙擊該檔案。';
+
+            // 開始輪詢等待伺服器上線
+            startServerPolling();
+        });
+
+        function getProjectRoot() {
+            // 嘗試從當前頁面路徑推算專案根目錄
+            const loc = window.location.href;
+            if (loc.startsWith('file:///')) {
+                // file:///c:/3D_prj/.../web/run_daily.html → c:\3D_prj\...\
+                const path = decodeURIComponent(loc.replace('file:///', '').replace(/\//g, '\\'));
+                const webIdx = path.lastIndexOf('\\web\\');
+                if (webIdx > 0) return path.substring(0, webIdx);
+            }
+            // 預設
+            return 'c:\\3D_prj\\VS_2022_prj\\LoveIsABitMessy';
+        }
+
+        // 輪詢等待伺服器上線
+        function startServerPolling() {
+            let attempts = 0;
+            const MAX_ATTEMPTS = 30; // 30 秒
+            serverStatusText.textContent = '⏳ 等待伺服器啟動…';
+
+            const interval = setInterval(async () => {
+                attempts++;
+                const online = await checkServerStatus();
+                if (online) {
+                    clearInterval(interval);
+                    logBox.innerText += '\n\n✅ debug_server.py 已成功啟動！';
+                    // 如果是本機模式，自動載入角色
+                    if (useLocalCheckbox.checked) {
+                        loadLocalChars();
+                    }
+                } else if (attempts >= MAX_ATTEMPTS) {
+                    clearInterval(interval);
+                    serverStatusText.textContent = '❌ 等待逾時，請手動啟動伺服器';
+                }
+            }, 1000);
+        }
+
+        // ====== 載入雲端角色清單 ======
+        async function loadCloudChars() {
+            charSourceStatus.textContent = '☁️ 正在從雲端載入角色…';
+            try {
+                if (!window.SupabaseClient || !window.SupabaseClient.init || !window.SupabaseClient.init()) {
+                    throw new Error('Supabase 未初始化（請確認 js/supabaseClient.js 中的 URL 和 Key 是否正確）');
+                }
+                const sb = window.SupabaseClient.getClient();
+                const { data, error } = await sb
+                    .from('characters')
+                    .select('id, name, card_json, is_active, source')
+                    .eq('is_active', true)
+                    .order('updated_at', { ascending: false });
+                if (error) {
+                    // 提供更友善的錯誤訊息
+                    if (error.message && error.message.includes('schema cache')) {
+                        throw new Error('資料表不存在。請先到 Supabase Dashboard → SQL Editor 執行 schema.sql 和 schema_add.sql');
+                    }
+                    throw error;
+                }
+                if (!data || data.length === 0) {
+                    charSourceStatus.textContent = '⚠️ 雲端無角色卡，可切換至本機資料';
+                    charSelect.innerHTML = '<option value="">（雲端無資料）</option>';
+                    return;
+                }
+                cloudCharacters = data;
+                charSelect.innerHTML = data.map(c => `<option value="${c.id}">${c.id} [${c.source || 'cloud'}]</option>`).join('');
+                charSourceStatus.textContent = `✅ 已從雲端載入 ${data.length} 個角色`;
+            } catch (e) {
+                console.error('[Cloud] loadCloudChars failed:', e);
+                charSourceStatus.textContent = '❌ 雲端讀取失敗: ' + (e.message || e);
+                charSelect.innerHTML = '<option value="">（雲端讀取失敗）</option>';
+            }
+        }
+
+        // ====== 載入本機角色清單（原始邏輯）======
+        async function loadLocalChars() {
+            charSourceStatus.textContent = '📁 正在讀取本機角色…';
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 3000);
+                const res = await fetch('http://localhost:8000/api/characters', { signal: controller.signal });
+                clearTimeout(timeout);
+                const data = await res.json();
+                charSelect.innerHTML = data.map(c => `<option value="${c}">${c}</option>`).join('');
+                charSourceStatus.textContent = `📁 已從本機載入 ${data.length} 個角色`;
+
+                // 伺服器在線，更新狀態
+                serverOnline = true;
+                serverDot.className = 'server-status-dot online';
+                serverStatusText.textContent = '✅ debug_server.py 已在線 (localhost:8000)';
+                startServerBtn.disabled = true;
+            } catch (e) {
+                charSourceStatus.textContent = '❌ 本機讀取失敗 (debug_server.py 未啟動)';
+                charSelect.innerHTML = '<option value="">（本機讀取失敗）</option>';
+                logBox.innerText = "無法連接到伺服器，請確認是否已執行 python debug_server.py\n\n💡 可點擊上方「🚀 啟動 debug_server.py」按鈕下載啟動批次檔。";
+
+                // 伺服器離線，啟用按鈕
+                serverOnline = false;
+                serverDot.className = 'server-status-dot offline';
+                serverStatusText.textContent = '❌ debug_server.py 未啟動';
+                startServerBtn.disabled = false;
+            }
+        }
+
+        // ====== 初始化與輔助邏輯 ======
+        async function initCharacters() {
+            if (useLocalCheckbox.checked) {
+                await loadLocalChars();
+            } else {
+                await loadCloudChars();
+            }
+        }
+
+        useLocalCheckbox.addEventListener('change', initCharacters);
+
+        function copyToClipboard(id, btn) {
+            const area = document.getElementById(id);
+            area.select();
+            document.execCommand('copy');
+            const oldText = btn.innerText;
+            btn.innerText = '✅ 已複製';
+            setTimeout(() => btn.innerText = oldText, 2000);
+        }
+
+        // ====== 儲存日記至雲端 ======
+        async function saveDiaryToCloud(jobResult) {
+            if (!window.SupabaseClient || !window.SupabaseClient.init || !window.SupabaseClient.init()) {
+                diaryCloudStatus.textContent = '⚠️ Supabase 未設定，日記僅存本機';
+                return;
+            }
+            const sb = window.SupabaseClient.getClient();
+            if (!sb) {
+                diaryCloudStatus.textContent = '⚠️ 無法取得 Supabase client';
+                return;
+            }
+
+            diaryCloudStatus.textContent = '☁️ 正在同步日記至雲端…';
+
+            try {
+                const charId = charSelect.value;
+                const charName = charSelect.options[charSelect.selectedIndex]?.text.split(' (')[0] || charId;
+                const dateStr = new Date().toISOString().split('T')[0];
+
+                // 1. 從 Job Logs 中解析出故事檔名
+                let storyFilename = null;
+                const logs = jobResult.logs || '';
+                const fileMatch = logs.match(/已儲存至 stories[/\\](.+\.json)/);
+                if (fileMatch) {
+                    storyFilename = fileMatch[1];
+                }
+
+                if (!storyFilename) {
+                    // 備援：嘗試尋找任何 JSON 檔名
+                    const anyMatch = logs.match(/([0-9-_a-zA-Z]+\.json)/g);
+                    if (anyMatch) storyFilename = anyMatch[anyMatch.length - 1];
+                }
+
+                if (!storyFilename) {
+                    throw new Error('找不到生成的故事檔名，無法同步乾淨的內容');
+                }
+
+                // 2. 讀取本機生成的 JSON 檔案以獲取乾淨資料
+                // 增加延遲以防檔案寫入未同步完成
+                await new Promise(r => setTimeout(r, 2000));
+
+                let cleanData = { story: "", full_prompt: "", image_prompt: "" };
+                try {
+                    // 使用 URL 編碼處理中文字檔名
+                    const encodedFilename = encodeURIComponent(storyFilename);
+                    const res = await fetch(`http://localhost:8000/stories/${encodedFilename}`);
+                    if (res.ok) {
+                        cleanData = await res.json();
+                    } else {
+                        throw new Error(`伺服器回傳錯誤 (${res.status}): ${storyFilename}`);
+                    }
+                } catch (e) {
+                    console.error('[Cloud] 讀取本機 JSON 失敗:', e);
+                    throw new Error(`讀取本機故事檔案失敗: ${storyFilename} (${e.message})`);
+                }
+
+                const diaryPayload = {
+                    entry_date: cleanData.date || dateStr,
+                    character_id: charId || null,
+                    character_name: charName || null,
+                    story: cleanData.story || "",
+                    full_prompt: cleanData.full_prompt || "",
+                    image_prompt: cleanData.image_prompt || "",
+                    story_filename: storyFilename
+                };
+
+                // 執行儲存 (排除重複的 story_json 欄位)
+                const { error } = await sb.from('diary_entries').insert(diaryPayload);
+                if (error) {
+                    if (error.message && error.message.includes('schema cache')) {
+                        throw new Error('欄位不匹配或資料表架構過舊。請前往 Supabase SQL Editor 重新執行 schema_add.sql 並按下「Reload postgrest schema」');
+                    }
+                    throw error;
+                }
+                diaryCloudStatus.textContent = '✅ 日記已全數同步至雲端';
+                console.log('[Cloud] diary_entries inserted with clean story content');
+            } catch (err) {
+                console.error('[Cloud] 日記雲端儲存失敗:', err);
+                diaryCloudStatus.textContent = '❌ 日記雲端儲存失敗: ' + err.message;
+            }
+        }
+
+        // ====== 執行生成 ======
+        document.getElementById('run-btn').addEventListener('click', async () => {
+            // 先確認伺服器在線
+            if (!serverOnline) {
+                const online = await checkServerStatus();
+                if (!online) {
+                    logBox.innerText = '❌ debug_server.py 未啟動，無法生成日記。\n\n請先點擊「🚀 啟動 debug_server.py」按鈕。';
+                    return;
+                }
+            }
+
+            const charId = charSelect.value;
+            const scenario = document.getElementById('input-scenario').value;
+
+            // 關係參數
+            const relationship = {
+                partner_status: document.getElementById('partner-status').value,
+                friend_a_status: document.getElementById('friend-a-status').value,
+                friend_b_status: document.getElementById('friend-b-status').value,
+                others_occupied: document.getElementById('others-have-partner').checked
+            };
+
+            logBox.innerText = ">> 任務啟動...\n";
+            diaryPromptBox.value = "";
+            imagePromptBox.value = "";
+            diaryCloudStatus.textContent = '';
+            document.getElementById('run-btn').disabled = true;
+
+            try {
+                // 如果是雲端模式，附上完整 card_json 讓 server 直接使用
+                const postBody = { 
+                    char_id: charId, 
+                    scenario: scenario,
+                    relationship: relationship 
+                };
+                if (!useLocalCheckbox.checked && cloudCharacters.length > 0) {
+                    const cloudChar = cloudCharacters.find(c => c.id === charId);
+                    if (cloudChar && cloudChar.card_json) {
+                        postBody.card_json = cloudChar.card_json;
+                    }
+                }
+
+                const res = await fetch('http://localhost:8000/api/run_async', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(postBody)
+                });
+                const result = await res.json();
+                if (result.diary_prompt) diaryPromptBox.value = result.diary_prompt;
+                if (result.image_prompt) imagePromptBox.value = result.image_prompt;
+
+                const jobId = result.job_id;
+                if (!jobId) {
+                    logBox.innerText += "\n❌ 啟動失敗：未取得 job_id";
+                    return;
+                }
+
+                logBox.innerText += `\nJob: ${jobId}\n`;
+                let lastText = "";
+                let finalJobResult = null;
+                for (let i = 0; i < 600; i++) {
+                    await new Promise(r => setTimeout(r, 1000));
+                    const jr = await fetch(`http://localhost:8000/api/job?id=${encodeURIComponent(jobId)}`);
+                    const jd = await jr.json();
+                    if (jd.logs && jd.logs !== lastText) {
+                        lastText = jd.logs;
+                        logBox.innerText = lastText;
+                        logBox.scrollTop = logBox.scrollHeight;
+                    }
+                    if (jd.status === 'done') {
+                        logBox.innerText += "\n\n[OK] 流程完畢。您可以到首頁查看結果。";
+                        finalJobResult = { jobId, logs: lastText };
+                        break;
+                    }
+                    if (jd.status === 'error') {
+                        logBox.innerText += "\n\n[ERROR] 流程失敗，請看上方錯誤訊息。";
+                        break;
+                    }
+                }
+
+                if (finalJobResult) {
+                    await saveDiaryToCloud(finalJobResult);
+                }
+
+            } catch (e) {
+                logBox.innerText += "\n❌ 連線錯誤: " + e;
+            } finally {
+                document.getElementById('run-btn').disabled = false;
+            }
+        // 監聽選單切換，即時更新個性類型顯示
+        charSelect.addEventListener('change', async () => {
+            const charId = charSelect.value;
+            const pTypeDisplay = document.getElementById('char-personality-type-display');
+            if (!charId) {
+                pTypeDisplay.style.display = 'none';
+                return;
+            }
+
+            let charData = null;
+            if (useLocalCheckbox.checked) {
+                // 本機模式：從伺服器 API 抓取
+                try {
+                    const res = await fetch(`http://localhost:8000/characters/${charId}.json`);
+                    charData = await res.json();
+                } catch (e) {
+                    console.error('Failed to load local char data');
+                }
+            } else {
+                // 雲端模式：從快照中找
+                const found = cloudCharacters.find(c => c.id === charId);
+                if (found) charData = found.card_json;
+            }
+
+            if (charData && charData.personality_type) {
+                pTypeDisplay.textContent = `🧬 性格：${charData.personality_type}`;
+                pTypeDisplay.style.display = 'inline-block';
+            } else {
+                pTypeDisplay.style.display = 'none';
+            }
+        });
+        
+        });
+
+        // ====== 初始載入 ======
+        (async function init() {
+            // 先偵測伺服器
+            await checkServerStatus();
+
+            // 載入角色
+            if (useLocalCheckbox.checked) {
+                loadLocalChars();
+            } else {
+                loadCloudChars();
+            }
+        })();
+    </script>
+</body>
+
+</html>

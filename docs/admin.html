@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LoveIsABitMessy 後台管理</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/lpas_styles.css">
+  <style>
+    body { overflow-y: auto; height: auto; align-items: flex-start; }
+    main#app-container { max-width: 1100px; height: auto; padding-top: 48px; }
+    .panel { width: 100%; background: var(--c-bg-card); border-radius: 16px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .row > * { flex: 1 1 240px; }
+    label { display:block; font-size: 0.9rem; color: var(--c-text-sec); margin: 8px 0 6px; }
+    input[type="text"], input[type="password"], input[type="email"], textarea, select {
+      width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--c-scale-empty);
+      background-color: var(--c-bg-main); color: var(--c-text-main); font-family: inherit;
+    }
+    textarea { min-height: 160px; resize: vertical; white-space: pre; }
+    .tabs { display:flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+    .tab { padding: 8px 14px; border-radius: 18px; background: var(--c-scale-empty); color: var(--c-text-sec); cursor: pointer; border: 1px solid transparent; }
+    .tab.active { background: var(--c-accent); color: #fff; }
+    .grid { display:grid; grid-template-columns: 1fr; gap: 12px; }
+    .table { width:100%; border-collapse: collapse; font-size: 0.95rem; }
+    .table th, .table td { padding: 10px 8px; border-bottom: 1px solid rgba(255,255,255,0.08); vertical-align: top; }
+    .table th { color: var(--c-text-sec); font-weight: 500; text-align:left; }
+    .muted { color: var(--c-text-sec); font-size: 0.9rem; }
+    .right { justify-content: flex-end; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .pill { display:inline-block; padding: 2px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.15); color: var(--c-text-sec); }
+    .spacer { height: 12px; }
+  </style>
+
+  <!-- Supabase JS (UMD) -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
+  <script src="js/supabaseClient.js" defer></script>
+  <script src="js/admin_app.js" defer></script>
+</head>
+<body data-period="night">
+  <div id="star-bg"></div>
+  <main id="app-container">
+    <h1 class="main-title" style="margin-bottom: 8px;">後台管理</h1>
+    <div class="muted" style="text-align:center; margin-bottom: 20px;">
+      連線到 Supabase 之後，才能管理角色、測驗紀錄與日記。
+    </div>
+
+    <section class="panel" id="panel-connection">
+      <h2 style="font-weight:500; margin-bottom: 10px;">Supabase 連線設定</h2>
+      <div class="row">
+        <div>
+          <label>Project URL</label>
+          <input type="text" id="sb-url" placeholder="https://xxxx.supabase.co">
+        </div>
+        <div>
+          <label>Anon Key</label>
+          <input type="password" id="sb-anon" placeholder="eyJ...">
+        </div>
+        <div style="flex: 1 1 160px;">
+          <label>&nbsp;</label>
+          <button class="btn primary-btn" id="btn-save-conn">儲存設定</button>
+        </div>
+      </div>
+      <div class="spacer"></div>
+      <div class="row">
+        <div>
+          <label>Email</label>
+          <input type="email" id="auth-email" placeholder="you@example.com">
+        </div>
+        <div>
+          <label>Password</label>
+          <input type="password" id="auth-pass" placeholder="••••••••">
+        </div>
+        <div style="flex: 1 1 160px;">
+          <label>&nbsp;</label>
+          <div class="row right" style="gap: 8px;">
+            <button class="btn primary-btn" id="btn-login">登入</button>
+            <button class="btn secondary-btn" id="btn-logout" style="display:none;">登出</button>
+          </div>
+        </div>
+      </div>
+      <div class="spacer"></div>
+      <div class="muted mono" id="conn-status">尚未連線。</div>
+    </section>
+
+    <div class="tabs" id="tabs" style="display:none;">
+      <div class="tab active" data-tab="characters">角色</div>
+      <div class="tab" data-tab="diary">日記</div>
+      <div class="tab" data-tab="lpas">LPAS 測驗</div>
+    </div>
+
+    <section class="panel" id="tab-characters" style="display:none;">
+      <div class="row" style="align-items:flex-end;">
+        <div>
+          <label>角色 ID</label>
+          <input type="text" id="char-id" placeholder="例如：a-i-l-s_user">
+        </div>
+        <div>
+          <label>角色名稱</label>
+          <input type="text" id="char-name" placeholder="例如：月亮上的貓">
+        </div>
+        <div>
+          <label>來源</label>
+          <select id="char-source">
+            <option value="manual">manual</option>
+            <option value="lpas">lpas</option>
+            <option value="import">import</option>
+          </select>
+        </div>
+        <div style="flex: 1 1 160px;">
+          <button class="btn primary-btn" id="btn-save-character">新增/更新</button>
+        </div>
+      </div>
+      <label style="margin-top:12px;">角色卡 JSON（可直接貼上 LPAS 下載的角色卡）</label>
+      <textarea id="char-json" class="mono" placeholder="{ ... }"></textarea>
+      <div class="spacer"></div>
+      <div class="row right">
+        <button class="btn secondary-btn" id="btn-refresh-characters">重新整理列表</button>
+      </div>
+      <div class="spacer"></div>
+      <div id="characters-list" class="grid"></div>
+    </section>
+
+    <section class="panel" id="tab-diary" style="display:none;">
+      <div class="row right">
+        <button class="btn secondary-btn" id="btn-refresh-diary">重新整理列表</button>
+      </div>
+      <div class="spacer"></div>
+      <div id="diary-list"></div>
+    </section>
+
+    <section class="panel" id="tab-lpas" style="display:none;">
+      <div class="row right">
+        <button class="btn secondary-btn" id="btn-refresh-lpas">重新整理列表</button>
+      </div>
+      <div class="spacer"></div>
+      <div id="lpas-list"></div>
+    </section>
+
+    <div class="spacer"></div>
+    <div class="muted" style="text-align:center;">
+      GitHub Pages 會公開此頁面，但資料表寫入會受 Supabase RLS 限制（未登入不可寫）。\n
+    </div>
+  </main>
+</body>
+</html>
+
