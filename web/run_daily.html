@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LoveIsABitMessy DEBUG 測試面板</title>
+    <title>LoveIsABitMessy AI生成日記</title>
     <link rel="stylesheet" href="css/lpas_styles.css">
     <!-- Supabase JS (UMD) -->
     <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
@@ -206,10 +206,12 @@
             transition: all 0.2s;
             margin-bottom: 5px;
         }
+
         .copy-btn:hover {
             background: var(--c-accent-light);
             color: #000;
         }
+
         .reload-btn {
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -220,9 +222,11 @@
             margin-left: 10px;
             font-size: 0.85rem;
         }
+
         .reload-btn:hover {
             background: rgba(255, 255, 255, 0.2);
         }
+
         .personality-type-tag {
             display: inline-block;
             background: rgba(156, 111, 214, 0.2);
@@ -239,7 +243,7 @@
 
 <body>
     <div class="debug-panel">
-        <h1 style="font-weight: 300; margin-bottom: 30px;">LoveIsABitMessy 系統測試員，請先執行start_debug_server.bat</h1>
+        <h1 style="font-weight: 300; margin-bottom: 30px;">LoveIsABitMessy AI生成日記，請先執行start_debug_server.bat</h1>
 
         <div class="form-section">
             <label class="form-label">1. 選擇演員</label>
@@ -285,7 +289,8 @@
                 </div>
                 <div class="status-item checkbox-item">
                     <input type="checkbox" id="others-have-partner">
-                    <label for="others-have-partner" style="margin-bottom:0; font-size: 0.85rem; color: #fff;">女主伴侶或新朋友已經有對象了</label>
+                    <label for="others-have-partner"
+                        style="margin-bottom:0; font-size: 0.85rem; color: #fff;">女主伴侶或新朋友已經有對象了</label>
                 </div>
             </div>
         </div>
@@ -620,10 +625,10 @@
 
             try {
                 // 如果是雲端模式，附上完整 card_json 讓 server 直接使用
-                const postBody = { 
-                    char_id: charId, 
+                const postBody = {
+                    char_id: charId,
                     scenario: scenario,
-                    relationship: relationship 
+                    relationship: relationship
                 };
                 if (!useLocalCheckbox.checked && cloudCharacters.length > 0) {
                     const cloudChar = cloudCharacters.find(c => c.id === charId);
@@ -679,38 +684,38 @@
             } finally {
                 document.getElementById('run-btn').disabled = false;
             }
-        // 監聽選單切換，即時更新個性類型顯示
-        charSelect.addEventListener('change', async () => {
-            const charId = charSelect.value;
-            const pTypeDisplay = document.getElementById('char-personality-type-display');
-            if (!charId) {
-                pTypeDisplay.style.display = 'none';
-                return;
-            }
-
-            let charData = null;
-            if (useLocalCheckbox.checked) {
-                // 本機模式：從伺服器 API 抓取
-                try {
-                    const res = await fetch(`http://localhost:8000/characters/${charId}.json`);
-                    charData = await res.json();
-                } catch (e) {
-                    console.error('Failed to load local char data');
+            // 監聽選單切換，即時更新個性類型顯示
+            charSelect.addEventListener('change', async () => {
+                const charId = charSelect.value;
+                const pTypeDisplay = document.getElementById('char-personality-type-display');
+                if (!charId) {
+                    pTypeDisplay.style.display = 'none';
+                    return;
                 }
-            } else {
-                // 雲端模式：從快照中找
-                const found = cloudCharacters.find(c => c.id === charId);
-                if (found) charData = found.card_json;
-            }
 
-            if (charData && charData.personality_type) {
-                pTypeDisplay.textContent = `🧬 性格：${charData.personality_type}`;
-                pTypeDisplay.style.display = 'inline-block';
-            } else {
-                pTypeDisplay.style.display = 'none';
-            }
-        });
-        
+                let charData = null;
+                if (useLocalCheckbox.checked) {
+                    // 本機模式：從伺服器 API 抓取
+                    try {
+                        const res = await fetch(`http://localhost:8000/characters/${charId}.json`);
+                        charData = await res.json();
+                    } catch (e) {
+                        console.error('Failed to load local char data');
+                    }
+                } else {
+                    // 雲端模式：從快照中找
+                    const found = cloudCharacters.find(c => c.id === charId);
+                    if (found) charData = found.card_json;
+                }
+
+                if (charData && charData.personality_type) {
+                    pTypeDisplay.textContent = `🧬 性格：${charData.personality_type}`;
+                    pTypeDisplay.style.display = 'inline-block';
+                } else {
+                    pTypeDisplay.style.display = 'none';
+                }
+            });
+
         });
 
         // ====== 初始載入 ======

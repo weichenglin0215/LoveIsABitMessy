@@ -21,7 +21,7 @@ const TYPE_MAPPING_OLD = {
  * 愛情人格測驗 (LPAS) 核心評分與類型映射
  */
 
-const TYPE_MAPPING = {
+window.TYPE_MAPPING = {
     "A-O-C-F": {
         name: "太陽型",
         desc: "核心情感模式：她是愛情裡的盛夏，明亮、坦蕩、來去如風。她的喜歡是藏不住的秘密，她的悲傷是淋過就乾的雷陣雨。她追求的是毫無保留的燃燒，而非細水長流的算計。",

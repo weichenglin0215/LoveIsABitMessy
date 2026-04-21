@@ -7,6 +7,7 @@ import sys
 import threading
 import time
 import uuid
+import re
 from urllib.parse import urlparse, parse_qs
 from prompt_utils import load_character_from_path, build_story_system_prompt, build_story_final_prompt
 
@@ -106,6 +107,24 @@ def _append_job_log(job_id: str, text: str):
             return
         job["logs"].append(text)
         job["updated_at"] = time.time()
+
+def _ollama_generate_direct(model, prompt, temperature=0.85):
+    """直接呼叫 Ollama API 並回傳結果字串 (非串流)"""
+    url = "http://127.0.0.1:11434/api/generate"
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "options": {"temperature": temperature, "num_predict": 4096}
+    }
+    try:
+        import requests
+        res = requests.post(url, json=payload, timeout=120)
+        res.raise_for_status()
+        return res.json().get('response', '').strip()
+    except Exception as e:
+        print(f"Ollama error: {e}")
+        return f"Error: {e}"
 
 def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_prompt: str):
     try:
@@ -242,7 +261,9 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
             # 預設服務 web/ 下的靜態檔案
             return super().do_GET()
 
+    # 準備好傳給大模型的提示詞，處理 POST 請求
     def do_POST(self):
+        # 產生日記，處理 /api/run_async 請求
         if self.path == '/api/run_async':
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
@@ -304,6 +325,72 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 "diary_prompt": diary_prompt,
                 "image_prompt": image_prompt
             }, ensure_ascii=False).encode('utf-8'))
+
+        # 產出大綱，處理 /api/generate_outline 請求
+        elif self.path == '/api/generate_outline':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            params = json.loads(post_data)
+            desc = params.get('description', '')
+            chars = params.get('characters', [])
+            
+            char_names = ", ".join([c.get('name', '未知角色') for c in chars])
+            prompt = f"""你是一位專業的小說編輯。請根據以下【章節大綱說明】與【角色資訊】，為本章節規劃出 3 到 5 個具體的小節標題。
+小節標題應具備故事張力，循序漸進。
+
+【角色資訊】：{char_names}
+【章節大綱說明】：{desc}
+
+請直接回傳 JSON 格式的列表，例如：["小節標題1", "小節標題2", "小節標題3"]。不要有任何額外前言或解釋。"""
+
+            response_text = _ollama_generate_direct("gemma4", prompt)
+            
+            # 嘗試解析 JSON 列表
+            sections = []
+            try:
+                # 尋找方括號
+                match = re.search(r'\[.*\]', response_text, re.DOTALL)
+                if match:
+                    sections = json.loads(match.group(0))
+            except:
+                sections = [s.strip() for s in response_text.split('\n') if s.strip()]
+            
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(json.dumps({"sections": sections, "debug_prompt": prompt}, ensure_ascii=False).encode('utf-8'))
+
+        # 產出小說內容，處理 /api/generate_story_content 請求
+        elif self.path == '/api/generate_story_content':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            params = json.loads(post_data)
+            ctx = params.get('context', {})
+            chars = params.get('characters', [])
+            
+            char_context = ""
+            for c in chars:
+                char_context += f"【{c.get('name')}】\n性格：{c.get('personality')}\n背景：{c.get('background','')}\n\n"
+                
+            prompt = f"""你是一位獲獎無數的言情小說家。請根據以下資訊，撰寫一段細膩、動人且充滿畫面感的小說內容。
+以第三人稱視角敘述，字數約 500-1000 字。
+
+【登場角色與設定】：
+{char_context}
+
+【目前情境】：
+章節：{ctx.get('chapter_title')}
+章大綱：{ctx.get('chapter_desc')}
+本小節目標：{ctx.get('section_title')}
+
+請直接開始撰寫故事，不要輸出標題或任何前言。"""
+
+            content = _ollama_generate_direct("gemma4", prompt)
+            
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(json.dumps({"content": content, "debug_prompt": prompt}, ensure_ascii=False).encode('utf-8'))
 
 if __name__ == "__main__":
     os.makedirs('web', exist_ok=True)

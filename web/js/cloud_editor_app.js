@@ -98,6 +98,159 @@ async function refreshCharacterList() {
     });
 }
 
+function initDropdownOptions() {
+    console.log("Initializing dropdown options...");
+    // Populate Zodiac signs
+    const zodiacSel = qs('#char-zodiac');
+    if (zodiacSel && window.ZODIAC_SIGNS) {
+        zodiacSel.innerHTML = '<option value="">-- 選擇星座 --</option>';
+        window.ZODIAC_SIGNS.forEach(z => {
+            const opt = document.createElement('option');
+            opt.value = z;
+            opt.textContent = z;
+            zodiacSel.appendChild(opt);
+        });
+    }
+
+    // Populate Blood types
+    const bloodSel = qs('#char-blood-type');
+    if (bloodSel && window.BLOOD_TYPES) {
+        bloodSel.innerHTML = '<option value="">-- 選擇血型 --</option>';
+        window.BLOOD_TYPES.forEach(b => {
+            const opt = document.createElement('option');
+            opt.value = b;
+            opt.textContent = b;
+            bloodSel.appendChild(opt);
+        });
+    }
+
+    // Populate Phase types (Ambiguity, Love, Breakup) from TYPE_MAPPING
+    const mapping = window.TYPE_MAPPING || (typeof TYPE_MAPPING !== 'undefined' ? TYPE_MAPPING : null);
+    if (mapping) {
+        console.log("TYPE_MAPPING found, populating phase types...");
+        const typeKeys = Object.keys(mapping);
+        const labels = ["曖昧期", "熱戀期", "失戀期"];
+        [1, 2, 3].forEach(p => {
+            const sel = qs(`#char-type-${p}`);
+            if (sel) {
+                sel.innerHTML = `<option value="">-- 選擇${labels[p-1]}類型 --</option>`;
+                typeKeys.forEach(k => {
+                    const opt = document.createElement('option');
+                    const code = k.replace(/-/g, '');
+                    opt.value = code;
+                    opt.textContent = `${mapping[k].name} (${code})`;
+                    sel.appendChild(opt);
+                });
+            }
+        });
+    } else {
+        console.warn("TYPE_MAPPING not found. Check if scoring.js is loaded correctly.");
+    }
+}
+
+// ====== 生日與星座連動邏輯 ======
+
+function getZodiacByDate(dateStr) {
+    if (!dateStr || !window.ZODIAC_RANGES) return "";
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const md = m * 100 + d; // e.g. "03-21" -> 321
+    
+    for (const r of window.ZODIAC_RANGES) {
+        const [sm, sd] = r.start.split('-').map(Number);
+        const [em, ed] = r.end.split('-').map(Number);
+        const sVal = sm * 100 + sd;
+        const eVal = em * 100 + ed;
+        
+        if (sVal <= eVal) {
+            if (md >= sVal && md <= eVal) return r.name;
+        } else {
+            // 跨年 (如魔羯座 12-22 ~ 01-19)
+            if (md >= sVal || md <= eVal) return r.name;
+        }
+    }
+    return "";
+}
+
+function getMidpointDate(zodiacName, year) {
+    if (!window.ZODIAC_RANGES) return `${year}-01-01`;
+    const r = window.ZODIAC_RANGES.find(x => x.name === zodiacName);
+    if (!r) return `${year}-01-01`;
+    
+    const [sm, sd] = r.start.split('-').map(Number);
+    const [em, ed] = r.end.split('-').map(Number);
+    
+    let sDate = new Date(year, sm - 1, sd);
+    let eDate = new Date(year, em - 1, ed);
+    if (sm > em) eDate.setFullYear(year + 1); // 跨年
+
+    const midTs = sDate.getTime() + (eDate.getTime() - sDate.getTime()) / 2;
+    const midDate = new Date(midTs);
+    
+    const resM = String(midDate.getMonth() + 1).padStart(2, '0');
+    const resD = String(midDate.getDate()).padStart(2, '0');
+    return `${year}-${resM}-${resD}`;
+}
+
+function updateIdPreview() {
+    const name = qs('#char-name').value.trim() || "未命名";
+    const c1 = qs('#char-type-1').value || "???";
+    const c2 = qs('#char-type-2').value || "???";
+    const c3 = qs('#char-type-3').value || "???";
+    
+    let n1 = "???", n2 = "???", n3 = "???";
+    const mapping = window.TYPE_MAPPING || (typeof TYPE_MAPPING !== 'undefined' ? TYPE_MAPPING : null);
+    if (mapping) {
+        if (c1 !== "???") n1 = (mapping[c1.split('').join('-')] || { name: "" }).name.replace(/型/g, '');
+        if (c2 !== "???") n2 = (mapping[c2.split('').join('-')] || { name: "" }).name.replace(/型/g, '');
+        if (c3 !== "???") n3 = (mapping[c3.split('').join('-')] || { name: "" }).name.replace(/型/g, '');
+    }
+
+    const dateStr = new Date().toISOString().split('T')[0];
+    const ptCode = `${c1}_${c2}_${c3}`;
+    const ptNames = `${n1}_${n2}_${n3}`;
+    
+    // 預期格式：姓名-代碼1_代碼2_代碼3-名稱1_名稱2_名稱3-日期-序號
+    const newId = `${name}-${ptCode}-${ptNames}-${dateStr}-01`;
+    qs('#char-id').value = newId;
+}
+
+function updateExplanations() {
+    console.log("Updating explanations...");
+    // Zodiac
+    const zVal = qs('#char-zodiac').value;
+    const zd = window.ZODIAC_DESCRIPTIONS || (typeof ZODIAC_DESCRIPTIONS !== 'undefined' ? ZODIAC_DESCRIPTIONS : null);
+    qs('#desc-zodiac').value = (zd && zVal) ? zd[zVal] || "" : "";
+
+    // Blood
+    const bVal = qs('#char-blood-type').value;
+    const bd = window.BLOOD_TYPE_DESCRIPTIONS || (typeof BLOOD_TYPE_DESCRIPTIONS !== 'undefined' ? BLOOD_TYPE_DESCRIPTIONS : null);
+    qs('#desc-blood').value = (bd && bVal) ? bd[bVal] || "" : "";
+
+    // Phases
+    const mapping = window.TYPE_MAPPING || (typeof TYPE_MAPPING !== 'undefined' ? TYPE_MAPPING : null);
+    if (mapping) {
+        [1, 2, 3].forEach(p => {
+            const codeShort = qs(`#char-type-${p}`).value;
+            const descEl = qs(`#desc-type-${p}`);
+            if (codeShort) {
+                const codeLong = codeShort.split('').join('-');
+                const info = mapping[codeLong];
+                if (info) {
+                    let phaseDesc = "";
+                    if (p === 1) phaseDesc = info.ambiguity.desc;
+                    else if (p === 2) phaseDesc = info.love.desc;
+                    else if (p === 3) phaseDesc = info.breakup.desc;
+                    descEl.value = `【${info.name}】${phaseDesc}`;
+                } else {
+                    descEl.value = "";
+                }
+            } else {
+                descEl.value = "";
+            }
+        });
+    }
+}
+
 async function loadCharacter(charId) {
     if (!charId || !sb) {
         qs('#char-id').value = '';
@@ -117,9 +270,32 @@ async function loadCharacter(charId) {
     }
     currentCharacterId = charId;
 
-    qs('#char-id').value = data.id || '';
     qs('#char-name').value = data.name || '';
-    qs('#char-card-json').value = prettyJson(data.card_json);
+    const cardJson = data.card_json || {};
+    // 移除舊有的欄位避免選單與 JSON 衝突
+    if (cardJson.id) delete cardJson.id;
+    if (cardJson.name) delete cardJson.name;
+    if (cardJson.age) delete cardJson.age;
+    if (cardJson.personality) delete cardJson.personality;
+    
+    qs('#char-card-json').value = prettyJson(cardJson);
+    
+    // Update local fields from JSON or Table
+    qs('#char-birthday').value = cardJson.birthday || '1999-01-01';
+    qs('#char-zodiac').value = cardJson.zodiac || '';
+    qs('#char-blood-type').value = cardJson.blood_type || '';
+
+    // Update phase dropdowns from personality_type
+    const pt = cardJson.personality_type || ""; 
+    if (pt.includes('-')) {
+        const codesPart = pt.split('-')[0];
+        const codes = codesPart.split('_');
+        if (codes.length >= 1) qs('#char-type-1').value = codes[0];
+        if (codes.length >= 2) qs('#char-type-2').value = codes[1];
+        if (codes.length >= 3) qs('#char-type-3').value = codes[2];
+    }
+    
+    updateExplanations();
 }
 
 async function saveCharacter() {
@@ -137,9 +313,15 @@ async function saveCharacter() {
         return;
     }
 
-    // 將 ID 與 Name 欄位回存到 JSON 中（優先以此二欄位為準）
-    cardJson.id = id;
-    cardJson.name = name;
+    // 將 UI 欄位回存到 JSON 中（移除冗餘欄位）
+    cardJson.zodiac = qs('#char-zodiac').value || "";
+    cardJson.blood_type = qs('#char-blood-type').value || "";
+    cardJson.birthday = qs('#char-birthday').value || "1999-01-01";
+    
+    if (cardJson.id) delete cardJson.id;
+    if (cardJson.name) delete cardJson.name;
+    if (cardJson.age) delete cardJson.age;
+    if (cardJson.personality) delete cardJson.personality;
 
     const payload = {
         id: id,
@@ -162,9 +344,15 @@ async function saveCharacter() {
 function cancelCharacterEdit() {
     qs('#char-id').value = '';
     qs('#char-name').value = '';
+    qs('#char-zodiac').value = '';
+    qs('#char-blood-type').value = '';
+    qs('#char-type-1').value = '';
+    qs('#char-type-2').value = '';
+    qs('#char-type-3').value = '';
     qs('#char-card-json').value = '';
     qs('#char-dropdown').value = '';
     currentCharacterId = null;
+    updateExplanations();
 }
 
 // ====== 日記（右欄）======
@@ -284,10 +472,88 @@ window.addEventListener('load', async () => {
         try { await logout(); } catch (e) { alert(e.message || e); }
     });
 
+    // 初始化下拉選項
+    initDropdownOptions();
+
     // 角色卡下拉選單
     qs('#char-dropdown').addEventListener('change', async (e) => {
         await loadCharacter(e.target.value);
     });
+
+    // 監聽姓名與特質變動，更新 ID Preview
+    qs('#char-name').addEventListener('input', updateIdPreview);
+    qs('#char-type-1').addEventListener('change', updateIdPreview);
+    qs('#char-type-2').addEventListener('change', updateIdPreview);
+    qs('#char-type-3').addEventListener('change', updateIdPreview);
+
+    // 監聽生日變動更新星座
+    qs('#char-birthday').addEventListener('change', () => {
+        const bDay = qs('#char-birthday').value;
+        if (bDay) {
+            const zName = getZodiacByDate(bDay);
+            if (zName) {
+                qs('#char-zodiac').value = zName;
+                updateJsonFromDropdowns();
+            }
+        }
+    });
+
+    // 監聽星座變動更新生日
+    qs('#char-zodiac').addEventListener('change', () => {
+        const zName = qs('#char-zodiac').value;
+        const bDay = qs('#char-birthday').value;
+        if (zName && bDay) {
+            const curZ = getZodiacByDate(bDay);
+            if (curZ !== zName) {
+                // 生日不符合新選星座，調整到中間日期
+                const year = bDay.split('-')[0];
+                qs('#char-birthday').value = getMidpointDate(zName, parseInt(year));
+            }
+        }
+        updateJsonFromDropdowns();
+    });
+
+    // 監聽選單變動，更新 JSON 與 說明文字
+    const updateJsonFromDropdowns = () => {
+        const zodiac = qs('#char-zodiac').value;
+        const blood = qs('#char-blood-type').value;
+        const bday = qs('#char-birthday').value;
+        const c1 = qs('#char-type-1').value;
+        const c2 = qs('#char-type-2').value;
+        const c3 = qs('#char-type-3').value;
+
+        const jsonStr = qs('#char-card-json').value.trim();
+        try {
+            let cardJson = jsonStr ? JSON.parse(jsonStr) : {};
+            cardJson.zodiac = zodiac;
+            cardJson.blood_type = blood;
+            cardJson.birthday = bday;
+            
+            const mapping = window.TYPE_MAPPING || (typeof TYPE_MAPPING !== 'undefined' ? TYPE_MAPPING : null);
+            if (c1 && c2 && c3 && mapping) {
+                const n1 = (mapping[c1.split('').join('-')] || { name: "" }).name.replace(/型/g, '');
+                const n2 = (mapping[c2.split('').join('-')] || { name: "" }).name.replace(/型/g, '');
+                const n3 = (mapping[c3.split('').join('-')] || { name: "" }).name.replace(/型/g, '');
+                cardJson.personality_type = `${c1}_${c2}_${c3}-${n1}_${n2}_${n3}`;
+            }
+
+            // 確保沒有 id, name, age
+            if (cardJson.id) delete cardJson.id;
+            if (cardJson.name) delete cardJson.name;
+            if (cardJson.age) delete cardJson.age;
+            if (cardJson.personality) delete cardJson.personality;
+
+            qs('#char-card-json').value = prettyJson(cardJson);
+            updateExplanations();
+            updateIdPreview();
+        } catch (e) {
+            console.warn('JSON 格式錯誤，無法自動更新選單欄位');
+        }
+    };
+    qs('#char-blood-type').addEventListener('change', updateJsonFromDropdowns);
+    qs('#char-type-1').addEventListener('change', updateJsonFromDropdowns);
+    qs('#char-type-2').addEventListener('change', updateJsonFromDropdowns);
+    qs('#char-type-3').addEventListener('change', updateJsonFromDropdowns);
     qs('#btn-char-save').addEventListener('click', saveCharacter);
     qs('#btn-char-cancel').addEventListener('click', cancelCharacterEdit);
     qs('#btn-char-refresh').addEventListener('click', refreshCharacterList);
