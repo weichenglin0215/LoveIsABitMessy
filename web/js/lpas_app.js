@@ -131,6 +131,7 @@ let app = {
 
     recordAnswer(score) {
         const q = this.questionQueue[this.currentQIndex];
+        if (!q) return;
         const answeredAtMs = Date.now();
         const timeSpentMs = this.currentQuestionShownAtMs ? (answeredAtMs - this.currentQuestionShownAtMs) : null;
         

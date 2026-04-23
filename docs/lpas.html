@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,22 +8,22 @@
     <!-- 引入 Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
     <link rel="stylesheet" href="css/lpas_styles.css">
-    <!-- Supabase JS (UMD) -->
-    <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
+    <!-- 中央角色資料與邏輯 -->
+    <script src="js/character_logic.js" defer></script>
+    <script src="js/lpas_questions.js" defer></script>
     <script src="js/supabaseClient.js" defer></script>
-    <script src="js/questions.js" defer></script>
-    <script src="js/scoring.js" defer></script>
-    <script src="js/profile_generator.js" defer></script>
     <script src="js/lpas_app.js" defer></script>
 </head>
+
 <body data-period="night">
     <!-- 星點背景特效容器 -->
     <div id="star-bg"></div>
-    
+
     <!-- 音樂控制 (暫不實作播放，僅保留 UI) -->
     <div id="music-control">
         <span class="music-icon">🎵</span>
@@ -92,11 +93,11 @@
                 <h2 id="question-text"></h2>
             </div>
             <div class="options-container">
-                <span class="scale-label">同意</span>
+                <span class="scale-label">😀同意</span>
                 <div class="likert-scale" id="likert-scale">
                     <!-- JS 動態生成 7 個圓圈 -->
                 </div>
-                <span class="scale-label">不同意</span>
+                <span class="scale-label">🙁不同意</span>
             </div>
             <button class="text-btn back-btn" id="prev-question-btn">上一題</button>
         </section>
@@ -114,23 +115,26 @@
                     <h1 id="result-type-name"></h1>
                     <div id="result-type-code" class="type-code"></div>
                 </div>
-                
+
                 <div class="result-radar">
                     <canvas id="radarChart"></canvas>
                 </div>
-                
+
                 <div class="result-description" id="result-desc">
                     <!-- 動態載入結果說明 -->
                 </div>
-                
+
                 <div class="result-actions">
                     <button class="btn primary-btn" id="download-json-btn">下載角色卡 (JSON)</button>
                     <button class="btn secondary-btn" id="download-record-btn">下載測驗紀錄 (JSON)</button>
                     <button class="btn text-btn" id="download-md-btn">複製角色設定 (Markdown)</button>
                 </div>
-                <div id="cloud-save-status" style="margin-top: 16px; font-size: 0.9rem; color: var(--c-text-sec); text-align: center;">☁️ 準備同步至雲端…</div>
+                <div id="cloud-save-status"
+                    style="margin-top: 16px; font-size: 0.9rem; color: var(--c-text-sec); text-align: center;">☁️
+                    準備同步至雲端…</div>
             </div>
         </section>
     </main>
 </body>
+
 </html>

@@ -40,12 +40,12 @@
 ### 步驟 3：喚醒系統 (執行生成)
 *   **動作**：確保 Ollama 和 ComfyUI 都在背景運行，然後在 CMD 執行：
     ```bash
-    python run_daily.py
+    python daily_run.py
     ```
 *   **用意與連鎖反應**：
-    1. `generate_story.py`：隨機選一個角色，請 Ollama 根據其性格寫出一篇辦公室週記。
+    1. `generate_daily.py`：隨機選一個角色，請 Ollama 根據其性格寫出一篇辦公室週記。
     2. `generate_image.py`：根據角色的外貌敘述，請 ComfyUI 畫出今日插圖。
-    3. `build_page.py`：把文字跟圖片打包成一個漂亮的網頁。
+    3. `daily_page_build.py`：把文字跟圖片打包成一個漂亮的網頁。
 
 ### 步驟 4：驗收成果 (閱讀故事)
 *   **動作**：開啟 `web/index.html`。
@@ -54,11 +54,11 @@
 ---
 
 ## 常見問答集 (FAQ)
-*   **Q: 執行 `run_daily.py` 報錯說缺套件怎麼辦？**
+*   **Q: 執行 `daily_run.py` 報錯說缺套件怎麼辦？**
     *   請執行：`pip install requests jinja2`
 *   **Q: 產出的圖片角色臉長得不一樣？**
     *   建議在 `image_prompt` 裡加入更細節的描述，或是在 Z-image-turbo workflow 裡固定種子碼 (Seed)。
 *   **Q: 想要每天定時執行？**
-    *   您可以依照手冊第六章，將 `run_daily.py` 設定在 Windows 的「工作排程器」中。
+    *   您可以依照手冊第六章，將 `daily_run.py` 設定在 Windows 的「工作排程器」中。
 
 現在，您可以從 **步驟 1** 開始，親自體驗一次 LPAS 的測驗了！

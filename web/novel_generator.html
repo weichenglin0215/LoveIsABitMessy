@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>小說自動產生器 - LoveIsABitMessy</title>
+  <link rel="stylesheet" href="css/lpas_styles.css">
+  <!-- Supabase JS (UMD) -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
+  <script src="js/supabaseClient.js" defer></script>
+  <style>
+    :root {
+      --c-bg-panel: hsla(240, 0%, 10%, 0.85);
+      --c-border: hsla(266, 0%, 64%, 0.3);
+      --c-accent-glow: hsla(266, 0%, 64%, 0.6);
+    }
+
+    body {
+      background: #0d0d12 url('https://w.wallhaven.cc/full/8o/wallhaven-8o9m6j.jpg') no-repeat center center fixed;
+      background-size: cover;
+      color: #e0e0e0;
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Glassmorphism Background Overlay */
+    #glass-overlay {
+      position: fixed;
+      inset: 0;
+      background: hsla(0, 0%, 0%, 0.6);
+      backdrop-filter: blur(8px);
+      z-index: -1;
+    }
+
+    /* Layout structure */
+    .app-container {
+      display: grid;
+      grid-template-columns: 280px auto 1fr 1.6fr;
+      grid-template-rows: 60px 1fr;
+      height: 100vh;
+      gap: 10px;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    /*標題*/
+    header {
+      grid-column: 1 / 5;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--c-bg-panel);
+      padding: 0 20px;
+      border-radius: 12px;
+      border: 1px solid var(--c-border);
+    }
+
+    .logo {
+      font-size: 1.4rem;
+      font-weight: 700;
+      background: linear-gradient(45deg, #a78bfa, #f472b6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Columns */
+    .col {
+      background: var(--c-bg-panel);
+      border-radius: 12px;
+      border: 1px solid var(--c-border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      backdrop-filter: blur(4px);
+    }
+
+    .col-header {
+      padding: 8px;
+      border-bottom: 1px solid var(--c-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .col-header h3 {
+      margin: 0;
+      font-size: 1.2rem;
+      letter-spacing: 0.2rem;
+      color: #fff;
+    }
+
+    .scroll-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      font-size: 1.0rem;
+    }
+
+    /* Left Column: Characters 左側角色卡*/
+    .char-card {
+      letter-spacing: 0.1rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      position: relative;
+    }
+
+    .char-mode-toggle {
+      padding: 10px;
+      border-bottom: 1px solid var(--c-border);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 1.0rem;
+    }
+
+    .char-card select {
+      font-size: 1.0rem;
+      width: 100%;
+      background: #111;
+      color: #fff;
+      border: 1px solid #444;
+      padding: 8px;
+      border-radius: 4px;
+    }
+
+    /*LOG狀態欄*/
+    .server-status-row {
+      margin: 0px 10px;
+
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .server-status-dot {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .server-status-dot.online {
+      background: #4caf50;
+      box-shadow: 0 0 8px #4caf50;
+    }
+
+    .server-status-dot.flash {
+      animation: dot-flash 0.5s ease-out;
+    }
+
+    @keyframes dot-flash {
+      0% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.4);
+      }
+
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    .server-status-dot.offline {
+      background: #f44336;
+      box-shadow: 0 0 6px #f44336;
+    }
+
+    .server-status-text {
+      font-size: 1rem;
+      color: var(--c-text-sec);
+    }
+
+    #start-server-btn {
+      padding: 4px 10px;
+      font-size: 1rem;
+      margin-top: 0;
+      background: #2a1a3e;
+      border: 1px solid var(--c-accent);
+      color: var(--c-accent-light);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    #start-server-btn:hover:not(:disabled) {
+      background: var(--c-accent-hover);
+      color: #fff;
+    }
+
+    #start-server-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .status-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-top: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 15px;
+      border-radius: 12px;
+      border: 1px solid #444;
+    }
+
+    .status-item label {
+      display: block;
+      font-size: 1rem;
+      color: var(--c-text-sec);
+      margin-bottom: 5px;
+    }
+
+    .status-item select {
+      margin-bottom: 0;
+      padding: 8px;
+      font-size: 1rem;
+    }
+
+    .status-item.checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .log-area {
+      background: #000;
+      color: hsl(120, 50%, 70%);
+      font-family: 'Courier New', monospace;
+      padding: 10px;
+      border-radius: 8px;
+      height: 600px;
+      overflow-y: scroll;
+      white-space: pre-wrap;
+      font-size: 1.2rem;
+      border: 1px solid #333;
+    }
+
+    .cloud-status {
+      font-size: 0.85rem;
+      color: var(--c-text-sec);
+      margin-top: 5px;
+    }
+
+    /* Middle Column: Story Structure */
+    .chapter-card {
+      background: rgba(156, 111, 214, 0.05);
+      border: 1px solid var(--c-border);
+      border-radius: 10px;
+      margin-bottom: 20px;
+      padding: 15px;
+    }
+
+    .chapter-title-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .chapter-title-row input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid #666;
+      color: #fff;
+      font-size: 1.1rem;
+      padding: 5px;
+    }
+
+    .chapter-desc {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      color: #aaa;
+      font-size: 1.2rem;
+      padding: 8px;
+      margin-bottom: 12px;
+      resize: vertical;
+      min-height: 3rem;
+      font-family: inherit;
+    }
+
+    .section-list {
+      margin-left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .section-item {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.02);
+      padding: 4px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .section-item.active {
+      border-color: var(--c-accent-light);
+      background: rgba(156, 111, 214, 0.1);
+    }
+
+    .section-item input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #ccc;
+      font-size: 1.2rem;
+      padding: 4px;
+    }
+
+    .btn-del-sec {
+      background: none;
+      border: none;
+      color: #666;
+      cursor: pointer;
+    }
+
+    .btn-del-sec:hover {
+      color: #f44;
+    }
+
+    /* Buttons */
+    .btn-circle {
+      width: 30px;
+      height: 30px;
+      font-size: 1.6rem;
+      border-radius: 50%;
+      border: 1px solid var(--c-border);
+      background: rgba(156, 111, 214, 0.2);
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: 0.3s;
+    }
+
+    .btn-circle:hover {
+      background: var(--c-accent-light);
+      color: #000;
+    }
+
+    .btn {
+      font-size: 1.2rem;
+      margin: 5px 6px;
+      padding: 4px 20px;
+    }
+
+    .ai-btn {
+      padding: 5px 12px;
+      border-radius: 15px;
+      border: 1px solid #f472b6;
+      background: rgba(244, 114, 182, 0.1);
+      color: #f472b6;
+      font-size: 1.0rem;
+      cursor: pointer;
+    }
+
+    .ai-btn:hover {
+      background: #f472b6;
+      color: #fff;
+    }
+
+    /* Right Column: Editor */
+    .editor-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .editor-title {
+      font-size: 1.2rem;
+      line-height: 1.6;
+      margin-bottom: 10px;
+      color: var(--c-accent-light);
+      background: transparent;
+      border: 1px solid var(--c-border);
+      border-bottom: 1px solid var(--c-border);
+      width: 100%;
+      min-height: 3rem;
+      outline: none;
+      padding: 5px 0;
+    }
+
+    .editor-title:focus {
+      border-bottom-color: var(--c-accent-light);
+    }
+
+    textarea#main-editor {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--c-border);
+      border-radius: 8px;
+      color: hsl(0, 0%, 94%);
+      padding: 10px;
+      font-size: 1.2rem;
+      line-height: 1.6;
+      resize: none;
+      outline: none;
+    }
+
+    /* Story Premise Styles */
+    #story-premise-container {
+      width: 350px;
+      transition: width 0.3s ease;
+      position: relative;
+    }
+
+    #story-premise-container.collapsed {
+      width: 50px !important;
+      min-width: 50px !important;
+      overflow: hidden;
+    }
+
+    #story-premise-container.collapsed .col-header h3,
+    #story-premise-container.collapsed .scroll-area {
+      display: none;
+    }
+
+    .collapse-btn {
+      cursor: pointer;
+      font-size: 1.2rem;
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--c-border);
+      border-radius: 4px;
+      padding: 2px 8px;
+      transition: all 0.2s;
+    }
+
+    .collapse-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .story-premise-textarea {
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--c-border);
+      border-radius: 8px;
+      color: #eee;
+      padding: 15px;
+      box-sizing: border-box;
+      font-size: 1.2rem;
+      line-height: 1.6;
+      resize: none;
+      font-family: inherit;
+    }
+
+    .btn-lock-ch {
+      font-size: 1.2rem;
+      cursor: pointer;
+      user-select: none;
+      padding: 0 5px;
+    }
+
+    /* Toolbox */
+    .toolbox {
+      display: flex;
+      gap: 10px;
+      margin-top: 5px;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--c-border);
+      border-radius: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="glass-overlay"></div>
+
+  <div class="app-container">
+    <header class="top-nav">
+      <div class="logo"> 📖 開心花園AI小說自動產生器 <small style="font-size: 1.0rem; opacity: 0.6;">v1.0</small></div>
+      <div style="margin-left: 20px; display: flex; align-items: center; gap: 10px;">
+        <label style="color: var(--c-text-sec); font-size: 1rem;">小說名稱：</label>
+        <input type="text" id="book-title" placeholder="請輸入小說名稱..."
+          style="background: rgba(255,255,255,0.1); border: 1px solid var(--c-border); color: #fff; padding: 5px 12px; border-radius: 4px; width: 300px;">
+      </div>
+      <div style="flex:1;"></div>
+      <div class="global-actions">
+        <button class="btn secondary-btn" id="btn-export">📤 匯出小說</button>
+        <div style="display:inline-flex; align-items:center; gap:5px; margin-right:6px;">
+          <button class="btn secondary-btn" id="btn-load-cloud" style="margin-right:0;">☁️ 讀取雲端小說</button>
+          <select id="cloud-novel-select" style="display:none; background: #111; color: #fff; border: 1px solid var(--c-border); padding: 4px 10px; border-radius: 4px; font-size: 1rem; width: 250px;">
+            <option value="">-- 請選擇小說 --</option>
+          </select>
+        </div>
+        <button class="btn secondary-btn" id="btn-load">📂 讀取小說</button>
+        <button class="btn primary-btn" id="btn-save">💾 儲存小說</button>
+      </div>
+    </header>
+
+    <!-- 角色挑選 -->
+    <div class="col">
+      <div class="col-header">
+        <h3>🎭 登場角色</h3>
+        <button class="btn-circle" id="add-char" title="增加角色">+</button>
+      </div>
+      <div class="scroll-area" id="char-list">
+        <div class="char-mode-toggle">
+          <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
+            <input type="checkbox" id="use-local-data"> 讀取本機資料 (除錯用)
+          </label>
+          <div id="char-source-status" style="font-size:1rem; color:#aaa;">☁️ 預設讀取雲端角色卡</div>
+        </div>
+        <div id="char-slots-container">
+          <!-- JS 動態生成 -->
+        </div>
+      </div>
+      <!--LOG狀態欄-->
+      <div class="server-status-row" style="margin-top:20px; flex-wrap: wrap;">
+        <span class="server-status-dot offline" id="server-dot"></span>
+        <button id="start-server-btn" disabled>🚀 請自行啟動伺服器</button>
+        <span class="server-status-text" id="server-status-text">偵測中…</span>
+
+        <div id="model-container"
+          style="margin-left:auto; display:flex; flex-direction: column; align-items:flex-start; gap:4px; opacity: 0.8;">
+          <label style="font-size:0.9rem; color:#aaa;">🤖 AI 模型：</label>
+          <select id="model-select"
+            style="background:#111; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 8px; font-size:0.9rem; width: 100%;">
+            <option value="gemma4">gemma4</option>
+          </select>
+        </div>
+      </div>
+      <div id="log-output" class="log-area" style="height: 200px; font-size: 1rem;">等待任務...</div>
+      <div id="diary-cloud-status" class="cloud-status">雲端狀態</div>
+    </div>
+
+    <!-- 故事粗鋼欄位 -->
+    <div class="col" id="story-premise-container">
+      <div class="col-header">
+        <button class="collapse-btn" id="toggle-premise" title="縮放">↔</button>
+        <h3 style="margin-left: 10px; font-size: 1.1rem; letter-spacing: 0.1rem;">📝 故事粗綱</h3>
+        <button class="ai-btn" id="btn-ai-gen-chapters" title="根據粗鋼生成各章節">🤖 AI 生成各章描述</button>
+      </div>
+      <div class="scroll-area">
+        <textarea class="story-premise-textarea" id="story-premise" placeholder="在此編寫故事粗綱，包含整體走向、結局設想等..."></textarea>
+      </div>
+    </div>
+
+    <!-- 故事大綱 -->
+    <div class="col">
+      <div class="col-header">
+        <h3>📖 故事大綱</h3>
+        <div class="toolbox">
+          <button class="ai-btn" id="btn-ai-gen-all-outlines" title="撰寫所有未鎖定的小節大綱">🤖 AI 撰寫所有大綱</button>
+          <button class="btn-circle" id="add-chapter" title="增加章節">+</button>
+        </div>
+      </div>
+      <div class="scroll-area" id="chapter-list">
+        <!-- JS 動態生成 -->
+      </div>
+    </div>
+
+    <!-- 編輯器 -->
+    <div class="col">
+      <div class="col-header">
+        <h3>🖋️ 內文編輯器</h3>
+        <div class="toolbox">
+          <button class="ai-btn" id="btn-ai-gen-all-content" title="撰寫所有未鎖定的小節內容">🤖 AI 撰寫所有小節的內文</button>
+          <button class="ai-btn" id="btn-ai-gen-content">🤖 AI 本節小說</button>
+        </div>
+      </div>
+      <div class="scroll-area editor-container" id="editor-side">
+        <textarea class="editor-title" id="active-section-title" placeholder="請選擇一個章節開始" readonly
+          style="height:50px;"></textarea>
+        <textarea id="main-editor" placeholder="在此編寫故事內容..."></textarea>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="js/novel_generator_app.js" defer></script>
+</body>
+
+</html>

@@ -9,6 +9,7 @@ description: 開始任何任務前必讀，所有修改必須符合本規範
 - 採用深色模式
 - 使用 CSS 變數管理顏色，以hsl()表示
 - 使用 rem 單位
+- 所有字體至少1.0rem
 - 使用 flexbox 佈局
 - 使用 grid 佈局
 
@@ -21,12 +22,10 @@ description: 開始任何任務前必讀，所有修改必須符合本規範
 
 ## 檔案命名規則
 - 角色卡：`characters/role_YYYY-MM-DD_角色id.json`
-- 故事檔：`stories/YYYY-MM-DD_角色id.json`
+- 日記文檔：`diaries/YYYY-MM-DD_角色id.json`
 - 圖片檔：`images/YYYY-MM-DD_角色id.png`
 - 網頁檔：`web/YYYY-MM-DD.html`
 
 ## 禁止事項
-- 禁止修改 `characters/` 資料夾內的 JSON
-- 禁止修改 `stories/` 資料夾內的 JSON
 - 禁止更改 HTML 模板的基本結構
 - 禁止新增未在此規範列出的功能

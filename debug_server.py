@@ -8,8 +8,21 @@ import threading
 import time
 import uuid
 import re
+
+try:
+    # 盡量讓 Windows console 不因 cp950 造成亂碼/炸掉
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 from urllib.parse import urlparse, parse_qs
-from prompt_utils import load_character_from_path, build_story_system_prompt, build_story_final_prompt
+from prompt_utils import (
+    load_character_from_path, 
+    build_daily_prompt, 
+    build_chapter_outline_prompt, 
+    build_novel_content_prompt,
+    build_chapters_from_premise_prompt
+)
 
 PORT = 8000
 WEB_DIR = os.path.join(os.path.dirname(__file__), 'web')
@@ -18,6 +31,9 @@ JOBS = {}
 JOBS_LOCK = threading.Lock()
 
 def _resolve_character_json_path(char_id: str) -> str:
+    #####################################################################################
+    # 支援不同目錄
+    #####################################################################################
     if not char_id:
         return ""
     p1 = os.path.join('characters', f'{char_id}.json')
@@ -29,78 +45,81 @@ def _resolve_character_json_path(char_id: str) -> str:
         return p2
     return ""
 
+def _try_repair_json(s: str) -> str:
+    """
+    嘗試修復 AI 回傳的殘缺 JSON 格式
+    例如：缺少結尾引號、括號等
+    """
+    s = s.strip()
+    if not s:
+        return s
+    
+    # 尋找第一個 [ 或 {
+    start_idx = s.find('[')
+    brace_idx = s.find('{')
+    if start_idx == -1 or (brace_idx != -1 and brace_idx < start_idx):
+        start_idx = brace_idx
+    
+    if start_idx == -1:
+        return s
+    
+    s = s[start_idx:]
+    
+    # 基礎修復：平衡引號與括號
+    fixed = []
+    in_string = False
+    escape = False
+    stack = []
+    
+    for char in s:
+        if in_string:
+            if escape:
+                escape = False
+            elif char == '\\':
+                escape = True
+            elif char == '"':
+                in_string = False
+        else:
+            if char == '"':
+                in_string = True
+            elif char == '{':
+                stack.append('}')
+            elif char == '[':
+                stack.append(']')
+            elif char == '}':
+                if stack and stack[-1] == '}': stack.pop()
+            elif char == ']':
+                if stack and stack[-1] == ']': stack.pop()
+        fixed.append(char)
+    
+    # 補齊未閉合的引號
+    if in_string:
+        fixed.append('"')
+    
+    # 補齊未閉合的括號
+    while stack:
+        fixed.append(stack.pop())
+        
+    return "".join(fixed)
+
 def _build_diary_prompt(char_path: str, scenario: str, char_data_override: dict = None, relationship_params: dict = None) -> str:
     """
-    回傳「實際送給 Ollama 的完整 prompt」。
-    根據 relationship_params 增加多人關係邏輯。
+    回傳「實際送給 Ollama 的日記 prompt」。
     """
+    #####################################################################################
+    # 回傳「實際送給 Ollama 的日記 prompt」。
+    #####################################################################################
     if char_data_override:
         char_data = char_data_override
     else:
         char_data = load_character_from_path(char_path)
 
-    # 1. 根據伴侶狀態決定目前使用的是哪一種個性描述
-    p_status = (relationship_params or {}).get('partner_status', '熱戀期')
-    # 支援舊版/單一字串 personality，也支援新版物件格式
-    pers_data = char_data.get('personality', "")
-    current_personality = ""
-    if isinstance(pers_data, dict):
-        current_personality = pers_data.get(p_status, pers_data.get('熱戀期', ""))
-    else:
-        current_personality = pers_data
-    
-    # 覆蓋 char_data 中的 personality 供 build_story_system_prompt 使用
-    display_char_data = char_data.copy()
-    display_char_data['personality'] = current_personality
-
-    system_prompt = build_story_system_prompt(display_char_data)
-    
-    # 2. 增加關係動態 (Relationship Dynamics)
-    rel_context = ""
-    if relationship_params:
-        pa = relationship_params.get('partner_status')
-        fA = relationship_params.get('friend_a_status', '無')
-        fB = relationship_params.get('friend_b_status', '無')
-        others_occupied = relationship_params.get('others_occupied', False)
-
-        rel_context += f"\n[關係動態設定]\n- 本女主目前與伴侶處於：{pa}\n"
-        
-        if fA != '無':
-            rel_context += f"- 與新朋友 A 處於：{fA}\n"
-        if fB != '無':
-            rel_context += f"- 與新朋友 B 處於：{fB}\n"
-        
-        if others_occupied:
-            rel_context += "- 注意：女主心儀的對象（伴侶或新朋友）似乎已經另有對象了，這讓女主感到極度不安、競爭感或罪惡感。\n"
-
-        # 複雜關係判斷
-        logic_hints = []
-        if pa == '熱戀期' and (fA == '曖昧期' and fB == '曖昧期'):
-            logic_hints.append("女主正處於穩定戀愛中，卻與多位新朋友產生了曖昧情愫。顯然是想要離開男友，另尋新戀情，內心充滿了對男友的厭倦，對新戀情的期待與背德感的拉扯。")
-        elif pa == '熱戀期' and (fA == '曖昧期' or fB == '曖昧期'):
-            logic_hints.append("女主正處於穩定戀愛中，卻與新朋友產生了曖昧情愫。內心充滿了新鮮感與背德感的拉扯。")
-        elif pa == '熱戀期' and (fA == '熱戀期' and fB == '熱戀期'):
-            logic_hints.append("女主劈腿了。她同時與多人進行熱戀，顯然是個綠茶婊，享受被多人追捧的快感，必須在日記中呈現這種腳踏多條船的多重心理負擔與刺激。")
-        elif pa == '熱戀期' and (fA == '熱戀期' or fB == '熱戀期'):
-            logic_hints.append("女主劈腿了。她同時與兩個人進行熱戀，必須在日記中呈現這種出軌的心理負擔與刺激感，懺悔的同時又無法自拔。")
-        elif pa == '失戀期' and (fA == '熱戀期' or fA == '曖昧期'):
-            logic_hints.append("女主剛經歷失戀的痛苦，但新對象的出現讓她開始考慮接受下一段感情。")
-        elif pa == '曖昧期' and (fA == '曖昧期' or fB == '曖昧期'):
-            logic_hints.append("女主同時與多位對象處於曖昧期，她在多方之間比較、徘徊，享受這種被包圍的氛圍。")
-        
-        if others_occupied:
-            logic_hints.append("加上『對方已有對象』的設定，故事應強調女主作為第三者的驕傲感、或成為競爭者的必勝心態、或擔憂被拒絕的失落感、或眾人指責的罪惡感。")
-
-        if logic_hints:
-            rel_context += "- 心理狀態指引：" + " ".join(logic_hints) + "\n"
-
-    final_scenario = scenario
-    if rel_context:
-        final_scenario = f"{rel_context}\n[當日情境]\n{scenario}"
-
-    return build_story_final_prompt(system_prompt, final_scenario)
+    return build_daily_prompt(char_data, scenario, relationship_params)
 
 def _append_job_log(job_id: str, text: str):
+    #####################################################################################
+    # 在 CMD 顯示 log
+    #####################################################################################
     with JOBS_LOCK:
         job = JOBS.get(job_id)
         if not job:
@@ -109,35 +128,81 @@ def _append_job_log(job_id: str, text: str):
         job["updated_at"] = time.time()
 
 def _ollama_generate_direct(model, prompt, temperature=0.85):
-    """直接呼叫 Ollama API 並回傳結果字串 (非串流)"""
+    """直接呼叫 Ollama API 並回傳結果字串 (支援流式傳輸以免超時)"""
+    #####################################################################################
+    # 直接呼叫 Ollama API 並回傳結果字串 (支援流式傳輸以免超時)
+    #####################################################################################
     url = "http://127.0.0.1:11434/api/generate"
+    num_predict = 4096
+    num_ctx = 131072
     payload = {
         "model": model,
         "prompt": prompt,
-        "stream": False,
-        "options": {"temperature": temperature, "num_predict": 4096}
+        "stream": True,
+        "options": {
+            "temperature": temperature, 
+            "num_predict": num_predict,
+            "num_ctx": num_ctx  # 增加上下文視窗以利長文本生成
+        }
     }
+    
+    print(f">>>> 模型: {model}")
+    print(f">>>> 溫度(Temperature): {temperature}")
+    print(f">>>> 預測長度(num_predict): {num_predict}")
+    print(f">>>> 上下文視窗(num_ctx): {num_ctx}")
+    print(f">>>> 提示詞字數(Prompt Length): {len(prompt)} characters")
+    
+    full_response = []
     try:
         import requests
-        res = requests.post(url, json=payload, timeout=120)
-        res.raise_for_status()
-        return res.json().get('response', '').strip()
+        import json
+        
+        # 使用 Session 並關閉自動重試/特定勾子（如果是環境問題造成的 raise_for_status）
+        with requests.Session() as s:
+            print(">>>> 正在發送 POST 請求至 Ollama...")
+            res = s.post(url, json=payload, stream=True, timeout=300)
+            
+            print(f">>>> 伺服器回應碼: {res.status_code}")
+            
+            if res.status_code != 200:
+                err_body = res.text
+                print(f"\n>>>> [OLLAMA API ERROR] Status: {res.status_code}")
+                print(f">>>> [OLLAMA API ERROR] Body: {err_body}")
+                return f">>>> Error {res.status_code}: {err_body}"
+                
+            for line in res.iter_lines():
+                if line:
+                    chunk = json.loads(line)
+                    content = chunk.get('response', '')
+                    print(content, end='', flush=True)
+                    full_response.append(content)
+                    if chunk.get('done'):
+                        break
+        print("\n>>>> 生成結束。")
+        return "".join(full_response).strip()
     except Exception as e:
-        print(f"Ollama error: {e}")
-        return f"Error: {e}"
+        print(f"\n>>>> [EXCEPTION] Ollama 呼叫失敗: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        return f">>>> Error: {e}"
 
-def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_prompt: str):
+def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_prompt: str, model: str = "gemma4"):
+    #####################################################################################
+    # 執行「生成日記」任務，發放提示詞給OLLAMA的大模型
+    #####################################################################################
     try:
         timestamp = time.strftime("%H:%M:%S", time.localtime())
         if scenario:
             _append_job_log(job_id, f"[{timestamp}] [Scenario] {scenario}")
         
-        print(f"\n[{timestamp}] === 準備發送給 OLLAMA 的提示詞 ===")
+        print("="*50 + "\n")
+        print(f"\n[{timestamp}] === 執行「生成日記」任務，準備發送給 OLLAMA 的提示詞 ===")
         print(diary_prompt)
-        print("="*40 + "\n")
 
-        _append_job_log(job_id, f"[{timestamp}] === 正在生成故事 (請稍候) ===")
+        _append_job_log(job_id, f"[{timestamp}] === 執行「生成日記」任務，準備發送給 OLLAMA 的提示詞 ===")
+        _append_job_log(job_id, diary_prompt)
         env = os.environ.copy()
+        env["LAMB_MODEL"] = model
         if char_id:
             env["LAMB_CHAR_ID"] = char_id
         if scenario:
@@ -147,20 +212,33 @@ def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_
         env["PYTHONIOENCODING"] = "utf-8"
 
         res_story = subprocess.run(
-            [sys.executable, "generate_story.py"],
+            [sys.executable, "generate_daily.py"],
             capture_output=True,
             text=True,
             encoding='utf-8',
             errors='replace',
             env=env
         )
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
         if res_story.stdout:
+            _append_job_log(job_id, f"[{timestamp}] === 完成「生成日記」任務 ===\n")
             _append_job_log(job_id, res_story.stdout)
+            print(f"\n[{timestamp}] === 完成「生成日記」任務 ===\n")
+            print(res_story.stdout)
         if res_story.stderr:
+            _append_job_log(job_id, f"[{timestamp}] === 發生錯誤，無法完成「生成日記」任務 ===\n")
             _append_job_log(job_id, "Error: " + res_story.stderr)
+            print(f"\n[{timestamp}] === 發生錯誤，無法完成「生成日記」任務 ===\n")
+            print("Error: " + res_story.stderr)
+        
 
-        timestamp_img = time.strftime("%H:%M:%S", time.localtime())
-        _append_job_log(job_id, f"\n[{timestamp_img}] === 正在生成圖片 (ComfyUI) ===")
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        print(f"\n[{timestamp}] === 執行「生成圖片」任務，準備發送給 ComfyUI 的提示詞 ===")
+        # print(image_prompt) # 避免提示詞太長洗版
+        _append_job_log(job_id, f"\n[{timestamp}] === 執行「生成圖片」任務，準備發送給 ComfyUI 的提示詞 ===")
+        # _append_job_log(job_id, image_prompt)
+
         res_img = subprocess.run(
             [sys.executable, "generate_image.py"],
             capture_output=True,
@@ -169,24 +247,38 @@ def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_
             errors='replace',
             env=env
         )
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
         if res_img.stdout:
-            _append_job_log(job_id, res_img.stdout)
+            _append_job_log(job_id, f"\n[{timestamp}] == 完成「生成圖片」任務 ===" + res_img.stdout.strip())
+            print(f"[{timestamp}] == 完成「生成圖片」任務 === [generate_image.py] stdout: {res_img.stdout.strip()}")
+        
         if res_img.stderr:
-            _append_job_log(job_id, "Error: " + res_img.stderr)
+            # 只有在真的有錯誤時才輸出 stderr，且避免重複輸出
+            err_msg = res_img.stderr.strip()
+            if err_msg and "Error" in err_msg:
+                _append_job_log(job_id, f"[{timestamp}] === 發生錯誤，無法完成「生成圖片」任務 === " + err_msg)
+                print(f"[{timestamp}] === 發生錯誤，無法完成「生成圖片」任務 === stderr: {err_msg}")
 
-        _append_job_log(job_id, "\n=== 正在編譯頁面 ===")
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        _append_job_log(job_id, f"\n[{timestamp}] === 正在編譯頁面 ===")
+        print(f"\n[{timestamp}] === 正在編譯頁面 ===")
         res_build = subprocess.run(
-            [sys.executable, "build_page.py"],
+            [sys.executable, "daily_page_build.py"],
             capture_output=True,
             text=True,
             encoding='utf-8',
             errors='replace',
             env=env
         )
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
         if res_build.stdout:
-            _append_job_log(job_id, res_build.stdout)
+            _append_job_log(job_id, f"\n[{timestamp}]" + res_build.stdout)
+            print(f"\n[{timestamp}] === 完成「編譯頁面」任務 ===\n")
+            print(res_build.stdout)
         if res_build.stderr:
-            _append_job_log(job_id, "Error: " + res_build.stderr)
+            _append_job_log(job_id, f"[{timestamp}]" + "Error: " + res_build.stderr)
+            print(f"\n[{timestamp}] === 發生錯誤，無法完成「編譯頁面」任務 ===\n")
+            print(f"\n[{timestamp}]" + "Error: " + res_build.stderr)
 
         with JOBS_LOCK:
             if job_id in JOBS:
@@ -200,9 +292,18 @@ def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_
                 JOBS[job_id]["updated_at"] = time.time()
 
 class DebugHandler(http.server.SimpleHTTPRequestHandler):
+    #####################################################################################
+    # 主控，根據需求發送提示詞並執行接收後的資料處理。
+    #####################################################################################
     def __init__(self, *args, **kwargs):
         # 固定以 web/ 作為靜態檔案根目錄，避免 os.chdir 造成多執行緒競態
         super().__init__(*args, directory=WEB_DIR, **kwargs)
+
+    def log_message(self, format, *args):
+        # 靜默 /api/status 的日誌，以免每 5 秒噴一行
+        if len(args) > 0 and isinstance(args[0], str) and "/api/status" in args[0]:
+            return
+        super().log_message(format, *args)
 
     def end_headers(self):
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -215,13 +316,32 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
+        #####################################################################################
+        # 處理 HTTP GET 請求（處理靜態檔案與 API 請求）
+        #####################################################################################
         parsed_path = urlparse(self.path)
-        if parsed_path.path == '/api/characters':
+        if parsed_path.path == '/api/status':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
+            self.wfile.write(json.dumps({"status": "ok"}).encode())
+
+        elif parsed_path.path == '/api/characters':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            if not os.path.exists('characters'): os.makedirs('characters', exist_ok=True)
             chars = [f.replace('.json', '') for f in os.listdir('characters') if f.endswith('.json')]
             self.wfile.write(json.dumps(chars).encode())
+
+        elif parsed_path.path == '/api/diaries':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            if not os.path.exists('diaries'): os.makedirs('diaries', exist_ok=True)
+            files = [f for f in os.listdir('diaries') if f.endswith('.json')]
+            self.wfile.write(json.dumps(files).encode())
+
         elif parsed_path.path == '/api/job':
             qs_params = parse_qs(parsed_path.query)
             job_id = (qs_params.get('id', ['']) or [''])[0]
@@ -241,164 +361,314 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Content-type', 'application/json; charset=utf-8')
             self.end_headers()
             self.wfile.write(json.dumps(payload, ensure_ascii=False).encode('utf-8'))
-        elif parsed_path.path.startswith('/stories/'):
-            # 特殊處理：容許存取根目錄下的 stories 資料夾 (用於同步乾淨 JSON)
+
+        elif parsed_path.path.startswith('/diaries/') or parsed_path.path.startswith('/characters/'):
             import urllib.parse
             file_path = urllib.parse.unquote(parsed_path.path.lstrip('/'))
             if os.path.exists(file_path):
                 self.send_response(200)
-                # 根據副檔名決定 content-type
-                if file_path.endswith('.json'):
-                    self.send_header('Content-type', 'application/json; charset=utf-8')
-                else:
-                    self.send_header('Content-type', 'application/octet-stream')
+                self.send_header('Content-type', 'application/json; charset=utf-8' if file_path.endswith('.json') else 'application/octet-stream')
                 self.end_headers()
                 with open(file_path, 'rb') as f:
                     self.wfile.write(f.read())
             else:
                 self.send_error(404, "File not found")
+        elif parsed_path.path == '/api/models':
+            try:
+                import requests
+                res = requests.get('http://localhost:11434/api/tags', timeout=5)
+                if res.ok:
+                    data = res.json()
+                    models = [m['name'] for m in data.get('models', [])]
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json; charset=utf-8')
+                    self.end_headers()
+                    self.wfile.write(json.dumps(models).encode('utf-8'))
+                else:
+                    self.send_error(500, "Ollama connection failed")
+            except Exception as e:
+                self.send_error(500, f"Error: {e}")
         else:
-            # 預設服務 web/ 下的靜態檔案
             return super().do_GET()
 
-    # 準備好傳給大模型的提示詞，處理 POST 請求
     def do_POST(self):
-        # 產生日記，處理 /api/run_async 請求
-        if self.path == '/api/run_async':
-            content_length = int(self.headers['Content-Length'])
-            post_data = self.rfile.read(content_length)
-            params = json.loads(post_data)
-            
-            char_id = params.get('char_id')
-            scenario = params.get('scenario', '無特定情境')
-            card_json = params.get('card_json')  # 雲端模式會直接傳入角色 JSON
-            relationship_params = params.get('relationship', {})
+        #####################################################################################
+        # 處理 HTTP POST 請求（處理建立任務）
+        #####################################################################################
+        try:
+            print(f"\n[POST] {self.path}")
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length > 0:
+                body = self.rfile.read(content_length).decode('utf-8')
+                params = json.loads(body)
+            else:
+                params = {}
 
-            # 先把 prompt 組好回傳給前端顯示（避免 subprocess stdout 亂碼/逾時時拿不到）
-            char_path = _resolve_character_json_path(char_id)
-            diary_prompt = _build_diary_prompt(char_path, scenario, char_data_override=card_json, relationship_params=relationship_params)
+            if self.path == '/api/run_async':
+                #####################################################################################
+                # 執行「日記生成」與「圖片生成」任務
+                #####################################################################################
+                char_id = params.get('char_id')
+                scenario = params.get('scenario', '無特定情境')
+                card_json = params.get('card_json')
+                relationship_params = params.get('relationship', {})
 
-            # 圖片 prompt：優先從 card_json 取，其次從本地檔案取
-            image_prompt = ""
-            if card_json:
-                image_prompt = card_json.get('image_prompt', '') or ''
-            elif char_path and os.path.exists(char_path):
-                try:
-                    with open(char_path, 'r', encoding='utf-8') as f:
-                        cd = json.load(f)
-                    image_prompt = cd.get('image_prompt', '') or ''
-                except Exception:
-                    image_prompt = ""
+                char_path = _resolve_character_json_path(char_id)
+                diary_prompt = _build_diary_prompt(char_path, scenario, char_data_override=card_json, relationship_params=relationship_params)
 
-            # 如果收到 card_json 但本地沒有檔案，將其暫存為本地檔案供 generate_story.py 使用
-            if card_json and not char_path:
-                temp_char_path = os.path.join('characters', f'{char_id}.json')
-                try:
+                image_prompt = ""
+                if card_json:
+                    image_prompt = card_json.get('image_prompt', '')
+                elif char_path and os.path.exists(char_path):
+                    try:
+                        with open(char_path, 'r', encoding='utf-8') as f:
+                            image_prompt = json.load(f).get('image_prompt', '')
+                    except: pass
+
+                if card_json and not char_path:
+                    temp_path = os.path.join('characters', f'{char_id}.json')
                     os.makedirs('characters', exist_ok=True)
-                    with open(temp_char_path, 'w', encoding='utf-8') as f:
+                    with open(temp_path, 'w', encoding='utf-8') as f:
                         json.dump(card_json, f, ensure_ascii=False, indent=4)
-                    char_path = temp_char_path
-                    _append_job_log('', f'[Cloud] 已將雲端角色卡暫存至 {temp_char_path}')
-                except Exception as e:
-                    _append_job_log('', f'[Cloud] 暫存角色卡失敗: {e}')
+                    char_path = temp_path
 
-            job_id = str(uuid.uuid4())
-            with JOBS_LOCK:
-                JOBS[job_id] = {
-                    "status": "running",
-                    "created_at": time.time(),
-                    "updated_at": time.time(),
-                    "logs": [">> 任務已啟動（背景執行中）..."],
-                    "diary_prompt": diary_prompt,
-                    "image_prompt": image_prompt
-                }
+                job_id = str(uuid.uuid4())
+                model_name = params.get('model', 'gemma4')
+                with JOBS_LOCK:
+                    JOBS[job_id] = {
+                        "status": "running",
+                        "logs": [">> 任務啟動..."],
+                        "diary_prompt": diary_prompt,
+                        "image_prompt": image_prompt,
+                        "created_at": time.time(),
+                        "updated_at": time.time()
+                    }
+                threading.Thread(target=_run_job, args=(job_id, char_id, scenario, diary_prompt, image_prompt, model_name), daemon=True).start()
 
-            t = threading.Thread(target=_run_job, args=(job_id, char_id, scenario, diary_prompt, image_prompt), daemon=True)
-            t.start()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"job_id": job_id, "status": "running", "diary_prompt": diary_prompt, "image_prompt": image_prompt}, ensure_ascii=False).encode('utf-8'))
 
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json; charset=utf-8')
-            self.end_headers()
-            self.wfile.write(json.dumps({
-                "job_id": job_id,
-                "status": "running",
-                "diary_prompt": diary_prompt,
-                "image_prompt": image_prompt
-            }, ensure_ascii=False).encode('utf-8'))
-
-        # 產出大綱，處理 /api/generate_outline 請求
-        elif self.path == '/api/generate_outline':
-            content_length = int(self.headers['Content-Length'])
-            post_data = self.rfile.read(content_length)
-            params = json.loads(post_data)
-            desc = params.get('description', '')
-            chars = params.get('characters', [])
-            
-            char_names = ", ".join([c.get('name', '未知角色') for c in chars])
-            prompt = f"""你是一位專業的小說編輯。請根據以下【章節大綱說明】與【角色資訊】，為本章節規劃出 3 到 5 個具體的小節標題。
-小節標題應具備故事張力，循序漸進。
-
-【角色資訊】：{char_names}
-【章節大綱說明】：{desc}
-
-請直接回傳 JSON 格式的列表，例如：["小節標題1", "小節標題2", "小節標題3"]。不要有任何額外前言或解釋。"""
-
-            response_text = _ollama_generate_direct("gemma4", prompt)
-            
-            # 嘗試解析 JSON 列表
-            sections = []
-            try:
-                # 尋找方括號
-                match = re.search(r'\[.*\]', response_text, re.DOTALL)
-                if match:
-                    sections = json.loads(match.group(0))
-            except:
-                sections = [s.strip() for s in response_text.split('\n') if s.strip()]
-            
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json; charset=utf-8')
-            self.end_headers()
-            self.wfile.write(json.dumps({"sections": sections, "debug_prompt": prompt}, ensure_ascii=False).encode('utf-8'))
-
-        # 產出小說內容，處理 /api/generate_story_content 請求
-        elif self.path == '/api/generate_story_content':
-            content_length = int(self.headers['Content-Length'])
-            post_data = self.rfile.read(content_length)
-            params = json.loads(post_data)
-            ctx = params.get('context', {})
-            chars = params.get('characters', [])
-            
-            char_context = ""
-            for c in chars:
-                char_context += f"【{c.get('name')}】\n性格：{c.get('personality')}\n背景：{c.get('background','')}\n\n"
+            elif self.path == '/api/generate_chapters':
+                ############################################################################
+                # 執行根據粗綱生成「各章標題與描述」任務
+                ############################################################################
+                premise = params.get('story_premise', '')
+                book_title = params.get('book_title', '未命名小說')
                 
-            prompt = f"""你是一位獲獎無數的言情小說家。請根據以下資訊，撰寫一段細膩、動人且充滿畫面感的小說內容。
-以第三人稱視角敘述，字數約 500-1000 字。
+                characters = params.get('characters', [])
+                character_ids = params.get('character_ids', [])
+                chars = []
+                for i in range(max(len(characters), len(character_ids))):
+                    c = characters[i] if i < len(characters) else {}
+                    cid = character_ids[i] if i < len(character_ids) else ""
+                    if not c and cid:
+                        cpath = _resolve_character_json_path(cid)
+                        if cpath:
+                            try:
+                                with open(cpath, 'r', encoding='utf-8') as f:
+                                    c = json.load(f)
+                            except: pass
+                    chars.append(c)
+                    
+                main_char = chars[0] if chars else {}
+                prompt = build_chapters_from_premise_prompt(main_char, book_title, premise, chars[1:])
+                
+                print("\n" + "="*50)
+                print("【DEBUG: AI 根據粗綱生成各章標題與描述的 PROMPT 如下】")
+                print(prompt)
+                print(">> 正在呼叫 Ollama 產生「各章標題與描述」 (請稍候)...")
+                timestamp = time.strftime("%H:%M:%S", time.localtime())
+                print("起始時間:", timestamp)
+                
+                response_text = _ollama_generate_direct(params.get('model', 'gemma4'), prompt)
 
-【登場角色與設定】：
-{char_context}
+                print(">> 「各章標題與描述」產生完畢！\n")
+                print(response_text)
+                timestamp = time.strftime("%H:%M:%S", time.localtime())
+                print("結束時間:", timestamp)
+                print("="*50)
+                
+                chapters = []
+                # 提取 JSON 陣列，解析各章標題與描述
+                try:
+                    repaired_text = _try_repair_json(response_text)
+                    start = repaired_text.find('[')
+                    end = repaired_text.rfind(']')
+                    if start != -1 and end != -1:
+                        chapters = json.loads(repaired_text[start:end+1])
+                except Exception as e:
+                    print(f">> JSON 解析失敗 (嘗試修復後): {e}")
+                    print(f">> 嘗試修復後的內容: {repaired_text[:200]}...")
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"chapters": chapters, "debug_prompt": prompt}, ensure_ascii=False).encode('utf-8'))
 
-【目前情境】：
-章節：{ctx.get('chapter_title')}
-章大綱：{ctx.get('chapter_desc')}
-本小節目標：{ctx.get('section_title')}
 
-請直接開始撰寫故事，不要輸出標題或任何前言。"""
+            elif self.path == '/api/generate_outline':
+                ############################################################################
+                # 執行建立「各小節大綱」任務
+                ############################################################################
+                desc = params.get('description', '')
+                book_title = params.get('book_title', '故事專案')
+                
+                # 支援直接傳入 card_json 或傳入 character_ids 由後端解析
+                characters = params.get('characters', [])
+                character_ids = params.get('character_ids', [])
+                chars = []
+                for i in range(max(len(characters), len(character_ids))):
+                    c = characters[i] if i < len(characters) else {}
+                    cid = character_ids[i] if i < len(character_ids) else ""
+                    if not c and cid:
+                        cpath = _resolve_character_json_path(cid)
+                        if cpath:
+                            try:
+                                with open(cpath, 'r', encoding='utf-8') as f:
+                                    c = json.load(f)
+                            except: pass
+                    chars.append(c)
+                    
+                main_char = chars[0] if chars else {}
+                prompt = build_chapter_outline_prompt(main_char, book_title, desc, chars[1:])
+                
+                print("\n" + "="*50)
+                print("【DEBUG: AI 產生「各小節大綱」的 PROMPT】")
+                print(prompt)
+                print(">> 正在呼叫 Ollama 產生「各小節大綱」 (請稍候)...")
+                timestamp = time.strftime("%H:%M:%S", time.localtime())
+                print("起始時間：", timestamp)
+                
+                response_text = _ollama_generate_direct(params.get('model', 'gemma4'), prompt)
+                print(">> 「各小節大綱」產生完畢！\n")
+                print(response_text)
+                timestamp = time.strftime("%H:%M:%S", time.localtime())
+                print("結束時間：", timestamp)
+                print("="*50)
+                
+                sections = []
+                try:
+                    repaired_text = _try_repair_json(response_text)
+                    start = repaired_text.find('[')
+                    end = repaired_text.rfind(']')
+                    if start != -1 and end != -1:
+                        json_str = repaired_text[start:end+1]
+                        json_str = json_str.replace('\n', ' ').strip()
+                        
+                        try:
+                            data = json.loads(json_str)
+                            if isinstance(data, list):
+                                for item in data:
+                                    title_val = ""
+                                    outline_val = ""
+                                    if isinstance(item, dict):
+                                        title_val = item.get('title', item.get('標題', ''))
+                                        outline_val = item.get('outline', item.get('大綱', ''))
+                                        combined_str = f"{title_val} {outline_val}".strip()
+                                    else:
+                                        combined_str = str(item)
+                                    
+                                    # 去掉內部換行並合併為單行
+                                    combined_str = " ".join(combined_str.split())
+                                    combined_str = combined_str.strip(' "「」\'')
+                                    
+                                    if combined_str:
+                                        sections.append(combined_str)
+                        except:
+                            # 嘗試解析為純字串列表
+                            import re
+                            raw_titles = re.findall(r'"([^"]+)"', json_str)
+                            if raw_titles:
+                                sections = [t.strip() for t in raw_titles if t.strip()]
+                except Exception as e:
+                    print(f">> JSON 解析失敗 (大綱): {e}")
+                    # Fallback
+                    sections = [s.strip() for s in response_text.split('\n') if s.strip() and not s.startswith('[') and not s.startswith('`')]
+                
+                if not sections: 
+                    sections = ["第一階段", "第二階段", "第三階段"]
+                
+                # 過濾掉可能殘留的引號與空字串
+                sections = [s.replace('"', '').replace("'", '').strip() for s in sections if s.strip()]
+                if not sections: sections = ["新小節"]
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"sections": sections, "debug_prompt": prompt}, ensure_ascii=False).encode('utf-8'))
 
-            content = _ollama_generate_direct("gemma4", prompt)
-            
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json; charset=utf-8')
-            self.end_headers()
-            self.wfile.write(json.dumps({"content": content, "debug_prompt": prompt}, ensure_ascii=False).encode('utf-8'))
+
+            elif self.path == '/api/generate_story_content':
+                #####################################################################################
+                # 執行「小說本文生成」任務
+                #####################################################################################
+                ctx = params.get('context', {})
+                
+                characters = params.get('characters', [])
+                character_ids = params.get('character_ids', [])
+                chars = []
+                for i in range(max(len(characters), len(character_ids))):
+                    c = characters[i] if i < len(characters) else {}
+                    cid = character_ids[i] if i < len(character_ids) else ""
+                    if not c and cid:
+                        cpath = _resolve_character_json_path(cid)
+                        if cpath:
+                            try:
+                                with open(cpath, 'r', encoding='utf-8') as f:
+                                    c = json.load(f)
+                            except: pass
+                    chars.append(c)
+                    
+                main_char = chars[0] if chars else {}
+                prompt = build_novel_content_prompt(main_char, ctx.get('chapter_title', ''), f"{ctx.get('chapter_desc', '')} - {ctx.get('section_title', '')}", ctx.get('section_title', ''), chars[1:])
+                
+                print("\n" + "="*50)
+                print(f"【DEBUG: AI 「小說本文生成」 PROMPT - {ctx.get('section_title', '')}】")
+                print(prompt)
+                print(">> 正在呼叫 Ollama 產生「小說本文生成」 (這會花費較長的時間，請稍候)...")
+                timestamp = time.strftime("%H:%M:%S", time.localtime())
+                print("起始時間：", timestamp)
+                
+                content = _ollama_generate_direct(params.get('model', 'gemma4'), prompt)
+                print(f"【DEBUG: AI 「小說本文生成」產生完畢！ - {ctx.get('section_title', '')}】")
+                print(content)
+                timestamp = time.strftime("%H:%M:%S", time.localtime())
+                print("結束時間：", timestamp)
+                print("="*50)
+
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"content": content, "debug_prompt": prompt}, ensure_ascii=False).encode('utf-8'))
+
+            elif self.path == '/api/save_diary':
+                filename = params.get('filename')
+                data = params.get('data')
+                if filename and data and not '..' in filename:
+                    os.makedirs('diaries', exist_ok=True)
+                    with open(os.path.join('diaries', filename), 'w', encoding='utf-8') as f:
+                        json.dump(data, f, ensure_ascii=False, indent=4)
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"status": "ok"}).encode())
+                else:
+                    self.send_error(400, "Invalid Request")
+            else:
+                self.send_error(400, "Invalid Request")
+        except Exception as e:
+            print(f"[ERROR] do_POST failed: {e}")
+            import traceback
+            traceback.print_exc()
+            try:
+                self.send_error(500, str(e))
+            except: pass
 
 if __name__ == "__main__":
-    os.makedirs('web', exist_ok=True)
-    print(f"除錯伺服器運行於 http://localhost:{PORT}")
-    print(f"請開啟 http://localhost:{PORT}/run_daily.html 進行測試")
-    # 允許同時處理輪詢與背景任務的請求
+    for d in ['web', 'characters', 'diaries']: os.makedirs(d, exist_ok=True)
+    print(f"Server runs at http://localhost:{PORT}")
     with socketserver.ThreadingTCPServer(("127.0.0.1", PORT), DebugHandler) as httpd:
-        try:
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            print("\n伺服器已停止。")
+        try: httpd.serve_forever()
+        except KeyboardInterrupt: print("\nStopped.")

@@ -131,6 +131,7 @@ let app = {
 
     recordAnswer(score) {
         const q = this.questionQueue[this.currentQIndex];
+        if (!q) return;
         const answeredAtMs = Date.now();
         const timeSpentMs = this.currentQuestionShownAtMs ? (answeredAtMs - this.currentQuestionShownAtMs) : null;
         
@@ -364,11 +365,11 @@ let app = {
         copybtn.parentNode.replaceChild(newCopybtn, copybtn);
         
         newDlbtn.addEventListener('click', () => {
-            downloadJSON(profileObj, `role_${dateStr}_${profileObj.id}.json`);
+            downloadJSON(profileObj, `${profileObj.id}.json`);
         });
 
         newRecordBtn.addEventListener('click', () => {
-            downloadJSON(recordObj, `role_${dateStr}_${profileObj.id}_lpas_record.json`);
+            downloadJSON(recordObj, `${profileObj.id}_lpas_record.json`);
         });
 
         newCopybtn.addEventListener('click', () => {
