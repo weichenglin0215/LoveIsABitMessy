@@ -102,10 +102,7 @@ def _try_repair_json(s: str) -> str:
         
     return "".join(fixed)
 
-def _build_diary_prompt(char_path: str, scenario: str, char_data_override: dict = None, relationship_params: dict = None) -> str:
-    """
-    回傳「實際送給 Ollama 的日記 prompt」。
-    """
+def _build_diary_prompt(char_path, scenario, char_data_override=None, relationship_params=None, other_chars=None):
     #####################################################################################
     # 回傳「實際送給 Ollama 的日記 prompt」。
     #####################################################################################
@@ -114,7 +111,7 @@ def _build_diary_prompt(char_path: str, scenario: str, char_data_override: dict 
     else:
         char_data = load_character_from_path(char_path)
 
-    return build_daily_prompt(char_data, scenario, relationship_params)
+    return build_daily_prompt(char_data, scenario, relationship_params, other_chars=other_chars)
 
 def _append_job_log(job_id: str, text: str):
     #####################################################################################
@@ -412,9 +409,10 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 scenario = params.get('scenario', '無特定情境')
                 card_json = params.get('card_json')
                 relationship_params = params.get('relationship', {})
+                other_chars = params.get('other_chars', [])
 
                 char_path = _resolve_character_json_path(char_id)
-                diary_prompt = _build_diary_prompt(char_path, scenario, char_data_override=card_json, relationship_params=relationship_params)
+                diary_prompt = _build_diary_prompt(char_path, scenario, char_data_override=card_json, relationship_params=relationship_params, other_chars=other_chars)
 
                 image_prompt = ""
                 if card_json:

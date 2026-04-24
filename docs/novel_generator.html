@@ -510,6 +510,12 @@
       <div style="flex:1;"></div>
       <div class="global-actions">
         <button class="btn secondary-btn" id="btn-export">📤 匯出小說</button>
+        <div style="display:inline-flex; align-items:center; gap:5px; margin-right:6px;">
+          <button class="btn secondary-btn" id="btn-load-cloud" style="margin-right:0;">☁️ 讀取雲端小說</button>
+          <select id="cloud-novel-select" style="display:none; background: #111; color: #fff; border: 1px solid var(--c-border); padding: 4px 10px; border-radius: 4px; font-size: 1rem; width: 250px;">
+            <option value="">-- 請選擇小說 --</option>
+          </select>
+        </div>
         <button class="btn secondary-btn" id="btn-load">📂 讀取小說</button>
         <button class="btn primary-btn" id="btn-save">💾 儲存小說</button>
       </div>

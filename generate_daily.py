@@ -165,8 +165,8 @@ def generate_story():
         now = datetime.now()
         today = now.strftime("%Y-%m-%d")
         now_str = now.strftime("%Y-%m-%d_%H%M%S")
-        char_id_str = char_data.get('id', char_file.replace('.json', ''))
-        file_prefix = f"{now_str}_{char_id_str}"
+        char_name_str = char_data.get('name', char_file.replace('.json', ''))
+        file_prefix = f"{char_name_str}_{now_str}"
         
         # 使用遞增編號命名
         out_filename = get_next_filename('diaries', file_prefix, 'json')

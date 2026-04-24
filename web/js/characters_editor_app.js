@@ -53,7 +53,7 @@ async function refreshCharacterList() {
     if (!sb) return;
     const { data, error } = await sb
         .from('characters')
-        .select('id, name, updated_at')
+        .select('id, name, lpas, card_json, updated_at')
         .order('updated_at', { ascending: false })
         .limit(500);
     if (error) {
@@ -64,7 +64,19 @@ async function refreshCharacterList() {
     (data || []).forEach(row => {
         const opt = document.createElement('option');
         opt.value = row.id;
-        opt.textContent = `${row.name || '未命名'} (${row.id})`;
+        const dateStr = row.updated_at ? row.updated_at.split('T')[0].replace(/-/g, '') : '';
+        
+        let lpasStr = row.lpas;
+        if (!lpasStr && row.card_json) {
+            const card = (typeof row.card_json === 'string') ? JSON.parse(row.card_json) : row.card_json;
+            lpasStr = card.personality_type;
+        }
+
+        if (lpasStr && lpasStr.includes('-')) {
+            lpasStr = lpasStr.split('-')[0];
+        }
+
+        opt.textContent = `${row.name || '未命名'}-${lpasStr || '無LPAS'}-${dateStr}`;
         sel.appendChild(opt);
     });
 }
@@ -149,11 +161,15 @@ function updateIdPreview() {
         n3 = getShortName(c3);
     }
 
-    const dateStr = new Date().toISOString().split('T')[0];
     const ptCode = `${c1}_${c2}_${c3}`;
     const ptNames = `${n1}_${n2}_${n3}`;
-    const newId = `${name}-${ptCode}-${ptNames}-${dateStr}-01`;
-    qs('#char-id').value = newId;
+    const lpas = `${ptCode}-${ptNames}`;
+    
+    if (currentCharacterId) {
+        qs('#char-id').value = currentCharacterId;
+    } else {
+        qs('#char-id').value = "系統自動生成 (UUID)";
+    }
 }
 
 function updateExplanations() {
@@ -214,12 +230,16 @@ async function loadCharacter(charId) {
     qs('#char-id').value = data.id || '';
     qs('#char-name').value = data.name || '';
     
+    currentCharacterId = data.id;
     const cardJson = data.card_json || {};
     qs('#char-card-json').value = prettyJson(cardJson);
     
     qs('#char-birthday').value = cardJson.birthday || '1999-01-01';
     qs('#char-zodiac').value = cardJson.zodiac || '';
     qs('#char-blood-type').value = cardJson.blood_type || '';
+    qs('#char-height').value = cardJson.height || '165';
+    qs('#char-weight').value = cardJson.weight || '55';
+    qs('#char-bust').value = cardJson.bust || 'C';
 
     const pt = cardJson.personality_type || ""; 
     
@@ -255,6 +275,9 @@ async function loadCharacter(charId) {
     
     updateExplanations();
     updateAgeDisplay();
+    updateButtonStates();
+    // 確保 JSON 預覽也同步更新
+    updateJsonFromDropdowns();
 }
 
 async function saveCharacter() {
@@ -275,11 +298,14 @@ async function saveCharacter() {
     }
 
     // 將下拉選單與 Input 的值同步回 cardJson
-    cardJson.id = id;
+    cardJson.id = currentCharacterId;
     cardJson.name = name || '未命名';
     cardJson.zodiac = qs('#char-zodiac').value || "";
     cardJson.blood_type = qs('#char-blood-type').value || "";
     cardJson.birthday = qs('#char-birthday').value || "1999-01-01";
+    cardJson.height = qs('#char-height').value || "165";
+    cardJson.weight = qs('#char-weight').value || "55";
+    cardJson.bust = qs('#char-bust').value || "C";
     
     // 組合 Personality Type: A_B_C-名稱1_名稱2_名稱3
     const t1 = qs('#char-type-1').value;
@@ -306,8 +332,9 @@ async function saveCharacter() {
     }
 
     const payload = {
-        id: id,
+        id: currentCharacterId,
         name: cardJson.name,
+        lpas: cardJson.personality_type || "",
         card_json: cardJson,
         updated_at: new Date().toISOString()
     };
@@ -336,15 +363,6 @@ async function saveAsNewCharacter() {
         return;
     }
 
-    const t1 = qs('#char-type-1').value || "000";
-    const t2 = qs('#char-type-2').value || "000";
-    const t3 = qs('#char-type-3').value || "000";
-    const ptCode = `${t1}_${t2}_${t3}`;
-    const dateStr = new Date().toISOString().split('T')[0];
-
-    // 依照要求格式: name-personality_type-date
-    const newId = `${name}-${ptCode}-${dateStr}`;
-
     const jsonStr = qs('#char-card-json').value.trim();
     let cardJson;
     try {
@@ -354,12 +372,19 @@ async function saveAsNewCharacter() {
         return;
     }
 
-    // 更新 card_json 內部資料
+    // 同步 UI 數據到 cardJson (包含身高體重等新欄位)
     cardJson.name = name;
     cardJson.zodiac = qs('#char-zodiac').value;
     cardJson.blood_type = qs('#char-blood-type').value;
     cardJson.birthday = qs('#char-birthday').value;
-    
+    cardJson.height = qs('#char-height').value || "165";
+    cardJson.weight = qs('#char-weight').value || "55";
+    cardJson.bust = qs('#char-bust').value || "C";
+
+    const t1 = qs('#char-type-1').value || "000";
+    const t2 = qs('#char-type-2').value || "000";
+    const t3 = qs('#char-type-3').value || "000";
+
     if (window.TYPE_MAPPING) {
         const mapping = window.TYPE_MAPPING;
         const getShortName = (code) => {
@@ -370,28 +395,30 @@ async function saveAsNewCharacter() {
         const n1 = getShortName(t1);
         const n2 = getShortName(t2);
         const n3 = getShortName(t3);
-        cardJson.personality_type = `${ptCode}-${n1}_${n2}_${n3}`;
+        cardJson.personality_type = `${t1}_${t2}_${t3}-${n1}_${n2}_${n3}`;
     }
 
     const payload = {
-        id: newId,
         name: name,
+        lpas: cardJson.personality_type || "",
         card_json: cardJson,
         updated_at: new Date().toISOString()
     };
 
-    const { error } = await sb
+    const { data, error } = await sb
         .from('characters')
-        .upsert(payload);
+        .insert(payload)
+        .select();
 
     if (error) {
         alert('儲存新角色失敗: ' + error.message);
     } else {
-        alert('成功儲存為新角色：' + newId);
-        currentCharacterId = newId;
-        qs('#char-id').value = newId;
+        const generatedId = data[0].id;
+        alert('成功儲存新角色！\nID: ' + generatedId);
+        currentCharacterId = generatedId;
+        qs('#char-id').value = generatedId;
         await refreshCharacterList();
-        qs('#char-dropdown').value = newId;
+        qs('#char-dropdown').value = generatedId;
     }
 }
 
@@ -408,6 +435,17 @@ function cancelCharacterEdit() {
     qs('#char-type-3').value = '';
     updateExplanations();
     updateAgeDisplay();
+    updateButtonStates();
+}
+
+function updateButtonStates() {
+    const isEditing = !!currentCharacterId;
+    const btnSave = qs('#btn-char-save');
+    if (btnSave) {
+        btnSave.disabled = !isEditing;
+        btnSave.style.opacity = isEditing ? "1" : "0.5";
+        btnSave.style.cursor = isEditing ? "pointer" : "not-allowed";
+    }
 }
 
 function updateJsonFromDropdowns() {
@@ -419,14 +457,17 @@ function updateJsonFromDropdowns() {
         cardJson.blood_type = qs('#char-blood-type').value;
         cardJson.birthday = qs('#char-birthday').value;
         cardJson.name = qs('#char-name').value;
+        cardJson.height = qs('#char-height').value || "165";
+        cardJson.weight = qs('#char-weight').value || "55";
+        cardJson.bust = qs('#char-bust').value || "C";
         
         const t1 = qs('#char-type-1').value;
         const t2 = qs('#char-type-2').value;
         const t3 = qs('#char-type-3').value;
-        if (t1 && t2 && t3) {
+        if (t1 && t2 && t3 && t1 !== "???" && t2 !== "???" && t3 !== "???") {
             const mapping = window.TYPE_MAPPING || {};
             const getShortName = (code) => {
-                if (!code) return "???";
+                if (!code || code === "???") return "???";
                 const key = code.split('').join('-');
                 return (mapping[key] || { name: "" }).name.replace(/型/g, '');
             };
@@ -438,6 +479,7 @@ function updateJsonFromDropdowns() {
         
         // 更新顯示
         qs('#char-card-json').value = prettyJson(cardJson);
+        updateButtonStates();
     } catch(e) {}
 }
 
@@ -483,6 +525,11 @@ window.addEventListener('load', async () => {
         updateExplanations();
         updateJsonFromDropdowns();
     });
+
+    ['#char-height', '#char-weight', '#char-bust'].forEach(sel => {
+        qs(sel).addEventListener('input', updateJsonFromDropdowns);
+        qs(sel).addEventListener('change', updateJsonFromDropdowns);
+    });
     
     [1, 2, 3].forEach(p => {
         qs(`#char-type-${p}`).addEventListener('change', () => {
@@ -495,7 +542,7 @@ window.addEventListener('load', async () => {
     qs('#btn-char-refresh').addEventListener('click', refreshCharacterList);
     qs('#btn-char-save').addEventListener('click', saveCharacter);
     qs('#btn-char-save-new').addEventListener('click', saveAsNewCharacter);
-    qs('#btn-char-cancel').addEventListener('click', cancelCharacterEdit);
 
     await initSupabase();
+    updateButtonStates();
 });

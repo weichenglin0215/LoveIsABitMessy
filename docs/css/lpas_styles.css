@@ -1,22 +1,40 @@
 :root {
     /* 主色彩變數 */
-    --c-bg-main: hsl(255, 50%, 8%);
-    --c-bg-card: hsl(256, 54%, 14%);
-    --c-accent: hsl(266, 56%, 64%);
-    --c-accent-hover: hsl(262, 41%, 47%);
+    --c-bg-main: hsl(255, 50%, 6%);
+    --c-bg-card: hsl(256, 54%, 12%);
+    /*底色*/
+    --c-accent-hover: hsl(266, 56%, 64%);
+    --c-accent: hsl(262, 41%, 47%);
+    /*按鈕*/
     --c-accent-light: hsl(264, 71%, 80%);
+    --c-accent-vivian: hsl(280, 75%, 50%);
     --c-text-main: hsl(263, 51%, 92%);
     --c-text-sec: hsl(261, 30%, 75%);
 
+    /* 次色彩變數 */
+    --c-secondary-bg-main: hsl(220, 51%, 6%);
+    --c-secondary-bg-card: hsl(220, 54%, 12%);
+    /*底色*/
+    --c-secondary-accent-hover: hsl(220, 56%, 64%);
+    --c-secondary-accent: hsl(220, 41%, 47%);
+    /*按鈕*/
+    --c-secondary-accent-light: hsl(220, 71%, 80%);
+    --c-secondary-accent-vivian: hsl(210, 70%, 50%);
+    --c-secondary-text-main: hsl(220, 51%, 92%);
+    --c-secondary-text-sec: hsl(220, 30%, 75%);
+
     /* 情境色彩 */
-    --c-period-1: hsl(298, 60%, 30%); /* 曖昧 */
-    --c-period-2: hsl(348, 50%, 50%); /* 熱戀 */
-    --c-period-3: hsl(220, 50%, 30%); /* 失戀 */
+    --c-period-1: hsl(298, 60%, 30%);
+    /* 曖昧 */
+    --c-period-2: hsl(348, 50%, 50%);
+    /* 熱戀 */
+    --c-period-3: hsl(220, 50%, 30%);
+    /* 失戀 */
 
     /* 量表色彩 */
-    --c-scale-empty: hsl(259, 41%, 27%);
-    --c-scale-hover: hsl(262, 41%, 47%);
-    --c-scale-disagree: hsl(240, 50%, 60%);
+    --c-scale-empty: hsl(259, 30%, 70%);
+    --c-scale-hover: hsl(262, 60%, 60%);
+    --c-scale-disagree: hsl(240, 30%, 40%);
     --c-scale-agree: hsl(340, 43%, 60%);
     --c-scale-mid: hsl(290, 40%, 60%);
 }
@@ -39,23 +57,39 @@ body {
     align-items: center;
 }
 
-body[data-period="1"] { background-color: var(--c-period-1); }
-body[data-period="2"] { background-color: var(--c-period-2); }
-body[data-period="3"] { background-color: var(--c-period-3); }
+body[data-period="1"] {
+    background-color: var(--c-period-1);
+}
+
+body[data-period="2"] {
+    background-color: var(--c-period-2);
+}
+
+body[data-period="3"] {
+    background-color: var(--c-period-3);
+}
 
 /* 背景粒子動畫預留 */
 #star-bg {
     position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     z-index: -1;
-    background-image: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-image: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
     background-size: 50px 50px;
     animation: slowDrift 100s linear infinite;
 }
 
 @keyframes slowDrift {
-    0% { background-position: 0 0; }
-    100% { background-position: -500px 500px; }
+    0% {
+        background-position: 0 0;
+    }
+
+    100% {
+        background-position: -500px 500px;
+    }
 }
 
 main#app-container {
@@ -71,7 +105,10 @@ main#app-container {
 
 .screen {
     position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -105,6 +142,7 @@ main#app-container {
     color: #fff;
     box-shadow: 0 0 15px rgba(156, 111, 214, 0.4);
 }
+
 .primary-btn:hover {
     background-color: var(--c-accent-hover);
     box-shadow: 0 0 25px rgba(156, 111, 214, 0.6);
@@ -115,6 +153,7 @@ main#app-container {
     color: var(--c-accent-light);
     border: 1px solid var(--c-accent);
 }
+
 .secondary-btn:hover {
     background-color: var(--c-accent-hover);
     color: #fff;
@@ -127,6 +166,7 @@ main#app-container {
     cursor: pointer;
     font-size: 0.9rem;
 }
+
 .text-btn:hover {
     color: var(--c-accent-light);
 }
@@ -138,17 +178,20 @@ main#app-container {
     font-weight: 300;
     text-align: center;
 }
+
 .sub-title {
     font-size: 1.5rem;
     color: var(--c-text-sec);
     margin-bottom: 2rem;
     font-weight: 300;
 }
+
 .desc-text {
     font-size: 1.0rem;
     color: var(--c-accent-light);
     margin-bottom: 3rem;
 }
+
 .footer-note {
     position: absolute;
     bottom: 2rem;
@@ -163,16 +206,25 @@ main#app-container {
     background-color: var(--c-bg-card);
     padding: 2rem;
     border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
-.form-container h2 { margin-bottom: 1.5rem; font-weight: 500; }
-.form-group { margin-bottom: 1.5rem; }
+
+.form-container h2 {
+    margin-bottom: 1.5rem;
+    font-weight: 500;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
 .form-group label {
     display: block;
     margin-bottom: 0.5rem;
     color: var(--c-text-sec);
     font-size: 1.0rem;
 }
+
 input[type="text"] {
     width: 100%;
     padding: 10px 16px;
@@ -183,7 +235,13 @@ input[type="text"] {
     font-family: inherit;
     font-size: 1.0rem;
 }
-.radio-group { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.radio-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
 .radio-btn {
     padding: 8px 16px;
     background-color: var(--c-scale-empty);
@@ -195,11 +253,17 @@ input[type="text"] {
     transition: 0.2s;
     font-size: 1.0rem;
 }
+
 .radio-btn.selected {
     background-color: var(--c-accent);
     color: #fff;
 }
-.note { font-size: 0.8rem; color: var(--c-text-sec); margin-bottom: 1.5rem; }
+
+.note {
+    font-size: 0.8rem;
+    color: var(--c-text-sec);
+    margin-bottom: 1.5rem;
+}
 
 /* 作答區 */
 .top-bar {
@@ -212,6 +276,7 @@ input[type="text"] {
     color: var(--c-text-sec);
     font-size: 1.0rem;
 }
+
 /*問題文字*/
 .question-container {
     flex-grow: 1;
@@ -220,11 +285,13 @@ input[type="text"] {
     text-align: center;
     padding: 0 1rem;
 }
+
 #question-text {
     font-size: 1.8rem;
     font-weight: 300;
     line-height: 1.6;
 }
+
 .options-container {
     width: 100%;
     display: flex;
@@ -234,11 +301,13 @@ input[type="text"] {
     margin-bottom: 6rem;
     font-size: 1.6rem;
 }
+
 .likert-scale {
     display: flex;
     justify-content: center;
     gap: 1.5rem;
 }
+
 /*圓形按鈕*/
 .scale-circle {
     width: 36px;
@@ -250,13 +319,24 @@ input[type="text"] {
     transition: all 0.2s ease;
     position: relative;
 }
+
 .scale-circle:hover {
     transform: scale(1.2);
     background-color: var(--c-scale-hover);
 }
+
 /* 強度漸變大小 */
-.scale-circle[data-val="1"], .scale-circle[data-val="7"] { width: 44px; height: 44px; }
-.scale-circle[data-val="2"], .scale-circle[data-val="6"] { width: 38px; height: 38px; }
+.scale-circle[data-val="1"],
+.scale-circle[data-val="7"] {
+    width: 44px;
+    height: 44px;
+}
+
+.scale-circle[data-val="2"],
+.scale-circle[data-val="6"] {
+    width: 38px;
+    height: 38px;
+}
 
 /* 動態標記顏色將由 JS 根據同意度控制 */
 .back-btn {
@@ -268,16 +348,37 @@ input[type="text"] {
 
 /* 計算中動畫 */
 .calculating-anim {
-    width: 60px; height: 60px;
+    width: 60px;
+    height: 60px;
     border: 3px solid var(--c-scale-empty);
     border-top-color: var(--c-accent);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: 2rem;
 }
-@keyframes spin { 100% { transform: rotate(360deg); } }
-.fade-text { animation: pulse 3s infinite; font-weight: 300;}
-@keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+@keyframes spin {
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.fade-text {
+    animation: pulse 3s infinite;
+    font-weight: 300;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 0.5;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
 
 /* 結果頁 */
 .result-container {
@@ -292,9 +393,23 @@ input[type="text"] {
     align-items: center;
     overflow-y: auto;
 }
-.result-header { text-align: center; margin-bottom: 2rem; }
-.result-header h1 { font-size: 2.2rem; color: var(--c-accent-light); margin-bottom: 0.5rem; }
-.type-code { font-size: 1.8rem; color: var(--c-text-sec); letter-spacing: 2px;}
+
+.result-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.result-header h1 {
+    font-size: 2.2rem;
+    color: var(--c-accent-light);
+    margin-bottom: 0.5rem;
+}
+
+.type-code {
+    font-size: 1.8rem;
+    color: var(--c-text-sec);
+    letter-spacing: 2px;
+}
 
 .result-radar {
     width: 100%;
@@ -311,7 +426,13 @@ input[type="text"] {
     text-align: justify;
     white-space: pre-wrap;
 }
-.result-actions { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+
+.result-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
 
 /* 音樂圖示 */
 #music-control {
@@ -325,10 +446,32 @@ input[type="text"] {
 }
 
 @media (max-width: 600px) {
-    #question-text { font-size: 1.3rem; }
-    .likert-scale { gap: 0.5rem; }
-    .scale-circle[data-val="1"], .scale-circle[data-val="7"] { width: 36px; height: 36px; }
-    .scale-circle[data-val="2"], .scale-circle[data-val="6"] { width: 32px; height: 32px; }
-    .scale-circle { width: 28px; height: 28px; }
-    .scale-label { display: none; }
+    #question-text {
+        font-size: 1.3rem;
+    }
+
+    .likert-scale {
+        gap: 0.5rem;
+    }
+
+    .scale-circle[data-val="1"],
+    .scale-circle[data-val="7"] {
+        width: 36px;
+        height: 36px;
+    }
+
+    .scale-circle[data-val="2"],
+    .scale-circle[data-val="6"] {
+        width: 32px;
+        height: 32px;
+    }
+
+    .scale-circle {
+        width: 28px;
+        height: 28px;
+    }
+
+    .scale-label {
+        display: none;
+    }
 }

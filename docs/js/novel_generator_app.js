@@ -194,9 +194,9 @@ async function loadCloudChars() {
         const sb = window.SupabaseClient.getClient();
         const { data, error } = await sb
             .from('characters')
-            .select('id, name, card_json')
+            .select('id, name, card_json, lpas, updated_at')
             .eq('is_active', true)
-            .order('id');
+            .order('updated_at', { ascending: false });
         if (data) cloudCharacters = data;
     } catch (e) {
         console.error("Cloud load error:", e);
@@ -276,10 +276,15 @@ function renderCharacters() {
             <select data-idx="${idx}">
                 <option value="">-- 選取角色卡 --</option>
                 ${(isLocal ? localCharacters : cloudCharacters).map(c => {
-            const id = isLocal ? c : c.id;
-            const label = isLocal ? c : `${c.id} [${c.name}]`;
-            return `<option value="${id}" ${id === charId ? 'selected' : ''}>${label}</option>`;
-        }).join('')}
+                    const id = isLocal ? c : c.id;
+                    let label = isLocal ? c : c.name;
+                    if (!isLocal) {
+                        const dateStr = c.updated_at ? c.updated_at.split('T')[0].replace(/-/g, '') : '';
+                        const lpasStr = c.lpas || (c.card_json ? c.card_json.personality_type?.split('-')[0] : '');
+                        label = `${c.name || '未命名'}-${lpasStr || '無LPAS'}-${dateStr}`;
+                    }
+                    return `<option value="${id}" ${id === charId ? 'selected' : ''}>${label}</option>`;
+                }).join('')}
             </select>
             <button style="position:absolute; top:5px; right:5px; background:none; border:none; color:#f44; cursor:pointer;" onclick="removeChar(${idx})">🗑️</button>
         `;
@@ -396,6 +401,9 @@ function setupEventListeners() {
     qs('#btn-ai-gen-all-outlines').addEventListener('click', aiGenAllOutlines);
     qs('#btn-ai-gen-all-content').addEventListener('click', aiGenAllContent);
     qs('#btn-ai-gen-chapters').addEventListener('click', aiGenChaptersFromPremise);
+
+    qs('#btn-load-cloud').addEventListener('click', listCloudNovels);
+    qs('#cloud-novel-select').addEventListener('change', loadCloudNovel);
 
     qs('#toggle-premise').addEventListener('click', () => {
         const container = qs('#story-premise-container');
@@ -771,60 +779,159 @@ async function callDebugServer(endpoint, payload) {
 
 // ====== 儲存與讀取 ======
 
+// 取得小說成品 (Markdown 格式)
+function getNovelMarkdown() {
+    let md = `# ${state.bookTitle}\n\n`;
+    md += `## 故事粗綱\n${state.storyPremise}\n\n`;
+
+    state.chapters.forEach(ch => {
+        md += `## ${ch.title}\n`;
+        md += `> ${ch.description}\n\n`;
+        ch.sections.forEach(sec => {
+            md += `### ${sec.title}\n\n`;
+            md += `${sec.content || "*(未生成內容)*"}\n\n`;
+        });
+        md += `---\n\n`;
+    });
+    return md;
+}
+
+// 取得格式化時間 (YYYY-MM-DD_HHMMSS)
+function getFormattedDateTime() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    return `${y}-${m}-${d}_${hh}${mm}${ss}`;
+}
+
 async function saveProject() {
     const name = prompt("請輸入小說名稱：", state.bookTitle);
     if (!name) return;
     state.bookTitle = name;
 
+    // 1. 同步儲存至 Supabase 雲端 (novel_entries 表)
     try {
         const sb = window.SupabaseClient.getClient();
-        const { error } = await sb.from('story_projects').upsert({
-            name: state.bookTitle,
-            data: state,
-            updated_at: new Date()
-        }, { onConflict: 'name' });
+        if (sb) {
+            appendLog("☁️ 正在同步小說至雲端...");
+            const fullText = getNovelMarkdown();
+            const { data, error } = await sb.from('novel_entries').insert({
+                novel_title: state.bookTitle,
+                edit_data: state,
+                novel_full_text: fullText,
+                updated_at: new Date()
+            });
 
-        if (!error) {
-            alert("✅ 小說已同步至雲端！");
-            return;
+            if (error) {
+                console.error("Cloud save error:", error);
+                appendLog("❌ 雲端儲存失敗: " + error.message);
+            } else {
+                appendLog("✅ 小說已成功儲存至雲端 (novel_entries)");
+            }
         }
-    } catch (e) { }
+    } catch (e) {
+        console.error("Cloud save exception:", e);
+        appendLog("⚠️ 雲端儲存發生異常，僅進行本機下載");
+    }
 
+    // 2. 本機 JSON 下載備份
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
+    const timeStr = getFormattedDateTime();
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", state.bookTitle + ".json");
+    downloadAnchor.setAttribute("download", state.bookTitle + "_" + timeStr + ".json");
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
+    appendLog("📂 本機 JSON 備份檔已下載");
+}
+
+async function listCloudNovels() {
+    const btn = qs('#btn-load-cloud');
+    const select = qs('#cloud-novel-select');
+    
+    appendLog("☁️ 正在讀取雲端小說清單...");
+    try {
+        const sb = window.SupabaseClient.getClient();
+        if (!sb) throw new Error("Supabase client not initialized");
+
+        const { data, error } = await sb
+            .from('novel_entries')
+            .select('id, novel_title, updated_at')
+            .order('updated_at', { ascending: false })
+            .limit(30);
+
+        if (error) throw error;
+
+        select.innerHTML = '<option value="">-- 請選擇小說 --</option>' +
+            data.map(d => {
+                const date = new Date(d.updated_at).toLocaleString('zh-TW', { hour12: false });
+                return `<option value="${d.id}">${d.novel_title} (${date})</option>`;
+            }).join('');
+
+        btn.style.display = 'none';
+        select.style.display = 'inline-block';
+        appendLog(`✅ 已載入 ${data.length} 筆雲端紀錄`);
+    } catch (e) {
+        appendLog("❌ 讀取清單失敗: " + e.message);
+    }
+}
+
+async function loadCloudNovel(e) {
+    const id = e.target.value;
+    if (!id) return;
+
+    if (!confirm("載入雲端小說將會覆蓋當前編輯器中的內容，確定嗎？")) {
+        e.target.value = "";
+        return;
+    }
+
+    appendLog("☁️ 正在載入雲端小說資料...");
+    try {
+        const sb = window.SupabaseClient.getClient();
+        const { data, error } = await sb
+            .from('novel_entries')
+            .select('edit_data')
+            .eq('id', id)
+            .single();
+
+        if (error) throw error;
+
+        if (data && data.edit_data) {
+            state = data.edit_data;
+            renderAll();
+            appendLog(`✅ 已成功載入「${state.bookTitle}」`);
+            
+            // 重置 UI
+            qs('#btn-load-cloud').style.display = 'inline-block';
+            qs('#cloud-novel-select').style.display = 'none';
+        }
+    } catch (e) {
+        appendLog("❌ 載入小說失敗: " + e.message);
+    }
 }
 
 async function loadProject() {
-    try {
-        const sb = window.SupabaseClient.getClient();
-        const { data, error } = await sb.from('story_projects').select('*').order('updated_at', { ascending: false }).limit(10);
-        if (data && data.length > 0) {
-            const listStr = data.map((d, i) => `${i + 1}. ${d.name}`).join("\n");
-            const choice = prompt("請選擇小說編號：\n" + listStr);
-            if (choice && data[choice - 1]) {
-                state = data[choice - 1].data;
-                renderAll();
-                alert("✅ 成功讀取雲端小說");
-                return;
-            }
-        }
-    } catch (e) { }
-
     const input = document.createElement('input');
     input.type = 'file';
+    input.accept = '.json';
     input.onchange = e => {
         const file = e.target.files[0];
         const reader = new FileReader();
         reader.readAsText(file, 'UTF-8');
         reader.onload = readerEvent => {
-            state = JSON.parse(readerEvent.target.result);
-            renderAll();
-            alert("✅ 成功讀取檔案");
+            try {
+                state = JSON.parse(readerEvent.target.result);
+                renderAll();
+                alert("✅ 成功讀取本機檔案");
+                appendLog(`📂 已載入本機檔案: ${file.name}`);
+            } catch (err) {
+                alert("❌ 檔案格式錯誤");
+            }
         }
     };
     input.click();

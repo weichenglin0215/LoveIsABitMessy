@@ -194,9 +194,9 @@ async function loadCloudChars() {
         const sb = window.SupabaseClient.getClient();
         const { data, error } = await sb
             .from('characters')
-            .select('id, name, card_json')
+            .select('id, name, card_json, lpas, updated_at')
             .eq('is_active', true)
-            .order('id');
+            .order('updated_at', { ascending: false });
         if (data) cloudCharacters = data;
     } catch (e) {
         console.error("Cloud load error:", e);
@@ -276,10 +276,15 @@ function renderCharacters() {
             <select data-idx="${idx}">
                 <option value="">-- 選取角色卡 --</option>
                 ${(isLocal ? localCharacters : cloudCharacters).map(c => {
-            const id = isLocal ? c : c.id;
-            const label = isLocal ? c : `${c.id} [${c.name}]`;
-            return `<option value="${id}" ${id === charId ? 'selected' : ''}>${label}</option>`;
-        }).join('')}
+                    const id = isLocal ? c : c.id;
+                    let label = isLocal ? c : c.name;
+                    if (!isLocal) {
+                        const dateStr = c.updated_at ? c.updated_at.split('T')[0].replace(/-/g, '') : '';
+                        const lpasStr = c.lpas || (c.card_json ? c.card_json.personality_type?.split('-')[0] : '');
+                        label = `${c.name || '未命名'}-${lpasStr || '無LPAS'}-${dateStr}`;
+                    }
+                    return `<option value="${id}" ${id === charId ? 'selected' : ''}>${label}</option>`;
+                }).join('')}
             </select>
             <button style="position:absolute; top:5px; right:5px; background:none; border:none; color:#f44; cursor:pointer;" onclick="removeChar(${idx})">🗑️</button>
         `;

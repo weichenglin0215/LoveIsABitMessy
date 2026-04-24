@@ -59,23 +59,34 @@
 
         .form-label {
             display: block;
-            margin-top: 10px;
+            margin-top: 8px;
             margin-bottom: 2px;
             color: var(--c-accent-light);
             font-weight: 500;
         }
 
         select,
-        input,
-        textarea {
+        input {
             width: 100%;
             padding: 5px;
             background: #000;
-            border: 1px solid #555;
+            border: 1px solid hsl(0, 0%, 33%);
             border-radius: 8px;
             color: #fff;
             font-family: inherit;
-            margin-bottom: 5px;
+            font-size: 1.0rem;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 12px;
+            background: #000;
+            border: 1px solid hsl(0, 0%, 33%);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1.3rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            line-height: 1.6;
         }
 
         .btn-row {
@@ -102,6 +113,56 @@
         .ai-btn:hover {
             background: #f472b6;
             color: #fff;
+        }
+
+        .btn {
+            padding: 3px 10px;
+            font-size: 1.2rem;
+            margin: 10px 10px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .primary-btn {
+            border: 1px solid var(--c-accent-light);
+            background: var(--c-accent);
+            /*background: linear-gradient(135deg, var(--c-accent) 0%, var(--c-accent-dark) 100%);*/
+            color: hsl(0, 0%, 100%);
+        }
+
+        .primary-btn:hover:not(:disabled) {
+            /*background: linear-gradient(135deg, var(--c-accent-hover) 0%, var(--c-accent-dark) 100%);*/
+            background: var(--c-accent-hover);
+            color: hsl(0, 0%, 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--c-accent-vivian);
+        }
+
+        .primary-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .secondary-btn {
+            border: 1px solid var(--c-secondary-accent-light);
+            background: var(--c-secondary-accent);
+            color: hsl(0, 0%, 100%);
+        }
+
+        .secondary-btn:hover:not(:disabled) {
+            background: var(--c-secondary-accent-hover);
+            color: hsl(0, 0%, 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--c-secondary-accent-vivian);
+        }
+
+        .secondary-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .log-area {
@@ -247,14 +308,6 @@
             font-size: 1rem;
         }
 
-        .status-item.checkbox-item {
-            display: grid;
-            grid-template-rows: repeat(2, 1fr);
-            align-items: center;
-            gap: 8px;
-            justify-content: center;
-        }
-
         .copy-btn {
             float: right;
             background: rgba(255, 255, 255, 0.1);
@@ -305,23 +358,58 @@
 <body>
     <div class="debug-panel">
         <div class="col-left">
-            <h1 style="font-weight: 300; margin-bottom: 20px; font-size: 1.8rem; color: var(--c-accent-light);">🎭 AI
-                生成日記</h1>
-            <p style="color: var(--c-text-sec); font-size: 1rem; margin-bottom: 25px;">
-                點擊按鈕自動規劃情境、生成日記文字，並透過 ComfyUI 繪製專屬插圖。
+            <h2 style="font-weight: 500; margin-bottom: 5px; color: var(--c-accent-light);">🎭 AI
+                生成日記</h2>
+            <p style="color: var(--c-text-sec); font-size: 1rem; margin-bottom: 15px;">
+                挑選角色，填寫情境 (Scenario)，點擊【AI生成：日記與插圖】按鈕，自動生成日記，ComfyUI 繪製專屬插圖。
             </p>
+
+            <div class="form-section"
+                style="background: rgba(255,255,255,0.05); padding: 5px 10px; border-radius: 12px; margin-bottom: 10px;">
+                <label class="form-label" style="margin-top:0;">📂 日記專案管理 (雲端)</label>
+                <div style="display: flex; gap: 8px; margin-bottom: 5px; align-items: center;">
+                    <input type="text" id="project-id" placeholder="專案 ID (唯讀)" readonly
+                        style="flex: 1.2; opacity: 0.8;">
+                    <button class="btn secondary-btn" id="btn-load-project" style="flex: 1;">讀取專案</button>
+                    <button class="btn primary-btn" id="btn-save-new-project" style="flex: 1;">儲存新專案...</button>
+                    <button class="btn primary-btn" id="btn-save-project" style="flex: 1;">儲存專案(更新)</button>
+                </div>
+                <select id="project-select"
+                    style="display: none; margin-bottom: 10px; border: 1px solid var(--c-accent);"></select>
+            </div>
 
             <div class="form-section">
                 <label class="form-label">1. 選擇演員</label>
                 <div class="toggle-row">
                     <input type="checkbox" id="use-local-data">
-                    <label for="use-local-data">讀具本機資料 (除錯用)...</label>
+                    <label for="use-local-data">讀取本機資料 (除錯用)...</label>
                 </div>
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
-                    <select id="char-select" style="flex: 1; margin-bottom: 0;">
-                        <option value="">載入中...</option>
-                    </select>
-                    <button class="reload-btn" onclick="initCharacters()">🔄</button>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 5px;">
+                    <div class="status-item">
+                        <label class="form-label">主角演員</label>
+                        <div style="display: flex; gap: 8px;">
+                            <select id="char-select" style="flex: 1;"></select>
+                            <button class="reload-btn" onclick="initCharacters()">🔄</button>
+                        </div>
+                    </div>
+                    <div class="status-item">
+                        <label class="form-label">閨密 A (演員)</label>
+                        <select id="bestie-a-select" class="bestie-select">
+                            <option value="">-- 無 --</option>
+                        </select>
+                    </div>
+                    <div class="status-item">
+                        <label class="form-label">閨密 B (演員)</label>
+                        <select id="bestie-b-select" class="bestie-select">
+                            <option value="">-- 無 --</option>
+                        </select>
+                    </div>
+                    <div class="status-item">
+                        <label class="form-label">閨密 C (演員)</label>
+                        <select id="bestie-c-select" class="bestie-select">
+                            <option value="">-- 無 --</option>
+                        </select>
+                    </div>
                 </div>
                 <div id="char-personality-type-display" class="personality-type-tag" style="display:none;"></div>
                 <div id="char-source-status" class="cloud-status">☁️ 預設讀取雲端角色卡</div>
@@ -353,17 +441,31 @@
                             <option value="失戀期">失戀期</option>
                         </select>
                     </div>
-                    <div class="status-item checkbox-item">
+                    <div class="toggle-row">
                         <input type="checkbox" id="others-have-partner">
-                        <label for="others-have-partner"
-                            style="margin-bottom:0; font-size: 1rem; color: #fff;">伴侶或新朋友已有對象</label>
+                        <label for="others-have-partner">伴侶或新朋友已有對象</label>
                     </div>
                 </div>
             </div>
 
             <div class="form-section">
+                <label class="form-label">2. 日期 / 時間</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <input type="date" id="diary-date">
+                    <select id="diary-time">
+                        <option value="19">晚上 7 點</option>
+                        <option value="20">晚上 8 點</option>
+                        <option value="21">晚上 9 點</option>
+                        <option value="22">晚上 10 點</option>
+                        <option value="23">晚上 11 點</option>
+                        <option value="00" selected>凌晨 0 點</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-section">
                 <label class="form-label">2. 設定情境 (Scenario)</label>
-                <input type="text" id="input-scenario" placeholder="例如：雨天的咖啡廳...">
+                <textarea id="input-scenario" placeholder="例如：雨天的咖啡廳..." style="height: 300px;"></textarea>
             </div>
 
             <div class="form-section">
@@ -377,18 +479,16 @@
             </div>
 
             <div class="ai-btn-container">
-                <button class="ai-btn" id="run-btn">🎭開始生成：日記與插圖</button>
+                <button class="ai-btn" id="run-btn">🎭AI生成：日記與插圖</button>
             </div>
 
             <div class="server-status-row" style="margin-top:20px; flex-wrap: wrap;">
                 <span class="server-status-dot offline" id="server-dot"></span>
                 <span class="server-status-text" id="server-status-text">偵測中…</span>
                 <button id="start-server-btn" disabled>🚀 請自行啟動伺服器</button>
-                <div id="model-container"
-                    style="margin-left:auto; display:flex; align-items:center; gap:8px; opacity: 0.5; pointer-events: none;">
-                    <label style="font-size:0.9rem; color:#aaa;">🤖 AI 模型：</label>
-                    <select id="model-select"
-                        style="background:#111; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 8px; font-size:0.9rem;">
+                <div id="model-container" style=" gap:8px; opacity: 0.5; pointer-events: none;">
+                    <label style="font-size:1rem; color:#aaa;">🤖 AI 模型：</label>
+                    <select id="model-select" style="max-width: 300px; ">
                         <option value="gemma4">gemma4</option>
                     </select>
                 </div>
@@ -400,7 +500,7 @@
         <div class="col-right">
             <div class="editor-section">
                 <h2
-                    style="font-weight: 300; margin-bottom: 15px; color: var(--c-accent-light); display:flex; align-items:center; gap:8px;">
+                    style="font-weight: 500; margin-bottom: 5px; color: var(--c-accent-light); display:flex; align-items:center; gap:8px;">
                     📝 日記修改與編輯區
                 </h2>
 
@@ -408,24 +508,23 @@
                     <label class="form-label">載入現有日記 (雲端 / 本機)</label>
                     <div style="display: flex; gap: 8px;">
                         <button class="btn secondary-btn" id="load-cloud-diaries-btn"
-                            style="flex:1; padding: 6px; font-size:1rem;">☁️ 從雲端讀取清單</button>
+                            style="flex:1; padding: 6px; font-size:1.2rem;">☁️ 從雲端讀取清單</button>
                         <button class="btn secondary-btn" id="load-local-diaries-btn"
-                            style="flex:1; padding: 6px; font-size:1rem;">📁 從本機讀取清單</button>
+                            style="flex:1; padding: 6px; font-size:1.2rem;">📁 從本機讀取清單</button>
                     </div>
-                    <select id="diary-select" style="margin-top:8px;">
+                    <select id="diary-select">
                         <option value="">-- 請先點選讀取按鈕 --</option>
                     </select>
                 </div>
 
                 <div class="form-section" style="flex:1; display:flex; flex-direction:column;">
                     <label class="form-label">日記文字內容 (Story)</label>
-                    <textarea id="edit-diary-text"
-                        style="flex:1; min-height:300px; background:#111; font-family:inherit; line-height:1.6; padding:12px;"></textarea>
+                    <textarea id="edit-diary-text" style="flex:1; min-height:300px;"></textarea>
                 </div>
 
                 <div class="form-section">
                     <label class="form-label">生圖提示詞 (Image Prompt)</label>
-                    <textarea id="edit-image-prompt" style="height:60px; background:#111;"></textarea>
+                    <textarea id="edit-image-prompt" style="height:60px;"></textarea>
                 </div>
 
                 <div class="btn-row">
@@ -574,6 +673,105 @@
         // 頁面載入後立即開始輪詢
         startServerPolling();
 
+        // 預設日期為當天
+        document.getElementById('diary-date').valueAsDate = new Date();
+
+        // ====== 雲端專案管理 (diary_projects) ======
+        async function loadProjects() {
+            const sb = window.SupabaseClient.getClient();
+            if (!sb) return;
+            const { data, error } = await sb.from('diary_projects')
+                .select('id, character_name, updated_at')
+                .order('updated_at', { ascending: false });
+
+            if (error) {
+                console.error('loadProjects error:', error);
+                return;
+            }
+            const pSelect = document.getElementById('project-select');
+            pSelect.innerHTML = '<option value="">-- 選擇專案載入 --</option>' +
+                data.map(p => `<option value="${p.id}">${p.character_name} - ${new Date(p.updated_at).toLocaleString()} (${p.id.substring(0, 8)})</option>`).join('');
+            pSelect.style.display = 'block';
+        }
+
+        async function saveProject(isNew = false) {
+            const sb = window.SupabaseClient.getClient();
+            if (!sb) return;
+
+            const charId = document.getElementById('char-select').value;
+            const charName = document.getElementById('char-select').options[document.getElementById('char-select').selectedIndex]?.text.split('-')[0] || "未命名";
+            const projectId = document.getElementById('project-id').value;
+
+            const besties = {
+                a: document.getElementById('bestie-a-select').value,
+                b: document.getElementById('bestie-b-select').value,
+                c: document.getElementById('bestie-c-select').value
+            };
+
+            const project_data = {
+                char_id: charId,
+                scenario: document.getElementById('input-scenario').value,
+                partner_status: document.getElementById('partner-status').value,
+                friend_a_status: document.getElementById('friend-a-status').value,
+                friend_b_status: document.getElementById('friend-b-status').value,
+                others_occupied: document.getElementById('others-have-partner').checked,
+                diary_date: document.getElementById('diary-date').value,
+                diary_time: document.getElementById('diary-time').value,
+                ai_model: document.getElementById('model-select').value
+            };
+
+            const payload = {
+                character_name: charName,
+                besties_data: besties,
+                project_data: project_data,
+                updated_at: new Date()
+            };
+
+            if (isNew || !projectId) {
+                const { data, error } = await sb.from('diary_projects').insert(payload).select();
+                if (error) alert("儲存新專案失敗: " + error.message);
+                else {
+                    document.getElementById('project-id').value = data[0].id;
+                    alert("✅ 已成功儲存為新專案！");
+                }
+            } else {
+                const { error } = await sb.from('diary_projects').update(payload).eq('id', projectId);
+                if (error) alert("更新專案失敗: " + error.message);
+                else alert("✅ 專案已成功更新！");
+            }
+            loadProjects();
+        }
+
+        document.getElementById('btn-load-project').addEventListener('click', loadProjects);
+        document.getElementById('btn-save-project').addEventListener('click', () => saveProject(false));
+        document.getElementById('btn-save-new-project').addEventListener('click', () => saveProject(true));
+
+        document.getElementById('project-select').addEventListener('change', async (e) => {
+            const pid = e.target.value;
+            if (!pid) return;
+            const sb = window.SupabaseClient.getClient();
+            const { data, error } = await sb.from('diary_projects').select('*').eq('id', pid).single();
+            if (error) return;
+
+            document.getElementById('project-id').value = data.id;
+            const pd = data.project_data || {};
+            const bd = data.besties_data || {};
+
+            document.getElementById('char-select').value = pd.char_id || "";
+            document.getElementById('bestie-a-select').value = bd.a || "";
+            document.getElementById('bestie-b-select').value = bd.b || "";
+            document.getElementById('bestie-c-select').value = bd.c || "";
+
+            document.getElementById('input-scenario').value = pd.scenario || "";
+            document.getElementById('partner-status').value = pd.partner_status || "戀愛期";
+            document.getElementById('friend-a-status').value = pd.friend_a_status || "無";
+            document.getElementById('friend-b-status').value = pd.friend_b_status || "無";
+            document.getElementById('others-have-partner').checked = !!pd.others_occupied;
+            document.getElementById('diary-date').value = pd.diary_date || "";
+            document.getElementById('diary-time').value = pd.diary_time || "00";
+            document.getElementById('model-select').value = pd.ai_model || "gemma4";
+        });
+
         // ====== 載入雲端角色清單 ======
         async function loadCloudChars() {
             charSourceStatus.textContent = '☁️ 正在從雲端載入角色…';
@@ -584,7 +782,7 @@
                 const sb = window.SupabaseClient.getClient();
                 const { data, error } = await sb
                     .from('characters')
-                    .select('id, name, card_json, is_active, source')
+                    .select('id, name, card_json, is_active, source, lpas, updated_at')
                     .eq('is_active', true)
                     .order('updated_at', { ascending: false });
                 if (error) {
@@ -600,7 +798,18 @@
                     return;
                 }
                 cloudCharacters = data;
-                charSelect.innerHTML = data.map(c => `<option value="${c.id}">${c.id} [${c.source || 'cloud'}]</option>`).join('');
+                const charOptions = data.map(c => {
+                    const dateStr = c.updated_at ? c.updated_at.split('T')[0].replace(/-/g, '') : '';
+                    const lpasStr = c.lpas || (c.card_json ? c.card_json.personality_type?.split('-')[0] : '');
+                    const label = `${c.name || '未命名'}-${lpasStr || '無LPAS'}-${dateStr}`;
+                    return `<option value="${c.id}">${label}</option>`;
+                }).join('');
+
+                charSelect.innerHTML = charOptions;
+                document.querySelectorAll('.bestie-select').forEach(sel => {
+                    sel.innerHTML = '<option value="">-- 無 --</option>' + charOptions;
+                });
+
                 charSourceStatus.textContent = `✅ 已從雲端載入 ${data.length} 個角色`;
             } catch (e) {
                 console.error('[Cloud] loadCloudChars failed:', e);
@@ -718,7 +927,7 @@
                 const diaryPayload = {
                     entry_date: cleanData.date || dateStr,
                     character_id: charId || null,
-                    character_name: charName || null,
+                    character_name: cleanData.character_name || charName, // 使用 JSON 內真正的角色名
                     story: cleanData.story || "",
                     full_prompt: cleanData.full_prompt || "",
                     image_prompt: cleanData.image_prompt || "",
@@ -770,11 +979,35 @@
             document.getElementById('run-btn').disabled = true;
 
             try {
+                // 收集閨密資料
+                const other_chars = [];
+                const bestieIds = [
+                    document.getElementById('bestie-a-select').value,
+                    document.getElementById('bestie-b-select').value,
+                    document.getElementById('bestie-c-select').value
+                ];
+
+                bestieIds.forEach(bid => {
+                    if (bid) {
+                        const found = cloudCharacters.find(c => c.id === bid);
+                        if (found && found.card_json) {
+                            other_chars.push(found.card_json);
+                        }
+                    }
+                });
+
+                // 如果有日期/時間，併入情境中 (讓 AI 知道具體時間點)
+                const dDate = document.getElementById('diary-date').value;
+                const dTime = document.getElementById('diary-time').value;
+                const timeContext = `[時間設定] 日期：${dDate}，大約晚上 ${dTime} 點左右。\n`;
+                const finalScenario = timeContext + scenario;
+
                 // 如果是雲端模式，附上完整 card_json 讓 server 直接使用
                 const postBody = {
                     char_id: charId,
-                    scenario: scenario,
+                    scenario: finalScenario,
                     relationship: relationship,
+                    other_chars: other_chars,
                     model: document.getElementById('model-select').value
                 };
 
@@ -883,11 +1116,11 @@
             try {
                 if (!window.SupabaseClient || !window.SupabaseClient.init()) throw new Error('Supabase 未初始化');
                 const sb_client = window.SupabaseClient.getClient();
-                const { data, error } = await sb_client.from('diary_entries').select('id, entry_date, character_name').order('entry_date', { ascending: false }).limit(50);
+                const { data, error } = await sb_client.from('diary_entries').select('id, entry_date, character_name, story_filename').order('entry_date', { ascending: false }).limit(50);
                 if (error) throw error;
                 currentSource = 'cloud';
                 diarySelect.innerHTML = '<option value="">-- 請選擇雲端日記 --</option>' +
-                    data.map(d => `<option value="${d.id}">${d.entry_date} - ${d.character_name}</option>`).join('');
+                    data.map(d => `<option value="${d.id}">${d.story_filename || (d.entry_date + ' - ' + d.character_name)}</option>`).join('');
                 editorStatus.textContent = `✅ 已載入 ${data.length} 篇雲端日記`;
             } catch (e) {
                 editorStatus.textContent = '❌ 載入失敗: ' + e.message;
