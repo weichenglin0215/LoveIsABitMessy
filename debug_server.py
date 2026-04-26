@@ -18,10 +18,10 @@ except Exception:
 from urllib.parse import urlparse, parse_qs
 from prompt_utils import (
     load_character_from_path, 
-    build_daily_prompt, 
-    build_chapter_outline_prompt, 
-    build_novel_content_prompt,
-    build_chapters_from_premise_prompt
+    build_daily_prompt, #生成日記 prompt
+    build_chapters_from_premise_prompt,#「根據故事粗綱生成各章標題與描述」的完整提示詞
+    build_chapter_outline_prompt, #根據章的標題與描述來建立「各小節大綱」的完整提示詞
+    build_novel_content_prompt #建立「小說本文生成」的完整提示詞
 )
 
 PORT = 8000
@@ -151,23 +151,29 @@ def _ollama_generate_direct(model, prompt, temperature=0.85):
     
     full_response = []
     try:
-        import requests
-        import json
-        
-        # 使用 Session 並關閉自動重試/特定勾子（如果是環境問題造成的 raise_for_status）
-        with requests.Session() as s:
-            print(">>>> 正在發送 POST 請求至 Ollama...")
-            res = s.post(url, json=payload, stream=True, timeout=300)
-            
-            print(f">>>> 伺服器回應碼: {res.status_code}")
-            
-            if res.status_code != 200:
-                err_body = res.text
-                print(f"\n>>>> [OLLAMA API ERROR] Status: {res.status_code}")
+        import urllib.request
+        import urllib.error
+
+        body_bytes = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+        req = urllib.request.Request(
+            url,
+            data=body_bytes,
+            method='POST',
+            headers={'Content-Type': 'application/json'}
+        )
+
+        print(">>>> 正在發送 POST 請求至 Ollama...")
+        with urllib.request.urlopen(req, timeout=300) as resp:
+            print(f">>>> 伺服器回應碼: {resp.status}")
+            if resp.status != 200:
+                err_body = resp.read().decode('utf-8', errors='replace')
+                print(f"\n>>>> [OLLAMA API ERROR] Status: {resp.status}")
                 print(f">>>> [OLLAMA API ERROR] Body: {err_body}")
-                return f">>>> Error {res.status_code}: {err_body}"
-                
-            for line in res.iter_lines():
+                return f">>>> Error {resp.status}: {err_body}"
+
+            # 逐行讀取串流回應
+            for raw_line in resp:
+                line = raw_line.strip()
                 if line:
                     chunk = json.loads(line)
                     content = chunk.get('response', '')
@@ -175,8 +181,14 @@ def _ollama_generate_direct(model, prompt, temperature=0.85):
                     full_response.append(content)
                     if chunk.get('done'):
                         break
+
         print("\n>>>> 生成結束。")
         return "".join(full_response).strip()
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode('utf-8', errors='replace')
+        print(f"\n>>>> [OLLAMA API ERROR] Status: {e.code}")
+        print(f">>>> [OLLAMA API ERROR] Body: {err_body}")
+        return f">>>> Error {e.code}: {err_body}"
     except Exception as e:
         print(f"\n>>>> [EXCEPTION] Ollama 呼叫失敗: {type(e).__name__}: {e}")
         import traceback
@@ -372,17 +384,15 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(404, "File not found")
         elif parsed_path.path == '/api/models':
             try:
-                import requests
-                res = requests.get('http://localhost:11434/api/tags', timeout=5)
-                if res.ok:
-                    data = res.json()
-                    models = [m['name'] for m in data.get('models', [])]
-                    self.send_response(200)
-                    self.send_header('Content-type', 'application/json; charset=utf-8')
-                    self.end_headers()
-                    self.wfile.write(json.dumps(models).encode('utf-8'))
-                else:
-                    self.send_error(500, "Ollama connection failed")
+                import urllib.request
+                req = urllib.request.Request('http://localhost:11434/api/tags')
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    data = json.loads(resp.read().decode('utf-8'))
+                models = [m['name'] for m in data.get('models', [])]
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps(models).encode('utf-8'))
             except Exception as e:
                 self.send_error(500, f"Error: {e}")
         else:
@@ -471,7 +481,8 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                     chars.append(c)
                     
                 main_char = chars[0] if chars else {}
-                prompt = build_chapters_from_premise_prompt(main_char, book_title, premise, chars[1:])
+                locked_chapters = params.get('locked_chapters', [])  # [{"index":1,"title":"","description":""},...]
+                prompt = build_chapters_from_premise_prompt(main_char, book_title, premise, chars[1:], locked_chapters)
                 
                 print("\n" + "="*50)
                 print("【DEBUG: AI 根據粗綱生成各章標題與描述的 PROMPT 如下】")
@@ -530,7 +541,15 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                     chars.append(c)
                     
                 main_char = chars[0] if chars else {}
-                prompt = build_chapter_outline_prompt(main_char, book_title, desc, chars[1:])
+                story_premise  = params.get('story_premise', '')
+                all_chapters   = params.get('all_chapters', [])   # [{"title":"","description":""},...]
+                chapter_index  = params.get('chapter_index', 0)   # 0-based
+                prompt = build_chapter_outline_prompt(
+                    main_char, book_title, desc, chars[1:],
+                    story_premise=story_premise,
+                    all_chapters=all_chapters,
+                    chapter_index=chapter_index
+                )
                 
                 print("\n" + "="*50)
                 print("【DEBUG: AI 產生「各小節大綱」的 PROMPT】")

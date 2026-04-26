@@ -1,13 +1,14 @@
 import os
 import json
 import random
-import requests
+import urllib.request
+import urllib.error
 import re
 from datetime import datetime
 from prompt_utils import build_daily_prompt
 
-# MODEL_NAME = "dolphin-mistral"
-MODEL_NAME = "gemma4"
+# 優先讀取 debug_server 透過環境變數傳入的模型名稱，fallback 為 gemma4
+MODEL_NAME = os.environ.get("LAMB_MODEL", "gemma4")
 
 try:
     # 盡量避免 Windows console(cp950) 亂碼/炸掉
@@ -78,20 +79,29 @@ def _ollama_generate(prompt: str, num_predict: int = 4096, temperature: float = 
     
     full_response = []
     try:
-        response = requests.post(OLLAMA_URL, json=payload, stream=True, timeout=300)
-        response.raise_for_status()
-        
+        body_bytes = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+        req = urllib.request.Request(
+            OLLAMA_URL,
+            data=body_bytes,
+            method='POST',
+            headers={'Content-Type': 'application/json'}
+        )
         print("\n--- 正在流式生成故事內容 ---")
-        for line in response.iter_lines():
-            if line:
-                chunk = json.loads(line)
-                content = chunk.get('response', '')
-                print(content, end='', flush=True)
-                full_response.append(content)
-                if chunk.get('done'):
-                    break
+        with urllib.request.urlopen(req, timeout=300) as resp:
+            for raw_line in resp:
+                line = raw_line.strip()
+                if line:
+                    chunk = json.loads(line)
+                    content = chunk.get('response', '')
+                    print(content, end='', flush=True)
+                    full_response.append(content)
+                    if chunk.get('done'):
+                        break
         print("\n--- 生成結束 ---")
         return "".join(full_response).strip()
+    except urllib.error.HTTPError as e:
+        print(f"\n[ERROR] Ollama 回傳錯誤 {e.code}: {e.read().decode('utf-8', errors='replace')}")
+        return ""
     except Exception as e:
         print(f"\n[ERROR] Ollama 連線失敗: {e}")
         return ""

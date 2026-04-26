@@ -219,8 +219,13 @@ def build_daily_prompt(char_data: dict, scenario: str, relationship_params: dict
 
     return f"{system_prompt}\n\n【當前任務/情境】\n{final_scenario}\n\n請開始執行（以繁體中文）："
 
-def build_chapters_from_premise_prompt(char_data: dict, book_title: str, story_premise: str, other_chars: list = None) -> str:
-    """建立「根據故事粗綱生成各章標題與描述」的提示詞"""
+def build_chapters_from_premise_prompt(char_data: dict, book_title: str, story_premise: str, other_chars: list = None,
+                                       locked_chapters: list = None) -> str:
+    """建立「根據故事粗綱生成各章標題與描述」的提示詞
+
+    Args:
+        locked_chapters: 已上鎖的章節清單，每個元素為 {"index": int(1-based), "title": str, "description": str}
+    """
     #####################################################################################
     #建立「根據粗綱生成各章標題與描述」的提示詞
     #####################################################################################    
@@ -254,6 +259,17 @@ def build_chapters_from_premise_prompt(char_data: dict, book_title: str, story_p
         if other_lines:
             other_context = "\n【其他配角角色設定】\n" + "\n\n".join(other_lines)
 
+    # 組建「已上鎖章節」說明段落
+    locked_context = ""
+    if locked_chapters:
+        lines = []
+        for lc in locked_chapters:
+            idx = lc.get('index', '?')
+            t   = lc.get('title', '')
+            d   = lc.get('description', '')
+            lines.append(f"  第{idx}章（已固定）：{t}\n    描述：{d}")
+        locked_context = "\n【已固定章節（禁止更動）】\n以下章節內容已由作者確定，規劃時必須嚴格銜接：\n" + "\n".join(lines)
+
     system_prompt = f"""
 你是一位金牌小說策劃與總編。請根據以下【主角設定】與【故事粗綱】，為這部名為《{book_title}》的小說規劃出各章節的標題與章節大綱。
 
@@ -263,6 +279,7 @@ def build_chapters_from_premise_prompt(char_data: dict, book_title: str, story_p
 3. 每個項目是一個包含 "title" 與 "description" 的物件。
 4. **必須**回傳標準的 JSON 格式列表，不可遺漏任何標示符號。
 5. 不要有任何額外前言、後記或 Markdown 區塊。
+6. 若存在「已固定章節」，必須嚴格銜接其前後劇情，不可改變固定章節的內容。
 
 【寫作技巧】
 1. 根據粗綱描述與女主角個性來規劃吸引讀者興趣的故事架構，並符合都會言情長篇小說的起承轉合。
@@ -284,6 +301,7 @@ def build_chapters_from_premise_prompt(char_data: dict, book_title: str, story_p
 
 【故事粗綱】
 {story_premise}
+{locked_context}
 
 【角色設定】
 姓名：{char_data.get('name', '')}
@@ -306,8 +324,15 @@ def build_chapters_from_premise_prompt(char_data: dict, book_title: str, story_p
 
     return f"{system_prompt}\n\n請開始規劃（以繁體中文）："
 
-def build_chapter_outline_prompt(char_data: dict, book_title: str, outline_desc: str, other_chars: list = None) -> str:
-    """根據章的標題與描述來建立「各小節大綱」的完整提示詞"""
+def build_chapter_outline_prompt(char_data: dict, book_title: str, outline_desc: str, other_chars: list = None,
+                                  story_premise: str = "", all_chapters: list = None, chapter_index: int = 0) -> str:
+    """根據章的標題與描述來建立「各小節大綱」的完整提示詞
+
+    Args:
+        story_premise  : 完整故事粗綱
+        all_chapters   : 全部章節清單，每個元素為 {"title": str, "description": str}
+        chapter_index  : 目前章節的 0-based 索引
+    """
     #####################################################################################
     # 根據章的標題與描述來建立「各小節大綱」的完整提示詞
     #####################################################################################
@@ -341,14 +366,43 @@ def build_chapter_outline_prompt(char_data: dict, book_title: str, outline_desc:
         if other_lines:
             other_context = "\n【其他配角角色設定】\n" + "\n\n".join(other_lines)
 
+    # 組建全部章節一覽
+    total_chapters = len(all_chapters) if all_chapters else 0
+    current_ch_num = chapter_index + 1  # 1-based
+
+    chapters_overview = ""
+    if all_chapters:
+        lines = []
+        for i, ch in enumerate(all_chapters):
+            num = i + 1
+            marker = ""
+            if num == current_ch_num:
+                marker = "  ← 【目前正在規劃本章小節】"
+            elif num == 1:
+                marker = "  （第一章・開頭）"
+            elif num == total_chapters:
+                marker = "  （最後一章・結局）"
+            lines.append(f"  第{num}章：{ch.get('title','')}\n    描述：{ch.get('description','')} {marker}")
+        chapters_overview = "\n".join(lines)
+
+    # 開頭/結尾特殊提示
+    position_hint = ""
+    if total_chapters > 0:
+        if current_ch_num == 1:
+            position_hint = "\n⚠️ 本章是全書的【第一章・開頭】，請以吸引讀者的開場白鋪墊故事世界觀與主角形象。"
+        elif current_ch_num == total_chapters:
+            position_hint = "\n⚠️ 本章是全書的【最後一章・結局】，請安排合適的收尾與情感昇華，給讀者滿足感或深刻的餘韻。"
+
     system_prompt = f"""
-你是一位金牌小說作者與專業編輯。請根據以下【主角設定】，為這部名為《{book_title}》的小說的《{outline_desc}》規劃出 3~5 個小節。
+你是一位金牌小說作者與專業編輯。請根據以下資訊，為《{book_title}》第{current_ch_num}章規劃出 3~5 個小節。
+{position_hint}
 
 【指令】
 1. 請規劃 3~5 個小節，並為每個小節提供標題與簡短大綱。
 2. 風格應對位當下流行的都會愛情長篇小說。
-3. **必須**回傳標準的 JSON 格式列表，每個項目包含標題與大綱，必須被合併成單一字串，。
-不要有任何額外前言、後記或 Markdown 區塊。
+3. 必須與前後章節的劇情銜接，保持故事連貫性。
+4. **必須**回傳標準的 JSON 格式列表，每個項目包含標題與大綱，合併成單一字串。
+5. 不要有任何額外前言、後記或 Markdown 區塊。
 
 範例格式：
 [
@@ -357,7 +411,11 @@ def build_chapter_outline_prompt(char_data: dict, book_title: str, outline_desc:
   {{"第三節：標題文字...。大綱內容描述..."}}
 ]
 
+【故事粗綱】
+{story_premise if story_premise else '（未提供）'}
 
+【全書章節一覽】
+{chapters_overview if chapters_overview else '（未提供）'}
 
 【角色設定】
 姓名：{char_data.get('name', '')}
@@ -377,8 +435,8 @@ def build_chapter_outline_prompt(char_data: dict, book_title: str, outline_desc:
 {other_context}
 
 """.strip()
-    
-    user_input = f"【章節大綱說明】：{outline_desc}"
+
+    user_input = f"請為第{current_ch_num}章『{outline_desc}』撰寫本章的各小節大綱。"
     return f"{system_prompt}\n\n【當前任務/情境】\n{user_input}\n\n請開始執行（以繁體中文）："
 
 def build_novel_content_prompt(char_data: dict, current_chapter: str, chapter_outline: str, section_title: str, other_chars: list = None) -> str:
@@ -438,9 +496,6 @@ def build_novel_content_prompt(char_data: dict, current_chapter: str, chapter_ou
 8. 用現實語言來表達: 將日記中的內容寫成現在的形式，而不是過去或未來的形式，這樣讀者就可以更直接地參與女性角色的故事。
 9. 遵循日記風格和形式: 根據您想要表達的主題和風格，將日記寫成文字或圖片。這可以讓讀者更容易了解女性角色的生活方式和情緒。
 
-【當前章節】：{current_chapter}
-【章節大綱/目標】：{chapter_outline}
-
 【角色設定】
 姓名：{char_data.get('name', '')}
 年齡：{char_data.get('age', '')}
@@ -457,6 +512,9 @@ def build_novel_content_prompt(char_data: dict, current_chapter: str, chapter_ou
 外表特徵：{char_data.get('appearance', '')}
 目前關係：{char_data.get('relationship', '')}
 {other_context}
+
+【當前章節】：{current_chapter}
+【章節大綱/目標】：{chapter_outline}
 
 """.strip()
 

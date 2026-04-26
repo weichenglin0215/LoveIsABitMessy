@@ -1,6 +1,7 @@
 import os
 import json
-import requests
+import urllib.request
+import urllib.error
 import sys
 
 try:
@@ -58,11 +59,19 @@ def generate_image(story_filename=None):
 
     payload = {"prompt": workflow_data}
     try:
-        response = requests.post(COMFYUI_URL, json=payload, timeout=COMFYUI_TIMEOUT_SECONDS)
-        response.raise_for_status()
+        body_bytes = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+        req = urllib.request.Request(
+            COMFYUI_URL,
+            data=body_bytes,
+            method='POST',
+            headers={'Content-Type': 'application/json'}
+        )
+        with urllib.request.urlopen(req, timeout=COMFYUI_TIMEOUT_SECONDS) as resp:
+            resp.read()  # 確保回應完整讀取
         print(f"✅ 已送至 ComfyUI。請確保儲存檔名為: images/{dest_img_name}")
-    except requests.exceptions.ConnectionError:
-        print(f"❌ ComfyUI 連線失敗 (請確認 ComfyUI 已啟動於 8188 埠)")
+    except urllib.error.URLError as e:
+        # URLError 包含連線拒絕 (ConnectionRefusedError) 與 timeout
+        print(f"❌ ComfyUI 連線失敗 (請確認 ComfyUI 已啟動於 8188 埠): {e.reason}")
     except Exception as e:
         print(f"❌ 圖片生成請求失敗: {e}")
 
