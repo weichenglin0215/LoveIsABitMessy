@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LoveLine 💬 - LoveIsABitMessy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/lpas_styles.css">
+  <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
+  <script src="js/supabaseClient.js" defer></script>
+  <style>
+    /* ── Reset & Base ── */
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      background: #0d0d12 url('https://w.wallhaven.cc/full/8o/wallhaven-8o9m6j.jpg') no-repeat center/cover fixed;
+      font-family: 'Noto Sans TC', sans-serif;
+      color: #e0e0e0;
+      margin: 0;
+    }
+
+    #glass-overlay {
+      position: fixed;
+      inset: 0;
+      background: hsla(0, 0%, 0%, 0.60);
+      backdrop-filter: blur(8px);
+      z-index: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    /* ── Variables ── */
+    :root {
+      --c-bg-panel: hsla(240, 20%, 9%, 0.88);
+      --c-border: hsla(266, 30%, 60%, 0.25);
+      --c-accent: hsl(262, 41%, 47%);
+      --c-accent-light: hsl(264, 71%, 80%);
+      --c-accent-hover: hsl(266, 56%, 64%);
+      --c-text-sec: hsl(261, 30%, 75%);
+      --c-msg-user-bg: linear-gradient(135deg, hsl(262, 60%, 35%), hsl(290, 50%, 28%));
+      --c-msg-ai-bg: hsla(240, 20%, 16%, 0.9);
+    }
+
+    /* ── App Shell ── */
+    .app-shell {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: var(--left-w, 260px) 220px 1fr;
+      height: calc(100vh - 46px);
+      /* 扣除頂部導覽列 46px */
+      gap: 0;
+    }
+
+    .app-shell.left-collapsed {
+      grid-template-columns: 30px 220px 1fr;
+    }
+
+    /* ── Panel base ── */
+    .panel {
+      display: flex;
+      flex-direction: column;
+      background: var(--c-bg-panel);
+      border-right: 1px solid var(--c-border);
+      overflow: hidden;
+      backdrop-filter: blur(6px);
+    }
+
+    .panel-header {
+      padding: 10px 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--c-accent-light);
+      letter-spacing: 0.1em;
+      border-bottom: 1px solid var(--c-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .panel-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--c-border);
+      border-radius: 4px;
+    }
+
+    /* ── Left Panel ── */
+    #panel-left {
+      transition: width 0.3s ease;
+    }
+
+    .app-shell.left-collapsed #panel-left .left-content {
+      display: none;
+    }
+
+    .collapse-btn {
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: #aaa;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--c-border);
+      border-radius: 4px;
+      padding: 2px 6px;
+      flex-shrink: 0;
+    }
+
+    .collapse-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    /* User selector */
+    .user-section {
+      padding: 10px;
+      border-bottom: 1px solid var(--c-border);
+      flex-shrink: 0;
+    }
+
+    .user-section label {
+      font-size: 0.78rem;
+      color: var(--c-text-sec);
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .user-section select,
+    .user-section input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--c-border);
+      color: #fff;
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: 0.85rem;
+    }
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--c-accent), hsl(330, 60%, 45%));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .user-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .user-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    /* Server / Model section */
+    .server-section {
+      padding: 8px 10px;
+      border-top: 1px solid var(--c-border);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .server-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: #f44;
+      box-shadow: 0 0 6px #f44;
+    }
+
+    .dot.online {
+      background: #4caf50;
+      box-shadow: 0 0 6px #4caf50;
+    }
+
+    .dot.flash {
+      animation: dot-flash 0.5s ease-out;
+    }
+
+    @keyframes dot-flash {
+
+      0%,
+      100% {
+        transform: scale(1)
+      }
+
+      50% {
+        transform: scale(1.5)
+      }
+    }
+
+    .server-label {
+      font-size: 0.78rem;
+      color: var(--c-text-sec);
+    }
+
+    .model-select-wrap {
+      margin-top: 4px;
+    }
+
+    .model-select-wrap select {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--c-border);
+      color: #fff;
+      border-radius: 6px;
+      padding: 4px 6px;
+      font-size: 0.78rem;
+    }
+
+    .log-box {
+      background: #000;
+      color: hsl(120, 50%, 60%);
+      font-family: monospace;
+      font-size: 0.7rem;
+      padding: 6px;
+      border-radius: 6px;
+      border: 1px solid #333;
+      flex: 1;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      margin-top: 6px;
+    }
+
+    /* ── Middle Panel (list) ── */
+    #panel-mid {
+      border-right: 1px solid var(--c-border);
+    }
+
+    .list-section-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--c-text-sec);
+      padding: 6px 8px 2px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .list-section-title button {
+      background: none;
+      border: none;
+      color: var(--c-accent-light);
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 0 4px;
+      transition: color 0.2s;
+    }
+
+    .list-section-title button:hover {
+      color: #fff;
+    }
+
+    .chat-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+      position: relative;
+      margin-bottom: 2px;
+    }
+
+    .chat-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .chat-item.active {
+      background: rgba(162, 89, 255, 0.18);
+    }
+
+    .chat-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, hsl(262, 60%, 40%), hsl(330, 50%, 40%));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      border: 1px solid var(--c-border);
+    }
+
+    .chat-avatar.group {
+      border-radius: 10px;
+    }
+
+    .chat-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .chat-name {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chat-preview {
+      font-size: 0.72rem;
+      color: var(--c-text-sec);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chat-item-btn {
+      background: none;
+      border: none;
+      color: #666;
+      cursor: pointer;
+      font-size: 0.9rem;
+      padding: 2px 4px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+
+    .chat-item-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--c-accent-light);
+    }
+
+    /* ── Right Panel (chat) ── */
+    #panel-right {
+      border-right: none;
+    }
+
+    #chat-header {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--c-border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    #chat-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    #chat-subtitle {
+      font-size: 0.75rem;
+      color: var(--c-text-sec);
+    }
+
+    /* Messages */
+    #chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .msg-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .msg-row.user {
+      flex-direction: row-reverse;
+    }
+
+    .msg-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, var(--c-accent), hsl(330, 60%, 45%));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      border: 1px solid var(--c-border);
+    }
+
+    .msg-bubble-wrap {
+      max-width: 70%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .msg-row.user .msg-bubble-wrap {
+      align-items: flex-end;
+    }
+
+    .msg-sender {
+      font-size: 0.7rem;
+      color: var(--c-text-sec);
+      margin-bottom: 3px;
+      padding: 0 4px;
+    }
+
+    .msg-bubble {
+      padding: 9px 13px;
+      border-radius: 14px;
+      font-size: 0.88rem;
+      line-height: 1.55;
+      word-break: break-word;
+      white-space: pre-wrap;
+      background: var(--c-msg-ai-bg);
+      border: 1px solid var(--c-border);
+    }
+
+    .msg-row.user .msg-bubble {
+      background: var(--c-msg-user-bg);
+      border-color: transparent;
+      color: #fff;
+    }
+
+    .msg-time {
+      font-size: 0.65rem;
+      color: #555;
+      margin-top: 3px;
+      padding: 0 4px;
+    }
+
+    .msg-typing .msg-bubble {
+      color: var(--c-text-sec);
+      font-style: italic;
+    }
+
+    /* Input area */
+    #chat-input-area {
+      padding: 10px 16px;
+      border-top: 1px solid var(--c-border);
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+      flex-shrink: 0;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    #msg-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid var(--c-border);
+      border-radius: 20px;
+      color: #fff;
+      font-size: 0.9rem;
+      padding: 9px 16px;
+      font-family: inherit;
+      resize: none;
+      outline: none;
+      max-height: 120px;
+      transition: border-color 0.2s;
+    }
+
+    #msg-input:focus {
+      border-color: var(--c-accent-light);
+    }
+
+    #msg-input::placeholder {
+      color: #555;
+    }
+
+    #btn-send {
+      background: var(--c-accent);
+      border: none;
+      border-radius: 50%;
+      width: 38px;
+      height: 38px;
+      color: #fff;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+
+    #btn-send:hover {
+      background: var(--c-accent-hover);
+    }
+
+    #btn-send:disabled {
+      background: #333;
+      cursor: not-allowed;
+    }
+
+    /* Empty state */
+    .empty-chat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: #444;
+    }
+
+    .empty-chat .icon {
+      font-size: 3rem;
+    }
+
+    .empty-chat p {
+      font-size: 0.9rem;
+    }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .modal-overlay.hidden {
+      display: none;
+    }
+
+    .modal {
+      background: hsl(255, 30%, 10%);
+      border: 1px solid var(--c-border);
+      border-radius: 14px;
+      padding: 24px;
+      width: 420px;
+      max-width: 95vw;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    }
+
+    .modal h3 {
+      font-size: 1.05rem;
+      color: var(--c-accent-light);
+      margin-bottom: 16px;
+    }
+
+    .modal label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--c-text-sec);
+      margin-bottom: 4px;
+      margin-top: 10px;
+    }
+
+    .modal input,
+    .modal select,
+    .modal textarea {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--c-border);
+      color: #fff;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 0.88rem;
+      font-family: inherit;
+    }
+
+    .modal textarea {
+      min-height: 60px;
+      resize: vertical;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 16px;
+    }
+
+    .btn-modal {
+      padding: 7px 18px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.88rem;
+      transition: 0.2s;
+    }
+
+    .btn-modal.primary {
+      background: var(--c-accent);
+      color: #fff;
+    }
+
+    .btn-modal.primary:hover {
+      background: var(--c-accent-hover);
+    }
+
+    .btn-modal.cancel {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ccc;
+    }
+
+    .btn-modal.cancel:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    /* Char card list in modal */
+    .char-check-list {
+      max-height: 180px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 4px;
+    }
+
+    .char-check-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 6px;
+      border-radius: 6px;
+    }
+
+    .char-check-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .char-check-item label {
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: #ddd;
+    }
+
+    /* Logo in header strip (top bar) */
+    .app-topbar {
+      position: relative;
+      z-index: 2;
+      background: var(--c-bg-panel);
+      border-bottom: 1px solid var(--c-border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 16px;
+      height: 46px;
+      flex-shrink: 0;
+    }
+
+    .app-logo {
+      font-size: 1.05rem;
+      font-weight: 700;
+      background: linear-gradient(45deg, #a78bfa, #f472b6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .topbar-nav a {
+      color: var(--c-text-sec);
+      text-decoration: none;
+      font-size: 0.82rem;
+      padding: 3px 10px;
+      border-radius: 12px;
+      transition: all 0.2s;
+    }
+
+    .topbar-nav a:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .topbar-nav a.active {
+      color: var(--c-accent-light);
+      background: rgba(162, 89, 255, 0.15);
+    }
+
+    /* outer wrap */
+    .app-outer {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    .app-inner {
+      flex: 1;
+      overflow: hidden;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="glass-overlay"></div>
+
+  <div class="app-outer">
+    <!-- Top Bar -->
+    <div class="app-topbar">
+      <span class="app-logo">💌 LoveLine</span>
+      <nav class="topbar-nav" style="display:flex;gap:4px;">
+        <a href="index.html">🏠 首頁</a>
+        <a href="characters_editor.html">🎭 角色編輯</a>
+        <a href="daily_run.html">📅 每日日記</a>
+        <a href="loveline.html" class="active">💬 LoveLine 聊天</a>
+        <a href="novel_generator.html">📖 小說生成器</a>
+      </nav>
+    </div>
+
+    <!-- Main 3-column layout -->
+    <div class="app-inner">
+      <div class="app-shell" id="app-shell">
+
+        <!-- ═══ LEFT PANEL ═══ -->
+        <div class="panel" id="panel-left">
+          <!-- Header with collapse button -->
+          <div class="panel-header">
+            <span class="left-content" style="font-size:0.85rem;">⚙️ 控制台</span>
+            <button class="collapse-btn" id="btn-collapse-left" title="縮放左側欄">◀</button>
+          </div>
+
+          <div class="left-content" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+            <!-- User Section -->
+            <div class="user-section">
+              <div class="user-row" id="current-user-row">
+                <div class="user-avatar" id="user-avatar-icon">👤</div>
+                <div style="flex:1;">
+                  <div class="user-name" id="current-user-name">— 請選擇 —</div>
+                  <div style="font-size:0.7rem;color:var(--c-text-sec);">目前使用者</div>
+                </div>
+                <button id="btn-edit-user-profile" title="編輯使用者資料"
+                  style="background:none;border:none;color:var(--c-accent-light);cursor:pointer;font-size:1.1rem;">⚙️</button>
+              </div>
+              <label>選擇使用者</label>
+              <select id="user-select">
+                <option value="">— 請選擇 —</option>
+              </select>
+              <div style="margin-top:8px;display:flex;gap:6px;">
+                <input type="text" id="new-user-input" placeholder="新增使用者名稱..." style="flex:1;">
+                <button id="btn-add-user"
+                  style="background:var(--c-accent);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.8rem;">+新增</button>
+              </div>
+            </div>
+
+            <!-- Server Status -->
+            <div class="server-section">
+              <div class="server-row">
+                <div class="dot" id="server-dot"></div>
+                <span class="server-label" id="server-status-text">偵測中…</span>
+              </div>
+              <div class="model-select-wrap">
+                <label style="font-size:0.72rem;color:var(--c-text-sec);display:block;margin-bottom:3px;">🤖 AI
+                  模型</label>
+                <select id="model-select">
+                  <option value="gemma4">gemma4</option>
+                </select>
+              </div>
+              <div class="log-box" id="log-output">等待中…</div>
+            </div>
+          </div>
+
+          <!-- collapsed icon -->
+          <div id="collapsed-icon"
+            style="display:none;flex-direction:column;align-items:center;padding:8px;gap:8px;writing-mode:vertical-rl;">
+            <span style="font-size:0.7rem;color:var(--c-text-sec);">控制台</span>
+          </div>
+        </div>
+
+        <!-- ═══ MIDDLE PANEL ═══ -->
+        <div class="panel" id="panel-mid">
+          <div class="panel-header">
+            <span>💬 聊天</span>
+          </div>
+          <div class="panel-scroll">
+            <!-- 1-on-1 -->
+            <div class="list-section-title">
+              <span>👤 角色</span>
+              <button id="btn-new-1on1" title="新增對話">＋</button>
+            </div>
+            <div id="list-1on1">
+              <div style="font-size:0.75rem;color:#555;padding:6px 8px;">尚無對話</div>
+            </div>
+            <!-- Group -->
+            <div class="list-section-title" style="margin-top:10px;">
+              <span>👥 聊天室</span>
+              <button id="btn-new-group" title="建立聊天室">＋</button>
+            </div>
+            <div id="list-group">
+              <div style="font-size:0.75rem;color:#555;padding:6px 8px;">尚無聊天室</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ RIGHT PANEL ═══ -->
+        <div class="panel" id="panel-right">
+          <div id="chat-header">
+            <div class="chat-avatar" id="chat-header-avatar">💬</div>
+            <div>
+              <div id="chat-title">請選擇一個對話</div>
+              <div id="chat-subtitle" style="font-size:0.72rem;color:var(--c-text-sec);"></div>
+            </div>
+            <div style="margin-left:auto;display:flex;gap:6px;">
+              <button id="btn-clear-chat" title="清空畫面"
+                style="background:none;border:none;color:#666;cursor:pointer;font-size:1rem;padding:4px 8px;border-radius:6px;"
+                disabled>🗑️</button>
+            </div>
+          </div>
+
+          <div id="chat-messages"></div>
+
+          <div class="empty-chat" id="empty-state" style="display: flex;">
+            <div class="icon">💌</div>
+            <p>選擇角色或聊天室開始聊天</p>
+          </div>
+
+          <div id="chat-input-area">
+            <textarea id="msg-input" rows="1" placeholder="輸入訊息…（Shift+Enter 換行，Enter 送出）" disabled></textarea>
+            <button id="btn-send" disabled>➤</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Edit User Profile ── -->
+  <div class="modal-overlay hidden" id="modal-user-edit">
+    <div class="modal" style="width: 480px;">
+      <h3>👤 編輯使用者資料</h3>
+      <label>顯示名稱 (暱稱)</label>
+      <input type="text" id="modal-user-name" placeholder="輸入您的暱稱">
+
+      <label>關聯角色卡 (選填)</label>
+      <select id="modal-user-char-select">
+        <option value="">— 無 —</option>
+      </select>
+
+      <label>資料覆蓋設定 (關鍵字覆蓋，如：生日: 01-01, 血型: O...)</label>
+      <textarea id="modal-user-persona" placeholder="在此輸入要覆寫角色卡的資料內容..."></textarea>
+
+      <label>額外補充資料 (將直接加入 AI 提示詞)</label>
+      <textarea id="modal-user-extra" placeholder="在此輸入更多關於使用者的描述..."></textarea>
+
+      <div class="modal-actions">
+        <button class="btn-modal cancel" id="btn-modal-user-cancel">取消</button>
+        <button class="btn-modal primary" id="btn-modal-user-ok">儲存設定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: New 1-on-1 ── -->
+  <div class="modal-overlay hidden" id="modal-1on1">
+    <div class="modal">
+      <h3>💬 新增對話</h3>
+      <label>選擇角色卡</label>
+      <select id="modal-char-select">
+        <option value="">— 讀取中 —</option>
+      </select>
+      <label>角色設定（可選，留空則使用預設）</label>
+      <textarea id="modal-char-persona" placeholder="可在此覆寫角色個性描述..."></textarea>
+      <div class="modal-actions">
+        <button class="btn-modal cancel" id="btn-modal-1on1-cancel">取消</button>
+        <button class="btn-modal primary" id="btn-modal-1on1-ok">建立對話</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: New Group ── -->
+  <div class="modal-overlay hidden" id="modal-group">
+    <div class="modal">
+      <h3>👥 建立聊天室</h3>
+      <label>聊天室名稱</label>
+      <input type="text" id="modal-group-name" placeholder="例如：班級群組、約會計劃">
+      <label>選擇參與角色（可多選）</label>
+      <div class="char-check-list" id="modal-group-chars"></div>
+      <div class="modal-actions">
+        <button class="btn-modal cancel" id="btn-modal-group-cancel">取消</button>
+        <button class="btn-modal primary" id="btn-modal-group-ok">建立聊天室</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Edit Session ── -->
+  <div class="modal-overlay hidden" id="modal-edit">
+    <div class="modal" style="width: 480px;">
+      <h3>⚙️ 對話設定</h3>
+      <label>對話標題</label>
+      <input type="text" id="modal-edit-title" placeholder="標題">
+
+      <label>角色資料覆蓋設定 (關鍵字覆蓋，如：性格: 害羞...)</label>
+      <textarea id="modal-edit-persona" placeholder="在此輸入要覆寫角色卡的資料內容..."></textarea>
+
+      <label>額外補充資料 (將直接加入 AI 提示詞)</label>
+      <textarea id="modal-edit-extra" placeholder="在此輸入更多關於此對話的補充描述..."></textarea>
+
+      <div class="modal-actions">
+        <button class="btn-modal cancel" id="btn-modal-edit-cancel">取消</button>
+        <button class="btn-modal" id="btn-modal-edit-delete"
+          style="background:rgba(244,67,54,0.2);color:#f44336;margin-right:auto;">🗑️ 刪除</button>
+        <button class="btn-modal primary" id="btn-modal-edit-ok">儲存設定</button>
+      </div>
+    </div>
+  </div>
+
+
+  <script src="js/loveline_app.js" defer></script>
+</body>
+
+</html>

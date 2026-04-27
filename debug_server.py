@@ -595,7 +595,6 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                                         sections.append(combined_str)
                         except:
                             # 嘗試解析為純字串列表
-                            import re
                             raw_titles = re.findall(r'"([^"]+)"', json_str)
                             if raw_titles:
                                 sections = [t.strip() for t in raw_titles if t.strip()]
@@ -659,6 +658,53 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header('Content-type', 'application/json; charset=utf-8')
                 self.end_headers()
                 self.wfile.write(json.dumps({"content": content, "debug_prompt": prompt}, ensure_ascii=False).encode('utf-8'))
+
+            elif self.path == '/api/chat_reply':
+                ###########################################################################
+                # LoveLine: 根據對話歷史與角色卡，請 Ollama 生成角色回應
+                ###########################################################################
+                from prompt_utils import build_chat_reply_prompt
+                
+                character      = params.get('character', {})
+                character_name = params.get('character_name', '角色')
+                user_name      = params.get('user_name', '使用者')
+                user_message   = params.get('user_message', '')
+                history        = params.get('history', [])   # [{role, name, content}]
+                
+                # 新增的進階設定參數
+                persona_override      = params.get('persona_override', '')
+                session_extra         = params.get('session_extra', '')
+                user_char_data        = params.get('user_character', {})
+                user_persona_override = params.get('user_persona_override', '')
+                user_extra            = params.get('user_extra', '')
+                
+                session_type   = params.get('session_type', 'one_on_one')
+                participants   = params.get('participants', [])
+                model_name     = params.get('model', 'gemma4')
+
+                prompt = build_chat_reply_prompt(
+                    character, character_name, user_name, user_message, history,
+                    persona_override=persona_override,
+                    session_extra=session_extra,
+                    user_char_data=user_char_data,
+                    user_persona_override=user_persona_override,
+                    user_extra=user_extra,
+                    session_type=session_type,
+                    other_participants=participants
+                )
+
+                print(f"\n[LoveLine] chat_reply | char={character_name} | user={user_name} | model={model_name}")
+                reply_text = _ollama_generate_direct(model_name, prompt, temperature=0.80)
+                
+                # 清理回覆內容
+                reply_text = reply_text.strip()
+                reply_text = re.sub(rf'^{character_name}[:：\s]*', '', reply_text).strip()
+                reply_text = reply_text.strip('"').strip("'")
+
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"reply": reply_text, "debug_prompt": prompt}, ensure_ascii=False).encode('utf-8'))
 
             elif self.path == '/api/save_diary':
                 filename = params.get('filename')

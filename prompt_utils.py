@@ -520,6 +520,89 @@ def build_novel_content_prompt(char_data: dict, current_chapter: str, chapter_ou
 
     user_input = f"請撰寫『{section_title}』的內容。"
     return f"{system_prompt}\n\n【當前任務/情境】\n{user_input}\n\n請開始執行（以繁體中文）："
+def build_chat_reply_prompt(char_data, char_name, user_name, user_message, history, 
+                            persona_override="", session_extra="", 
+                            user_char_data=None, user_persona_override="", user_extra="",
+                            session_type="one_on_one", other_participants=None):
+    """
+    建立 LoveLine 聊天的提示詞，支援使用者資料與進階覆寫。
+    """
+    # --- 1. 處理目標角色 (AI) 的資料 ---
+    target_char = dict(char_data)
+    
+    # 關鍵字覆蓋邏輯 (簡易實作：如果在 persona_override 看到特定關鍵字就替換)
+    for key in ['生日', '血型', '星座', '年齡', '職業', '性格']:
+        if persona_override and f"{key}:" in persona_override:
+            # 這裡只是一個邏輯標記，實際 Prompt 會包含 persona_override 讓 AI 自己理解
+            pass
 
+    char_desc_parts = []
+    # 優先顯示對話特定的覆寫
+    if persona_override:
+        char_desc_parts.append(f"【對話特定設定 (優先)】：\n{persona_override}")
+    
+    # 基礎角色資訊
+    personality = target_char.get('personality', target_char.get('personality_description', ''))
+    if personality: char_desc_parts.append(f"性格描述：{personality}")
+    
+    backstory = target_char.get('backstory', target_char.get('description', ''))
+    if backstory: char_desc_parts.append(f"背景故事：{backstory}")
+    
+    pt = target_char.get('personality_type', '')
+    if pt: char_desc_parts.append(f"人格類型 (LPAS)：{pt}")
+    
+    # 對話特定的額外補充
+    if session_extra:
+        char_desc_parts.append(f"【對話額外補充】：\n{session_extra}")
 
+    char_desc = "\n".join(char_desc_parts)
 
+    # --- 2. 處理使用者 (User) 的資料 ---
+    user_desc_parts = [f"使用者姓名：{user_name}"]
+    if user_persona_override:
+        user_desc_parts.append(f"使用者特質：{user_persona_override}")
+    if user_char_data:
+        u_card = user_char_data
+        u_personality = u_card.get('personality', u_card.get('personality_description', ''))
+        if u_personality: user_desc_parts.append(f"使用者背景/性格：{u_personality}")
+    if user_extra:
+        user_desc_parts.append(f"【關於使用者的額外資訊】：\n{user_extra}")
+    
+    user_context = "\n".join(user_desc_parts)
+
+    # 群組資訊
+    group_context = ""
+    if session_type == "group" and other_participants:
+        names = [p.get('name') for p in other_participants if p.get('name')]
+        if names:
+            group_context = f"\n當前環境：這是一個群組聊天室。除了你和 {user_name} 之外，參與者還有：{', '.join(names)}。"
+
+    # 歷史紀錄轉文字
+    history_text = ""
+    for h in history[-15:]:
+        name = h.get('name', '未知')
+        content = h.get('content', '')
+        history_text += f"{name}: {content}\n"
+
+    prompt = f"""你現在要扮演「{char_name}」這個角色，在通訊軟體 LoveLine 上與使用者進行即時對話。
+
+【你的角色設定】
+{char_desc}
+{group_context}
+
+【關於對話對象 (使用者) 的資訊】
+{user_context}
+
+【對話規則】
+1. 嚴格遵守角色性格，說話口吻要符合設定。
+2. 這是通訊軟體，回應應簡短自然（1~3 句話為主），偶爾可以使用表情符號。
+3. 你的回覆對象是 {user_name}。
+4. **絕對不要**以「{char_name}:」作為開頭，直接輸出對話內容即可。
+5. 參考使用者的設定來調整你的互動方式（例如使用者如果是你的上司、戀人或陌生人）。
+
+【之前的對話紀錄】
+{history_text}
+{user_name}: {user_message}
+{char_name}:"""
+    
+    return prompt.strip()
