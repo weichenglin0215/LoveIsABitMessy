@@ -7,9 +7,11 @@
     <title>AI生成日記 - LoveIsABitMessy</title>
     <link rel="stylesheet" href="css/lpas_styles.css">
     <!-- 中央角色資料與邏輯 -->
-    <script src="js/character_logic.js" defer></script>
+    <script src="js/character_logic.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/supabaseClient.js" defer></script>
+    <script src="js/supabaseClient.js"></script>
+    <script src="js/model_options_app.js" defer></script>
+    <script src="js/writer_settings_app.js" defer></script>
     <style>
         body {
             display: block;
@@ -492,6 +494,27 @@
                         <option value="gemma4">gemma4</option>
                     </select>
                 </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <label style="font-size:1rem; color:#aaa;">⚙️ 模型參數：</label>
+                    <select id="model-options-select" style="max-width: 200px;">
+                        <option value="">預設</option>
+                    </select>
+                    <button id="btn-add-model-option" class="ai-btn" style="padding: 4px 10px; font-size: 0.9rem;">+編輯</button>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <label style="font-size:1rem; color:#aaa;">🖋️ 寫作風格：</label>
+                    <select id="writer-style-select" class="ws-style-dropdown" style="max-width: 200px;">
+                        <option value="">無</option>
+                    </select>
+                    <button id="btn-edit-writer-style" class="ai-btn" style="padding: 4px 10px; font-size: 0.9rem;" onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select').value)">+編輯</button>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <label style="font-size:1rem; color:#aaa;">📝 寫作範本：</label>
+                    <select id="writer-sample-select" class="ws-sample-dropdown" style="max-width: 200px;">
+                        <option value="">無</option>
+                    </select>
+                    <button id="btn-edit-writer-sample" class="ai-btn" style="padding: 4px 10px; font-size: 0.9rem;" onclick="WriterSettingsApp.openSampleModal(document.getElementById('writer-sample-select').value)">+編輯</button>
+                </div>
             </div>
             <div id="log-output" class="log-area" style="height: 300px; font-size: 1rem;">等待任務...</div>
             <div id="diary-cloud-status" class="cloud-status">雲端狀態</div>
@@ -717,7 +740,10 @@
                 others_occupied: document.getElementById('others-have-partner').checked,
                 diary_date: document.getElementById('diary-date').value,
                 diary_time: document.getElementById('diary-time').value,
-                ai_model: document.getElementById('model-select').value
+                ai_model: document.getElementById('model-select').value,
+                model_options: document.getElementById('model-options-select').value,
+                writer_style: document.getElementById('writer-style-select').value,
+                writer_sample: document.getElementById('writer-sample-select').value
             };
 
             const payload = {
@@ -770,6 +796,9 @@
             document.getElementById('diary-date').value = pd.diary_date || "";
             document.getElementById('diary-time').value = pd.diary_time || "00";
             document.getElementById('model-select').value = pd.ai_model || "gemma4";
+            document.getElementById('model-options-select').value = pd.model_options || "";
+            document.getElementById('writer-style-select').value = pd.writer_style || "";
+            document.getElementById('writer-sample-select').value = pd.writer_sample || "";
         });
 
         // ====== 載入雲端角色清單 ======
@@ -1008,7 +1037,9 @@
                     scenario: finalScenario,
                     relationship: relationship,
                     other_chars: other_chars,
-                    model: document.getElementById('model-select').value
+                    model: document.getElementById('model-select').value,
+                    model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
+                    writer_settings: (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || null
                 };
 
                 let cardJson = null;

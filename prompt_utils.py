@@ -90,7 +90,51 @@ def _enrich_char_data(char_data: dict, relationship_params: dict = None) -> dict
     
     return c
 
-def build_daily_prompt(char_data: dict, scenario: str, relationship_params: dict = None, other_chars: list = None) -> str:
+def _format_char_context(c_raw, is_main=False, prefix_override=None):
+    """
+    將角色 JSON 格式化為提示詞用的文字區塊。
+    """
+    c = _enrich_char_data(c_raw)
+    prefix = prefix_override if prefix_override else ("女主角" if is_main else "")
+    
+    habits = c.get('habits', [])
+    if isinstance(habits, list): habits = ", ".join(habits)
+    elif not habits: habits = ""
+
+    return (
+        f"{prefix}姓名：{c.get('name', '')}\n"
+        f"{prefix}性別：{c.get('gender', '')}\n"
+        f"{prefix}年齡：{c.get('age', '')}\n"
+        f"{prefix}生日：{c.get('birthday', '')}\n"
+        f"{prefix}星座描述：{c.get('zodiac_description', '')}\n"
+        f"{prefix}血型描述：{c.get('blood_type_description', '')}\n"
+        f"{prefix}個性類型：{c.get('personality_type', '')}\n"
+        f"{prefix}個性描述：{c.get('personality', '')}\n"
+        f"{prefix}說話口吻：{c.get('speech_style', '')}\n"
+        f"{prefix}職業：{c.get('occupation', c.get('position', ''))}\n"
+        f"{prefix}習慣/興趣：{habits}\n"
+        f"{prefix}外表特徵：{c.get('appearance', '')}\n"
+        f"{prefix}身體數據：身高{c.get('height', '')}公分，體重{c.get('weight', '')}公斤，胸圍{c.get('bust', '')}\n"
+    )
+
+def _format_writer_context(writer_settings: dict) -> str:
+    """
+    將知名作家寫作風格與範本格式化為提示詞用的文字區塊。
+    """
+    if not writer_settings:
+        return ""
+    
+    style = writer_settings.get('style')
+    sample = writer_settings.get('sample')
+    
+    res = ""
+    if style:
+        res += f"\n【知名作家寫作風格參考指令】\n{style}\n"
+    if sample:
+        res += f"\n【知名作家寫作範本參考】\n{sample}\n"
+    return res
+
+def build_daily_prompt(char_data: dict, scenario: str, relationship_params: dict = None, other_chars: list = None, writer_settings: dict = None) -> str:
     """建立「日記生成」的完整提示詞 (包含系統提示與當日情境/關係動態)"""
     #####################################################################################
     #建立「日記生成」的完整提示詞 (包含系統提示與當日情境/關係動態)
@@ -109,22 +153,7 @@ def build_daily_prompt(char_data: dict, scenario: str, relationship_params: dict
             c_name = c.get('name', '')
             # 當設定情境 (Scenario) 欄位有提到該位閨密名字時，才加入
             if c_name and c_name in scenario:
-                c_en = _enrich_char_data(c, {"partner_status": "戀愛期"})
-                
-                desc = (
-                    f"姓名：{c_name}\n"
-                    f"年齡：{c_en.get('age', '')}\n"
-                    f"生日：{c_en.get('birthday', '')}\n"
-                    f"星座描述：{c_en.get('zodiac_description', '')}\n"
-                    f"血型描述：{c_en.get('blood_type_description', '')}\n"
-                    f"個性描述：{c_en.get('personality', '')}\n"
-                    f"說話口吻：{c_en.get('speech_style', '')}\n"
-                    f"職業：{c_en.get('occupation', c_en.get('position', ''))}\n"
-                    f"習慣：{c_en.get('habits', '')}\n"
-                    f"外表特徵：{c_en.get('appearance', '')}\n"
-                    f"身體數據：身高{c_en.get('height', '')}公分，體重{c_en.get('weight', '')}公斤，胸圍{c_en.get('bust', '')}\n"
-                )
-                other_lines.append(desc)
+                other_lines.append(_format_char_context(c))
         if other_lines:
             other_context = "\n" + "\n\n".join(other_lines)
 
@@ -156,24 +185,12 @@ def build_daily_prompt(char_data: dict, scenario: str, relationship_params: dict
 2. 流水帳或商業文件或教科書的文體。
 
 【女主角角色設定】
-女主角姓名：{char_data.get('name', '')}
-女主角年齡：{char_data.get('age', '')}
-女主角生日：{char_data.get('birthday', '')}
-女主角星座：{char_data.get('zodiac', '')}
-女主角星座描述：{char_data.get('zodiac_description', '')}
-女主角血型：{char_data.get('blood_type', '')}
-女主角血型描述：{char_data.get('blood_type_description', '')}
-女主角個性類型：{char_data.get('personality_type', '')}
-女主角個性描述：{current_personality}
-女主角說話口吻：{char_data.get('speech_style', '')}
-女主角職業：{char_data.get('occupation', char_data.get('position', ''))}
-女主角習慣/興趣：{', '.join(habits)}
-女主角外表特徵：{char_data.get('appearance', '')}
-女主角身體數據：身高 {char_data.get('height', '165')}cm / 體重 {char_data.get('weight', '55')}kg / 上圍 {char_data.get('bust', 'C')}杯
+{_format_char_context(char_data, is_main=True)}
 女主角目前關係：{char_data.get('relationship', '')}
 
 
 【其他配角角色設定】{other_context}
+{_format_writer_context(writer_settings)}
 
 """.strip()
 
@@ -220,7 +237,7 @@ def build_daily_prompt(char_data: dict, scenario: str, relationship_params: dict
     return f"{system_prompt}\n\n【當前任務/情境】\n{final_scenario}\n\n請開始執行（以繁體中文）："
 
 def build_chapters_from_premise_prompt(char_data: dict, book_title: str, story_premise: str, other_chars: list = None,
-                                       locked_chapters: list = None) -> str:
+                                       locked_chapters: list = None, writer_settings: dict = None) -> str:
     """建立「根據故事粗綱生成各章標題與描述」的提示詞
 
     Args:
@@ -230,32 +247,14 @@ def build_chapters_from_premise_prompt(char_data: dict, book_title: str, story_p
     #建立「根據粗綱生成各章標題與描述」的提示詞
     #####################################################################################    
     char_data = _enrich_char_data(char_data, {"partner_status": "戀愛期"})
-    current_personality = char_data.get('personality', '')
-    habits = char_data.get("habits", []) or []
 
     # 處理閨密/其他角色資料
     other_context = ""
     if other_chars and len(other_chars) > 0:
         other_lines = []
         for c in other_chars:
-            c_name = c.get('name', '')
-            if c_name:
-                c_en = _enrich_char_data(c, {"partner_status": "戀愛期"})
-                
-                desc = (
-                    f"姓名：{c_name}\n"
-                    f"年齡：{c_en.get('age', '')}\n"
-                    f"生日：{c_en.get('birthday', '')}\n"
-                    f"星座描述：{c_en.get('zodiac_description', '')}\n"
-                    f"血型描述：{c_en.get('blood_type_description', '')}\n"
-                    f"個性描述：{c_en.get('personality', '')}\n"
-                    f"說話口吻：{c_en.get('speech_style', '')}\n"
-                    f"職業：{c_en.get('occupation', c_en.get('position', ''))}\n"
-                    f"習慣：{c_en.get('habits', '')}\n"
-                    f"外表特徵：{c_en.get('appearance', '')}\n"
-                    f"身體數據：身高{c_en.get('height', '')}公分，體重{c_en.get('weight', '')}公斤，胸圍{c_en.get('bust', '')}\n"
-                )
-                other_lines.append(desc)
+            if c.get('name'):
+                other_lines.append(_format_char_context(c))
         if other_lines:
             other_context = "\n【其他配角角色設定】\n" + "\n\n".join(other_lines)
 
@@ -304,28 +303,17 @@ def build_chapters_from_premise_prompt(char_data: dict, book_title: str, story_p
 {locked_context}
 
 【角色設定】
-姓名：{char_data.get('name', '')}
-年齡：{char_data.get('age', '')}
-生日：{char_data.get('birthday', '')}
-星座：{char_data.get('zodiac', '')}
-星座描述：{char_data.get('zodiac_description', '')}
-血型：{char_data.get('blood_type', '')}
-血型描述：{char_data.get('blood_type_description', '')}
-個性類型：{char_data.get('personality_type', '')}
-個性描述：{current_personality}
-說話口吻：{char_data.get('speech_style', '')}
-職業：{char_data.get('occupation', char_data.get('position', ''))}
-習慣/興趣：{', '.join(habits)}
-外表特徵：{char_data.get('appearance', '')}
+{_format_char_context(char_data, is_main=True)}
 目前關係：{char_data.get('relationship', '')}
 {other_context}
+{_format_writer_context(writer_settings)}
 
 """.strip()
 
     return f"{system_prompt}\n\n請開始規劃（以繁體中文）："
 
 def build_chapter_outline_prompt(char_data: dict, book_title: str, outline_desc: str, other_chars: list = None,
-                                  story_premise: str = "", all_chapters: list = None, chapter_index: int = 0) -> str:
+                                  story_premise: str = "", all_chapters: list = None, chapter_index: int = 0, writer_settings: dict = None) -> str:
     """根據章的標題與描述來建立「各小節大綱」的完整提示詞
 
     Args:
@@ -337,32 +325,14 @@ def build_chapter_outline_prompt(char_data: dict, book_title: str, outline_desc:
     # 根據章的標題與描述來建立「各小節大綱」的完整提示詞
     #####################################################################################
     char_data = _enrich_char_data(char_data, {"partner_status": "戀愛期"})
-    current_personality = char_data.get('personality', '')
-    habits = char_data.get("habits", []) or []
 
     # 處理閨密/其他角色資料
     other_context = ""
     if other_chars and len(other_chars) > 0:
         other_lines = []
         for c in other_chars:
-            c_name = c.get('name', '')
-            if c_name:
-                c_en = _enrich_char_data(c, {"partner_status": "戀愛期"})
-                
-                desc = (
-                    f"姓名：{c_name}\n"
-                    f"年齡：{c_en.get('age', '')}\n"
-                    f"生日：{c_en.get('birthday', '')}\n"
-                    f"星座描述：{c_en.get('zodiac_description', '')}\n"
-                    f"血型描述：{c_en.get('blood_type_description', '')}\n"
-                    f"個性描述：{c_en.get('personality', '')}\n"
-                    f"說話口吻：{c_en.get('speech_style', '')}\n"
-                    f"職業：{c_en.get('occupation', c_en.get('position', ''))}\n"
-                    f"習慣：{c_en.get('habits', '')}\n"
-                    f"外表特徵：{c_en.get('appearance', '')}\n"
-                    f"身體數據：身高{c_en.get('height', '')}公分，體重{c_en.get('weight', '')}公斤，胸圍{c_en.get('bust', '')}\n"
-                )
-                other_lines.append(desc)
+            if c.get('name'):
+                other_lines.append(_format_char_context(c))
         if other_lines:
             other_context = "\n【其他配角角色設定】\n" + "\n\n".join(other_lines)
 
@@ -418,63 +388,22 @@ def build_chapter_outline_prompt(char_data: dict, book_title: str, outline_desc:
 {chapters_overview if chapters_overview else '（未提供）'}
 
 【角色設定】
-姓名：{char_data.get('name', '')}
-年齡：{char_data.get('age', '')}
-生日：{char_data.get('birthday', '')}
-星座：{char_data.get('zodiac', '')}
-星座描述：{char_data.get('zodiac_description', '')}
-血型：{char_data.get('blood_type', '')}
-血型描述：{char_data.get('blood_type_description', '')}
-個性類型：{char_data.get('personality_type', '')}
-個性描述：{current_personality}
-說話口吻：{char_data.get('speech_style', '')}
-職業：{char_data.get('occupation', char_data.get('position', ''))}
-習慣/興趣：{', '.join(habits)}
-外表特徵：{char_data.get('appearance', '')}
+{_format_char_context(char_data, is_main=True)}
 目前關係：{char_data.get('relationship', '')}
 {other_context}
+{_format_writer_context(writer_settings)}
 
 """.strip()
 
     user_input = f"請為第{current_ch_num}章『{outline_desc}』撰寫本章的各小節大綱。"
     return f"{system_prompt}\n\n【當前任務/情境】\n{user_input}\n\n請開始執行（以繁體中文）："
 
-def build_novel_content_prompt(char_data: dict, current_chapter: str, chapter_outline: str, section_title: str, other_chars: list = None) -> str:
+def build_novel_content_prompt(char_data: dict, current_chapter: str, chapter_outline: str, section_title: str, other_chars: list = None, writer_settings: dict = None) -> str:
     """建立「小說本文生成」的完整提示詞"""
     #####################################################################################
     #建立「小說本文生成」的完整提示詞
     #####################################################################################
     char_data = _enrich_char_data(char_data, {"partner_status": "戀愛期"})
-    habits = char_data.get("habits", []) or []
-    
-    # 處理閨密/其他角色資料
-    other_context = ""
-    if other_chars and len(other_chars) > 0:
-        other_lines = []
-        for c in other_chars:
-            c_name = c.get('name', '')
-            if c_name:
-                c_en = _enrich_char_data(c, {"partner_status": "戀愛期"})
-                
-                desc = (
-                    f"姓名：{c_name}\n"
-                    f"年齡：{c_en.get('age', '')}\n"
-                    f"生日：{c_en.get('birthday', '')}\n"
-                    f"星座描述：{c_en.get('zodiac_description', '')}\n"
-                    f"血型描述：{c_en.get('blood_type_description', '')}\n"
-                    f"個性描述：{c_en.get('personality', '')}\n"
-                    f"說話口吻：{c_en.get('speech_style', '')}\n"
-                    f"職業：{c_en.get('occupation', c_en.get('position', ''))}\n"
-                    f"習慣：{c_en.get('habits', '')}\n"
-                    f"外表特徵：{c_en.get('appearance', '')}\n"
-                    f"身體數據：身高{c_en.get('height', '')}公分，體重{c_en.get('weight', '')}公斤，胸圍{c_en.get('bust', '')}\n"
-                )
-                other_lines.append(desc)
-        if other_lines:
-            other_context = "\n【其他配角角色設定】\n" + "\n\n".join(other_lines)
-
-    # 主角個性欄位
-    current_personality = char_data.get('personality', "")
 
     system_prompt = f"""
 你現在是獲獎無數的都會言情小說家。請根據以下情境與完整的角色設定，撰寫小說正文。
@@ -497,21 +426,10 @@ def build_novel_content_prompt(char_data: dict, current_chapter: str, chapter_ou
 9. 遵循日記風格和形式: 根據您想要表達的主題和風格，將日記寫成文字或圖片。這可以讓讀者更容易了解女性角色的生活方式和情緒。
 
 【角色設定】
-姓名：{char_data.get('name', '')}
-年齡：{char_data.get('age', '')}
-生日：{char_data.get('birthday', '')}
-星座：{char_data.get('zodiac', '')}
-星座描述：{char_data.get('zodiac_description', '')}
-血型：{char_data.get('blood_type', '')}
-血型描述：{char_data.get('blood_type_description', '')}
-個性類型：{char_data.get('personality_type', '')}
-個性描述：{current_personality}
-說話口吻：{char_data.get('speech_style', '')}
-職業：{char_data.get('occupation', char_data.get('position', ''))}
-習慣/興趣：{', '.join(habits)}
-外表特徵：{char_data.get('appearance', '')}
+{_format_char_context(char_data, is_main=True)}
 目前關係：{char_data.get('relationship', '')}
 {other_context}
+{_format_writer_context(writer_settings)}
 
 【當前章節】：{current_chapter}
 【章節大綱/目標】：{chapter_outline}
@@ -523,10 +441,13 @@ def build_novel_content_prompt(char_data: dict, current_chapter: str, chapter_ou
 def build_chat_reply_prompt(char_data, char_name, user_name, user_message, history, 
                             persona_override="", session_extra="", 
                             user_char_data=None, user_persona_override="", user_extra="",
-                            session_type="one_on_one", other_participants=None):
+                            session_type="one_on_one", other_participants=None, writer_settings: dict = None):
     """
     建立 LoveLine 聊天的提示詞，支援使用者資料與進階覆寫。
     """
+    #####################################################################################
+    #建立 LoveLine 聊天的提示詞，支援使用者資料與進階覆寫。
+    #####################################################################################
     # --- 1. 處理目標角色 (AI) 的資料 ---
     target_char = dict(char_data)
     
@@ -536,26 +457,16 @@ def build_chat_reply_prompt(char_data, char_name, user_name, user_message, histo
             # 這裡只是一個邏輯標記，實際 Prompt 會包含 persona_override 讓 AI 自己理解
             pass
 
-    char_desc_parts = []
-    # 優先顯示對話特定的覆寫
+    # 取得完整的角色背景與屬性
+    char_desc = _format_char_context(target_char, prefix_override="")
+    
+    # 對話特定的覆寫 (Persona/Persona Override)
     if persona_override:
-        char_desc_parts.append(f"【對話特定設定 (優先)】：\n{persona_override}")
-    
-    # 基礎角色資訊
-    personality = target_char.get('personality', target_char.get('personality_description', ''))
-    if personality: char_desc_parts.append(f"性格描述：{personality}")
-    
-    backstory = target_char.get('backstory', target_char.get('description', ''))
-    if backstory: char_desc_parts.append(f"背景故事：{backstory}")
-    
-    pt = target_char.get('personality_type', '')
-    if pt: char_desc_parts.append(f"人格類型 (LPAS)：{pt}")
+        char_desc += f"\n【對話特定設定 (優先)】：\n{persona_override}"
     
     # 對話特定的額外補充
     if session_extra:
-        char_desc_parts.append(f"【對話額外補充】：\n{session_extra}")
-
-    char_desc = "\n".join(char_desc_parts)
+        char_desc += f"\n【對話額外補充】：\n{session_extra}"
 
     # --- 2. 處理使用者 (User) 的資料 ---
     user_desc_parts = [f"使用者姓名：{user_name}"]
@@ -570,12 +481,24 @@ def build_chat_reply_prompt(char_data, char_name, user_name, user_message, histo
     
     user_context = "\n".join(user_desc_parts)
 
-    # 群組資訊
+    # 群組資訊與其它參與者資料
     group_context = ""
     if session_type == "group" and other_participants:
-        names = [p.get('name') for p in other_participants if p.get('name')]
-        if names:
-            group_context = f"\n當前環境：這是一個群組聊天室。除了你和 {user_name} 之外，參與者還有：{', '.join(names)}。"
+        other_infos = []
+        for p in other_participants:
+            p_name = p.get('name', '參與者')
+            p_card = p.get('card_json')
+            if p_card and isinstance(p_card, dict) and p_card:
+                info = _format_char_context(p_card, prefix_override="")
+                other_infos.append(f"--- 參與者: {p_name} ---\n{info}")
+            else:
+                other_infos.append(f"姓名: {p_name}")
+        
+        group_context = "\n【群組聊天室成員設定】\n這是一個群組聊天室。除了你和 " + user_name + " 之外，參與者還有：\n" + "\n".join(other_infos)
+    elif session_type == "one_on_one":
+        group_context = f"\n當前環境：這是一對一私人聊天。"
+    
+    writer_context = _format_writer_context(writer_settings)
 
     # 歷史紀錄轉文字
     history_text = ""
@@ -589,6 +512,7 @@ def build_chat_reply_prompt(char_data, char_name, user_name, user_message, histo
 【你的角色設定】
 {char_desc}
 {group_context}
+{writer_context}
 
 【關於對話對象 (使用者) 的資訊】
 {user_context}

@@ -132,3 +132,10 @@ DROP TRIGGER IF EXISTS trg_ll_users_updated_at ON public.love_line_users;
 CREATE TRIGGER trg_ll_users_updated_at
 BEFORE UPDATE ON public.love_line_users
 FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- 替 love_line_users 增加儲存 AI 設定的欄位
+ALTER TABLE love_line_users 
+ADD COLUMN IF NOT EXISTS ai_model TEXT,
+ADD COLUMN IF NOT EXISTS model_options TEXT,
+ADD COLUMN IF NOT EXISTS writer_style TEXT,
+ADD COLUMN IF NOT EXISTS writer_sample TEXT;

@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="css/lpas_styles.css">
   <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
   <script src="js/supabaseClient.js" defer></script>
+  <script src="js/model_options_app.js" defer></script>
+  <script src="js/writer_settings_app.js" defer></script>
   <style>
     /* ── Reset & Base ── */
     body {
@@ -17,7 +19,7 @@
       flex-direction: column;
       height: 100vh;
       overflow: hidden;
-      background: #0d0d12 url('https://w.wallhaven.cc/full/8o/wallhaven-8o9m6j.jpg') no-repeat center/cover fixed;
+      background: hsl(240, 16%, 6%);
       font-family: 'Noto Sans TC', sans-serif;
       color: #e0e0e0;
       margin: 0;
@@ -780,11 +782,46 @@
                 <span class="server-label" id="server-status-text">偵測中…</span>
               </div>
               <div class="model-select-wrap">
-                <label style="font-size:0.72rem;color:var(--c-text-sec);display:block;margin-bottom:3px;">🤖 AI
+                <label style="font-size:0.85rem;color:var(--c-text-sec);display:block;margin-bottom:3px;">🤖 AI
                   模型</label>
                 <select id="model-select">
                   <option value="gemma4">gemma4</option>
                 </select>
+              </div>
+              <div class="model-select-wrap" style="margin-top:10px;">
+                <label style="font-size:0.85rem;color:var(--c-text-sec);display:block;margin-bottom:3px;">⚙️
+                  模型參數</label>
+                <div style="display:flex; gap:4px;">
+                  <select id="model-options-select" style="flex:1;">
+                    <option value="">預設</option>
+                  </select>
+                  <button id="btn-add-model-option"
+                    style="background:var(--c-accent);border:none;color:#fff;border-radius:4px;padding:2px 8px;cursor:pointer;">編輯</button>
+                </div>
+              </div>
+              <div class="model-select-wrap" style="margin-top:10px;">
+                <label style="font-size:0.85rem;color:var(--c-text-sec);display:block;margin-bottom:3px;">🖋️
+                  寫作風格</label>
+                <div style="display:flex; gap:4px;">
+                  <select id="writer-style-select" class="ws-style-dropdown" style="flex:1;">
+                    <option value="">無</option>
+                  </select>
+                  <button id="btn-edit-writer-style"
+                    style="background:var(--c-accent);border:none;color:#fff;border-radius:4px;padding:2px 8px;cursor:pointer;"
+                    onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select').value)">編輯</button>
+                </div>
+              </div>
+              <div class="model-select-wrap" style="margin-top:10px;">
+                <label style="font-size:0.85rem;color:var(--c-text-sec);display:block;margin-bottom:3px;">📝
+                  寫作範本</label>
+                <div style="display:flex; gap:4px;">
+                  <select id="writer-sample-select" class="ws-sample-dropdown" style="flex:1;">
+                    <option value="">無</option>
+                  </select>
+                  <button id="btn-edit-writer-sample"
+                    style="background:var(--c-accent);border:none;color:#fff;border-radius:4px;padding:2px 8px;cursor:pointer;"
+                    onclick="WriterSettingsApp.openSampleModal(document.getElementById('writer-sample-select').value)">編輯</button>
+                </div>
               </div>
               <div class="log-box" id="log-output">等待中…</div>
             </div>
@@ -805,16 +842,16 @@
           <div class="panel-scroll">
             <!-- 1-on-1 -->
             <div class="list-section-title">
-              <span>👤 角色</span>
-              <button id="btn-new-1on1" title="新增對話">＋</button>
+              <span>👤 好友</span>
+              <button id="btn-new-1on1" title="加入好友">＋</button>
             </div>
             <div id="list-1on1">
-              <div style="font-size:0.75rem;color:#555;padding:6px 8px;">尚無對話</div>
+              <div style="font-size:0.75rem;color:#555;padding:6px 8px;">尚無好友</div>
             </div>
             <!-- Group -->
             <div class="list-section-title" style="margin-top:10px;">
               <span>👥 聊天室</span>
-              <button id="btn-new-group" title="建立聊天室">＋</button>
+              <button id="btn-new-group" title="建立多人聊天室">＋</button>
             </div>
             <div id="list-group">
               <div style="font-size:0.75rem;color:#555;padding:6px 8px;">尚無聊天室</div>
@@ -855,21 +892,24 @@
 
   <!-- ── Modal: Edit User Profile ── -->
   <div class="modal-overlay hidden" id="modal-user-edit">
-    <div class="modal" style="width: 480px;">
-      <h3>👤 編輯使用者資料</h3>
-      <label>顯示名稱 (暱稱)</label>
+    <div class="modal" style="width: 640px;">
+      <h3 id="modal-user-title">👤 編輯使用者資料</h3>
+      <label>暱稱</label>
       <input type="text" id="modal-user-name" placeholder="輸入您的暱稱">
+
+      <label>登入密碼 (必要)</label>
+      <input type="password" id="modal-user-password" placeholder="輸入登入密碼" style="background: rgba(0, 0, 0, 0.4); border: 1px solid var(--c-border); color: #fff; border-radius: 8px; padding: 7px 10px; width: 100%;">
 
       <label>關聯角色卡 (選填)</label>
       <select id="modal-user-char-select">
         <option value="">— 無 —</option>
       </select>
 
-      <label>資料覆蓋設定 (關鍵字覆蓋，如：生日: 01-01, 血型: O...)</label>
-      <textarea id="modal-user-persona" placeholder="在此輸入要覆寫角色卡的資料內容..."></textarea>
+      <label>覆蓋設定的資料 (關鍵字會覆蓋，如：生日: 01-01, 血型: O...)</label>
+      <textarea id="modal-user-persona" rows="6" placeholder="在此輸入要覆寫角色卡的資料內容...例如：生日、血型、星座..."></textarea>
 
-      <label>額外補充資料 (將直接加入 AI 提示詞)</label>
-      <textarea id="modal-user-extra" placeholder="在此輸入更多關於使用者的描述..."></textarea>
+      <label>額外補充的資料 (將直接加入 AI 提示詞)</label>
+      <textarea id="modal-user-extra" rows="6" placeholder="在此輸入更多關於使用者的描述..."></textarea>
 
       <div class="modal-actions">
         <button class="btn-modal cancel" id="btn-modal-user-cancel">取消</button>
@@ -878,60 +918,68 @@
     </div>
   </div>
 
-  <!-- ── Modal: New 1-on-1 ── -->
-  <div class="modal-overlay hidden" id="modal-1on1">
-    <div class="modal">
-      <h3>💬 新增對話</h3>
-      <label>選擇角色卡</label>
-      <select id="modal-char-select">
+  <!-- ── Modal: Friend (Add / Edit) ── -->
+  <div class="modal-overlay hidden" id="modal-friend">
+    <div class="modal" style="width: 480px;">
+      <h3 id="modal-friend-title">💬 新增好友</h3>
+      <label>好友名稱 (暱稱)</label>
+      <input type="text" id="modal-friend-name" placeholder="預設空白，不可與現有其他好友同名">
+
+      <label>關聯角色卡 (選填)</label>
+      <select id="modal-friend-char-select">
         <option value="">— 讀取中 —</option>
       </select>
-      <label>角色設定（可選，留空則使用預設）</label>
-      <textarea id="modal-char-persona" placeholder="可在此覆寫角色個性描述..."></textarea>
+
+      <label>覆蓋好友角色資料 (關鍵字覆蓋，如：生日: 01-01, 血型: O...)</label>
+      <textarea id="modal-friend-persona" placeholder="在此輸入要覆寫角色卡的資料內容..."></textarea>
+
+      <label>額外補充好友資料 (將直接加入 AI 提示詞)</label>
+      <textarea id="modal-friend-extra" placeholder="在此輸入更多關於此好友的補充描述..."></textarea>
+
       <div class="modal-actions">
-        <button class="btn-modal cancel" id="btn-modal-1on1-cancel">取消</button>
-        <button class="btn-modal primary" id="btn-modal-1on1-ok">建立對話</button>
+        <button class="btn-modal cancel" id="btn-modal-friend-cancel">取消</button>
+        <button class="btn-modal" id="btn-modal-friend-delete"
+          style="background:rgba(244,67,54,0.2);color:#f44336;margin-right:auto;">🗑️ 刪除</button>
+        <button class="btn-modal primary" id="btn-modal-friend-ok">儲存</button>
       </div>
     </div>
   </div>
 
-  <!-- ── Modal: New Group ── -->
+  <!-- ── Modal: Group Chat (Add / Edit) ── -->
   <div class="modal-overlay hidden" id="modal-group">
-    <div class="modal">
-      <h3>👥 建立聊天室</h3>
+    <div class="modal" style="width: 480px;">
+      <h3 id="modal-group-title">👥 建立聊天室</h3>
       <label>聊天室名稱</label>
       <input type="text" id="modal-group-name" placeholder="例如：班級群組、約會計劃">
+
       <label>選擇參與角色（可多選）</label>
       <div class="char-check-list" id="modal-group-chars"></div>
+
+      <label>聊天室背景資料</label>
+      <textarea id="modal-group-bg-data" placeholder="備註這個聊天室該注意的事項或劇情導向..."></textarea>
+
       <div class="modal-actions">
         <button class="btn-modal cancel" id="btn-modal-group-cancel">取消</button>
-        <button class="btn-modal primary" id="btn-modal-group-ok">建立聊天室</button>
+        <button class="btn-modal" id="btn-modal-group-delete"
+          style="background:rgba(244,67,54,0.2);color:#f44336;margin-right:auto;display:none;">🗑️ 刪除</button>
+        <button class="btn-modal primary" id="btn-modal-group-ok">儲存</button>
       </div>
     </div>
   </div>
 
-  <!-- ── Modal: Edit Session ── -->
-  <div class="modal-overlay hidden" id="modal-edit">
-    <div class="modal" style="width: 480px;">
-      <h3>⚙️ 對話設定</h3>
-      <label>對話標題</label>
-      <input type="text" id="modal-edit-title" placeholder="標題">
 
-      <label>角色資料覆蓋設定 (關鍵字覆蓋，如：性格: 害羞...)</label>
-      <textarea id="modal-edit-persona" placeholder="在此輸入要覆寫角色卡的資料內容..."></textarea>
-
-      <label>額外補充資料 (將直接加入 AI 提示詞)</label>
-      <textarea id="modal-edit-extra" placeholder="在此輸入更多關於此對話的補充描述..."></textarea>
-
-      <div class="modal-actions">
-        <button class="btn-modal cancel" id="btn-modal-edit-cancel">取消</button>
-        <button class="btn-modal" id="btn-modal-edit-delete"
-          style="background:rgba(244,67,54,0.2);color:#f44336;margin-right:auto;">🗑️ 刪除</button>
-        <button class="btn-modal primary" id="btn-modal-edit-ok">儲存設定</button>
+  <!-- ── Modal: Password Check ── -->
+  <div class="modal-overlay hidden" id="modal-password-check">
+    <div class="modal" style="width: 360px;">
+      <h3 id="password-check-title">🔐 安全驗證</h3>
+      <p id="password-check-msg" style="font-size: 0.85rem; color: var(--c-text-sec); margin-bottom: 12px;">請輸入該使用者的登入密碼以載入資料：</p>
+      <input type="password" id="password-input-val" placeholder="輸入密碼..." style="margin-bottom: 20px;">
+      <div class="modal-actions" style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="btn-modal cancel" id="btn-password-cancel">取消</button>
+        <button class="btn-modal primary" id="btn-password-ok">確定</button>
       </div>
     </div>
   </div>
-
 
   <script src="js/loveline_app.js" defer></script>
 </body>

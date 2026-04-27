@@ -9,6 +9,8 @@
   <!-- Supabase JS (UMD) -->
   <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
   <script src="js/supabaseClient.js" defer></script>
+  <script src="js/model_options_app.js" defer></script>
+  <script src="js/writer_settings_app.js" defer></script>
   <style>
     :root {
       --c-bg-panel: hsla(240, 0%, 10%, 0.85);
@@ -553,6 +555,44 @@
             <option value="gemma4">gemma4</option>
           </select>
         </div>
+        <div id="model-options-container"
+          style="margin-left:auto; display:flex; flex-direction: column; align-items:flex-start; gap:4px; opacity: 0.8; margin-top: 10px;">
+          <label style="font-size:0.9rem; color:#aaa;">⚙️ 模型參數：</label>
+          <div style="display:flex; gap:4px; width: 100%;">
+            <select id="model-options-select"
+              style="background:#111; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 8px; font-size:0.9rem; flex:1;">
+              <option value="">預設</option>
+            </select>
+            <button id="btn-add-model-option" class="ai-btn"
+              style="padding: 2px 8px; font-size: 0.8rem; border-radius: 4px; margin: 0;">編輯</button>
+          </div>
+        </div>
+        <div id="writer-style-container"
+          style="margin-left:auto; display:flex; flex-direction: column; align-items:flex-start; gap:4px; opacity: 0.8; margin-top: 10px;">
+          <label style="font-size:0.9rem; color:#aaa;">🖋️ 寫作風格：</label>
+          <div style="display:flex; gap:4px; width: 100%;">
+            <select id="writer-style-select" class="ws-style-dropdown"
+              style="background:#111; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 8px; font-size:0.9rem; flex:1;">
+              <option value="">無</option>
+            </select>
+            <button id="btn-edit-writer-style" class="ai-btn"
+              style="padding: 2px 8px; font-size: 0.8rem; border-radius: 4px; margin: 0;"
+              onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select').value)">編輯</button>
+          </div>
+        </div>
+        <div id="writer-sample-container"
+          style="margin-left:auto; display:flex; flex-direction: column; align-items:flex-start; gap:4px; opacity: 0.8; margin-top: 10px;">
+          <label style="font-size:0.9rem; color:#aaa;">📝 寫作範本：</label>
+          <div style="display:flex; gap:4px; width: 100%;">
+            <select id="writer-sample-select" class="ws-sample-dropdown"
+              style="background:#111; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 8px; font-size:0.9rem; flex:1;">
+              <option value="">無</option>
+            </select>
+            <button id="btn-edit-writer-sample" class="ai-btn"
+              style="padding: 2px 8px; font-size: 0.8rem; border-radius: 4px; margin: 0;"
+              onclick="WriterSettingsApp.openSampleModal(document.getElementById('writer-sample-select').value)">編輯</button>
+          </div>
+        </div>
       </div>
       <div id="log-output" class="log-area" style="height: 200px; font-size: 1rem;">等待任務...</div>
       <div id="diary-cloud-status" class="cloud-status">雲端狀態</div>
@@ -598,6 +638,35 @@
           style="height:300px;"></textarea>
         <textarea id="main-editor" placeholder="在此編寫故事內容..."></textarea>
 
+      </div>
+  <!-- ── Modal: Save Novel ── -->
+  <div id="modal-novel-save" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:10000; display:none; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:#222; color:#eee; padding:24px; border-radius:12px; width:400px; max-width:90%; border:1px solid #444; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <h3 style="margin-top:0; color:#f472b6;">💾 儲存小說專案</h3>
+      <div style="margin-bottom:15px;">
+        <label style="display:block; font-size:0.9rem; color:#aaa; margin-bottom:5px;">小說名稱：</label>
+        <input type="text" id="save-novel-name" style="width:100%; padding:10px; background:#111; color:#fff; border:1px solid #444; border-radius:6px; box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="display:block; font-size:0.9rem; color:#aaa; margin-bottom:5px;">密碼 (雲端存取用)：</label>
+        <input type="password" id="save-novel-password" style="width:100%; padding:10px; background:#111; color:#fff; border:1px solid #444; border-radius:6px; box-sizing:border-box;">
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:12px;">
+        <button id="btn-save-cancel" style="padding:8px 20px; background:#444; color:#fff; border:none; border-radius:6px; cursor:pointer;">取消</button>
+        <button id="btn-save-confirm" style="padding:8px 24px; background:#f472b6; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">確定儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Novel Password Check ── -->
+  <div id="modal-novel-password" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:10000; display:none; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:#222; color:#eee; padding:24px; border-radius:12px; width:360px; max-width:90%; border:1px solid #444; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <h3 style="margin-top:0; color:#f472b6;">🔐 雲端專案驗證</h3>
+      <p style="font-size:0.9rem; color:#ccc; margin-bottom:15px;">請輸入此小說專案的讀取密碼：</p>
+      <input type="password" id="novel-password-input" placeholder="輸入密碼..." style="width:100%; padding:12px; background:#111; color:#fff; border:1px solid #444; border-radius:6px; box-sizing:border-box; margin-bottom:20px;">
+      <div style="display:flex; justify-content:flex-end; gap:12px;">
+        <button id="btn-password-cancel" style="padding:8px 20px; background:#444; color:#fff; border:none; border-radius:6px; cursor:pointer;">取消</button>
+        <button id="btn-password-ok" style="padding:8px 24px; background:#f472b6; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">確定</button>
       </div>
     </div>
   </div>

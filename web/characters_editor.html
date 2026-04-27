@@ -226,10 +226,17 @@
               style="background-color: var(--c-bg-card); opacity: 0.8;" placeholder="系統自動生成">
           </div>
 
-          <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+          <div style="display: grid; grid-template-columns: 3fr 1fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 8px;">
             <div class="field-group">
               <label class="field-label">姓名 (Name)</label>
               <input type="text" class="editor-input" id="char-name" placeholder="輸入角色姓名">
+            </div>
+            <div class="field-group">
+              <label class="field-label">性別 (Gender)</label>
+              <select class="editor-input" id="char-gender">
+                <option value="女" selected>女</option>
+                <option value="男">男</option>
+              </select>
             </div>
             <div class="field-group">
               <label class="field-label">身高 (cm)</label>

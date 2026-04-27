@@ -235,6 +235,7 @@ async function loadCharacter(charId) {
     qs('#char-card-json').value = prettyJson(cardJson);
     
     qs('#char-birthday').value = cardJson.birthday || '1999-01-01';
+    qs('#char-gender').value = cardJson.gender || '女';
     qs('#char-zodiac').value = cardJson.zodiac || '';
     qs('#char-blood-type').value = cardJson.blood_type || '';
     qs('#char-height').value = cardJson.height || '165';
@@ -300,6 +301,7 @@ async function saveCharacter() {
     // 將下拉選單與 Input 的值同步回 cardJson
     cardJson.id = currentCharacterId;
     cardJson.name = name || '未命名';
+    cardJson.gender = qs('#char-gender').value || "女";
     cardJson.zodiac = qs('#char-zodiac').value || "";
     cardJson.blood_type = qs('#char-blood-type').value || "";
     cardJson.birthday = qs('#char-birthday').value || "1999-01-01";
@@ -374,6 +376,7 @@ async function saveAsNewCharacter() {
 
     // 同步 UI 數據到 cardJson (包含身高體重等新欄位)
     cardJson.name = name;
+    cardJson.gender = qs('#char-gender').value || "女";
     cardJson.zodiac = qs('#char-zodiac').value;
     cardJson.blood_type = qs('#char-blood-type').value;
     cardJson.birthday = qs('#char-birthday').value;
@@ -428,6 +431,7 @@ function cancelCharacterEdit() {
     qs('#char-name').value = '';
     qs('#char-card-json').value = '';
     qs('#char-birthday').value = '1999-01-01';
+    qs('#char-gender').value = '女';
     qs('#char-zodiac').value = '';
     qs('#char-blood-type').value = '';
     qs('#char-type-1').value = '';
@@ -453,6 +457,7 @@ function updateJsonFromDropdowns() {
     const jsonStr = qs('#char-card-json').value.trim();
     try {
         let cardJson = jsonStr ? JSON.parse(jsonStr) : window.createDefaultCharacter();
+        cardJson.gender = qs('#char-gender').value;
         cardJson.zodiac = qs('#char-zodiac').value;
         cardJson.blood_type = qs('#char-blood-type').value;
         cardJson.birthday = qs('#char-birthday').value;
@@ -526,7 +531,7 @@ window.addEventListener('load', async () => {
         updateJsonFromDropdowns();
     });
 
-    ['#char-height', '#char-weight', '#char-bust'].forEach(sel => {
+    ['#char-gender', '#char-height', '#char-weight', '#char-bust'].forEach(sel => {
         qs(sel).addEventListener('input', updateJsonFromDropdowns);
         qs(sel).addEventListener('change', updateJsonFromDropdowns);
     });

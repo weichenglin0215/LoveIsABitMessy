@@ -67,14 +67,32 @@ def _need_continuation(text: str) -> bool:
 OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 
 def _ollama_generate(prompt: str, num_predict: int = 4096, temperature: float = 0.85) -> str:
+    # 預設參數
+    default_options = {
+        "temperature": temperature,
+        "num_predict": num_predict,
+        "num_ctx": 4096,
+        "repeat_penalty": 1.2,
+        "top_k": 40,
+        "top_p": 0.9
+    }
+    
+    # 讀取並合併環境變數中的 LAMB_MODEL_OPTIONS
+    stream_val = True
+    lamb_options_str = os.environ.get("LAMB_MODEL_OPTIONS")
+    if lamb_options_str:
+        try:
+            lamb_options = json.loads(lamb_options_str)
+            stream_val = lamb_options.pop('stream', True)
+            default_options.update(lamb_options)
+        except Exception as e:
+            print(f"[WARN] Failed to parse LAMB_MODEL_OPTIONS: {e}")
+
     payload = {
         "model": MODEL_NAME,
         "prompt": prompt,
-        "stream": True,
-        "options": {
-            "num_predict": num_predict,
-            "temperature": temperature
-        }
+        "stream": stream_val,
+        "options": default_options
     }
     
     full_response = []
@@ -132,7 +150,13 @@ def generate_story():
         final_prompt = full_prompt_override
     else:
         user_input = os.environ.get("LAMB_SCENARIO", "").strip() or "今天在辦公室發生的一件小事。"
-        final_prompt = build_daily_prompt(char_data, user_input, None)
+        writer_settings_str = os.environ.get("LAMB_WRITER_SETTINGS")
+        writer_settings = None
+        if writer_settings_str:
+            try:
+                writer_settings = json.loads(writer_settings_str)
+            except: pass
+        final_prompt = build_daily_prompt(char_data, user_input, None, writer_settings=writer_settings)
     
     print("\n" + "="*50)
     print("【DEBUG: 產生的 PROMPT】")

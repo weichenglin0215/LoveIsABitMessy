@@ -90,16 +90,18 @@ async function fetchOllamaModels() {
             const models = await res.json();
             const select = qs('#model-select');
             if (select) {
-                const current = select.value;
                 select.innerHTML = "";
                 models.forEach(m => {
                     const opt = document.createElement('option');
                     opt.value = m;
                     opt.textContent = m;
+                    // 優先保留使用者已選的 state.currentModel，否則預設 gemma4
                     if (state.currentModel && m === state.currentModel) opt.selected = true;
                     else if (!state.currentModel && m === 'gemma4') opt.selected = true;
                     select.appendChild(opt);
                 });
+                // 填完列表後，把實際選中的值同步回 state，確保 state 與 UI 一致
+                state.currentModel = select.value;
                 if (container) {
                     container.style.opacity = "1";
                     container.style.pointerEvents = "auto";
@@ -555,12 +557,20 @@ async function aiGenChapterOutline(chIdx) {
     setAIGeneratingState(true, ">> 任務啟動...\n正在呼叫 Ollama 大模型產生大綱，這可能需要一分鐘以上，請稍候...");
 
     try {
+        // 傳入全書章節一覽與目前章號，讓 AI 有完整前後文
+        const all_chapters = state.chapters.map(ch => ({ title: ch.title, description: ch.description }));
+
         const payload = {
-            book_title: state.bookTitle || "未命名小說",
+            book_title: state.bookTitle || '未命名小說',
             description: chapter.description,
+            story_premise: state.storyPremise,
+            all_chapters,
+            chapter_index: chIdx,   // 0-based
             characters: state.characters.map(id => cloudCharacters.find(c => c.id === id)?.card_json).filter(Boolean),
             character_ids: state.characters.filter(Boolean),
-            model: qs('#model-select')?.value || 'gemma4'
+            model: state.currentModel || 'gemma4',
+            model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
+            writer_settings: (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || null
         };
         const res = await callDebugServer('/api/generate_outline', payload);
         if (res && res.debug_prompt) {
@@ -640,12 +650,21 @@ async function aiGenChaptersFromPremise() {
     setAIGeneratingState(true, ">> 正在根據故事粗綱生成章節規劃...");
 
     try {
+        // 收集「已上鎖的章節」，告知 AI 哪些章節不可更動
+        const locked_chapters = state.chapters
+            .map((ch, i) => ({ index: i + 1, title: ch.title, description: ch.description, locked: ch.locked }))
+            .filter(ch => ch.locked)
+            .map(({ index, title, description }) => ({ index, title, description }));
+
         const payload = {
-            book_title: state.bookTitle || "未命名小說",
+            book_title: state.bookTitle || '未命名小說',
             story_premise: state.storyPremise,
             characters: state.characters.map(id => cloudCharacters.find(c => c.id === id)?.card_json).filter(Boolean),
             character_ids: state.characters.filter(Boolean),
-            model: state.currentModel || 'gemma4'
+            locked_chapters,
+            model: state.currentModel || 'gemma4',
+            model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
+            writer_settings: (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || null
         };
 
         const res = await callDebugServer('/api/generate_chapters', payload);
@@ -736,6 +755,8 @@ async function aiGenSectionContent() {
             }).filter(Boolean),
             character_ids: state.characters.filter(Boolean),
             model: state.currentModel || qs('#model-select')?.value || 'gemma4',
+            model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
+            writer_settings: (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || null,
             context: {
                 chapter_title: ch.title,
                 chapter_desc: ch.description,

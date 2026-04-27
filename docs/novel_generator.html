@@ -9,6 +9,8 @@
   <!-- Supabase JS (UMD) -->
   <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
   <script src="js/supabaseClient.js" defer></script>
+  <script src="js/model_options_app.js" defer></script>
+  <script src="js/writer_settings_app.js" defer></script>
   <style>
     :root {
       --c-bg-panel: hsla(240, 0%, 10%, 0.85);
@@ -512,7 +514,8 @@
         <button class="btn secondary-btn" id="btn-export">📤 匯出小說</button>
         <div style="display:inline-flex; align-items:center; gap:5px; margin-right:6px;">
           <button class="btn secondary-btn" id="btn-load-cloud" style="margin-right:0;">☁️ 讀取雲端小說</button>
-          <select id="cloud-novel-select" style="display:none; background: #111; color: #fff; border: 1px solid var(--c-border); padding: 4px 10px; border-radius: 4px; font-size: 1rem; width: 250px;">
+          <select id="cloud-novel-select"
+            style="display:none; background: #111; color: #fff; border: 1px solid var(--c-border); padding: 4px 10px; border-radius: 4px; font-size: 1rem; width: 250px;">
             <option value="">-- 請選擇小說 --</option>
           </select>
         </div>
@@ -551,6 +554,44 @@
             style="background:#111; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 8px; font-size:0.9rem; width: 100%;">
             <option value="gemma4">gemma4</option>
           </select>
+        </div>
+        <div id="model-options-container"
+          style="margin-left:auto; display:flex; flex-direction: column; align-items:flex-start; gap:4px; opacity: 0.8; margin-top: 10px;">
+          <label style="font-size:0.9rem; color:#aaa;">⚙️ 模型參數：</label>
+          <div style="display:flex; gap:4px; width: 100%;">
+            <select id="model-options-select"
+              style="background:#111; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 8px; font-size:0.9rem; flex:1;">
+              <option value="">預設</option>
+            </select>
+            <button id="btn-add-model-option" class="ai-btn"
+              style="padding: 2px 8px; font-size: 0.8rem; border-radius: 4px; margin: 0;">編輯</button>
+          </div>
+        </div>
+        <div id="writer-style-container"
+          style="margin-left:auto; display:flex; flex-direction: column; align-items:flex-start; gap:4px; opacity: 0.8; margin-top: 10px;">
+          <label style="font-size:0.9rem; color:#aaa;">🖋️ 寫作風格：</label>
+          <div style="display:flex; gap:4px; width: 100%;">
+            <select id="writer-style-select" class="ws-style-dropdown"
+              style="background:#111; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 8px; font-size:0.9rem; flex:1;">
+              <option value="">無</option>
+            </select>
+            <button id="btn-edit-writer-style" class="ai-btn"
+              style="padding: 2px 8px; font-size: 0.8rem; border-radius: 4px; margin: 0;"
+              onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select').value)">編輯</button>
+          </div>
+        </div>
+        <div id="writer-sample-container"
+          style="margin-left:auto; display:flex; flex-direction: column; align-items:flex-start; gap:4px; opacity: 0.8; margin-top: 10px;">
+          <label style="font-size:0.9rem; color:#aaa;">📝 寫作範本：</label>
+          <div style="display:flex; gap:4px; width: 100%;">
+            <select id="writer-sample-select" class="ws-sample-dropdown"
+              style="background:#111; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 8px; font-size:0.9rem; flex:1;">
+              <option value="">無</option>
+            </select>
+            <button id="btn-edit-writer-sample" class="ai-btn"
+              style="padding: 2px 8px; font-size: 0.8rem; border-radius: 4px; margin: 0;"
+              onclick="WriterSettingsApp.openSampleModal(document.getElementById('writer-sample-select').value)">編輯</button>
+          </div>
         </div>
       </div>
       <div id="log-output" class="log-area" style="height: 200px; font-size: 1rem;">等待任務...</div>
@@ -594,7 +635,7 @@
       </div>
       <div class="scroll-area editor-container" id="editor-side">
         <textarea class="editor-title" id="active-section-title" placeholder="請選擇一個章節開始" readonly
-          style="height:50px;"></textarea>
+          style="height:300px;"></textarea>
         <textarea id="main-editor" placeholder="在此編寫故事內容..."></textarea>
 
       </div>

@@ -102,7 +102,7 @@ def _try_repair_json(s: str) -> str:
         
     return "".join(fixed)
 
-def _build_diary_prompt(char_path, scenario, char_data_override=None, relationship_params=None, other_chars=None):
+def _build_diary_prompt(char_path, scenario, char_data_override=None, relationship_params=None, other_chars=None, writer_settings=None):
     #####################################################################################
     # 回傳「實際送給 Ollama 的日記 prompt」。
     #####################################################################################
@@ -111,7 +111,7 @@ def _build_diary_prompt(char_path, scenario, char_data_override=None, relationsh
     else:
         char_data = load_character_from_path(char_path)
 
-    return build_daily_prompt(char_data, scenario, relationship_params, other_chars=other_chars)
+    return build_daily_prompt(char_data, scenario, relationship_params, other_chars=other_chars, writer_settings=writer_settings)
 
 def _append_job_log(job_id: str, text: str):
     #####################################################################################
@@ -124,29 +124,48 @@ def _append_job_log(job_id: str, text: str):
         job["logs"].append(text)
         job["updated_at"] = time.time()
 
-def _ollama_generate_direct(model, prompt, temperature=0.85):
+def _ollama_generate_direct(model, prompt, options=None):
     """直接呼叫 Ollama API 並回傳結果字串 (支援流式傳輸以免超時)"""
     #####################################################################################
     # 直接呼叫 Ollama API 並回傳結果字串 (支援流式傳輸以免超時)
     #####################################################################################
     url = "http://127.0.0.1:11434/api/generate"
-    num_predict = 4096
-    num_ctx = 131072
+    
+    # 預設參數
+    default_options = {
+        "temperature": 0.85,
+        "num_predict": 1024,
+        "num_ctx": 4096,
+        "repeat_penalty": 1.3,
+        "top_k": 40,
+        "top_p": 0.9
+        #"num_gpu": 55 #搞不定這個參數，對實際狀況也沒改善。
+    }
+    
+    # 合併外部傳入的 options
+    if options:
+        # 特別處理 stream (它是和 options 同層的屬性)
+        stream_val = options.pop('stream', True)
+        default_options.update(options)
+    else:
+        stream_val = True
+
     payload = {
         "model": model,
         "prompt": prompt,
-        "stream": True,
-        "options": {
-            "temperature": temperature, 
-            "num_predict": num_predict,
-            "num_ctx": num_ctx  # 增加上下文視窗以利長文本生成
-        }
+        "stream": stream_val,
+        "options": default_options
     }
     
     print(f">>>> 模型: {model}")
-    print(f">>>> 溫度(Temperature): {temperature}")
-    print(f">>>> 預測長度(num_predict): {num_predict}")
-    print(f">>>> 上下文視窗(num_ctx): {num_ctx}")
+    print(f">>>> 以流式回傳結果: {stream_val}")
+    print(f">>>> 溫度(Temperature): {default_options['temperature']}")
+    print(f">>>> 預測長度(num_predict): {default_options['num_predict']}")
+    print(f">>>> 上下文視窗(num_ctx): {default_options['num_ctx']}")
+    print(f">>>> 重複懲罰(repeat_penalty): {default_options['repeat_penalty']}")
+    print(f">>>> Top-K: {default_options['top_k']}")
+    print(f">>>> Top-P: {default_options['top_p']}")
+    # print(f">>>> 使用GPU層數(num_gpu): {default_options['num_gpu']}")
     print(f">>>> 提示詞字數(Prompt Length): {len(prompt)} characters")
     
     full_response = []
@@ -163,24 +182,30 @@ def _ollama_generate_direct(model, prompt, temperature=0.85):
         )
 
         print(">>>> 正在發送 POST 請求至 Ollama...")
-        with urllib.request.urlopen(req, timeout=300) as resp:
-            print(f">>>> 伺服器回應碼: {resp.status}")
-            if resp.status != 200:
-                err_body = resp.read().decode('utf-8', errors='replace')
-                print(f"\n>>>> [OLLAMA API ERROR] Status: {resp.status}")
-                print(f">>>> [OLLAMA API ERROR] Body: {err_body}")
-                return f">>>> Error {resp.status}: {err_body}"
+        try:
+            with urllib.request.urlopen(req, timeout=300) as resp:
+                print(f">>>> 伺服器回應碼: {resp.status}")
+                if resp.status != 200:
+                    err_body = resp.read().decode('utf-8', errors='replace')
+                    print(f"\n>>>> [OLLAMA API ERROR] Status: {resp.status}")
+                    print(f">>>> [OLLAMA API ERROR] Body: {err_body}")
+                    return f">>>> Error {resp.status}: {err_body}"
 
-            # 逐行讀取串流回應
-            for raw_line in resp:
-                line = raw_line.strip()
-                if line:
-                    chunk = json.loads(line)
-                    content = chunk.get('response', '')
-                    print(content, end='', flush=True)
-                    full_response.append(content)
-                    if chunk.get('done'):
-                        break
+                # 逐行讀取串流回應
+                for raw_line in resp:
+                    line = raw_line.strip()
+                    if line:
+                        chunk = json.loads(line)
+                        content = chunk.get('response', '')
+                        print(content, end='', flush=True)
+                        full_response.append(content)
+                        if chunk.get('done'):
+                            break
+        except Exception as e:
+            print(f"\n>>>> [EXCEPTION] Ollama 呼叫失敗: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return f"（連線錯誤：{str(e)}）"
 
         print("\n>>>> 生成結束。")
         return "".join(full_response).strip()
@@ -195,7 +220,7 @@ def _ollama_generate_direct(model, prompt, temperature=0.85):
         traceback.print_exc()
         return f">>>> Error: {e}"
 
-def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_prompt: str, model: str = "gemma4"):
+def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_prompt: str, model: str = "gemma4", params: dict = None):
     #####################################################################################
     # 執行「生成日記」任務，發放提示詞給OLLAMA的大模型
     #####################################################################################
@@ -219,6 +244,11 @@ def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_
         if diary_prompt:
             env["LAMB_FULL_PROMPT"] = diary_prompt
         env["PYTHONIOENCODING"] = "utf-8"
+
+        if params.get('model_options'):
+            env["LAMB_MODEL_OPTIONS"] = json.dumps(params.get('model_options'))
+        if params.get('writer_settings'):
+            env["LAMB_WRITER_SETTINGS"] = json.dumps(params.get('writer_settings'))
 
         res_story = subprocess.run(
             [sys.executable, "generate_daily.py"],
@@ -309,8 +339,8 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
         super().__init__(*args, directory=WEB_DIR, **kwargs)
 
     def log_message(self, format, *args):
-        # 靜默 /api/status 的日誌，以免每 5 秒噴一行
-        if len(args) > 0 and isinstance(args[0], str) and "/api/status" in args[0]:
+        # 靜默 /api/status, /api/job 與 /favicon.ico 的日誌，以免每秒噴一行洗版
+        if len(args) > 0 and isinstance(args[0], str) and ("/api/status" in args[0] or "/api/job" in args[0] or "favicon.ico" in args[0]):
             return
         super().log_message(format, *args)
 
@@ -329,6 +359,11 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
         # 處理 HTTP GET 請求（處理靜態檔案與 API 請求）
         #####################################################################################
         parsed_path = urlparse(self.path)
+        if parsed_path.path == '/favicon.ico':
+            self.send_response(204)
+            self.end_headers()
+            return
+
         if parsed_path.path == '/api/status':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
@@ -421,8 +456,9 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 relationship_params = params.get('relationship', {})
                 other_chars = params.get('other_chars', [])
 
+                writer_settings = params.get('writer_settings', {})
                 char_path = _resolve_character_json_path(char_id)
-                diary_prompt = _build_diary_prompt(char_path, scenario, char_data_override=card_json, relationship_params=relationship_params, other_chars=other_chars)
+                diary_prompt = _build_diary_prompt(char_path, scenario, char_data_override=card_json, relationship_params=relationship_params, other_chars=other_chars, writer_settings=writer_settings)
 
                 image_prompt = ""
                 if card_json:
@@ -451,7 +487,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                         "created_at": time.time(),
                         "updated_at": time.time()
                     }
-                threading.Thread(target=_run_job, args=(job_id, char_id, scenario, diary_prompt, image_prompt, model_name), daemon=True).start()
+                threading.Thread(target=_run_job, args=(job_id, char_id, scenario, diary_prompt, image_prompt, model_name, params), daemon=True).start()
 
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json; charset=utf-8')
@@ -482,7 +518,8 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                     
                 main_char = chars[0] if chars else {}
                 locked_chapters = params.get('locked_chapters', [])  # [{"index":1,"title":"","description":""},...]
-                prompt = build_chapters_from_premise_prompt(main_char, book_title, premise, chars[1:], locked_chapters)
+                writer_settings = params.get('writer_settings', {})
+                prompt = build_chapters_from_premise_prompt(main_char, book_title, premise, chars[1:], locked_chapters, writer_settings=writer_settings)
                 
                 print("\n" + "="*50)
                 print("【DEBUG: AI 根據粗綱生成各章標題與描述的 PROMPT 如下】")
@@ -491,7 +528,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 timestamp = time.strftime("%H:%M:%S", time.localtime())
                 print("起始時間:", timestamp)
                 
-                response_text = _ollama_generate_direct(params.get('model', 'gemma4'), prompt)
+                response_text = _ollama_generate_direct(params.get('model', 'gemma4'), prompt, options=params.get('model_options'))
 
                 print(">> 「各章標題與描述」產生完畢！\n")
                 print(response_text)
@@ -544,11 +581,13 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 story_premise  = params.get('story_premise', '')
                 all_chapters   = params.get('all_chapters', [])   # [{"title":"","description":""},...]
                 chapter_index  = params.get('chapter_index', 0)   # 0-based
+                writer_settings = params.get('writer_settings', {})
                 prompt = build_chapter_outline_prompt(
                     main_char, book_title, desc, chars[1:],
                     story_premise=story_premise,
                     all_chapters=all_chapters,
-                    chapter_index=chapter_index
+                    chapter_index=chapter_index,
+                    writer_settings=writer_settings
                 )
                 
                 print("\n" + "="*50)
@@ -558,7 +597,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 timestamp = time.strftime("%H:%M:%S", time.localtime())
                 print("起始時間：", timestamp)
                 
-                response_text = _ollama_generate_direct(params.get('model', 'gemma4'), prompt)
+                response_text = _ollama_generate_direct(params.get('model', 'gemma4'), prompt, options=params.get('model_options'))
                 print(">> 「各小節大綱」產生完畢！\n")
                 print(response_text)
                 timestamp = time.strftime("%H:%M:%S", time.localtime())
@@ -638,7 +677,8 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                     chars.append(c)
                     
                 main_char = chars[0] if chars else {}
-                prompt = build_novel_content_prompt(main_char, ctx.get('chapter_title', ''), f"{ctx.get('chapter_desc', '')} - {ctx.get('section_title', '')}", ctx.get('section_title', ''), chars[1:])
+                writer_settings = params.get('writer_settings', {})
+                prompt = build_novel_content_prompt(main_char, ctx.get('chapter_title', ''), f"{ctx.get('chapter_desc', '')} - {ctx.get('section_title', '')}", ctx.get('section_title', ''), chars[1:], writer_settings=writer_settings)
                 
                 print("\n" + "="*50)
                 print(f"【DEBUG: AI 「小說本文生成」 PROMPT - {ctx.get('section_title', '')}】")
@@ -647,7 +687,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 timestamp = time.strftime("%H:%M:%S", time.localtime())
                 print("起始時間：", timestamp)
                 
-                content = _ollama_generate_direct(params.get('model', 'gemma4'), prompt)
+                content = _ollama_generate_direct(params.get('model', 'gemma4'), prompt, options=params.get('model_options'))
                 print(f"【DEBUG: AI 「小說本文生成」產生完畢！ - {ctx.get('section_title', '')}】")
                 print(content)
                 timestamp = time.strftime("%H:%M:%S", time.localtime())
@@ -682,6 +722,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 participants   = params.get('participants', [])
                 model_name     = params.get('model', 'gemma4')
 
+                writer_settings = params.get('writer_settings', {})
                 prompt = build_chat_reply_prompt(
                     character, character_name, user_name, user_message, history,
                     persona_override=persona_override,
@@ -690,11 +731,27 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                     user_persona_override=user_persona_override,
                     user_extra=user_extra,
                     session_type=session_type,
-                    other_participants=participants
+                    other_participants=participants,
+                    writer_settings=writer_settings
                 )
 
-                print(f"\n[LoveLine] chat_reply | char={character_name} | user={user_name} | model={model_name}")
-                reply_text = _ollama_generate_direct(model_name, prompt, temperature=0.80)
+                print("\n" + "="*50)
+                print(f"【DEBUG: AI 「LoveLine 角色回覆」 PROMPT - {character_name}】")
+                print(prompt)
+                print(f">> 正在呼叫 Ollama 產生「LoveLine 角色回覆」 ({model_name})...")
+                timestamp = time.strftime("%H:%M:%S", time.localtime())
+                print("起始時間：", timestamp)
+
+                opts = params.get('model_options') or {}
+                if 'temperature' not in opts:
+                    opts['temperature'] = 0.80
+                reply_text = _ollama_generate_direct(model_name, prompt, options=opts)
+                
+                print(f"\n【DEBUG: AI 「LoveLine 角色回覆」產生完畢！ - {character_name}】")
+                print(reply_text)
+                timestamp = time.strftime("%H:%M:%S", time.localtime())
+                print("結束時間：", timestamp)
+                print("="*50)
                 
                 # 清理回覆內容
                 reply_text = reply_text.strip()
