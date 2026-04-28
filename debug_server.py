@@ -153,12 +153,14 @@ def _ollama_generate_direct(model, prompt, options=None):
     payload = {
         "model": model,
         "prompt": prompt,
+        "keep_alive": -1,  # 關鍵參數：設定為 -1 讓模型留在顯存不消失，避免休息超過五分鐘都重新讀取。
         "stream": stream_val,
         "options": default_options
     }
     
     print(f">>>> 模型: {model}")
     print(f">>>> 以流式回傳結果: {stream_val}")
+    print(f">>>> VRAM保有大模型(keep_alive -1 等於長久保留): {payload['keep_alive']}")
     print(f">>>> 溫度(Temperature): {default_options['temperature']}")
     print(f">>>> 預測長度(num_predict): {default_options['num_predict']}")
     print(f">>>> 上下文視窗(num_ctx): {default_options['num_ctx']}")

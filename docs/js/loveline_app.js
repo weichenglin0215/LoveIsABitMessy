@@ -30,6 +30,21 @@ window.addEventListener('load', async () => {
   renderUserSelect();
   startServerPolling();
   setupEventListeners();
+
+  // 如果有預載使用者，彈出密碼視窗進行驗證
+  if (state.currentUser) {
+    const u = state.currentUser;
+    state.currentUser = null; // 先清空，驗證通過才設定
+    state._tempTargetUser = u;
+    qs('#password-check-msg').textContent = `請輸入「${u.name}」的登入密碼以進入系統：`;
+    qs('#password-input-val').value = '';
+    qs('#modal-password-check').classList.remove('hidden');
+    
+    // 清空介面顯示直到驗證通過
+    qs('#current-user-name').textContent = '— 請登入 —';
+    qs('#user-avatar-icon').textContent = '👤';
+  }
+
   appendLog('💌 LoveLine 已載入');
 });
 
@@ -59,13 +74,23 @@ async function loadUsersFromCloud() {
               existing.char_id = cloud.char_id;
               existing.persona = cloud.persona;
               existing.extra = cloud.extra_info;
+              existing.password = cloud.password;
+              existing.ai_model = cloud.ai_model;
+              existing.model_options = cloud.model_options;
+              existing.writer_style = cloud.writer_style;
+              existing.writer_sample = cloud.writer_sample;
           } else {
               merged.push({
                   key: cloud.user_key,
                   name: cloud.nickname,
                   char_id: cloud.char_id,
                   persona: cloud.persona,
-                  extra: cloud.extra_info
+                  extra: cloud.extra_info,
+                  password: cloud.password,
+                  ai_model: cloud.ai_model,
+                  model_options: cloud.model_options,
+                  writer_style: cloud.writer_style,
+                  writer_sample: cloud.writer_sample
               });
           }
       });
@@ -87,7 +112,7 @@ async function loadUsersFromCloud() {
 function loadUsersFromLocal() {
   try {
     const raw = localStorage.getItem('loveline_users');
-    state.users = raw ? JSON.parse(raw) : [{ key: 'user_default', name: '我', char_id: '', persona: '', extra: '' }];
+    state.users = raw ? JSON.parse(raw) : [{ key: 'user_default', name: '我', char_id: '', persona: '', extra: '', ai_model: 'gemma4', model_options: '', writer_style: '', writer_sample: '' }];
     const lastKey = localStorage.getItem('loveline_current_user');
     state.currentUser = state.users.find(u => u.key === lastKey) || state.users[0];
   } catch (e) { state.users = [{ key: 'user_default', name: '我' }]; }
@@ -103,17 +128,24 @@ async function saveUserProfileToCloud(u) {
   try {
     await sb.from('love_line_users').upsert({
       user_key: u.key, nickname: u.name,
-      char_id: u.char_id, persona: u.persona, extra_info: u.extra
+      char_id: u.char_id, persona: u.persona, extra_info: u.extra,
+      password: u.password,
+      ai_model: u.ai_model, model_options: u.model_options,
+      writer_style: u.writer_style, writer_sample: u.writer_sample
     });
   } catch (e) { appendLog('❌ 雲端同步失敗: ' + e.message); }
 }
 
 function renderUserSelect() {
   const sel = qs('#user-select');
+  if (!sel) return;
   sel.innerHTML = state.users.map(u =>
     `<option value="${u.key}" ${state.currentUser?.key === u.key ? 'selected' : ''}>${u.name}</option>`
   ).join('');
-  updateUserDisplay();
+  
+  if (state.currentUser) {
+    updateUserDisplay();
+  }
 }
 
 function updateUserDisplay() {
@@ -127,14 +159,22 @@ function updateUserDisplay() {
   state.currentSession = null;
   renderChatArea();
 
+  // 恢復選中的模型與寫作風格
+  if (u.ai_model) qs('#model-select').value = u.ai_model;
+  if (u.model_options) qs('#model-options-select').value = u.model_options;
+  if (u.writer_style) qs('#writer-style-select').value = u.writer_style;
+  if (u.writer_sample) qs('#writer-sample-select').value = u.writer_sample;
+
   loadSessionsForUser();
 }
 
 function openUserEditModal() {
   const u = state.currentUser;
   if (!u) return;
+  qs('#modal-user-title').textContent = '👤 編輯使用者資料';
   qs('#modal-user-name').value = u.name || '';
   qs('#modal-user-char-select').value = u.char_id || '';
+  qs('#modal-user-password').value = u.password || '';
   qs('#modal-user-persona').value = u.persona || '';
   qs('#modal-user-extra').value = u.extra || '';
   qs('#modal-user-edit').classList.remove('hidden');
@@ -706,40 +746,93 @@ function setupEventListeners() {
 
   // User select
   qs('#user-select').addEventListener('change', e => {
-    state.currentUser = state.users.find(u => u.key === e.target.value) || null;
-    updateUserDisplay();
+    const val = e.target.value;
+    if (!val) return;
+    const targetUser = state.users.find(u => u.key === val);
+    if (!targetUser) return;
+
+    // 顯示密碼驗證彈窗
+    state._tempTargetUser = targetUser;
+    qs('#password-check-msg').textContent = `請輸入「${targetUser.name}」的登入密碼以載入資料：`;
+    qs('#password-input-val').value = '';
+    qs('#modal-password-check').classList.remove('hidden');
+    
+    // 先還原選單顯示，等驗證通過才真正切換
+    e.target.value = state.currentUser ? state.currentUser.key : '';
+  });
+
+  // Password check modal logic
+  qs('#btn-password-cancel').addEventListener('click', () => {
+    qs('#modal-password-check').classList.add('hidden');
+    state._tempTargetUser = null;
+  });
+
+  qs('#btn-password-ok').addEventListener('click', () => {
+    const u = state._tempTargetUser;
+    const pwd = qs('#password-input-val').value.trim();
+    if (!u) return;
+    
+    if (pwd === u.password) {
+      state.currentUser = u;
+      qs('#user-select').value = u.key;
+      updateUserDisplay();
+      qs('#modal-password-check').classList.add('hidden');
+      state._tempTargetUser = null;
+      appendLog(`🔓 驗證成功，載入使用者：${u.name}`);
+    } else {
+      alert('密碼錯誤！');
+    }
   });
 
   // Add user
-  qs('#btn-add-user').addEventListener('click', async () => {
-    const input = qs('#new-user-input');
-    const name = input.value.trim();
-    if (!name) return;
-    const key = 'user_' + Date.now();
-    const newUser = { key, name, char_id: '', persona: '', extra: '' };
-    state.users.push(newUser);
-    saveUsersToLocal();
-    await saveUserProfileToCloud(newUser);
-    state.currentUser = newUser;
-    input.value = '';
-    renderUserSelect();
+  qs('#btn-add-user').addEventListener('click', () => {
+    qs('#modal-user-title').textContent = '👤 新增使用者';
+    qs('#modal-user-name').value = '';
+    qs('#modal-user-password').value = '';
+    qs('#modal-user-char-select').value = '';
+    qs('#modal-user-persona').value = '';
+    qs('#modal-user-extra').value = '';
+    qs('#modal-user-edit').classList.remove('hidden');
   });
 
   // User profile edit
-  qs('#btn-edit-user-profile').addEventListener('click', openUserEditModal);
+  qs('#btn-edit-user-profile').addEventListener('click', () => {
+    qs('#modal-user-title').textContent = '👤 編輯使用者資料';
+    openUserEditModal();
+  });
   qs('#btn-modal-user-cancel').addEventListener('click', () => qs('#modal-user-edit').classList.add('hidden'));
   qs('#btn-modal-user-ok').addEventListener('click', async () => {
-    const u = state.currentUser;
+    const isNew = qs('#modal-user-title').textContent.includes('新增');
+    let u = state.currentUser;
+    
+    if (isNew) {
+      const name = qs('#modal-user-name').value.trim();
+      const pwd = qs('#modal-user-password').value.trim();
+      if (!name || !pwd) { alert('請輸入暱稱與密碼'); return; }
+      const key = 'user_' + Date.now();
+      u = { key, name, password: pwd };
+      state.users.push(u);
+      state.currentUser = u;
+    }
+
     if (!u) return;
     u.name = qs('#modal-user-name').value.trim() || u.name;
+    u.password = qs('#modal-user-password').value.trim() || u.password;
     u.char_id = qs('#modal-user-char-select').value;
     u.persona = qs('#modal-user-persona').value;
     u.extra = qs('#modal-user-extra').value;
+
+    // 同步當前選中的 AI 設定到使用者資料中
+    u.ai_model = qs('#model-select').value;
+    u.model_options = qs('#model-options-select').value;
+    u.writer_style = qs('#writer-style-select').value;
+    u.writer_sample = qs('#writer-sample-select').value;
+
     saveUsersToLocal();
     await saveUserProfileToCloud(u);
     qs('#modal-user-edit').classList.add('hidden');
     renderUserSelect();
-    appendLog('✅ 使用者設定已儲存至雲端');
+    appendLog(isNew ? '✅ 新使用者已建立' : '✅ 使用者設定已儲存至雲端');
   });
 
   // Collapse left

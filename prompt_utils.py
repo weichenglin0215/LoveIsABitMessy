@@ -108,8 +108,8 @@ def _format_char_context(c_raw, is_main=False, prefix_override=None):
         f"{prefix}生日：{c.get('birthday', '')}\n"
         f"{prefix}星座描述：{c.get('zodiac_description', '')}\n"
         f"{prefix}血型描述：{c.get('blood_type_description', '')}\n"
-        f"{prefix}個性類型：{c.get('personality_type', '')}\n"
-        f"{prefix}個性描述：{c.get('personality', '')}\n"
+        f"{prefix}愛情個性類型：{c.get('personality_type', '')}\n"
+        f"{prefix}愛情個性描述：{c.get('personality', '')}\n"
         f"{prefix}說話口吻：{c.get('speech_style', '')}\n"
         f"{prefix}職業：{c.get('occupation', c.get('position', ''))}\n"
         f"{prefix}習慣/興趣：{habits}\n"
@@ -145,54 +145,19 @@ def build_daily_prompt(char_data: dict, scenario: str, relationship_params: dict
     habits = char_data.get("habits", []) or []
     timestamp = time.strftime("%Y年 %m月 %d日 %H時", time.localtime())
 
-    # 處理閨密/其他角色資料
+    #1. 處理閨密/其他角色資料
     other_context = ""
     if other_chars and len(other_chars) > 0:
         other_lines = []
+        count = 1
         for c in other_chars:
             c_name = c.get('name', '')
             # 當設定情境 (Scenario) 欄位有提到該位閨密名字時，才加入
             if c_name and c_name in scenario:
-                other_lines.append(_format_char_context(c))
+                other_lines.append("【第" + str(count) + "位配角資料】：\n" + _format_char_context(c))
+                count += 1
         if other_lines:
             other_context = "\n" + "\n\n".join(other_lines)
-
-    system_prompt = f"""
-你現在是一位專業的暢銷愛情小說作家，擅長撰寫一段自然、有趣、具真實感且能引起讀者共鳴的愛情故事，請代入以下角色的靈魂寫日記。
-【核心指令】
-1. 以沉浸在戀愛氛圍的女性視角，在睡前，以「內心獨白」形式，隨手寫下今天發生的令她難忘的一段經歷或關鍵想法。
-2. 日記主題以戀愛為主，也可以包括且不限於：交友、閨蜜、性生活、出軌、一夜情、生理需求、心理撫慰、工作、辦公室戀情、家庭、亂倫、暴力、身心靈、健康、運動、娛樂、旅行等，沒有特定的要求或限制。
-3. 若女主角同時擁有伴侶與新朋友，請重點描述三角戀的複雜情感、內心掙扎、性幻想、性愛與罪惡感等內容。
-4. 每篇日記撰寫1~2個重點，集中焦點，字數約 300 字，使用「繁體中文」(Traditional Chinese)。
-
-【輸出格式】
-第一行請寫 {char_data.get('name', '')} 的日記 {timestamp} 
-
-【寫作技巧】
-1. 故事情節要豐富，要有高潮和低潮，要有轉折，要有感動人心的情節。
-2. 貼近主角思維: 了解您的女性角色，包括她的基本資訊、年齡、身高、體重、穿著風格、性格特徵、職業、興趣和情境。
-3. 增加愛情成分: 凸顯戀愛中的女人的起伏情緒，增加私密肢體接觸的描述。
-4. 運用有趣的故事: 將女性角色與一些有趣的人物或場景相結合，增加日記的趣味性和互動性。
-5. 故意添加主角犯錯、缺點、愚蠢與不足。
-6. 描述感受和情緒: 使用感官詞來描述女生在日常生活中的感受和情緒。讓角色更有感度，並吸引讀者的注意力。
-7. 將日記分成段節: 分成不同的段落或部分，釐清思緒和情境。
-8. 加入自我刺激與反省: 加入女性角色的自我反省和自我刺激是個好方法，可以讓日記更有深度和真實感。
-9. 用現實語言來表達: 以符合女主角年齡、職業與性格來呈現真實的說話用語、語氣、生活習慣。
-10. 遵循日記風格和形式: 用簡短字數紀錄生活、表達看法、抒發情緒，無須完整記錄事件經過。無須過度講究文法結構，當女主角在抒發強烈情緒時，請直白表達，勿過度修飾，保持自然流暢。
-
-【禁止】
-1. 將女主塑造成完美形象。
-2. 流水帳或商業文件或教科書的文體。
-
-【女主角角色設定】
-{_format_char_context(char_data, is_main=True)}
-女主角目前關係：{char_data.get('relationship', '')}
-
-
-【其他配角角色設定】{other_context}
-{_format_writer_context(writer_settings)}
-
-""".strip()
 
     # 2. 增加關係動態 (Relationship Dynamics)
     rel_context = ""
@@ -230,11 +195,54 @@ def build_daily_prompt(char_data: dict, scenario: str, relationship_params: dict
         if logic_hints:
             rel_context += "- 心理狀態指引：" + " ".join(logic_hints) + "\n"
 
-    final_scenario = scenario
+    final_scenario = f"【當前任務/情境】\n{scenario}"
     if rel_context:
-        final_scenario = f"{rel_context}\n[當日情境]\n{scenario}"
+        final_scenario = f"【女主角的複雜關係與心理狀態說明】：\n{rel_context}\n{final_scenario}"
 
-    return f"{system_prompt}\n\n【當前任務/情境】\n{final_scenario}\n\n請開始執行（以繁體中文）："
+    system_prompt = f"""
+你現在是一位專業的暢銷愛情小說作家，擅長撰寫一段自然、有趣、具真實感且能引起讀者共鳴的愛情故事，請代入以下角色的靈魂寫日記。
+【核心指令】
+1. 以沉浸在戀愛氛圍的女性視角，在睡前，以「內心獨白」形式，隨手寫下今天發生的令她難忘的一段經歷或關鍵想法。
+2. 日記主題以戀愛為主，也可以包括且不限於：交友、閨蜜、性生活、出軌、一夜情、生理需求、心理撫慰、工作、辦公室戀情、家庭、亂倫、暴力、身心靈、健康、運動、娛樂、旅行等，沒有特定的要求或限制。
+3. 若女主角同時擁有伴侶與新朋友，請重點描述三角戀的複雜情感、內心掙扎、性幻想、性愛與罪惡感等內容。
+4. 每篇日記撰寫1~2個重點，集中焦點，字數約 300 字，使用「繁體中文」(Traditional Chinese)。
+
+【輸出格式】
+第一行請寫 {char_data.get('name', '')} 的日記 {timestamp} 
+
+【女主角角色設定】
+{_format_char_context(char_data, is_main=True)}
+女主角目前關係：{char_data.get('relationship', '')}
+
+【其他配角角色設定】{other_context}
+
+{final_scenario}
+
+【寫作技巧】
+1. 故事情節要豐富，要有高潮和低潮，要有轉折，要有感動人心的情節。
+2. 貼近主角思維: 了解您的女性角色，包括她的基本資訊、年齡、身高、體重、穿著風格、性格特徵、職業、興趣和情境。
+3. 增加愛情成分: 凸顯戀愛中的女人的起伏情緒，增加私密肢體接觸的描述。
+4. 運用有趣的故事: 將女性角色與一些有趣的人物或場景相結合，增加日記的趣味性和互動性。
+5. 故意添加主角犯錯、缺點、愚蠢與不足。
+6. 描述感受和情緒: 使用感官詞來描述女生在日常生活中的感受和情緒。讓角色更有感度，並吸引讀者的注意力。
+7. 將日記分成段節: 分成不同的段落或部分，釐清思緒和情境。
+8. 加入自我刺激與反省: 加入女性角色的自我反省和自我刺激是個好方法，可以讓日記更有深度和真實感。
+9. 用現實語言來表達: 以符合女主角年齡、職業與性格來呈現真實的說話用語、語氣、生活習慣。
+10. 遵循日記風格和形式: 用簡短字數紀錄生活、表達看法、抒發情緒，無須完整記錄事件經過。無須過度講究文法結構，當女主角在抒發強烈情緒時，請直白表達，勿過度修飾，保持自然流暢。
+
+{_format_writer_context(writer_settings)}
+
+【禁止】
+1. 將女主塑造成完美形象。
+2. 流水帳或商業文件或教科書的文體。
+3. 禁止以"我"字開頭。
+4. 禁止使用"我"字。
+
+""".strip()
+
+
+
+    return f"{system_prompt}\n\n請開始執行（以繁體中文）："
 
 def build_chapters_from_premise_prompt(char_data: dict, book_title: str, story_premise: str, other_chars: list = None,
                                        locked_chapters: list = None, writer_settings: dict = None) -> str:

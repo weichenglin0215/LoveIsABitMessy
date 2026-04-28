@@ -14,6 +14,10 @@ let state = {
         + "合：總算是成為男女朋友，最後才發現這一切都是女主在回憶與已過世的男主交往過程。\n"
         + "目前現實中為女主角在整理與男主的遺物時，所發現的日記，記錄了兩人從相識到相戀的過程。", // 故事粗綱
     characters: ["", "", "", ""], // 儲存角色 ID
+    aiModel: "gemma4",
+    modelOptions: "",
+    writerStyle: "",
+    writerSample: "",
     chapters: [
         {
             title: "第一章：初見",
@@ -244,7 +248,13 @@ async function initCharacters() {
 function renderAll() {
     qs('#book-title').value = state.bookTitle || "";
     qs('#story-premise').value = state.storyPremise || "";
-    if (state.currentModel) qs('#model-select').value = state.currentModel;
+    
+    // 恢復 AI 設定 (如果存在)
+    if (state.aiModel) qs('#model-select').value = state.aiModel;
+    if (state.modelOptions) qs('#model-options-select').value = state.modelOptions;
+    if (state.writerStyle) qs('#writer-style-select').value = state.writerStyle;
+    if (state.writerSample) qs('#writer-sample-select').value = state.writerSample;
+
     renderCharacters();
     renderChapters();
     renderEditor();
@@ -423,6 +433,19 @@ function setupEventListeners() {
     qs('#book-title').addEventListener('input', (e) => {
         state.bookTitle = e.target.value;
     });
+
+    // Save Novel Modal
+    qs('#btn-save-cancel').addEventListener('click', () => {
+        qs('#modal-novel-save').style.display = 'none';
+    });
+    qs('#btn-save-confirm').addEventListener('click', confirmSaveProject);
+
+    // Load Password Modal
+    qs('#btn-password-cancel').addEventListener('click', () => {
+        qs('#modal-novel-password').style.display = 'none';
+        qs('#cloud-novel-select').value = '';
+    });
+    qs('#btn-password-ok').addEventListener('click', confirmLoadCloudNovel);
 
     const startServerBtn = qs('#start-server-btn');
     if (startServerBtn) {
@@ -830,9 +853,30 @@ function getFormattedDateTime() {
 }
 
 async function saveProject() {
-    const name = prompt("請輸入小說名稱：", state.bookTitle);
-    if (!name) return;
+    // 開啟儲存彈窗
+    qs('#save-novel-name').value = state.bookTitle || "";
+    qs('#save-novel-password').value = "";
+    qs('#modal-novel-save').style.display = 'flex';
+}
+
+async function confirmSaveProject() {
+    const name = qs('#save-novel-name').value.trim();
+    const password = qs('#save-novel-password').value.trim();
+    
+    if (!name || !password) {
+        alert("請輸入小說名稱與密碼");
+        return;
+    }
+
     state.bookTitle = name;
+    qs('#book-title').value = name;
+    qs('#modal-novel-save').style.display = 'none';
+
+    // 同步當前選中的 AI 設定到 state
+    state.aiModel = qs('#model-select').value;
+    state.modelOptions = qs('#model-options-select').value;
+    state.writerStyle = qs('#writer-style-select').value;
+    state.writerSample = qs('#writer-sample-select').value;
 
     // 1. 同步儲存至 Supabase 雲端 (novel_entries 表)
     try {
@@ -844,6 +888,7 @@ async function saveProject() {
                 novel_title: state.bookTitle,
                 edit_data: state,
                 novel_full_text: fullText,
+                password: password, // 儲存密碼到資料表
                 updated_at: new Date()
             });
 
@@ -859,8 +904,11 @@ async function saveProject() {
         appendLog("⚠️ 雲端儲存發生異常，僅進行本機下載");
     }
 
-    // 2. 本機 JSON 下載備份
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
+    // 2. 本機 JSON 下載備份 (不包含密碼)
+    const localState = JSON.parse(JSON.stringify(state));
+    delete localState.password; // 確保本地檔案不含密碼
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(localState));
     const timeStr = getFormattedDateTime();
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
@@ -868,7 +916,7 @@ async function saveProject() {
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
-    appendLog("📂 本機 JSON 備份檔已下載");
+    appendLog("📂 本機 JSON 備份檔已下載 (無密碼)");
 }
 
 async function listCloudNovels() {
@@ -911,16 +959,35 @@ async function loadCloudNovel(e) {
         return;
     }
 
-    appendLog("☁️ 正在載入雲端小說資料...");
+    // 開啟密碼驗證彈窗
+    state._tempLoadId = id;
+    qs('#novel-password-input').value = "";
+    qs('#modal-novel-password').style.display = 'flex';
+}
+
+async function confirmLoadCloudNovel() {
+    const id = state._tempLoadId;
+    const pwd = qs('#novel-password-input').value.trim();
+    if (!id || !pwd) {
+        alert("請輸入密碼");
+        return;
+    }
+
+    appendLog("☁️ 正在驗證並載入雲端小說資料...");
     try {
         const sb = window.SupabaseClient.getClient();
         const { data, error } = await sb
             .from('novel_entries')
-            .select('edit_data')
+            .select('edit_data, password')
             .eq('id', id)
             .single();
 
         if (error) throw error;
+
+        if (data.password && data.password !== pwd) {
+            alert("密碼錯誤！");
+            return;
+        }
 
         if (data && data.edit_data) {
             state = data.edit_data;
@@ -930,6 +997,8 @@ async function loadCloudNovel(e) {
             // 重置 UI
             qs('#btn-load-cloud').style.display = 'inline-block';
             qs('#cloud-novel-select').style.display = 'none';
+            qs('#modal-novel-password').style.display = 'none';
+            state._tempLoadId = null;
         }
     } catch (e) {
         appendLog("❌ 載入小說失敗: " + e.message);
