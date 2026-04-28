@@ -247,7 +247,7 @@
       background: #000;
       color: hsl(120, 50%, 60%);
       font-family: monospace;
-      font-size: 0.7rem;
+      font-size: 1.0rem;
       padding: 6px;
       border-radius: 6px;
       border: 1px solid #333;
@@ -824,6 +824,17 @@
                 </div>
               </div>
               <div class="log-box" id="log-output">等待中…</div>
+              <div style="display:flex; gap:8px; margin-top:8px;">
+                <button
+                  style="flex:1; font-size:0.75rem; padding:4px; background:#444; color:#eee; border:none; border-radius:4px; cursor:pointer;"
+                  onclick="clearLogOutput()">🗑️清空</button>
+                <button
+                  style="flex:1; font-size:0.75rem; padding:4px; background:#444; color:#eee; border:none; border-radius:4px; cursor:pointer;"
+                  onclick="copyLogOutput()">📋複製</button>
+                <button
+                  style="flex:1; font-size:0.75rem; padding:4px; background:#444; color:#eee; border:none; border-radius:4px; cursor:pointer;"
+                  onclick="showLogModal()">🔲大型彈窗</button>
+              </div>
             </div>
           </div>
 
@@ -898,7 +909,8 @@
       <input type="text" id="modal-user-name" placeholder="輸入您的暱稱">
 
       <label>登入密碼 (必要)</label>
-      <input type="password" id="modal-user-password" placeholder="輸入登入密碼" style="background: rgba(0, 0, 0, 0.4); border: 1px solid var(--c-border); color: #fff; border-radius: 8px; padding: 7px 10px; width: 100%;">
+      <input type="password" id="modal-user-password" placeholder="輸入登入密碼"
+        style="background: rgba(0, 0, 0, 0.4); border: 1px solid var(--c-border); color: #fff; border-radius: 8px; padding: 7px 10px; width: 100%;">
 
       <label>關聯角色卡 (選填)</label>
       <select id="modal-user-char-select">
@@ -972,7 +984,8 @@
   <div class="modal-overlay hidden" id="modal-password-check">
     <div class="modal" style="width: 360px;">
       <h3 id="password-check-title">🔐 安全驗證</h3>
-      <p id="password-check-msg" style="font-size: 0.85rem; color: var(--c-text-sec); margin-bottom: 12px;">請輸入該使用者的登入密碼以載入資料：</p>
+      <p id="password-check-msg" style="font-size: 0.85rem; color: var(--c-text-sec); margin-bottom: 12px;">
+        請輸入該使用者的登入密碼以載入資料：</p>
       <input type="password" id="password-input-val" placeholder="輸入密碼..." style="margin-bottom: 20px;">
       <div class="modal-actions" style="display: flex; justify-content: flex-end; gap: 10px;">
         <button class="btn-modal cancel" id="btn-password-cancel">取消</button>
@@ -981,7 +994,38 @@
     </div>
   </div>
 
+  <script>
+    // Log 輔助功能
+    window.clearLogOutput = () => { document.getElementById('log-output').textContent = ''; };
+    window.copyLogOutput = () => {
+      const log = document.getElementById('log-output').textContent;
+      navigator.clipboard.writeText(log);
+      alert('已複製到剪貼簿');
+    };
+    window.showLogModal = () => {
+      const log = document.getElementById('log-output').textContent;
+      document.getElementById('system-log-content').value = log;
+      document.getElementById('modal-system-log').style.display = 'flex';
+    };
+  </script>
   <script src="js/loveline_app.js" defer></script>
+  <!-- ── Modal: System Message LOG ── -->
+  <div id="modal-system-log"
+    style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:20000; align-items:center; justify-content:center; padding:20px;">
+    <div
+      style="background:#222; color:#eee; width:800px; width:90%; height:90%; border-radius:12px; border:1px solid #444; display:flex; flex-direction:column; overflow:hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <div style="display:flex; align-items:center; padding:12px 20px; background:#333; border-bottom:1px solid #444;">
+        <span id="close-system-log"
+          style="cursor:pointer; font-size:1.5rem; font-weight:bold; color:#aaa; margin-right: 15px;"
+          onclick="document.getElementById('modal-system-log').style.display='none'">&times;</span>
+        <h3 style="margin:0; font-size:1.1rem; color:#f472b6;">系統訊息 LOG</h3>
+      </div>
+      <div style="flex:1; padding:20px; overflow:hidden; background:#111;">
+        <textarea id="system-log-content" readonly
+          style="width:100%; height:100%; background:transparent; color:hsl(120, 50%, 70%); border:none; padding:0; font-family:monospace; resize:none; font-size:1.2rem; line-height:1.5; outline:none;"></textarea>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>

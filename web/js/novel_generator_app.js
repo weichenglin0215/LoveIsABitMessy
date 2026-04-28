@@ -581,24 +581,32 @@ async function aiGenChapterOutline(chIdx) {
 
     try {
         // 傳入全書章節一覽與目前章號，讓 AI 有完整前後文
-        const all_chapters = state.chapters.map(ch => ({ title: ch.title, description: ch.description }));
-
         const payload = {
-            book_title: state.bookTitle || '未命名小說',
+            book_title: state.bookTitle || '故事專案',
             description: chapter.description,
             story_premise: state.storyPremise,
             all_chapters,
             chapter_index: chIdx,   // 0-based
-            characters: state.characters.map(id => cloudCharacters.find(c => c.id === id)?.card_json).filter(Boolean),
+            characters: state.characters.map(id => {
+                const found = cloudCharacters.find(c => c.id === id);
+                return found ? found.card_json : null;
+            }).filter(Boolean),
             character_ids: state.characters.filter(Boolean),
             model: state.currentModel || 'gemma4',
             model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
             writer_settings: (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || null
         };
-        const res = await callDebugServer('/api/generate_outline', payload);
-        if (res && res.debug_prompt) {
-            appendLog(`\n=== 傳遞給 AI 的提示詞 ===\n${res.debug_prompt}\n=====================\n`);
+
+        // Step 1: 取得提示詞預覽
+        appendLog(">> 正在彙整 AI 提示詞...");
+        const previewRes = await callDebugServer('/api/generate_outline', { ...payload, preview: true });
+        if (previewRes && previewRes.debug_prompt) {
+            appendLog(`\n=== 傳遞給 AI 的提示詞 ===\n${previewRes.debug_prompt}\n=====================\n`);
         }
+
+        // Step 2: 真正生成
+        appendLog(">> 正在呼叫 AI 執行生成任務...");
+        const res = await callDebugServer('/api/generate_outline', payload);
         if (res && res.sections) {
             const newSections = res.sections;
             const currentSections = chapter.sections;
@@ -680,9 +688,12 @@ async function aiGenChaptersFromPremise() {
             .map(({ index, title, description }) => ({ index, title, description }));
 
         const payload = {
-            book_title: state.bookTitle || '未命名小說',
+            book_title: state.bookTitle || '故事專案',
             story_premise: state.storyPremise,
-            characters: state.characters.map(id => cloudCharacters.find(c => c.id === id)?.card_json).filter(Boolean),
+            characters: state.characters.map(id => {
+                const found = cloudCharacters.find(c => c.id === id);
+                return found ? found.card_json : null;
+            }).filter(Boolean),
             character_ids: state.characters.filter(Boolean),
             locked_chapters,
             model: state.currentModel || 'gemma4',
@@ -690,6 +701,15 @@ async function aiGenChaptersFromPremise() {
             writer_settings: (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || null
         };
 
+        // Step 1: 取得提示詞預覽
+        appendLog(">> 正在彙整 AI 提示詞...");
+        const previewRes = await callDebugServer('/api/generate_chapters', { ...payload, preview: true });
+        if (previewRes && previewRes.debug_prompt) {
+            appendLog(`\n=== 傳遞給 AI 的提示詞 ===\n${previewRes.debug_prompt}\n=====================\n`);
+        }
+
+        // Step 2: 真正生成
+        appendLog(">> 正在呼叫 AI 執行生成任務...");
         const res = await callDebugServer('/api/generate_chapters', payload);
         if (res && res.chapters) {
             const newChapters = res.chapters;
@@ -787,10 +807,16 @@ async function aiGenSectionContent() {
             }
         };
 
-        const res = await callDebugServer('/api/generate_story_content', payload);
-        if (res && res.debug_prompt) {
-            appendLog(`\n=== 傳遞給 AI 的提示詞 ===\n${res.debug_prompt}\n=====================\n`);
+        // Step 1: 取得提示詞預覽
+        appendLog(">> 正在彙整 AI 提示詞...");
+        const previewRes = await callDebugServer('/api/generate_story_content', { ...payload, preview: true });
+        if (previewRes && previewRes.debug_prompt) {
+            appendLog(`\n=== 傳遞給 AI 的提示詞 ===\n${previewRes.debug_prompt}\n=====================\n`);
         }
+
+        // Step 2: 真正生成
+        appendLog(">> 正在呼叫 AI 執行生成任務...");
+        const res = await callDebugServer('/api/generate_story_content', payload);
         if (res && res.content) {
             sec.content = res.content;
             renderEditor();

@@ -532,6 +532,14 @@
                 </div>
             </div>
             <div id="log-output" class="log-area" style="height: 300px; font-size: 1.2rem;">等待任務...</div>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+                <button class="btn secondary-btn" style="flex:1; font-size:0.9rem; padding:4px;"
+                    onclick="document.getElementById('log-output').textContent = '';">🗑️清空</button>
+                <button class="btn secondary-btn" style="flex:1; font-size:0.9rem; padding:4px;"
+                    onclick="const log = document.getElementById('log-output').textContent; navigator.clipboard.writeText(log); alert('已複製到剪貼簿');">📋複製</button>
+                <button class="btn secondary-btn" style="flex:1; font-size:0.9rem; padding:4px;"
+                    onclick="const log = document.getElementById('log-output').textContent; document.getElementById('system-log-content').value = log; document.getElementById('modal-system-log').style.display = 'flex';">🔲大型彈窗</button>
+            </div>
             <div id="diary-cloud-status" class="cloud-status">雲端狀態</div>
         </div>
 
@@ -1047,9 +1055,9 @@
                 // 如果有日期/時間，併入情境中 (讓 AI 知道具體時間點)
                 const dDate = document.getElementById('diary-date').value;
                 const dTime = document.getElementById('diary-time').value;
-                const timeContext = `[時間設定] 日期：${dDate}，大約晚上 ${dTime} 點左右。`;
+                const timeContext = `日期：${dDate}，大約晚上 ${dTime} 點左右`;
 
-                // 讀取前三篇日記作為參考
+                // 讀取前三篇日記作為參考，根據entry_date日記中設定的日期，created_at 是 AI 產生這一篇的日期。
                 let pastDiariesContext = "";
                 try {
                     if (charId && window.SupabaseClient && window.SupabaseClient.init()) {
@@ -1073,28 +1081,48 @@
                     console.log("無法獲取過去的日記", e);
                 }
 
-                const finalScenario = pastDiariesContext + "\n\n【重要指令】：請根據以下情境\n" + scenario + "\n撰寫今天" + timeContext + "的日記。";
-
-                // 如果是雲端模式，附上完整 card_json 讓 server 直接使用
-                const postBody = {
+                // 準備提示詞生成參數
+                const promptParams = {
                     char_id: charId,
-                    scenario: finalScenario,
+                    scenario: scenario,
                     relationship: relationship,
                     other_chars: other_chars,
-                    model: document.getElementById('model-select').value,
-                    model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
-                    writer_settings: (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || null
+                    writer_settings: (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || null,
+                    time_context: timeContext,
+                    past_diaries_context: pastDiariesContext
                 };
 
-                let cardJson = null;
                 if (!useLocalCheckbox.checked && cloudCharacters.length > 0) {
                     const cloudChar = cloudCharacters.find(c => c.id === charId);
-                    if (cloudChar && cloudChar.card_json) cardJson = cloudChar.card_json;
+                    if (cloudChar && cloudChar.card_json) promptParams.card_json = cloudChar.card_json;
                 }
 
-                if (cardJson) {
-                    postBody.card_json = cardJson;
-                }
+                // --- 步驟 1: 預覽提示詞 ---
+                logBox.innerText += ">> 正在彙整 AI 提示詞...\n";
+                const previewRes = await fetch('http://localhost:8000/api/get_diary_prompt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(promptParams)
+                });
+                const previewResult = await previewRes.json();
+                const finalDiaryPrompt = previewResult.diary_prompt;
+
+                // 顯示在 UI
+                diaryPromptBox.value = finalDiaryPrompt;
+                logBox.innerText += ">> 提示詞已生成，請檢查左側提示詞欄位。\n";
+                logBox.innerText += "====================================\n";
+                logBox.innerText += finalDiaryPrompt + "\n";
+                logBox.innerText += "====================================\n";
+                logBox.scrollTop = logBox.scrollHeight;
+
+                // --- 步驟 2: 執行生成 ---
+                logBox.innerText += ">> 正在呼叫 AI 執行生成任務...\n";
+                const postBody = {
+                    ...promptParams,
+                    diary_prompt: finalDiaryPrompt, // 傳遞預覽好的提示詞
+                    model: document.getElementById('model-select').value,
+                    model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null
+                };
 
                 const res = await fetch('http://localhost:8000/api/run_async', {
                     method: 'POST',
@@ -1191,7 +1219,7 @@
             try {
                 if (!window.SupabaseClient || !window.SupabaseClient.init()) throw new Error('Supabase 未初始化');
                 const sb_client = window.SupabaseClient.getClient();
-                const { data, error } = await sb_client.from('diary_entries').select('id, entry_date, character_name, story_filename').order('entry_date', { ascending: false }).limit(50);
+                const { data, error } = await sb_client.from('diary_entries').select('id, entry_date, character_name, story_filename').order('created_at', { ascending: false }).limit(100);
                 if (error) throw error;
                 currentSource = 'cloud';
                 diarySelect.innerHTML = '<option value="">-- 請選擇雲端日記 --</option>' +
@@ -1214,6 +1242,8 @@
             try {
                 const res = await fetch('http://localhost:8000/api/diaries');
                 const data = await res.json();
+                // 排序：最新的放上面
+                data.sort((a, b) => b.localeCompare(a));
                 currentSource = 'local';
                 diarySelect.innerHTML = '<option value="">-- 請選擇本機日記 --</option>' +
                     data.map(f => `<option value="${f}">${f}</option>`).join('');
@@ -1297,6 +1327,23 @@
             }
         })();
     </script>
+    <!-- ── Modal: System Message LOG ── -->
+    <div id="modal-system-log"
+        style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:20000; align-items:center; justify-content:center; padding:20px;">
+        <div
+            style="background:#222; color:#eee; width:800px; max-width:95%; height:80%; border-radius:12px; border:1px solid #444; display:flex; flex-direction:column; overflow:hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <div style="display:flex; align-items:center; padding:12px 20px; background:#333; border-bottom:1px solid #444;">
+                <span id="close-system-log"
+                    style="cursor:pointer; font-size:1.5rem; font-weight:bold; color:#aaa; margin-right: 15px;"
+                    onclick="document.getElementById('modal-system-log').style.display='none'">&times;</span>
+                <h3 style="margin:0; font-size:1.1rem; color:#f472b6;">系統訊息 LOG</h3>
+            </div>
+            <div style="flex:1; padding:20px; overflow:hidden; background:#111;">
+                <textarea id="system-log-content" readonly
+                    style="width:100%; height:100%; background:transparent; color:#0f0; border:none; padding:0; font-family:monospace; resize:none; font-size:0.9rem; line-height:1.5; outline:none;"></textarea>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

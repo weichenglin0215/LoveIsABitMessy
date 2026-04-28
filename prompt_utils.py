@@ -134,7 +134,7 @@ def _format_writer_context(writer_settings: dict) -> str:
         res += f"\n【知名作家寫作範本參考】\n{sample}\n"
     return res
 
-def build_daily_prompt(char_data: dict, scenario: str, relationship_params: dict = None, other_chars: list = None, writer_settings: dict = None) -> str:
+def build_daily_prompt(char_data: dict, scenario: str, relationship_params: dict = None, other_chars: list = None, writer_settings: dict = None, time_context: str = "", past_diaries_context: str = "") -> str:
     """建立「日記生成」的完整提示詞 (包含系統提示與當日情境/關係動態)"""
     #####################################################################################
     #建立「日記生成」的完整提示詞 (包含系統提示與當日情境/關係動態)
@@ -167,10 +167,19 @@ def build_daily_prompt(char_data: dict, scenario: str, relationship_params: dict
         fB = relationship_params.get('friend_b_status', '無')
         others_occupied = relationship_params.get('others_occupied', False)
 
+        if pa == '無':
+            rel_context = "- 女主目前沒有伴侶。\n"
+        elif pa == '曖昧期':
+            rel_context = f"- 女主與對象處於曖昧階段\n"
+        elif pa == '戀愛期':
+            rel_context = f"- 女主與交往的伴侶處於戀愛階段\n"
+        elif pa == '失戀期':
+            rel_context = f"- 女主與伴侶分手了，正處於失戀狀況\n"
+
         if fA != '無':
-            rel_context += f"- 與新朋友 A 處於：{fA}\n"
+            rel_context += f"- 與新朋友 A 處於{fA}\n"
         if fB != '無':
-            rel_context += f"- 與新朋友 B 處於：{fB}\n"
+            rel_context += f"- 與新朋友 B 處於{fB}\n"
         
         if others_occupied:
             rel_context += "- 注意：女主心儀的對象（伴侶或新朋友）似乎已經另有對象了，這讓女主感到極度不安、競爭感或罪惡感。\n"
@@ -194,10 +203,16 @@ def build_daily_prompt(char_data: dict, scenario: str, relationship_params: dict
 
         if logic_hints:
             rel_context += "- 心理狀態指引：" + " ".join(logic_hints) + "\n"
-
-    final_scenario = f"【當前任務/情境】\n{scenario}"
+    # 建立final_scenario 關於主介面上勾選女主與其他男生關係、三則過往日記、時間日期、設定情境 (Scenario) 的內容
+    final_scenario = ""
     if rel_context:
-        final_scenario = f"【女主角的複雜關係與心理狀態說明】：\n{rel_context}\n{final_scenario}"
+        final_scenario += f"【女主角的複雜關係與心理狀態說明】：\n{rel_context}\n"
+    if past_diaries_context:
+        final_scenario += f"\n\n{past_diaries_context}\n"
+    final_scenario += f"【重點日誌與情境設定】\n{scenario}\n"
+    if time_context:
+        final_scenario += f"\n\n【重要指令】：請撰寫今天 {time_context} 的日記。"
+
 
     system_prompt = f"""
 你現在是一位專業的暢銷愛情小說作家，擅長撰寫一段自然、有趣、具真實感且能引起讀者共鳴的愛情故事，請代入以下角色的靈魂寫日記。
@@ -525,16 +540,28 @@ def build_chat_reply_prompt(char_data, char_name, user_name, user_message, histo
 【關於對話對象 (使用者) 的資訊】
 {user_context}
 
-【對話規則】
-1. 嚴格遵守角色性格，說話口吻要符合設定。
-2. 這是通訊軟體，回應應簡短自然（1~3 句話為主），偶爾可以使用表情符號。
-3. 你的回覆對象是 {user_name}。
-4. **絕對不要**以「{char_name}:」作為開頭，直接輸出對話內容即可。
-5. 參考使用者的設定來調整你的互動方式（例如使用者如果是你的上司、戀人或陌生人）。
-
 【之前的對話紀錄】
 {history_text}
+
+【使用者或其他角色的提問】
+【**重要指令**】請根據以下提問來回覆。
 {user_name}: {user_message}
-{char_name}:"""
+
+【對話規則】
+1. 回答語氣要完全符合角色的年齡跟性格，說話口吻要符合設定。
+2. 依照使用者與你的關係來調整你的互動方式。
+3. 直接回答使用者的提問。
+4. 這是通訊軟體，回應應簡短自然（1~3 句話為主），偶爾可以使用表情符號。
+5. 你的回覆對象是 {user_name}。
+6. **絕對不要**以「{char_name}:」作為開頭，直接輸出對話內容即可。
+
+【絕對禁止】
+1. 絕對禁止重複你自己的上一次回覆。
+2. 禁止重複回答相同的意見。
+3. 禁止迴避使用者的提問，必須針對提問回答。
+4. 禁止以上次的格式來回覆。
+5. 禁止用**簡體中文**回覆。
+
+"""
     
     return prompt.strip()

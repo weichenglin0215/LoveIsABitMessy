@@ -102,7 +102,7 @@ def _try_repair_json(s: str) -> str:
         
     return "".join(fixed)
 
-def _build_diary_prompt(char_path, scenario, char_data_override=None, relationship_params=None, other_chars=None, writer_settings=None):
+def _build_diary_prompt(char_path, scenario, char_data_override=None, relationship_params=None, other_chars=None, writer_settings=None, time_context="", past_diaries_context=""):
     #####################################################################################
     # 回傳「實際送給 Ollama 的日記 prompt」。
     #####################################################################################
@@ -111,7 +111,7 @@ def _build_diary_prompt(char_path, scenario, char_data_override=None, relationsh
     else:
         char_data = load_character_from_path(char_path)
 
-    return build_daily_prompt(char_data, scenario, relationship_params, other_chars=other_chars, writer_settings=writer_settings)
+    return build_daily_prompt(char_data, scenario, relationship_params, other_chars=other_chars, writer_settings=writer_settings, time_context=time_context, past_diaries_context=past_diaries_context)
 
 def _append_job_log(job_id: str, text: str):
     #####################################################################################
@@ -448,7 +448,26 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
             else:
                 params = {}
 
-            if self.path == '/api/run_async':
+            if self.path == '/api/get_diary_prompt':
+                char_id = params.get('char_id')
+                scenario = params.get('scenario', '無特定情境')
+                card_json = params.get('card_json')
+                relationship_params = params.get('relationship', {})
+                other_chars = params.get('other_chars', [])
+                writer_settings = params.get('writer_settings', {})
+                time_context = params.get('time_context', "")
+                past_diaries_context = params.get('past_diaries_context', "")
+
+                char_path = _resolve_character_json_path(char_id)
+                diary_prompt = _build_diary_prompt(char_path, scenario, char_data_override=card_json, relationship_params=relationship_params, other_chars=other_chars, writer_settings=writer_settings, time_context=time_context, past_diaries_context=past_diaries_context)
+
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"diary_prompt": diary_prompt}).encode('utf-8'))
+                return
+
+            elif self.path == '/api/run_async':
                 #####################################################################################
                 # 執行「日記生成」與「圖片生成」任務
                 #####################################################################################
@@ -457,10 +476,15 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 card_json = params.get('card_json')
                 relationship_params = params.get('relationship', {})
                 other_chars = params.get('other_chars', [])
-
                 writer_settings = params.get('writer_settings', {})
+                time_context = params.get('time_context', "")
+                past_diaries_context = params.get('past_diaries_context', "")
+
                 char_path = _resolve_character_json_path(char_id)
-                diary_prompt = _build_diary_prompt(char_path, scenario, char_data_override=card_json, relationship_params=relationship_params, other_chars=other_chars, writer_settings=writer_settings)
+                # 如果 frontend 已經傳入預覽好的 prompt，就優先使用；否則後端再生成一次
+                diary_prompt = params.get('diary_prompt')
+                if not diary_prompt:
+                    diary_prompt = _build_diary_prompt(char_path, scenario, char_data_override=card_json, relationship_params=relationship_params, other_chars=other_chars, writer_settings=writer_settings, time_context=time_context, past_diaries_context=past_diaries_context)
 
                 image_prompt = ""
                 if card_json:
@@ -523,6 +547,17 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 writer_settings = params.get('writer_settings', {})
                 prompt = build_chapters_from_premise_prompt(main_char, book_title, premise, chars[1:], locked_chapters, writer_settings=writer_settings)
                 
+                if params.get('preview'):
+                    print("\n" + "="*50)
+                    print("【PREVIEW: AI 根據粗綱生成各章標題與描述的 PROMPT 如下】")
+                    print(prompt)
+                    print("="*50)
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json; charset=utf-8')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"debug_prompt": prompt}, ensure_ascii=False).encode('utf-8'))
+                    return
+
                 print("\n" + "="*50)
                 print("【DEBUG: AI 根據粗綱生成各章標題與描述的 PROMPT 如下】")
                 print(prompt)
@@ -591,6 +626,17 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                     chapter_index=chapter_index,
                     writer_settings=writer_settings
                 )
+                
+                if params.get('preview'):
+                    print("\n" + "="*50)
+                    print("【PREVIEW: AI 產生「各小節大綱」的 PROMPT】")
+                    print(prompt)
+                    print("="*50)
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json; charset=utf-8')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"debug_prompt": prompt}, ensure_ascii=False).encode('utf-8'))
+                    return
                 
                 print("\n" + "="*50)
                 print("【DEBUG: AI 產生「各小節大綱」的 PROMPT】")
@@ -682,6 +728,17 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 writer_settings = params.get('writer_settings', {})
                 prompt = build_novel_content_prompt(main_char, ctx.get('chapter_title', ''), f"{ctx.get('chapter_desc', '')} - {ctx.get('section_title', '')}", ctx.get('section_title', ''), chars[1:], writer_settings=writer_settings)
                 
+                if params.get('preview'):
+                    print("\n" + "="*50)
+                    print(f"【PREVIEW: AI 「小說本文生成」 PROMPT - {ctx.get('section_title', '')}】")
+                    print(prompt)
+                    print("="*50)
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json; charset=utf-8')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"debug_prompt": prompt}, ensure_ascii=False).encode('utf-8'))
+                    return
+
                 print("\n" + "="*50)
                 print(f"【DEBUG: AI 「小說本文生成」 PROMPT - {ctx.get('section_title', '')}】")
                 print(prompt)
@@ -736,6 +793,17 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                     other_participants=participants,
                     writer_settings=writer_settings
                 )
+
+                if params.get('preview'):
+                    print("\n" + "="*50)
+                    print(f"【PREVIEW: AI 「LoveLine 角色回覆」 PROMPT - {character_name}】")
+                    print(prompt)
+                    print("="*50)
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json; charset=utf-8')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"debug_prompt": prompt}, ensure_ascii=False).encode('utf-8'))
+                    return
 
                 print("\n" + "="*50)
                 print(f"【DEBUG: AI 「LoveLine 角色回覆」 PROMPT - {character_name}】")
