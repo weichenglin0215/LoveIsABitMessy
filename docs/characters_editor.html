@@ -10,18 +10,23 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/lpas_styles.css">
   <style>
-    body {
-      overflow-y: auto;
-      height: auto;
-      align-items: flex-start;
-      display: block;
-      padding: 6px 12px;
-      font-size: 1rem;
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
 
+    body {
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 10px 20px;
+      font-size: 1rem;
+      box-sizing: border-box;
     }
 
     .debug-panel {
       max-width: 1800px;
+      width: 100%;
       margin: 0 auto;
       background: var(--c-bg-card);
       padding: 20px;
@@ -30,16 +35,25 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 20px;
+      flex: 1;
+      min-height: 0; /* Important for flex child to be able to shrink/not overflow */
+      box-sizing: border-box;
     }
 
     .col-left {
       border-right: 1px solid #444;
       padding-right: 20px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
     }
 
     .col-right {
       display: flex;
       flex-direction: column;
+      min-height: 0;
+      overflow-y: auto;
+      padding-right: 5px;
     }
 
     .editor-header {
@@ -72,8 +86,11 @@
     }
 
     .editor-container {
-      max-width: 1200px;
-      margin: 0 auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      width: 100%;
     }
 
     .editor-panel {
@@ -83,6 +100,8 @@
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
       display: flex;
       flex-direction: column;
+      flex: 1;
+      min-height: 0;
     }
 
     .editor-panel h2 {
@@ -140,7 +159,7 @@
 
     .editor-textarea {
       flex: 1;
-      min-height: 300px;
+      min-height: 100px;
       width: 100%;
       padding: 14px;
       border-radius: 10px;
@@ -150,7 +169,7 @@
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 1.1rem;
       line-height: 1.5;
-      resize: vertical;
+      resize: none;
     }
 
     .editor-input {
@@ -306,6 +325,7 @@
           </div>
         </div>
       </div>
+      <div class="hint">💡 儲存角色時會自動同步更新 Supabase 中的 characters 資料表。</div>
     </div>
     <div class="col-right">
       <div style="margin-bottom: 15px;">
@@ -328,13 +348,11 @@
             style="min-height: 140px; background: var(--c-bg-card);"></textarea>
         </div>
       </div>
-
-      <div class="hint">💡 儲存角色時會自動同步更新 Supabase 中的 characters 資料表。</div>
     </div>
   </div>
 
-  <div style="margin: 20px auto; text-align: center;">
-    <div style="color: var(--c-text-sec); opacity: 0.8;">
+  <div style="margin: 10px auto 0; text-align: center;">
+    <div style="color: var(--c-text-sec); opacity: 0.8; font-size: 0.9rem;">
       LoveIsABitMessy Character Management System
     </div>
   </div>

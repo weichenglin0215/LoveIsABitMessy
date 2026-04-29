@@ -24,7 +24,7 @@ from prompt_utils import (
     build_novel_content_prompt #建立「小說本文生成」的完整提示詞
 )
 
-PORT = 8000
+PORT = 8081
 WEB_DIR = os.path.join(os.path.dirname(__file__), 'web')
 
 JOBS = {}

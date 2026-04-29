@@ -88,7 +88,7 @@ function initSupabase() {
 
 async function fetchOllamaModels() {
     try {
-        const res = await fetch('http://localhost:8000/api/models');
+        const res = await fetch('http://localhost:8081/api/models');
         const container = qs('#model-container');
         if (res.ok) {
             const models = await res.json();
@@ -136,7 +136,7 @@ async function checkServerStatus() {
     try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 2000);
-        const res = await fetch('http://localhost:8000/api/status', { signal: controller.signal });
+        const res = await fetch('http://localhost:8081/api/status', { signal: controller.signal });
         clearTimeout(timeout);
         if (res.ok) {
             const now = Date.now();
@@ -211,7 +211,7 @@ async function loadCloudChars() {
 
 async function loadLocalChars() {
     try {
-        const res = await fetch('http://localhost:8000/api/characters');
+        const res = await fetch('http://localhost:8081/api/characters');
         const data = await res.json();
         localCharacters = data;
     } catch (e) {
@@ -450,7 +450,7 @@ function setupEventListeners() {
     const startServerBtn = qs('#start-server-btn');
     if (startServerBtn) {
         startServerBtn.addEventListener('click', () => {
-            const batContent = '@echo off\r\nchcp 65001 >nul\r\ncd /d "' + getProjectRoot() + '"\r\necho ====================================\r\necho   LoveIsABitMessy - Debug Server\r\necho   http://localhost:8000\r\necho ====================================\r\necho.\r\npython debug_server.py\r\necho.\r\necho === 伺服器已停止 ===\r\npause >nul\r\n';
+            const batContent = '@echo off\r\nchcp 65001 >nul\r\ncd /d "' + getProjectRoot() + '"\r\necho ====================================\r\necho   LoveIsABitMessy - Debug Server\r\necho   http://localhost:8081\r\necho ====================================\r\necho.\r\npython debug_server.py\r\necho.\r\necho === 伺服器已停止 ===\r\npause >nul\r\n';
             const blob = new Blob([batContent], { type: 'application/bat' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -836,7 +836,7 @@ async function callDebugServer(endpoint, payload) {
     if (!serverOnline) throw new Error("Server offline");
 
     try {
-        const res = await fetch(`http://localhost:8000${endpoint}`, {
+        const res = await fetch(`http://localhost:8081${endpoint}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)

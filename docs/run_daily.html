@@ -234,7 +234,7 @@
             <label class="form-label">1. 選擇演員</label>
             <div class="toggle-row">
                 <input type="checkbox" id="use-local-data">
-                <label for="use-local-data">讀取本機資料 (除錯用)，請先確認 debug_server.py 已上線運作 (localhost:8000)</label>
+                <label for="use-local-data">讀取本機資料 (除錯用)，請先確認 debug_server.py 已上線運作 (localhost:8081)</label>
             </div>
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
                 <select id="char-select" style="flex: 1; margin-bottom: 0;">
@@ -335,13 +335,13 @@
             try {
                 const controller = new AbortController();
                 const timeout = setTimeout(() => controller.abort(), 2000);
-                const res = await fetch('http://localhost:8000/api/characters', { signal: controller.signal });
+                const res = await fetch('http://localhost:8081/api/characters', { signal: controller.signal });
                 clearTimeout(timeout);
                 if (res.ok) {
                     serverOnline = true;
                     serverDot.className = 'server-status-dot online';
-                    serverStatusText.textContent = '✅ debug_server.py 已在線 (localhost:8000)';
-                    logBox.innerText += "\n✅ debug_server.py 已在線 (localhost:8000)\n";
+                    serverStatusText.textContent = '✅ debug_server.py 已在線 (localhost:8081)';
+                    logBox.innerText += "\n✅ debug_server.py 已在線 (localhost:8081)\n";
                     startServerBtn.disabled = true;
                     return true;
                 }
@@ -358,7 +358,7 @@
         // ====== 啟動伺服器按鈕 ======
         startServerBtn.addEventListener('click', () => {
             // 產生 bat 檔內容並觸發下載
-            const batContent = '@echo off\r\nchcp 65001 >nul\r\ncd /d "' + getProjectRoot() + '"\r\necho ====================================\r\necho   LoveIsABitMessy - Debug Server\r\necho   http://localhost:8000\r\necho ====================================\r\necho.\r\npython debug_server.py\r\necho.\r\necho === 伺服器已停止 ===\r\npause >nul\r\n';
+            const batContent = '@echo off\r\nchcp 65001 >nul\r\ncd /d "' + getProjectRoot() + '"\r\necho ====================================\r\necho   LoveIsABitMessy - Debug Server\r\necho   http://localhost:8081\r\necho ====================================\r\necho.\r\npython debug_server.py\r\necho.\r\necho === 伺服器已停止 ===\r\npause >nul\r\n';
             const blob = new Blob([batContent], { type: 'application/bat' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -452,7 +452,7 @@
             try {
                 const controller = new AbortController();
                 const timeout = setTimeout(() => controller.abort(), 3000);
-                const res = await fetch('http://localhost:8000/api/characters', { signal: controller.signal });
+                const res = await fetch('http://localhost:8081/api/characters', { signal: controller.signal });
                 clearTimeout(timeout);
                 const data = await res.json();
                 charSelect.innerHTML = data.map(c => `<option value="${c}">${c}</option>`).join('');
@@ -461,7 +461,7 @@
                 // 伺服器在線，更新狀態
                 serverOnline = true;
                 serverDot.className = 'server-status-dot online';
-                serverStatusText.textContent = '✅ debug_server.py 已在線 (localhost:8000)';
+                serverStatusText.textContent = '✅ debug_server.py 已在線 (localhost:8081)';
                 startServerBtn.disabled = true;
             } catch (e) {
                 charSourceStatus.textContent = '❌ 本機讀取失敗 (debug_server.py 未啟動)';
@@ -541,7 +541,7 @@
                 try {
                     // 使用 URL 編碼處理中文字檔名
                     const encodedFilename = encodeURIComponent(storyFilename);
-                    const res = await fetch(`http://localhost:8000/stories/${encodedFilename}`);
+                    const res = await fetch(`http://localhost:8081/stories/${encodedFilename}`);
                     if (res.ok) {
                         cleanData = await res.json();
                     } else {
@@ -621,7 +621,7 @@
                     }
                 }
 
-                const res = await fetch('http://localhost:8000/api/run_async', {
+                const res = await fetch('http://localhost:8081/api/run_async', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(postBody)
@@ -641,7 +641,7 @@
                 let finalJobResult = null;
                 for (let i = 0; i < 600; i++) {
                     await new Promise(r => setTimeout(r, 1000));
-                    const jr = await fetch(`http://localhost:8000/api/job?id=${encodeURIComponent(jobId)}`);
+                    const jr = await fetch(`http://localhost:8081/api/job?id=${encodeURIComponent(jobId)}`);
                     const jd = await jr.json();
                     if (jd.logs && jd.logs !== lastText) {
                         lastText = jd.logs;

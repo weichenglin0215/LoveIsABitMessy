@@ -10,36 +10,52 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/lpas_styles.css">
   <style>
+    html,
     body {
-      overflow-y: auto;
-      height: auto;
-      align-items: flex-start;
-      display: block;
-      padding: 6px 12px;
-      font-size: 1rem;
+      height: 100%;
+      margin: 0;
+    }
 
+    body {
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 0.4rem 0.4rem;
+      font-size: 1rem;
+      box-sizing: border-box;
     }
 
     .debug-panel {
       max-width: 1800px;
+      width: 100%;
       margin: 0 auto;
       background: var(--c-bg-card);
-      padding: 20px;
+      padding: 0.3rem 0.9rem;
       border-radius: 16px;
       border: 1px solid #444;
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 20px;
+      flex: 1;
+      min-height: 0;
+      /* Important for flex child to be able to shrink/not overflow */
+      box-sizing: border-box;
     }
 
     .col-left {
       border-right: 1px solid #444;
       padding-right: 20px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
     }
 
     .col-right {
       display: flex;
       flex-direction: column;
+      min-height: 0;
+      overflow-y: auto;
+      padding-right: 5px;
     }
 
     .editor-header {
@@ -57,7 +73,7 @@
     /* 連線區 */
     .conn-panel {
       max-width: 1200px;
-      margin: 0 auto 10px;
+      margin: 0 10px 0;
       background: var(--c-bg-card);
       border-radius: 16px;
       padding: 6px 12px;
@@ -72,8 +88,11 @@
     }
 
     .editor-container {
-      max-width: 1200px;
-      margin: 0 auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      width: 100%;
     }
 
     .editor-panel {
@@ -83,6 +102,8 @@
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
       display: flex;
       flex-direction: column;
+      flex: 1;
+      min-height: 0;
     }
 
     .editor-panel h2 {
@@ -105,7 +126,7 @@
 
     .toolbar select {
       flex: 1 1 200px;
-      padding: 6px 12px;
+      padding: 0.2rem 0.4rem;
       border-radius: 10px;
       border: 1px solid var(--c-scale-empty);
       background-color: var(--c-bg-main);
@@ -140,9 +161,9 @@
 
     .editor-textarea {
       flex: 1;
-      min-height: 300px;
+      min-height: 5rem;
       width: 100%;
-      padding: 14px;
+      padding: 0.2rem 0.5rem;
       border-radius: 10px;
       border: 1px solid var(--c-scale-empty);
       background-color: var(--c-bg-main);
@@ -150,12 +171,14 @@
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 1.1rem;
       line-height: 1.5;
-      resize: vertical;
+      resize: none;
     }
 
+    .editor-input-text,
     .editor-input {
+      height: 2rem;
       width: 100%;
-      padding: 6px 12px;
+      padding: 0.2rem 0.4rem;
       border-radius: 8px;
       border: 1px solid var(--c-scale-empty);
       background-color: var(--c-bg-main);
@@ -163,17 +186,18 @@
       font-family: inherit;
       font-size: 1rem;
       margin-bottom: 0px;
+      box-sizing: border-box;
     }
 
     .field-group {
-      margin-bottom: 6px;
+      margin: 0.3rem 0.0rem;
     }
 
     .field-label {
       display: block;
       font-size: 1rem;
       color: var(--c-text-sec);
-      margin-top: 0.5rem;
+      margin-top: 0.2rem;
       margin-bottom: 0.2rem;
       font-weight: 500;
     }
@@ -181,7 +205,7 @@
     .hint {
       font-size: 1rem;
       color: var(--c-text-sec);
-      margin-top: 8px;
+      margin-top: 0rem;
       opacity: 0.7;
     }
   </style>
@@ -198,14 +222,16 @@
   <div id="star-bg"></div>
   <div class="debug-panel">
     <div class="col-left">
+
       <div class="editor-header">
         <h1>🎭 角色資料編輯器</h1>
-        <div style="color: var(--c-text-sec); ">管理 Supabase 雲端角色卡、生日、血型與人格特質</div>
+        <div class="conn-panel" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div style="color: var(--c-text-sec); ">管理 Supabase 雲端角色卡、生日、血型與人格特質</div>
+          <div class="conn-status" id="conn-status">🔄 正在自動連線至 Supabase…</div>
+        </div>
       </div>
 
-      <div class="conn-panel">
-        <div class="conn-status" id="conn-status">🔄 正在自動連線至 Supabase…</div>
-      </div>
+
 
       <div class="editor-container">
         <div class="editor-panel">
@@ -222,14 +248,14 @@
 
           <div class="field-group">
             <label class="field-label">角色 ID (ID) - 唯讀</label>
-            <input type="text" class="editor-input" id="char-id" readonly
+            <input type="text" class="editor-input-text" id="char-id" readonly
               style="background-color: var(--c-bg-card); opacity: 0.8;" placeholder="系統自動生成">
           </div>
 
-          <div style="display: grid; grid-template-columns: 3fr 1fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+          <div style="display: grid; grid-template-columns: 3fr 1fr 1fr 1fr 1fr; gap: 12px;">
             <div class="field-group">
               <label class="field-label">姓名 (Name)</label>
-              <input type="text" class="editor-input" id="char-name" placeholder="輸入角色姓名">
+              <input type="text" class="editor-input-text" id="char-name" placeholder="輸入角色姓名">
             </div>
             <div class="field-group">
               <label class="field-label">性別 (Gender)</label>
@@ -260,7 +286,7 @@
             </div>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+          <div style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 12px;">
             <div class="field-group">
               <label class="field-label" id="lbl-birthday">生日 (Birthday)</label>
               <input type="date" class="editor-input" id="char-birthday">
@@ -279,22 +305,22 @@
             </div>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
             <div class="field-group">
               <label class="field-label">曖昧期類型</label>
-              <select class="editor-input" id="char-type-1" style="padding: 6px;">
+              <select class="editor-input" id="char-type-1">
                 <option value="">-- 選擇曖昧期類型 --</option>
               </select>
             </div>
             <div class="field-group">
               <label class="field-label">熱戀期類型</label>
-              <select class="editor-input" id="char-type-2" style="padding: 6px;">
+              <select class="editor-input" id="char-type-2">
                 <option value="">-- 選擇熱戀期類型 --</option>
               </select>
             </div>
             <div class="field-group">
               <label class="field-label">失戀期類型</label>
-              <select class="editor-input" id="char-type-3" style="padding: 6px;">
+              <select class="editor-input" id="char-type-3">
                 <option value="">-- 選擇失戀期類型 --</option>
               </select>
             </div>
@@ -306,6 +332,7 @@
           </div>
         </div>
       </div>
+      <div class="hint">💡 儲存角色時會自動同步更新 Supabase 中的 characters 資料表。</div>
     </div>
     <div class="col-right">
       <div style="margin-bottom: 15px;">
@@ -328,16 +355,9 @@
             style="min-height: 140px; background: var(--c-bg-card);"></textarea>
         </div>
       </div>
-
-      <div class="hint">💡 儲存角色時會自動同步更新 Supabase 中的 characters 資料表。</div>
     </div>
   </div>
 
-  <div style="margin: 20px auto; text-align: center;">
-    <div style="color: var(--c-text-sec); opacity: 0.8;">
-      LoveIsABitMessy Character Management System
-    </div>
-  </div>
 </body>
 
 </html>

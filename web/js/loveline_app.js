@@ -525,7 +525,7 @@ async function getAIReply(sess, participant, userMessage) {
 
     // Step 1: 取得提示詞預覽 (並顯示在 log-output 與 CMD)
     appendLog(">> 正在彙整 AI 提示詞...");
-    const previewRes = await fetch('http://localhost:8000/api/chat_reply', {
+    const previewRes = await fetch('http://localhost:8081/api/chat_reply', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, preview: true })
@@ -539,7 +539,7 @@ async function getAIReply(sess, participant, userMessage) {
 
     // Step 2: 真正生成回覆
     appendLog(">> 正在呼叫 AI 執行生成任務...");
-    const res = await fetch('http://localhost:8000/api/chat_reply', {
+    const res = await fetch('http://localhost:8081/api/chat_reply', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -647,7 +647,7 @@ async function checkServerStatus() {
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 2000);
-    const res = await fetch('http://localhost:8000/api/status', { signal: ctrl.signal });
+    const res = await fetch('http://localhost:8081/api/status', { signal: ctrl.signal });
     clearTimeout(t);
     if (res.ok) {
       if (!state.serverOnline) {
@@ -670,7 +670,7 @@ async function checkServerStatus() {
 
 async function fetchModels() {
   try {
-    const res = await fetch('http://localhost:8000/api/models');
+    const res = await fetch('http://localhost:8081/api/models');
     if (!res.ok) return;
     const models = await res.json();
     const sel = qs('#model-select');

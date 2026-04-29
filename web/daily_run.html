@@ -61,16 +61,17 @@
 
         .form-label {
             display: block;
-            margin-top: 8px;
-            margin-bottom: 2px;
+            margin-top: 0.3rem;
+            margin-bottom: 0.3rem;
             color: var(--c-accent-light);
             font-weight: 500;
         }
 
         select,
         input {
+            height: 2rem;
             width: 100%;
-            padding: 5px;
+            padding: 0.1rem 0.3rem;
             background: #000;
             border: 1px solid hsl(0, 0%, 33%);
             border-radius: 8px;
@@ -386,7 +387,7 @@
                     <input type="checkbox" id="use-local-data">
                     <label for="use-local-data">讀取本機資料 (除錯用)...</label>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 5px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <div class="status-item">
                         <label class="form-label">主角演員</label>
                         <div style="display: flex; gap: 8px;">
@@ -455,8 +456,9 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <div style="display: flex; gap: 5px;">
                         <input type="date" id="diary-date" style="flex:1;">
-                        <button class="btn secondary-btn" id="btn-today" style="padding: 2px 10px;"
-                            title="回到今天的日期">今天</button>
+                        <button class="btn secondary-btn" id="btn-today"
+                            style="height: 2rem; padding: 0 10px; margin: 0rem 4rem 0rem 1rem;"
+                            title=" 回到今天的日期">今天</button>
                     </div>
                     <select id="diary-time">
                         <option value="18">晚上 6 點</option>
@@ -476,17 +478,17 @@
             </div>
 
             <div class="form-section">
-                <label class="form-label">2. 設定情境 (Scenario)</label>
+                <label class="form-label">3. 設定情境 (Scenario)</label>
                 <textarea id="input-scenario" placeholder="例如：雨天的咖啡廳..." style="height: 300px;"></textarea>
             </div>
 
             <div class="form-section">
-                <label class="form-label">3. 產生日記的AI提示詞(唯讀)</label>
+                <label class="form-label">4. 產生日記的AI提示詞(唯讀)</label>
                 <textarea id="diary-prompt-box" readonly class="prompt-preview" style="min-height:100px;"></textarea>
             </div>
 
             <div class="form-section">
-                <label class="form-label">4. 產生照片的AI提示詞(唯讀)</label>
+                <label class="form-label">5. 產生照片的AI提示詞(唯讀)</label>
                 <textarea id="image-prompt-box" readonly class="prompt-preview" style="min-height:60px;"></textarea>
             </div>
 
@@ -613,7 +615,7 @@
         // ====== 偵測 debug_server 是否在線 ======
         async function fetchOllamaModels() {
             try {
-                const res = await fetch('http://localhost:8000/api/models');
+                const res = await fetch('http://localhost:8081/api/models');
                 const container = document.getElementById('model-container');
                 if (res.ok) {
                     const models = await res.json();
@@ -649,7 +651,7 @@
             try {
                 const controller = new AbortController();
                 const timeout = setTimeout(() => controller.abort(), 2000);
-                const res = await fetch('http://localhost:8000/api/status', { signal: controller.signal });
+                const res = await fetch('http://localhost:8081/api/status', { signal: controller.signal });
                 clearTimeout(timeout);
                 if (res.ok) {
                     const now = Date.now();
@@ -694,7 +696,7 @@
         // ====== 啟動伺服器按鈕 ======
         startServerBtn.addEventListener('click', () => {
             // 產生 bat 檔內容並觸發下載
-            const batContent = '@echo off\r\nchcp 65001 >nul\r\ncd /d "' + getProjectRoot() + '"\r\necho ====================================\r\necho   LoveIsABitMessy - Debug Server\r\necho   http://localhost:8000\r\necho ====================================\r\necho.\r\npython debug_server.py\r\necho.\r\necho === 伺服器已停止 ===\r\npause >nul\r\n';
+            const batContent = '@echo off\r\nchcp 65001 >nul\r\ncd /d "' + getProjectRoot() + '"\r\necho ====================================\r\necho   LoveIsABitMessy - Debug Server\r\necho   http://localhost:8081\r\necho ====================================\r\necho.\r\npython debug_server.py\r\necho.\r\necho === 伺服器已停止 ===\r\npause >nul\r\n';
             const blob = new Blob([batContent], { type: 'application/bat' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -892,7 +894,7 @@
             try {
                 const controller = new AbortController();
                 const timeout = setTimeout(() => controller.abort(), 3000);
-                const res = await fetch('http://localhost:8000/api/characters', { signal: controller.signal });
+                const res = await fetch('http://localhost:8081/api/characters', { signal: controller.signal });
                 clearTimeout(timeout);
                 const data = await res.json();
                 charSelect.innerHTML = data.map(c => `<option value="${c}">${c}</option>`).join('');
@@ -901,7 +903,7 @@
                 // 伺服器在線，更新狀態
                 serverOnline = true;
                 serverDot.className = 'server-status-dot online';
-                serverStatusText.textContent = '✅ debug_server.py 已在線 (localhost:8000)';
+                serverStatusText.textContent = '✅ debug_server.py 已在線 (localhost:8081)';
                 startServerBtn.disabled = true;
             } catch (e) {
                 charSourceStatus.textContent = '❌ 本機讀取失敗 (debug_server.py 未啟動)';
@@ -981,7 +983,7 @@
                 try {
                     // 使用 URL 編碼處理中文字檔名
                     const encodedFilename = encodeURIComponent(storyFilename);
-                    const res = await fetch(`http://localhost:8000/diaries/${encodedFilename}`);
+                    const res = await fetch(`http://localhost:8081/diaries/${encodedFilename}`);
                     if (res.ok) {
                         cleanData = await res.json();
                     } else {
@@ -1111,7 +1113,7 @@
 
                 // --- 步驟 1: 預覽提示詞 ---
                 logBox.innerText += ">> 正在彙整 AI 提示詞...\n";
-                const previewRes = await fetch('http://localhost:8000/api/get_diary_prompt', {
+                const previewRes = await fetch('http://localhost:8081/api/get_diary_prompt', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(promptParams)
@@ -1136,7 +1138,7 @@
                     model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null
                 };
 
-                const res = await fetch('http://localhost:8000/api/run_async', {
+                const res = await fetch('http://localhost:8081/api/run_async', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(postBody)
@@ -1156,7 +1158,7 @@
                 let finalJobResult = null;
                 for (let i = 0; i < 600; i++) {
                     await new Promise(r => setTimeout(r, 1000));
-                    const jr = await fetch(`http://localhost:8000/api/job?id=${encodeURIComponent(jobId)}`);
+                    const jr = await fetch(`http://localhost:8081/api/job?id=${encodeURIComponent(jobId)}`);
                     const jd = await jr.json();
                     if (jd.logs && jd.logs !== lastText) {
                         lastText = jd.logs;
@@ -1196,7 +1198,7 @@
                 if (useLocalCheckbox.checked) {
                     // 本機模式：從伺服器 API 抓取
                     try {
-                        const res = await fetch(`http://localhost:8000/characters/${charId}.json`);
+                        const res = await fetch(`http://localhost:8081/characters/${charId}.json`);
                         charData = await res.json();
                     } catch (e) {
                         console.error('Failed to load local char data');
@@ -1252,7 +1254,7 @@
             }
             editorStatus.textContent = '📁 正在載入本機日記清單…';
             try {
-                const res = await fetch('http://localhost:8000/api/diaries');
+                const res = await fetch('http://localhost:8081/api/diaries');
                 const data = await res.json();
                 // 排序：最新的放上面
                 data.sort((a, b) => b.localeCompare(a));
@@ -1281,7 +1283,7 @@
                     editDiaryText.value = data.story || '';
                     editImagePrompt.value = data.image_prompt || '';
                 } else {
-                    const res = await fetch(`http://localhost:8000/diaries/${encodeURIComponent(val)}`);
+                    const res = await fetch(`http://localhost:8081/diaries/${encodeURIComponent(val)}`);
                     const data = await res.json();
                     currentDiaryData = data;
                     currentDiaryData._filename = val;
@@ -1313,7 +1315,7 @@
                     // 修正本機資料並送回
                     const updated = { ...currentDiaryData, story: newStory, image_prompt: newImgPrompt };
                     delete updated._filename;
-                    const res = await fetch(`http://localhost:8000/api/save_diary`, {
+                    const res = await fetch(`http://localhost:8081/api/save_diary`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ filename: currentDiaryData._filename, data: updated })
