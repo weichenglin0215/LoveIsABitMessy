@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LPAS 數據分析後台</title>
+    <link rel="stylesheet" href="css/admin_theme.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Supabase SDK -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body class="admin-body">
+    <header class="admin-header">
+        <div class="admin-title">
+            <h1>LPAS 愛情人格評量數據分析</h1>
+        </div>
+        <div class="filter-bar">
+            <div class="filter-group">
+                <label>開始日期</label>
+                <input type="date" id="start-date">
+            </div>
+            <div class="filter-group">
+                <label>結束日期</label>
+                <input type="date" id="end-date">
+            </div>
+            <button class="btn-refresh" id="btn-refresh">更新分析</button>
+        </div>
+    </header>
+
+    <main>
+        <!-- 頂部概覽 -->
+        <div class="stats-summary">
+            <div class="stat-box c1">
+                <div class="stat-label">曖昧期平均準確度</div>
+                <div class="stat-value" id="avg-score-ambiguity">0.0</div>
+            </div>
+            <div class="stat-box c2">
+                <div class="stat-label">熱戀期平均準確度</div>
+                <div class="stat-value" id="avg-score-love">0.0</div>
+            </div>
+            <div class="stat-box c3">
+                <div class="stat-label">失戀期平均準確度</div>
+                <div class="stat-value" id="avg-score-breakup">0.0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">總樣本數</div>
+                <div class="stat-value" id="total-samples">0</div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- 表格 1: 三期正確性平均 -->
+            <div class="chart-card">
+                <h3>三階段評量正確性平均 (1-5 星)</h3>
+                <div class="chart-container">
+                    <canvas id="chart-avg-correctness"></canvas>
+                </div>
+            </div>
+
+            <!-- 表格 2: 三期正確性趨勢 (以日為單位) -->
+            <div class="chart-card">
+                <h3>三階段正確性日趨勢</h3>
+                <div class="chart-container">
+                    <canvas id="chart-daily-trend"></canvas>
+                </div>
+            </div>
+
+            <!-- 表格 4: 分數與答題時間關聯 -->
+            <div class="chart-card">
+                <h3>準確度評分與平均作答時間 (秒)</h3>
+                <div class="chart-container">
+                    <canvas id="chart-time-correlation"></canvas>
+                </div>
+            </div>
+
+            <!-- 表格 3: 各種人格個數統計 (需佔據較大空間) -->
+            <div class="chart-card" style="grid-column: span 1;">
+                <h3>三階段人格類型分布統計</h3>
+                <div class="chart-container large">
+                    <canvas id="chart-type-distribution"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/supabaseClient.js"></script>
+    <script src="js/lpas_analytics_app.js"></script>
+</body>
+</html>

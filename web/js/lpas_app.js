@@ -1,6 +1,6 @@
 const instructions = [
-    "每道題都是一句關於你自己的描述，請根據同意程度來圈選。",
-    "選擇的答案是你實際上最常有的反應，而不是你希望自己是那種人。",
+    "每道題都是一句關於你自己的描述，\n請根據同意程度來圈選。",
+    "選擇的答案是你實際上最常有的反應，\n而不是你希望自己是那種人。",
     "不要想太久，第一直覺往往最真實。"
 ];
 
@@ -15,8 +15,10 @@ let app = {
     relationshipExp: '',
     sessionId: '',
     sessionStartedAt: '',
-    currentQuestionShownAtMs: 0,
-    
+    isTransitioning: false, // 防止重複點擊的旗標
+    currentFeedbackStep: 0, // 0: 曖昧, 1: 熱戀, 2: 失戀
+    feedbackScores: {}, // 存儲各階段評分
+
     init() {
         this.bindEvents();
         this.showScreen('screen-landing');
@@ -29,8 +31,8 @@ let app = {
             this.ageRange = (document.querySelector('#group-age .radio-btn.selected') || {}).dataset?.val || '';
             this.relationshipExp = (document.querySelector('#group-exp .radio-btn.selected') || {}).dataset?.val || '';
 
-            if (!this.ageRange || !this.relationshipExp) {
-                alert('請先選擇年齡區間與是否有過感情經驗。');
+            if (!this.alias || !this.ageRange || !this.relationshipExp) {
+                alert('請填寫匿名代號，並選擇年齡區間與是否有過感情經驗。');
                 return;
             }
             this.showScreen('screen-instructions');
@@ -72,12 +74,14 @@ let app = {
         });
     },
 
+    // 顯示畫面
     showScreen(screenId) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(screenId).classList.add('active');
         this.currentScreen = screenId;
     },
 
+    // 顯示說明
     showInstruction() {
         const p = document.getElementById('instruction-text');
         p.style.opacity = 0;
@@ -86,7 +90,7 @@ let app = {
             p.style.opacity = 1;
         }, 300);
     },
-
+    //開始答題過程
     startQuestions() {
         // 從 questions.js 準備陣列
         this.questionQueue = LPAS_QUESTIONS.slice();
@@ -97,12 +101,13 @@ let app = {
         this.renderQuestion();
         this.showScreen('screen-question');
     },
-
+    // 回答畫面
     renderQuestion() {
         const q = this.questionQueue[this.currentQIndex];
         document.getElementById('question-text').innerText = q.text;
         document.getElementById('progress-text').innerText = `${this.currentQIndex + 1}/${this.questionQueue.length}`;
-        
+        this.isTransitioning = false; // 解除鎖定
+
         let periodLabels = { 1: "初期曖昧", 2: "熱戀期", 3: "失戀之後" };
         document.getElementById('period-label').innerText = periodLabels[q.period];
         document.body.setAttribute('data-period', q.period);
@@ -111,15 +116,15 @@ let app = {
         const scaleContainer = document.getElementById('likert-scale');
         scaleContainer.innerHTML = '';
         this.currentQuestionShownAtMs = Date.now();
-        for (let i = 1; i <= 7; i++) {
+        for (let i = 7; i >= 1; i--) {
             let circle = document.createElement('div');
             circle.className = 'scale-circle';
             circle.dataset.val = i;
-            
+
             // 回填之前選的
             let existingAns = this.answers.find(a => a.id === q.id);
             if (existingAns && existingAns.score == i) {
-                circle.style.backgroundColor = i <=3 ? "var(--c-scale-agree)" : (i>=5 ? "var(--c-scale-disagree)" : "var(--c-scale-mid)");
+                circle.style.backgroundColor = i <= 3 ? "var(--c-scale-agree)" : (i >= 5 ? "var(--c-scale-disagree)" : "var(--c-scale-mid)");
             }
 
             circle.addEventListener('click', () => {
@@ -128,19 +133,22 @@ let app = {
             scaleContainer.appendChild(circle);
         }
     },
-
+    // 回答過程
     recordAnswer(score) {
+        if (this.isTransitioning) return; // 如果正在換題中，直接忽略點擊
+        this.isTransitioning = true; // 進入換題鎖定
+
         const q = this.questionQueue[this.currentQIndex];
         if (!q) return;
         const answeredAtMs = Date.now();
         const timeSpentMs = this.currentQuestionShownAtMs ? (answeredAtMs - this.currentQuestionShownAtMs) : null;
-        
+
         // 更新 UI
         const scaleContainer = document.getElementById('likert-scale');
         scaleContainer.querySelectorAll('.scale-circle').forEach(c => c.style.backgroundColor = 'var(--c-scale-empty)');
         let clicked = scaleContainer.querySelector(`[data-val="${score}"]`);
-        if(clicked) {
-            clicked.style.backgroundColor = score <=3 ? "var(--c-scale-agree)" : (score>=5 ? "var(--c-scale-disagree)" : "var(--c-scale-mid)");
+        if (clicked) {
+            clicked.style.backgroundColor = score <= 3 ? "var(--c-scale-agree)" : (score >= 5 ? "var(--c-scale-disagree)" : "var(--c-scale-mid)");
         }
 
         // 儲存答案
@@ -177,7 +185,7 @@ let app = {
             }
         }, 300);
     },
-
+    // 換場
     showTransition(newPeriod) {
         this.showScreen('screen-transition');
         const textObj = {
@@ -186,16 +194,17 @@ let app = {
         };
         document.getElementById('transition-text').innerText = textObj[newPeriod];
         document.body.setAttribute('data-period', newPeriod);
-        
+
         setTimeout(() => {
             this.renderQuestion();
             this.showScreen('screen-question');
         }, 3000);
     },
-
+    // 完成測驗
     finishTest() {
+        if (this.currentScreen === 'screen-calculating') return; // 防止重複呼叫
         this.showScreen('screen-calculating');
-        
+
         setTimeout(() => {
             // 計算結果
             const result = calculateScores(this.answers);
@@ -280,7 +289,8 @@ let app = {
                 type_desc: resultData.typeDesc,
                 averages: resultData.averages,
                 radar_data: resultData.radarData,
-                character_card: profileObj
+                character_card: profileObj,
+                feedback_scores: recordObj.meta.feedback_scores
             };
             const { error: resErr } = await sb.from('lpas_results').insert(resultPayload);
             if (resErr) throw new Error(friendlyError(resErr.message));
@@ -292,36 +302,155 @@ let app = {
             if (statusEl) statusEl.textContent = '❌ 雲端儲存失敗: ' + err.message;
         }
     },
-
+    // 渲染結果
     renderResult(resultData) {
+        this.currentFeedbackStep = 0;
+        this.feedbackScores = {};
+
+        // 渲染基本資料
         document.getElementById('result-type-name').innerText = resultData.typeName;
         document.getElementById('result-type-code').innerText = resultData.typeCode;
-        document.getElementById('result-desc').innerText = resultData.typeDesc;
-        
-        // 渲染 Radar
+
+        this.renderResultStep(resultData);
+        this.initStarRating(resultData);
+    },
+    // 渲染結果分階段
+    renderResultStep(resultData) {
+        const steps = [
+            { id: 1, title: '初期曖昧' },
+            { id: 2, title: '熱戀期' },
+            { id: 3, title: '失戀之後' }
+        ];
+        const step = steps[this.currentFeedbackStep];
+
+        // 從 phaseTypeNames 與 phaseDescs 取得資料 (索引為 1, 2, 3)
+        const typeName = resultData.phaseTypeNames[step.id] || "未知類型";
+        const description = resultData.phaseDescs[step.id] || "暫無說明";
+
+        // 更新標題與說明，標題格式為 "期間:類型"
+        document.getElementById('result-period-title').innerText = `${step.title}：${typeName}`;
+        document.getElementById('result-desc').innerHTML = description;
+
+        // 動態變更容器背景顏色
+        const container = document.querySelector('.result-container');
+        const periodColor = getComputedStyle(document.documentElement).getPropertyValue(`--c-period-${step.id}`).trim();
+        if (container) {
+            container.style.backgroundColor = periodColor;
+            container.style.transition = "background-color 0.8s ease";
+        }
+
+        // 更新雷達圖 (高亮當前階段)
+        this.updateRadarChart(resultData, this.currentFeedbackStep, periodColor);
+
+        // 重設星星狀態
+        document.querySelectorAll('.star').forEach(s => s.classList.remove('active'));
+    },
+    // 更新雷達圖
+    updateRadarChart(resultData, activeIndex, periodColor) {
         const ctx = document.getElementById('radarChart').getContext('2d');
-        if(this.radarChartInstance) this.radarChartInstance.destroy();
-        
+        if (this.radarChartInstance) this.radarChartInstance.destroy();
+
+        // 複製一份資料集來修改透明度與順序
+        let datasets = JSON.parse(JSON.stringify(resultData.radarData.datasets));
+
+        // 設定透明度：當前使用該期間的主色，其他淡化
+        datasets.forEach((ds, i) => {
+            if (i === activeIndex) {
+                // 如果有傳入期間主色，則覆蓋原本顏色
+                ds.borderColor = '#FFFFFFFF';
+                ds.backgroundColor = 'hsla(0,0%,100%,0.3)';
+                /*
+                // 如果有傳入期間主色，則覆蓋原本顏色
+                if (periodColor) {
+                    ds.borderColor = periodColor;
+                    ds.backgroundColor = periodColor.replace(')', ', 0.4)').replace('hsl', 'hsla');
+                } else {
+                    ds.backgroundColor = ds.backgroundColor.replace(/[\d\.]+\)$/, '0.4)');
+                    ds.borderColor = ds.borderColor.replace(/[\d\.]+\)$/, '1.0)');
+                }
+                */
+                ds.borderWidth = 3;
+                ds.pointRadius = 8;
+            } else {
+                ds.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                ds.borderColor = 'rgba(255, 255, 255, 0.1)';
+                ds.borderWidth = 1;
+                ds.pointRadius = 0;
+            }
+        });
+
+        // 將當前 active 的 dataset 移到最後 (最上層)
+        const activeDs = datasets.splice(activeIndex, 1)[0];
+        datasets.push(activeDs);
+
         this.radarChartInstance = new Chart(ctx, {
             type: 'radar',
-            data: resultData.radarData,
+            data: {
+                labels: resultData.radarData.labels,
+                datasets: datasets
+            },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 scales: {
                     r: {
                         angleLines: { color: 'rgba(255, 255, 255, 0.2)' },
                         grid: { color: 'rgba(255, 255, 255, 0.2)' },
-                        pointLabels: { color: '#E8E0F5', font: { size: 14 } },
+                        pointLabels: { color: '#E8E0F5', font: { size: 12 } },
                         ticks: { display: false, min: 1, max: 7, stepSize: 1 }
                     }
                 },
                 plugins: {
-                    legend: { labels: { color: '#E8E0F5' } }
+                    legend: { display: false } // 隱藏圖例以減少干擾
                 }
             }
         });
+    },
+    // 初始化評分
+    initStarRating(resultData) {
+        const stars = document.querySelectorAll('.star');
+        stars.forEach(star => {
+            // 移除舊事件
+            const newStar = star.cloneNode(true);
+            star.parentNode.replaceChild(newStar, star);
 
-        // 綁定下載事件
+            newStar.addEventListener('mouseover', (e) => {
+                const val = parseInt(e.target.dataset.val);
+                this.highlightStars(val);
+            });
+            newStar.addEventListener('mouseout', () => {
+                this.highlightStars(0); // 恢復成灰色
+            });
+            newStar.addEventListener('click', (e) => {
+                const val = parseInt(e.target.dataset.val);
+                this.handleFeedback(val, resultData);
+            });
+        });
+    },
+
+    // 點擊星星時，讓星星變亮
+    highlightStars(val) {
+        document.querySelectorAll('.star').forEach(s => {
+            s.classList.toggle('active', parseInt(s.dataset.val) <= val);
+        });
+    },
+    // 處理評分
+    async handleFeedback(score, resultData) {
+        const keys = ['ambiguity', 'love', 'breakup'];
+        this.feedbackScores[keys[this.currentFeedbackStep]] = score;
+
+        if (this.currentFeedbackStep < 2) {
+            this.currentFeedbackStep++;
+            this.renderResultStep(resultData);
+        } else {
+            // 完成所有評分
+            document.getElementById('feedback-section').style.display = 'none';
+            document.getElementById('final-actions').style.display = 'flex';
+            this.finishAndSave(resultData);
+        }
+    },
+    // 完成並儲存
+    finishAndSave(resultData) {
         const profileObj = generateProfile(this.alias, resultData);
         const recordObj = {
             meta: {
@@ -332,7 +461,8 @@ let app = {
                 alias: this.alias || null,
                 age_range: this.ageRange,
                 relationship_experience: this.relationshipExp,
-                total_questions: this.questionQueue.length
+                total_questions: this.questionQueue.length,
+                feedback_scores: this.feedbackScores // 加入回饋評分
             },
             answers: this.answers.slice().sort((a, b) => (a.id || '').localeCompare(b.id || '')),
             scores: {
@@ -348,33 +478,16 @@ let app = {
         // ======= 雲端同步 =======
         this.saveToCloud(profileObj, recordObj, resultData);
 
-        let currentAlias = this.alias || "user";
-        let dateStr = new Date().toISOString().split('T')[0];
-        let tsCompact = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z').replace('T', '_');
-
-        let dlbtn = document.getElementById('download-json-btn');
-        let recordBtn = document.getElementById('download-record-btn');
-        let copybtn = document.getElementById('download-md-btn');
-        
-        // 移除舊的 event listeners 避免重複綁定
-        let newDlbtn = dlbtn.cloneNode(true);
-        dlbtn.parentNode.replaceChild(newDlbtn, dlbtn);
-        let newRecordBtn = recordBtn.cloneNode(true);
-        recordBtn.parentNode.replaceChild(newRecordBtn, recordBtn);
-        let newCopybtn = copybtn.cloneNode(true);
-        copybtn.parentNode.replaceChild(newCopybtn, copybtn);
-        
-        newDlbtn.addEventListener('click', () => {
+        // 綁定按鈕事件 (使用新的 DOM 節點)
+        document.getElementById('download-json-btn').onclick = () => {
             downloadJSON(profileObj, `${profileObj.id}.json`);
-        });
-
-        newRecordBtn.addEventListener('click', () => {
+        };
+        document.getElementById('download-record-btn').onclick = () => {
             downloadJSON(recordObj, `${profileObj.id}_lpas_record.json`);
-        });
-
-        newCopybtn.addEventListener('click', () => {
+        };
+        document.getElementById('download-md-btn').onclick = () => {
             downloadMarkdown(profileObj);
-        });
+        };
     }
 };
 

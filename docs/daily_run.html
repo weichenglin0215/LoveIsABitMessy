@@ -532,13 +532,13 @@
                 </div>
             </div>
             <div id="log-output" class="log-area" style="height: 300px; font-size: 1.2rem;">等待任務...</div>
-            <div style="display:flex; gap:8px; margin-top:8px;">
-                <button class="btn secondary-btn" style="flex:1; font-size:0.9rem; padding:4px;"
-                    onclick="document.getElementById('log-output').textContent = '';">🗑️清空</button>
-                <button class="btn secondary-btn" style="flex:1; font-size:0.9rem; padding:4px;"
-                    onclick="const log = document.getElementById('log-output').textContent; navigator.clipboard.writeText(log); alert('已複製到剪貼簿');">📋複製</button>
-                <button class="btn secondary-btn" style="flex:1; font-size:0.9rem; padding:4px;"
-                    onclick="const log = document.getElementById('log-output').textContent; document.getElementById('system-log-content').value = log; document.getElementById('modal-system-log').style.display = 'flex';">🔲大型彈窗</button>
+            <div style="display:flex; gap:2px; margin-top:2px;">
+                <button class="btn secondary-btn" style="flex:1; font-size:0.9rem; padding:2px;"
+                    onclick="clearLogOutput()">🗑️清空</button>
+                <button class="btn secondary-btn" style="flex:1; font-size:0.9rem; padding:2px;"
+                    onclick="copyLogOutput()">📋複製</button>
+                <button class="btn secondary-btn" style="flex:1; font-size:0.9rem; padding:2px;"
+                    onclick="showLogModal()">🔲大型彈窗</button>
             </div>
             <div id="diary-cloud-status" class="cloud-status">雲端狀態</div>
         </div>
@@ -584,6 +584,18 @@
 
     <script>
         const logBox = document.getElementById('log-output');
+
+        // Log 輔助功能
+        window.clearLogOutput = () => { logBox.textContent = ''; };
+        window.copyLogOutput = () => {
+            navigator.clipboard.writeText(logBox.textContent);
+            alert('已複製到剪貼簿');
+        };
+        window.showLogModal = () => {
+            document.getElementById('system-log-content').value = logBox.textContent;
+            document.getElementById('modal-system-log').style.display = 'flex';
+        };
+
         const charSelect = document.getElementById('char-select');
         const diaryPromptBox = document.getElementById('diary-prompt-box');
         const imagePromptBox = document.getElementById('image-prompt-box');
@@ -1331,8 +1343,9 @@
     <div id="modal-system-log"
         style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:20000; align-items:center; justify-content:center; padding:20px;">
         <div
-            style="background:#222; color:#eee; width:800px; max-width:95%; height:80%; border-radius:12px; border:1px solid #444; display:flex; flex-direction:column; overflow:hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-            <div style="display:flex; align-items:center; padding:12px 20px; background:#333; border-bottom:1px solid #444;">
+            style="background:#222; color:#eee; width:800px; width:90%; height:90%; border-radius:12px; border:1px solid #444; display:flex; flex-direction:column; overflow:hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <div
+                style="display:flex; align-items:center; padding:12px 20px; background:#333; border-bottom:1px solid #444;">
                 <span id="close-system-log"
                     style="cursor:pointer; font-size:1.5rem; font-weight:bold; color:#aaa; margin-right: 15px;"
                     onclick="document.getElementById('modal-system-log').style.display='none'">&times;</span>
@@ -1340,7 +1353,7 @@
             </div>
             <div style="flex:1; padding:20px; overflow:hidden; background:#111;">
                 <textarea id="system-log-content" readonly
-                    style="width:100%; height:100%; background:transparent; color:#0f0; border:none; padding:0; font-family:monospace; resize:none; font-size:0.9rem; line-height:1.5; outline:none;"></textarea>
+                    style="width:100%; height:100%; background:transparent; color:hsl(120, 50%, 70%); border:none; padding:0; font-family:monospace; resize:none; font-size:1.2rem; line-height:1.5; outline:none;"></textarea>
             </div>
         </div>
     </div>

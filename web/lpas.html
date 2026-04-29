@@ -16,6 +16,10 @@
     <!-- 中央角色資料與邏輯 -->
     <script src="js/character_logic.js" defer></script>
     <script src="js/lpas_questions.js" defer></script>
+    <script src="js/lpas_scoring.js" defer></script>
+    <script src="js/characters_generator.js" defer></script>
+    <!-- Supabase JS (UMD) -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
     <script src="js/supabaseClient.js" defer></script>
     <script src="js/lpas_app.js" defer></script>
 </head>
@@ -24,7 +28,7 @@
     <!-- 星點背景特效容器 -->
     <div id="star-bg"></div>
 
-    <!-- 音樂控制 (暫不實作播放，僅保留 UI) -->
+    <!-- 音樂控制 (左下角) -->
     <div id="music-control">
         <span class="music-icon">🎵</span>
     </div>
@@ -32,7 +36,7 @@
     <main id="app-container">
         <!-- 1. 首頁 (Landing Page) -->
         <section id="screen-landing" class="screen active">
-            <h1 class="main-title">你在感情裡，是哪一種人？</h1>
+            <h1 class="main-title">你在感情裡是哪一種人？</h1>
             <h2 class="sub-title">一份關於你在愛情裡真實樣子的測驗</h2>
             <div class="desc-text">60題 / 三個情境 / 約8分鐘</div>
             <button class="btn primary-btn" onclick="app.showScreen('screen-basic-info')">開始測驗</button>
@@ -44,7 +48,7 @@
             <div class="form-container">
                 <h2>基本資料</h2>
                 <div class="form-group">
-                    <label>匿名代號 (選填)</label>
+                    <label>匿名代號</label>
                     <input type="text" id="input-alias" placeholder="例如：月亮上的貓">
                 </div>
                 <div class="form-group">
@@ -93,11 +97,13 @@
                 <h2 id="question-text"></h2>
             </div>
             <div class="options-container">
-                <span class="scale-label">😀同意</span>
                 <div class="likert-scale" id="likert-scale">
                     <!-- JS 動態生成 7 個圓圈 -->
                 </div>
-                <span class="scale-label">🙁不同意</span>
+                <div class="scale-labels-bottom">
+                    <span class="scale-label">←🙁不同意</span>
+                    <span class="scale-label">同意😀→</span>
+                </div>
             </div>
             <button class="text-btn back-btn" id="prev-question-btn">上一題</button>
         </section>
@@ -109,30 +115,64 @@
         </section>
 
         <!-- 7. 結果頁 -->
-        <section id="screen-result" class="screen">
+        <section id="screen-result" class="screen screen-result">
+            <h1 class="result-title">你的愛情人格結果</h1>
             <div class="result-container">
-                <div class="result-header">
-                    <h1 id="result-type-name"></h1>
-                    <div id="result-type-code" class="type-code"></div>
+
+                <!-- 新增：階段標題 -->
+                <div id="result-period-header" class="result-period-header">
+                    <span class="period-dot active"></span>
+                    <h2 id="result-period-title">初期曖昧</h2>
+                </div>
+
+                <div id="result-type-info">
+                    <span id="result-type-code" class="type-badge"></span>
+                    <span id="result-type-name" class="type-name"></span>
                 </div>
 
                 <div class="result-radar">
                     <canvas id="radarChart"></canvas>
                 </div>
 
-                <div class="result-description" id="result-desc">
-                    <!-- 動態載入結果說明 -->
+                <!-- 滾動說明區域 -->
+                <div class="result-description-wrapper">
+                    <div class="result-description" id="result-desc">
+                        <!-- 動態載入結果說明 -->
+                    </div>
                 </div>
 
-                <div class="result-actions">
-                    <button class="btn primary-btn" id="download-json-btn">下載角色卡 (JSON)</button>
-                    <button class="btn secondary-btn" id="download-record-btn">下載測驗紀錄 (JSON)</button>
-                    <button class="btn text-btn" id="download-md-btn">複製角色設定 (Markdown)</button>
+                <!-- 新增：星星評分區塊 -->
+                <div id="feedback-section" class="feedback-section">
+                    <p class="feedback-q">你覺得準確嗎？</p>
+                    <div class="star-rating" id="star-rating">
+                        <div class="feedback-labels">
+                            <span>🙁不準</span>
+                        </div>
+                        <span class="star" data-val="1">★</span>
+                        <span class="star" data-val="2">★</span>
+                        <span class="star" data-val="3">★</span>
+                        <span class="star" data-val="4">★</span>
+                        <span class="star" data-val="5">★</span>
+                        <div class="feedback-labels">
+                            <span>😀好準！</span>
+                        </div>
+                    </div>
+
                 </div>
-                <div id="cloud-save-status"
-                    style="margin-top: 16px; font-size: 0.9rem; color: var(--c-text-sec); text-align: center;">☁️
-                    準備同步至雲端…</div>
+
+                <!-- 最終行動按鈕 (初始隱藏) -->
+                <div class="result-actions" id="final-actions" style="display: none;">
+                    <button class="btn primary-btn" id="download-json-btn">下載角色卡</button>
+                    <button class="btn primary-btn" id="download-record-btn">下載測驗紀錄</button>
+                    <button class="btn text-btn" id="download-md-btn">以Markdown格式複製角色卡</button>
+                </div>
+
+
             </div>
+            <div id="cloud-save-status"
+                style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--c-text-sec); text-align: center;">
+                ☁️
+                準備同步至雲端…</div>
         </section>
     </main>
 </body>
