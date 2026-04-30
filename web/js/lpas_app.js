@@ -1,7 +1,7 @@
 const instructions = [
-    "每道題都是一句關於你自己的描述，\n請根據同意程度來圈選。",
-    "選擇的答案是你實際上最常有的反應，\n而不是你希望自己是那種人。",
-    "不要想太久，第一直覺往往最真實。"
+    "每道題目都是關於你自己的描述，\n請根據同意程度來圈選。",
+    "選擇的答案是你實際上的反應，\n而不是你理想中的自己。",
+    "不要想太久，\n第一直覺往往最真實。"
 ];
 
 let app = {
@@ -98,8 +98,15 @@ let app = {
         this.answers = [];
         this.sessionId = crypto?.randomUUID ? crypto.randomUUID() : `sess_${Date.now()}_${Math.random().toString(16).slice(2)}`;
         this.sessionStartedAt = new Date().toISOString();
-        this.renderQuestion();
-        this.showScreen('screen-question');
+        
+        // 取得第一題的時期並顯示換場效果
+        const firstQ = this.questionQueue[0];
+        if (firstQ) {
+            this.showTransition(firstQ.period);
+        } else {
+            this.renderQuestion();
+            this.showScreen('screen-question');
+        }
     },
     // 回答畫面
     renderQuestion() {
@@ -116,7 +123,7 @@ let app = {
         const scaleContainer = document.getElementById('likert-scale');
         scaleContainer.innerHTML = '';
         this.currentQuestionShownAtMs = Date.now();
-        for (let i = 7; i >= 1; i--) {
+        for (let i = 1; i <= 7; i++) {
             let circle = document.createElement('div');
             circle.className = 'scale-circle';
             circle.dataset.val = i;
@@ -124,7 +131,7 @@ let app = {
             // 回填之前選的
             let existingAns = this.answers.find(a => a.id === q.id);
             if (existingAns && existingAns.score == i) {
-                circle.style.backgroundColor = i <= 3 ? "var(--c-scale-agree)" : (i >= 5 ? "var(--c-scale-disagree)" : "var(--c-scale-mid)");
+                circle.style.backgroundColor = i >= 5 ? "var(--c-scale-agree)" : (i <= 3 ? "var(--c-scale-disagree)" : "var(--c-scale-mid)");
             }
 
             circle.addEventListener('click', () => {
@@ -148,7 +155,7 @@ let app = {
         scaleContainer.querySelectorAll('.scale-circle').forEach(c => c.style.backgroundColor = 'var(--c-scale-empty)');
         let clicked = scaleContainer.querySelector(`[data-val="${score}"]`);
         if (clicked) {
-            clicked.style.backgroundColor = score <= 3 ? "var(--c-scale-agree)" : (score >= 5 ? "var(--c-scale-disagree)" : "var(--c-scale-mid)");
+            clicked.style.backgroundColor = score >= 5 ? "var(--c-scale-agree)" : (score <= 3 ? "var(--c-scale-disagree)" : "var(--c-scale-mid)");
         }
 
         // 儲存答案
@@ -189,8 +196,9 @@ let app = {
     showTransition(newPeriod) {
         this.showScreen('screen-transition');
         const textObj = {
-            2: "現在，當你沉醉愛戀時……",
-            3: "最後，回想那段戀情結束之後的時間……"
+            1: "當你們剛開始互相吸引……",
+            2: "當你沉醉愛戀時……",
+            3: "回想那段戀情結束之後……"
         };
         document.getElementById('transition-text').innerText = textObj[newPeriod];
         document.body.setAttribute('data-period', newPeriod);
@@ -327,9 +335,16 @@ let app = {
         const typeName = resultData.phaseTypeNames[step.id] || "未知類型";
         const description = resultData.phaseDescs[step.id] || "暫無說明";
 
+        // 取得短描述 (從 TYPE_MAPPING_SHORT)
+        const code = resultData.phaseCodes[step.id];
+        const formattedCode = code.split('').join('-');
+        const shortInfo = window.TYPE_MAPPING_SHORT[formattedCode] || { name: typeName, desc: "" };
+
         // 更新標題與說明，標題格式為 "期間:類型"
         document.getElementById('result-period-title').innerText = `${step.title}：${typeName}`;
+        document.getElementById('result-type-short').innerText = shortInfo.desc;
         document.getElementById('result-desc').innerHTML = description;
+        document.body.setAttribute('data-period', step.id);
 
         // 動態變更容器背景顏色
         const container = document.querySelector('.result-container');
@@ -397,7 +412,9 @@ let app = {
                         angleLines: { color: 'rgba(255, 255, 255, 0.2)' },
                         grid: { color: 'rgba(255, 255, 255, 0.2)' },
                         pointLabels: { color: '#E8E0F5', font: { size: 12 } },
-                        ticks: { display: false, min: 1, max: 7, stepSize: 1 }
+                        min: 1,
+                        max: 7,
+                        ticks: { display: false, stepSize: 1 }
                     }
                 },
                 plugins: {

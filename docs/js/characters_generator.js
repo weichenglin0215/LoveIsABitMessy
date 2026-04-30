@@ -4,8 +4,12 @@
  */
 
 function generateProfile(alias, resultData) {
+    // 產生隨機 ID，優先使用 UUID 格式以符合資料庫 uuid 類型要求
+    const newId = crypto?.randomUUID ? crypto.randomUUID() : `char-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+
     // 使用中央定義的預設結構
     return window.createDefaultCharacter({
+        id: newId,
         name: alias || "新角色",
         personality_type: resultData.personality_type || "",
         // 其他欄位會自動套用預設值，或由後續編輯器調整

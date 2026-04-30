@@ -22,18 +22,22 @@
     <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
     <script src="js/supabaseClient.js" defer></script>
     <script src="js/lpas_app.js" defer></script>
+    <link rel="stylesheet" href="css/responsive.css">
+    <script src="js/responsive.js" defer></script>
 </head>
 
 <body data-period="night">
     <!-- 星點背景特效容器 -->
     <div id="star-bg"></div>
 
-    <!-- 音樂控制 (左下角) -->
-    <div id="music-control">
-        <span class="music-icon">🎵</span>
-    </div>
 
-    <main id="app-container">
+
+    <main id="app-container" class="aspect-5-8">
+        <!-- 音樂控制 (左下角) -->
+        <div id="music-control">
+            <span class="music-icon">🎵</span>
+        </div>
+        <div class="debug-frame"></div>
         <!-- 1. 首頁 (Landing Page) -->
         <section id="screen-landing" class="screen active">
             <h1 class="main-title">你在感情裡是哪一種人？</h1>
@@ -116,26 +120,25 @@
 
         <!-- 7. 結果頁 -->
         <section id="screen-result" class="screen screen-result">
-            <h1 class="result-title">你的愛情人格結果</h1>
             <div class="result-container">
-
                 <!-- 新增：階段標題 -->
                 <div id="result-period-header" class="result-period-header">
                     <span class="period-dot active"></span>
                     <h2 id="result-period-title">初期曖昧</h2>
                 </div>
+                <div id="result-type-short" class="result-type-short"></div>
 
                 <div id="result-type-info">
                     <span id="result-type-code" class="type-badge"></span>
                     <span id="result-type-name" class="type-name"></span>
                 </div>
 
-                <div class="result-radar">
-                    <canvas id="radarChart"></canvas>
-                </div>
 
                 <!-- 滾動說明區域 -->
                 <div class="result-description-wrapper">
+                    <div class="result-radar">
+                        <canvas id="radarChart"></canvas>
+                    </div>
                     <div class="result-description" id="result-desc">
                         <!-- 動態載入結果說明 -->
                     </div>
@@ -169,8 +172,7 @@
 
 
             </div>
-            <div id="cloud-save-status"
-                style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--c-text-sec); text-align: center;">
+            <div id="cloud-save-status" style="font-size: 0.85rem; color: var(--c-text-sec); text-align: center;">
                 ☁️
                 準備同步至雲端…</div>
         </section>
