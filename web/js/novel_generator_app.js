@@ -248,7 +248,7 @@ async function initCharacters() {
 function renderAll() {
     qs('#book-title').value = state.bookTitle || "";
     qs('#story-premise').value = state.storyPremise || "";
-    
+
     // 恢復 AI 設定 (如果存在)
     if (state.aiModel) qs('#model-select').value = state.aiModel;
     if (state.modelOptions) qs('#model-options-select').value = state.modelOptions;
@@ -284,19 +284,19 @@ function renderCharacters() {
         const div = document.createElement('div');
         div.className = "char-card";
         div.innerHTML = `
-            <div style="font-size:1rem; margin-bottom:5px; color:#aaa;">${displayName}</div>
+            <label>${displayName}</label>
             <select data-idx="${idx}">
                 <option value="">-- 選取角色卡 --</option>
                 ${(isLocal ? localCharacters : cloudCharacters).map(c => {
-                    const id = isLocal ? c : c.id;
-                    let label = isLocal ? c : c.name;
-                    if (!isLocal) {
-                        const dateStr = c.updated_at ? c.updated_at.split('T')[0].replace(/-/g, '') : '';
-                        const lpasStr = c.lpas || (c.card_json ? c.card_json.personality_type?.split('-')[0] : '');
-                        label = `${c.name || '未命名'}-${lpasStr || '無LPAS'}-${dateStr}`;
-                    }
-                    return `<option value="${id}" ${id === charId ? 'selected' : ''}>${label}</option>`;
-                }).join('')}
+            const id = isLocal ? c : c.id;
+            let label = isLocal ? c : c.name;
+            if (!isLocal) {
+                const dateStr = c.updated_at ? c.updated_at.split('T')[0].replace(/-/g, '') : '';
+                const lpasStr = c.lpas || (c.card_json ? c.card_json.personality_type?.split('-')[0] : '');
+                label = `${c.name || '未命名'}-${lpasStr || '無LPAS'}-${dateStr}`;
+            }
+            return `<option value="${id}" ${id === charId ? 'selected' : ''}>${label}</option>`;
+        }).join('')}
             </select>
             <button style="position:absolute; top:5px; right:5px; background:none; border:none; color:#f44; cursor:pointer;" onclick="removeChar(${idx})">🗑️</button>
         `;
@@ -888,7 +888,7 @@ async function saveProject() {
 async function confirmSaveProject() {
     const name = qs('#save-novel-name').value.trim();
     const password = qs('#save-novel-password').value.trim();
-    
+
     if (!name || !password) {
         alert("請輸入小說名稱與密碼");
         return;
@@ -948,7 +948,7 @@ async function confirmSaveProject() {
 async function listCloudNovels() {
     const btn = qs('#btn-load-cloud');
     const select = qs('#cloud-novel-select');
-    
+
     appendLog("☁️ 正在讀取雲端小說清單...");
     try {
         const sb = window.SupabaseClient.getClient();
@@ -1019,7 +1019,7 @@ async function confirmLoadCloudNovel() {
             state = data.edit_data;
             renderAll();
             appendLog(`✅ 已成功載入「${state.bookTitle}」`);
-            
+
             // 重置 UI
             qs('#btn-load-cloud').style.display = 'inline-block';
             qs('#cloud-novel-select').style.display = 'none';

@@ -16,6 +16,23 @@
       --c-bg-panel: hsla(240, 0%, 10%, 0.85);
       --c-border: hsla(266, 0%, 64%, 0.3);
       --c-accent-glow: hsla(266, 0%, 64%, 0.6);
+
+      --font-size-xs: 0.5rem;
+      --font-size-sm: 0.7em;
+      --font-size-md: 0.85rem;
+      --font-size-lg: 1.0rem;
+      --font-size-edit_text: 1.0rem;
+      --font-size-xl: 1.2rem;
+      --font-size-2xl: 1.5rem;
+      --font-size-3xl: 2.0rem;
+
+      --btn-size-sm: 0.5rem;
+      --btn-size-md: 0.7rem;
+      --btn-size-lg: 1.0rem;
+      --btn-size-xl: 1.2rem;
+      --btn-size-2xl: 1.5rem;
+      --btn-size-3xl: 2.0rem;
+
     }
 
     body {
@@ -39,13 +56,16 @@
     }
 
     /* Layout structure */
+    /*最上方的標題(開心花園AI小說自動產生器)工具列與下面三個直欄*/
     .app-container {
       display: grid;
       grid-template-columns: 280px auto 1fr 1.6fr;
-      grid-template-rows: 60px 1fr;
+      grid-template-rows: 3rem 1fr;
+      /*高度3rem*/
       height: 100vh;
-      gap: 10px;
-      padding: 10px;
+      gap: 5px;
+      /*四個直欄區域之間的間距5px*/
+      padding: 5px;
       box-sizing: border-box;
     }
 
@@ -62,7 +82,7 @@
     }
 
     .logo {
-      font-size: 1.4rem;
+      font-size: var(--font-size-xl);
       font-weight: 700;
       background: linear-gradient(45deg, #a78bfa, #f472b6);
       -webkit-background-clip: text;
@@ -72,7 +92,23 @@
       gap: 10px;
     }
 
-    /* Columns */
+    .book-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .book-title input {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--c-border);
+      color: #fff;
+      padding: 3px 10px;
+      border-radius: 4px;
+      width: 300px;
+      font-size: var(--font-size-edit_text);
+    }
+
+    /* 直欄區域的container*/
     .col {
       background: var(--c-bg-panel);
       border-radius: 12px;
@@ -83,38 +119,47 @@
       backdrop-filter: blur(4px);
     }
 
+    /*直欄最上方標題*/
     .col-header {
-      padding: 8px;
+      padding: 5px;
       border-bottom: 1px solid var(--c-border);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.1);
     }
 
     .col-header h3 {
       margin: 0;
-      font-size: 1.2rem;
+      font-size: var(--font-size-xl);
       letter-spacing: 0.2rem;
       color: #fff;
     }
 
+    /*直欄中間的捲動區域*/
     .scroll-area {
       flex: 1;
       overflow-y: auto;
-      padding: 12px;
-      font-size: 1.0rem;
+      padding: 6px;
+      font-size: var(--font-size-md);
     }
 
     /* Left Column: Characters 左側角色卡*/
     .char-card {
+      font-size: var(--font-size-sm);
       letter-spacing: 0.1rem;
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 10px;
+      padding: 5px;
       border-radius: 8px;
-      margin-bottom: 10px;
+      margin-bottom: 5px;
       position: relative;
+    }
+
+    .char-card label {
+      font-size: var(--font-size-sm);
+      margin: 0;
+      color: #aaa;
     }
 
     .char-mode-toggle {
@@ -123,32 +168,32 @@
       display: flex;
       flex-direction: column;
       gap: 5px;
-      font-size: 1.0rem;
+      font-size: var(--font-size-md);
     }
 
     .char-card select {
-      font-size: 1.0rem;
+      font-size: var(--font-size-md);
       width: 100%;
       background: #111;
       color: #fff;
       border: 1px solid #444;
-      padding: 8px;
+      padding: 5px 10px;
       border-radius: 4px;
     }
 
-    /*LOG狀態欄*/
+    /*伺服器狀態含LOG狀態欄*/
     .server-status-row {
-      margin: 0px 10px;
-
+      margin: 10px 10px;
       display: flex;
-      align-items: center;
-      gap: 10px;
+      align-items: left;
+      gap: 5px;
       margin-bottom: 10px;
+      flex-wrap: wrap;
     }
 
     .server-status-dot {
-      width: 20px;
-      height: 20px;
+      width: 15px;
+      height: 15px;
       border-radius: 50%;
       display: inline-block;
     }
@@ -182,13 +227,13 @@
     }
 
     .server-status-text {
-      font-size: 1rem;
+      --font-size-sm: 0.7em;
       color: var(--c-text-sec);
     }
 
     #start-server-btn {
       padding: 4px 10px;
-      font-size: 1rem;
+      --font-size-sm: 0.7em;
       margin-top: 0;
       background: #2a1a3e;
       border: 1px solid var(--c-accent);
@@ -221,7 +266,7 @@
 
     .status-item label {
       display: block;
-      font-size: 1rem;
+      --font-size-sm: 0.7em;
       color: var(--c-text-sec);
       margin-bottom: 5px;
     }
@@ -229,7 +274,7 @@
     .status-item select {
       margin-bottom: 0;
       padding: 8px;
-      font-size: 1rem;
+      --font-size-sm: 0.7em;
     }
 
     .status-item.checkbox-item {
@@ -239,16 +284,17 @@
       justify-content: center;
     }
 
+
     .log-area {
       background: #000;
       color: hsl(120, 50%, 70%);
       font-family: 'Courier New', monospace;
       padding: 10px;
       border-radius: 8px;
-      height: 600px;
+      height: 4rem;
       overflow-y: scroll;
       white-space: pre-wrap;
-      font-size: 1.2rem;
+      font-size: var(--font-size-md);
       border: 1px solid #333;
     }
 
@@ -259,6 +305,7 @@
     }
 
     /* Middle Column: Story Structure */
+    /*故事大綱的章卡片*/
     .chapter-card {
       background: rgba(156, 111, 214, 0.05);
       border: 1px solid var(--c-border);
@@ -267,29 +314,32 @@
       padding: 15px;
     }
 
+    /*故事大綱的章卡片的標題框框*/
     .chapter-title-row {
       display: flex;
       gap: 10px;
       margin-bottom: 8px;
     }
 
+    /*故事大綱的章卡片的標題輸入框*/
     .chapter-title-row input {
       flex: 1;
       background: transparent;
       border: none;
       border-bottom: 1px solid #666;
       color: #fff;
-      font-size: 1.1rem;
+      font-size: var(--font-size-edit_text);
       padding: 5px;
     }
 
+    /*故事大綱的章卡片的描述輸入框*/
     .chapter-desc {
       width: 100%;
       background: rgba(0, 0, 0, 0.2);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 4px;
       color: #aaa;
-      font-size: 1.2rem;
+      font-size: var(--font-size-edit_text);
       padding: 8px;
       margin-bottom: 12px;
       resize: vertical;
@@ -297,6 +347,7 @@
       font-family: inherit;
     }
 
+    /*小節框框列表*/
     .section-list {
       margin-left: 20px;
       display: flex;
@@ -304,6 +355,7 @@
       gap: 10px;
     }
 
+    /*小節框框*/
     .section-item {
       display: flex;
       gap: 8px;
@@ -325,7 +377,7 @@
       background: transparent;
       border: none;
       color: #ccc;
-      font-size: 1.2rem;
+      font-size: var(--font-size-edit_text);
       padding: 4px;
     }
 
@@ -341,10 +393,11 @@
     }
 
     /* Buttons */
+    /*圓圈按鈕 +*/
     .btn-circle {
-      width: 30px;
-      height: 30px;
-      font-size: 1.6rem;
+      width: 25px;
+      height: 25px;
+      font-size: var(--btn-size-2xl);
       border-radius: 50%;
       border: 1px solid var(--c-border);
       background: rgba(156, 111, 214, 0.2);
@@ -361,19 +414,40 @@
       color: #000;
     }
 
+    /*文字按鈕*/
     .btn {
-      font-size: 1.2rem;
+      font-size: var(--btn-size-lg);
       margin: 5px 6px;
       padding: 4px 20px;
     }
 
+    .small-btn {
+      font-size: var(--btn-size-md);
+      border-radius: 0.5rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: 0.3s;
+      padding: 4px 8px;
+      background-color: var(--c-bg-card);
+      color: var(--c-accent-light);
+      border: 1px solid var(--c-accent);
+    }
+
+    .small-btn:hover {
+      background: var(--c-accent-light);
+      color: #000;
+    }
+
+    /*AI生成按鈕*/
     .ai-btn {
-      padding: 5px 12px;
-      border-radius: 15px;
+      padding: 0.1rem 0.5rem;
+      border-radius: 0.8rem;
       border: 1px solid #f472b6;
       background: rgba(244, 114, 182, 0.1);
       color: #f472b6;
-      font-size: 1.0rem;
+      font-size: var(--btn-size-lg);
       cursor: pointer;
     }
 
@@ -389,10 +463,11 @@
       height: 100%;
     }
 
+    /*編輯小節的大綱，在內文編輯器的中間*/
     .editor-title {
-      font-size: 1.2rem;
-      line-height: 1.6;
-      margin-bottom: 10px;
+      font-size: var(--font-size-edit_text);
+      line-height: 1.5;
+      margin-bottom: 5px;
       color: var(--c-accent-light);
       background: transparent;
       border: 1px solid var(--c-border);
@@ -400,13 +475,14 @@
       width: 100%;
       min-height: 3rem;
       outline: none;
-      padding: 5px 0;
+      padding: 10px;
     }
 
     .editor-title:focus {
       border-bottom-color: var(--c-accent-light);
     }
 
+    /*編輯內文的大綱，在內文編輯器的下方*/
     textarea#main-editor {
       flex: 1;
       background: rgba(0, 0, 0, 0.3);
@@ -414,8 +490,8 @@
       border-radius: 8px;
       color: hsl(0, 0%, 94%);
       padding: 10px;
-      font-size: 1.2rem;
-      line-height: 1.6;
+      font-size: var(--font-size-edit_text);
+      line-height: 1.5;
       resize: none;
       outline: none;
     }
@@ -440,7 +516,7 @@
 
     .collapse-btn {
       cursor: pointer;
-      font-size: 1.2rem;
+      font-size: var(--font-size-xl);
       color: #fff;
       background: rgba(255, 255, 255, 0.1);
       border: 1px solid var(--c-border);
@@ -462,24 +538,23 @@
       color: #eee;
       padding: 15px;
       box-sizing: border-box;
-      font-size: 1.2rem;
+      font-size: var(--font-size-edit_text);
       line-height: 1.6;
       resize: none;
       font-family: inherit;
     }
 
     .btn-lock-ch {
-      font-size: 1.2rem;
+      font-size: var(--font-size-xl);
       cursor: pointer;
       user-select: none;
       padding: 0 5px;
     }
 
-    /* Toolbox */
+    /* Toolbox 每個直欄最上方的標題工具列，AI生成按鈕與 +圈圈*/
     .toolbox {
       display: flex;
       gap: 10px;
-      margin-top: 5px;
     }
 
     /* Scrollbar */
@@ -505,44 +580,46 @@
     <header class="top-nav">
       <div class="logo"> 📖 開心花園AI小說自動產生器 <small style="font-size: 1.0rem; opacity: 0.6;">v1.0</small></div>
       <div style="margin-left: 20px; display: flex; align-items: center; gap: 10px;">
-        <label style="color: var(--c-text-sec); font-size: 1rem;">小說名稱：</label>
-        <input type="text" id="book-title" placeholder="請輸入小說名稱..."
-          style="background: rgba(255,255,255,0.1); border: 1px solid var(--c-border); color: #fff; padding: 5px 12px; border-radius: 4px; width: 300px;">
-      </div>
-      <div style="flex:1;"></div>
-      <div class="global-actions">
-        <button class="btn secondary-btn" id="btn-export">📤 匯出小說</button>
-        <div style="display:inline-flex; align-items:center; gap:5px; margin-right:6px;">
-          <button class="btn secondary-btn" id="btn-load-cloud" style="margin-right:0;">☁️ 讀取雲端小說</button>
-          <select id="cloud-novel-select"
-            style="display:none; background: #111; color: #fff; border: 1px solid var(--c-border); padding: 4px 10px; border-radius: 4px; font-size: 1rem; width: 250px;">
-            <option value="">-- 請選擇小說 --</option>
-          </select>
+        <label style="color: var(--c-text-sec); font-size: var(--font-size-lg);">小說名稱：</label>
+        <div class="book-title">
+          <input type="text" id="book-title" placeholder="請輸入小說名稱...">
         </div>
-        <button class="btn secondary-btn" id="btn-load">📂 讀取小說</button>
-        <button class="btn primary-btn" id="btn-save">💾 儲存小說</button>
-      </div>
+        <div style="flex:1;"></div>
+        <div class="global-actions">
+          <button class="btn secondary-btn" id="btn-export">📤 匯出小說</button>
+          <div style="display:inline-flex; align-items:center; gap:5px; margin-right:6px;">
+            <button class="btn secondary-btn" id="btn-load-cloud" style="margin-right:0;">☁️ 讀取雲端小說</button>
+            <select id="cloud-novel-select"
+              style="display:none; background: #111; color: #fff; border: 1px solid var(--c-border); padding: 4px 10px; border-radius: 4px; font-size: 1rem; width: 250px;">
+              <option value="">-- 請選擇小說 --</option>
+            </select>
+          </div>
+          <button class="btn secondary-btn" id="btn-load">📂 讀取小說</button>
+          <button class="btn primary-btn" id="btn-save">💾 儲存小說</button>
+        </div>
     </header>
 
     <!-- 角色挑選 -->
     <div class="col">
       <div class="col-header">
         <h3>🎭 登場角色</h3>
-        <button class="btn-circle" id="add-char" title="增加角色">+</button>
+        <div class="toolbox">
+          <button class="btn-circle" id="add-char" title="增加角色">+</button>
+        </div>
       </div>
       <div class="scroll-area" id="char-list">
         <div class="char-mode-toggle">
           <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
             <input type="checkbox" id="use-local-data"> 讀取本機資料 (除錯用)
           </label>
-          <div id="char-source-status" style="font-size:1rem; color:#aaa;">☁️ 預設讀取雲端角色卡</div>
+          <div id="char-source-status" style="font-size:var(--font-size-md); color:#aaa;">☁️ 預設讀取雲端角色卡</div>
         </div>
         <div id="char-slots-container">
           <!-- JS 動態生成 -->
         </div>
       </div>
       <!--LOG狀態欄-->
-      <div class="server-status-row" style="margin-top:20px; flex-wrap: wrap;">
+      <div class="server-status-row">
         <span class="server-status-dot offline" id="server-dot"></span>
         <button id="start-server-btn" disabled>🚀 請自行啟動伺服器</button>
         <span class="server-status-text" id="server-status-text">偵測中…</span>
@@ -594,11 +671,11 @@
           </div>
         </div>
       </div>
-      <div id="log-output" class="log-area" style="height: 200px; font-size: 1rem;">等待任務...</div>
-      <div style="display:flex; gap:8px; margin-top:8px;">
-        <button class="ai-btn" style="flex:1; font-size:0.8rem; padding:4px;" onclick="clearLogOutput()">🗑️清空</button>
-        <button class="ai-btn" style="flex:1; font-size:0.8rem; padding:4px;" onclick="copyLogOutput()">📋複製</button>
-        <button class="ai-btn" style="flex:1; font-size:0.8rem; padding:4px;" onclick="showLogModal()">🔲大型彈窗</button>
+      <div id="log-output" class="log-area">等待任務...</div>
+      <div style="display:flex; gap:8px; margin-top:8px; margin-right: 1rem; justify-content: right;">
+        <button class="small-btn" onclick="clearLogOutput()">🗑️清空</button>
+        <button class="small-btn" onclick="copyLogOutput()">📋複製</button>
+        <button class="small-btn" onclick="showLogModal()">🔲大型彈窗</button>
       </div>
       <div id="diary-cloud-status" class="cloud-status">雲端狀態</div>
     </div>
@@ -607,8 +684,10 @@
     <div class="col" id="story-premise-container">
       <div class="col-header">
         <button class="collapse-btn" id="toggle-premise" title="縮放">↔</button>
-        <h3 style="margin-left: 10px; font-size: 1.1rem; letter-spacing: 0.1rem;">📝 故事粗綱</h3>
-        <button class="ai-btn" id="btn-ai-gen-chapters" title="根據粗鋼生成各章節">🤖 AI 生成各章描述</button>
+        <h3>📝 故事粗綱</h3>
+        <div class="toolbox">
+          <button class="ai-btn" id="btn-ai-gen-chapters" title="根據粗鋼生成各章節">🤖 AI 生成各章描述</button>
+        </div>
       </div>
       <div class="scroll-area">
         <textarea class="story-premise-textarea" id="story-premise" placeholder="在此編寫故事粗綱，包含整體走向、結局設想等..."></textarea>
