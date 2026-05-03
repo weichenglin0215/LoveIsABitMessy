@@ -413,14 +413,13 @@ function setupEventListeners() {
     qs('#btn-ai-gen-all-outlines').addEventListener('click', aiGenAllOutlines);
     qs('#btn-ai-gen-all-content').addEventListener('click', aiGenAllContent);
     qs('#btn-ai-gen-chapters').addEventListener('click', aiGenChaptersFromPremise);
+    qs('#btn-ai-gen-full-auto').addEventListener('click', aiGenFullAuto);
 
     qs('#btn-load-cloud').addEventListener('click', listCloudNovels);
     qs('#cloud-novel-select').addEventListener('change', loadCloudNovel);
 
-    qs('#toggle-premise').addEventListener('click', () => {
-        const container = qs('#story-premise-container');
-        container.classList.toggle('collapsed');
-    });
+    // #toggle-premise 縮放按鈕監聽已移動至 novel_generator.html 中的 initResizableColumns 統一處理
+
 
     qs('#story-premise').addEventListener('input', (e) => {
         state.storyPremise = e.target.value;
@@ -577,16 +576,31 @@ async function aiGenChapterOutline(chIdx) {
         return;
     }
 
-    setAIGeneratingState(true, ">> 任務啟動...\n正在呼叫 Ollama 大模型產生大綱，這可能需要一分鐘以上，請稍候...");
+    const chNum = chIdx + 1;
+    setAIGeneratingState(true, `>> 任務啟動...\n正在為第 ${chNum} 章產生小節大綱，請稍候...`);
 
     try {
-        // 傳入全書章節一覽與目前章號，讓 AI 有完整前後文
+        // 收集本章「已上鎖」的小節，讓 AI 知道哪些位置是固定的
+        const locked_sections = chapter.sections
+            .map((s, i) => ({ index: i + 1, title: s.title, locked: s.locked }))
+            .filter(s => s.locked)
+            .map(({ index, title }) => ({ index, title }));
+
+        // 全書章節一覽（含上鎖狀態），讓 AI 有前後文
+        const all_chapters = state.chapters.map((ch, i) => ({
+            index: i + 1,
+            title: ch.title,
+            description: ch.description,
+            locked: ch.locked
+        }));
+
         const payload = {
             book_title: state.bookTitle || '故事專案',
             description: chapter.description,
             story_premise: state.storyPremise,
             all_chapters,
             chapter_index: chIdx,   // 0-based
+            locked_sections,        // 本章已上鎖的節（含 1-based index 與 title）
             characters: state.characters.map(id => {
                 const found = cloudCharacters.find(c => c.id === id);
                 return found ? found.card_json : null;
@@ -634,7 +648,7 @@ async function aiGenChapterOutline(chIdx) {
             }
 
             renderChapters();
-            appendLog(">> 大綱產生完畢！未上鎖的小節已成功更新。");
+            appendLog(`>> 第 ${chNum} 章大綱產生完畢！未上鎖的小節已成功更新。`);
         }
     } catch (e) {
         console.error(e);
@@ -661,7 +675,6 @@ async function aiGenAllContent() {
         const ch = state.chapters[i];
         for (let j = 0; j < ch.sections.length; j++) {
             if (!ch.locked && !ch.sections[j].locked) {
-                // 設為當前 active 以便呼叫 aiGenSectionContent
                 state.activeIndex = { chapter: i, section: j };
                 renderAll();
                 await aiGenSectionContent();
@@ -671,12 +684,59 @@ async function aiGenAllContent() {
     appendLog(">> 所有未鎖定小節的內容已生成完畢。");
 }
 
-async function aiGenChaptersFromPremise() {
+async function aiGenFullAuto() {
     if (!state.storyPremise) {
         alert("請先輸入故事粗綱。");
         return;
     }
-    if (!confirm("這將根據粗綱生成各章標題與描述，會覆蓋現有未鎖定的章節，確定嗎？")) return;
+    if (state.characters.filter(Boolean).length === 0) {
+        alert("請至少選擇一位登場角色（生成內文需要角色資料）。");
+        return;
+    }
+    if (!confirm("⚠️ 全自動生成將依序執行：\n1. 根據粗綱生成各章標題與描述（跳過已鎖定）\n2. 為每章生成各節大綱（跳過已鎖定）\n3. 為每節生成內文（跳過已鎖定）\n\n這可能需要非常長的時間，確定開始？")) return;
+
+    appendLog("\n==============================\n🚀 全自動生成模式已啟動\n==============================");
+
+    // Phase 1: 生成章節
+    appendLog("\n--- Phase 1: 根據故事粗綱生成各章節 ---");
+    await aiGenChaptersFromPremise(true); // true = skip confirm
+
+    // Phase 2: 為每個未鎖定章節生成節大綱
+    appendLog("\n--- Phase 2: 為各章節生成節大綱 ---");
+    for (let i = 0; i < state.chapters.length; i++) {
+        if (!state.chapters[i].locked) {
+            appendLog(`\n>> 正在為第 ${i + 1} 章生成節大綱...`);
+            await aiGenChapterOutline(i);
+        } else {
+            appendLog(`\n>> 第 ${i + 1} 章已鎖定，跳過。`);
+        }
+    }
+
+    // Phase 3: 為每個未鎖定節生成內文
+    appendLog("\n--- Phase 3: 為各節生成內文 ---");
+    for (let i = 0; i < state.chapters.length; i++) {
+        const ch = state.chapters[i];
+        for (let j = 0; j < ch.sections.length; j++) {
+            if (!ch.locked && !ch.sections[j].locked) {
+                appendLog(`\n>> 正在為第 ${i + 1} 章第 ${j + 1} 節生成內文...`);
+                state.activeIndex = { chapter: i, section: j };
+                renderAll();
+                await aiGenSectionContent();
+            } else {
+                appendLog(`\n>> 第 ${i + 1} 章第 ${j + 1} 節已鎖定，跳過。`);
+            }
+        }
+    }
+
+    appendLog("\n==============================\n✅ 全自動生成完畢！\n==============================");
+}
+
+async function aiGenChaptersFromPremise(skipConfirm = false) {
+    if (!state.storyPremise) {
+        alert("請先輸入故事粗綱。");
+        return;
+    }
+    if (!skipConfirm && !confirm("這將根據粗綱生成各章標題與描述，會覆蓋現有未鎖定的章節，確定嗎？")) return;
 
     setAIGeneratingState(true, ">> 正在根據故事粗綱生成章節規劃...");
 
@@ -787,10 +847,23 @@ async function aiGenSectionContent() {
         return;
     }
 
-    const sectionTitleText = sec.title || `第 ${section + 1} 節`;
-    setAIGeneratingState(true, `>> 任務啟動...\n正在呼叫 Ollama 產生章節 [${sectionTitleText}] 的內容，這可能會花費數分鐘，請稍候...`);
+    const chNum = chapter + 1;
+    const secNum = section + 1;
+    const sectionTitleText = sec.title || `第 ${secNum} 節`;
+    setAIGeneratingState(true, `>> 任務啟動...\n正在呼叫 Ollama 產生第 ${chNum} 章第 ${secNum} 節 [${sectionTitleText}] 的內容，請稍候...`);
 
     try {
+        // 上一節（同章）
+        const prevSec = section > 0 ? ch.sections[section - 1] : null;
+        // 下一節（同章，優先取已鎖定的；無則取下一節）
+        const nextSec = section < ch.sections.length - 1 ? ch.sections[section + 1] : null;
+        // 所有章節的所有節大綱（供全書連貫）
+        const all_sections_overview = state.chapters.map((c, ci) => ({
+            chapter_index: ci + 1,
+            chapter_title: c.title,
+            sections: c.sections.map((s, si) => ({ index: si + 1, title: s.title, locked: s.locked }))
+        }));
+
         const payload = {
             characters: state.characters.map(id => {
                 const found = cloudCharacters.find(c => c.id === id);
@@ -800,11 +873,21 @@ async function aiGenSectionContent() {
             model: state.currentModel || qs('#model-select')?.value || 'gemma4',
             model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
             writer_settings: (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || null,
+            story_premise: state.storyPremise,
             context: {
+                chapter_index: chNum,     // 1-based
+                section_index: secNum,    // 1-based
                 chapter_title: ch.title,
                 chapter_desc: ch.description,
-                section_title: sec.title
-            }
+                section_title: sec.title,
+                // 上一節標題與已生成的內文（讓 AI 銜接）
+                prev_section_title: prevSec ? prevSec.title : null,
+                prev_section_content: prevSec ? (prevSec.content || '') : null,
+                // 下一節標題（讓 AI 預留伏筆）
+                next_section_title: nextSec ? nextSec.title : null,
+                next_section_locked: nextSec ? !!nextSec.locked : false
+            },
+            all_sections_overview
         };
 
         // Step 1: 取得提示詞預覽
@@ -821,7 +904,7 @@ async function aiGenSectionContent() {
             sec.content = res.content;
             renderEditor();
             renderChapters();
-            appendLog(">> 小說內文產生完畢！已自動更新至編輯器中。");
+            appendLog(`>> 第 ${chNum} 章第 ${secNum} 節內文產生完畢！`);
         }
     } catch (e) {
         appendLog(`\n❌ AI 寫作失敗: ${e.message}`);

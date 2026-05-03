@@ -336,7 +336,8 @@ def build_chapters_from_premise_prompt(char_data: dict, book_title: str, story_p
     return f"{system_prompt}\n\n請開始規劃（以繁體中文）："
 
 def build_chapter_outline_prompt(char_data: dict, book_title: str, outline_desc: str, other_chars: list = None,
-                                  story_premise: str = "", all_chapters: list = None, chapter_index: int = 0, writer_settings: dict = None) -> str:
+                                  story_premise: str = "", all_chapters: list = None, chapter_index: int = 0,
+                                  locked_sections: list = None, writer_settings: dict = None) -> str:
     """根據章的標題與描述來建立「各小節大綱」的完整提示詞
 
     Args:
@@ -375,8 +376,17 @@ def build_chapter_outline_prompt(char_data: dict, book_title: str, outline_desc:
                 marker = "  （第一章・開頭）"
             elif num == total_chapters:
                 marker = "  （最後一章・結局）"
-            lines.append(f"  第{num}章：{ch.get('title','')}\n    描述：{ch.get('description','')} {marker}")
+            lock_tag = "🔒" if ch.get('locked') else ""
+            lines.append(f"  第{num}章{lock_tag}：{ch.get('title','')}　描述：{ch.get('description','')} {marker}")
         chapters_overview = "\n".join(lines)
+
+    # 組建已鎖定小節說明（AI 必須跳過這些槽位）
+    locked_sections_context = ""
+    if locked_sections:
+        ls_lines = []
+        for ls in locked_sections:
+            ls_lines.append(f"  第{ls.get('index','?')}節（已鎖定，不可修改）：{ls.get('title','')}")
+        locked_sections_context = "\n【本章已鎖定的小節（禁止更動，規劃其他節時必須銅接）】\n" + "\n".join(ls_lines)
 
     # 開頭/結尾特殊提示
     position_hint = ""
@@ -409,6 +419,7 @@ def build_chapter_outline_prompt(char_data: dict, book_title: str, outline_desc:
 
 【全書章節一覽】
 {chapters_overview if chapters_overview else '（未提供）'}
+{locked_sections_context}
 
 【角色設定】
 {_format_char_context(char_data, is_main=True)}
@@ -421,12 +432,44 @@ def build_chapter_outline_prompt(char_data: dict, book_title: str, outline_desc:
     user_input = f"請為第{current_ch_num}章『{outline_desc}』撰寫本章的各小節大綱。"
     return f"{system_prompt}\n\n【當前任務/情境】\n{user_input}\n\n請開始執行（以繁體中文）："
 
-def build_novel_content_prompt(char_data: dict, current_chapter: str, chapter_outline: str, section_title: str, other_chars: list = None, writer_settings: dict = None) -> str:
+def build_novel_content_prompt(char_data: dict, current_chapter: str, chapter_outline: str, section_title: str,
+                                other_chars: list = None, writer_settings: dict = None,
+                                chapter_index: int = 0, section_index: int = 0,
+                                prev_section_title: str = "", prev_section_content: str = "",
+                                next_section_title: str = "", next_section_locked: bool = False,
+                                story_premise: str = "") -> str:
     """建立「小說本文生成」的完整提示詞"""
     #####################################################################################
     #建立「小說本文生成」的完整提示詞
     #####################################################################################
     char_data = _enrich_char_data(char_data, {"partner_status": "戀愛期"})
+
+    # 處理其他角色資料
+    other_context = ""
+    if other_chars and len(other_chars) > 0:
+        other_lines = []
+        for c in other_chars:
+            if c.get('name'):
+                other_lines.append(_format_char_context(c))
+        if other_lines:
+            other_context = "\n【其他配角角色設定】\n" + "\n\n".join(other_lines)
+
+    # 上一節銜接說明
+    prev_context = ""
+    if prev_section_title:
+        prev_context = f"\n【上一節銜接】\n上一節標題：{prev_section_title}\n"
+        if prev_section_content and prev_section_content.strip():
+            # 只取最後約 300 字，避免 prompt 過長
+            snippet = prev_section_content.strip()[-300:]
+            prev_context += f"上一節結尾片段（請自然銜接此後的劇情，勿重複）：\n「...{snippet}」\n"
+        else:
+            prev_context += "（上一節尚未生成內容，請自行根據大綱銜接）\n"
+
+    # 下一節預告說明
+    next_context = ""
+    if next_section_title:
+        lock_note = "（已鎖定，本節結尾必須為下一節鋪陳）" if next_section_locked else "（下一節）"
+        next_context = f"\n【下一節預告】{lock_note}\n下一節標題：{next_section_title}\n請在本節結尾自然引導至下一節的開頭，埋下伏筆。\n"
 
     system_prompt = f"""
 你現在是獲獎無數的都會言情小說家。請根據以下情境與完整的角色設定，撰寫小說正文。
@@ -436,6 +479,7 @@ def build_novel_content_prompt(char_data: dict, current_chapter: str, chapter_ou
 2. 字數約 1200~1500 字，使用「繁體中文」。
 3. 對話必須完全符合角色的「說話口吻」。
 4. 請直接開始撰寫故事，不要輸出標題或任何前言。
+5. 本節為【第 {chapter_index} 章 第 {section_index} 節】，請確保與上下節情節連貫。
 
 【寫作技巧】
 1. 故事情節要豐富，要有高潮和低潮，要有轉折，要有感動人心的情節。
@@ -454,9 +498,9 @@ def build_novel_content_prompt(char_data: dict, current_chapter: str, chapter_ou
 {other_context}
 {_format_writer_context(writer_settings)}
 
-【當前章節】：{current_chapter}
+【當前章節】：第 {chapter_index} 章 {current_chapter}
 【章節大綱/目標】：{chapter_outline}
-
+{prev_context}{next_context}
 """.strip()
 
     user_input = f"請撰寫『{section_title}』的內容。"

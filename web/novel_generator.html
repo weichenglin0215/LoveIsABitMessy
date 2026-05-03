@@ -35,15 +35,29 @@
 
     }
 
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
       background: #0d0d12 url('https://w.wallhaven.cc/full/8o/wallhaven-8o9m6j.jpg') no-repeat center center fixed;
       background-size: cover;
       color: #e0e0e0;
       font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      height: 100vh;
+      width: 100vw;
       margin: 0;
       padding: 0;
-      height: 100vh;
       overflow: hidden;
+      display: grid !important; /* 徹底停用 flex，改用 grid 確保滿版 */
+      place-items: stretch;
     }
 
     /* Glassmorphism Background Overlay */
@@ -59,19 +73,26 @@
     /*最上方的標題(開心花園AI小說自動產生器)工具列與下面三個直欄*/
     .app-container {
       display: grid;
-      grid-template-columns: 280px auto 1fr 1.6fr;
-      grid-template-rows: 3rem 1fr;
-      /*高度3rem*/
+      grid-template-rows: 2.5rem minmax(0, 1fr);
       height: 100vh;
-      gap: 5px;
-      /*四個直欄區域之間的間距5px*/
-      padding: 5px;
+      width: 100vw;
+      max-width: 100vw;
+      gap: 0; /* 移除間距以確保完全貼邊 */
+      padding: 0; /* 移除內距以確保完全貼邊 */
+      margin: 0;
       box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    .top-nav {
+      width: 100%;
+      grid-template-columns: 10.0rem 4.0rem 1fr 3fr;
+      /*高度3rem*/
     }
 
     /*標題*/
     header {
-      grid-column: 1 / 5;
+      grid-column: 1 / -1;  /* 占滿所有 grid 欄 */
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -89,22 +110,22 @@
       -webkit-text-fill-color: transparent;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 0.3rem;
     }
 
     .book-title {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 0.3rem;
     }
 
     .book-title input {
       background: rgba(255, 255, 255, 0.1);
       border: 1px solid var(--c-border);
       color: #fff;
-      padding: 3px 10px;
+      padding: 3px 0.3rem;
       border-radius: 4px;
-      width: 300px;
+      width: 15rem;
       font-size: var(--font-size-edit_text);
     }
 
@@ -117,11 +138,12 @@
       flex-direction: column;
       overflow: hidden;
       backdrop-filter: blur(4px);
+      min-height: 0;
     }
 
     /*直欄最上方標題*/
     .col-header {
-      padding: 5px;
+      padding: 0.15rem;
       border-bottom: 1px solid var(--c-border);
       display: flex;
       justify-content: space-between;
@@ -138,36 +160,50 @@
 
     /*直欄中間的捲動區域*/
     .scroll-area {
+      /*根據容器的高度 and 內容動態調整*/
       flex: 1;
+      /*自動捲動*/
       overflow-y: auto;
       padding: 6px;
       font-size: var(--font-size-md);
+      min-height: 0;
+    }
+
+    /*直欄中間的捲動區域-角色卡*/
+    .scroll-area-char-card {
+      /*根據容器的高度和內容動態調整*/
+      flex: 1;
+      /*自動捲動*/
+      overflow-y: auto;
+      padding: 6px;
+      font-size: var(--font-size-md);
+      min-height: 0;
     }
 
     /* Left Column: Characters 左側角色卡*/
     .char-card {
-      font-size: var(--font-size-sm);
+      font-size: var(--font-size-md);
       letter-spacing: 0.1rem;
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 5px;
+      padding: 0.15rem;
       border-radius: 8px;
-      margin-bottom: 5px;
+      margin-bottom: 0.15rem;
       position: relative;
     }
 
     .char-card label {
-      font-size: var(--font-size-sm);
+      font-size: var(--font-size-md);
       margin: 0;
       color: #aaa;
     }
 
     .char-mode-toggle {
-      padding: 10px;
+      padding: 0.3rem;
       border-bottom: 1px solid var(--c-border);
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 0.15rem;
       font-size: var(--font-size-md);
     }
 
@@ -177,17 +213,17 @@
       background: #111;
       color: #fff;
       border: 1px solid #444;
-      padding: 5px 10px;
+      padding: 0.15rem 0.3rem;
       border-radius: 4px;
     }
 
     /*伺服器狀態含LOG狀態欄*/
     .server-status-row {
-      margin: 10px 10px;
+      margin: 0.3rem 0.3rem;
       display: flex;
       align-items: left;
-      gap: 5px;
-      margin-bottom: 10px;
+      gap: 0.15rem;
+      margin-bottom: 0.3rem;
       flex-wrap: wrap;
     }
 
@@ -232,7 +268,7 @@
     }
 
     #start-server-btn {
-      padding: 4px 10px;
+      padding: 4px 0.3rem;
       --font-size-sm: 0.7em;
       margin-top: 0;
       background: #2a1a3e;
@@ -257,7 +293,7 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: 15px;
-      margin-top: 10px;
+      margin-top: 0.3rem;
       background: rgba(255, 255, 255, 0.05);
       padding: 15px;
       border-radius: 12px;
@@ -268,7 +304,7 @@
       display: block;
       --font-size-sm: 0.7em;
       color: var(--c-text-sec);
-      margin-bottom: 5px;
+      margin-bottom: 0.15rem;
     }
 
     .status-item select {
@@ -289,7 +325,7 @@
       background: #000;
       color: hsl(120, 50%, 70%);
       font-family: 'Courier New', monospace;
-      padding: 10px;
+      padding: 0.3rem;
       border-radius: 8px;
       height: 4rem;
       overflow-y: scroll;
@@ -301,7 +337,7 @@
     .cloud-status {
       font-size: 0.85rem;
       color: var(--c-text-sec);
-      margin-top: 5px;
+      margin-top: 0.15rem;
     }
 
     /* Middle Column: Story Structure */
@@ -309,7 +345,7 @@
     .chapter-card {
       background: rgba(156, 111, 214, 0.05);
       border: 1px solid var(--c-border);
-      border-radius: 10px;
+      border-radius: 0.3rem;
       margin-bottom: 20px;
       padding: 15px;
     }
@@ -317,7 +353,7 @@
     /*故事大綱的章卡片的標題框框*/
     .chapter-title-row {
       display: flex;
-      gap: 10px;
+      gap: 0.3rem;
       margin-bottom: 8px;
     }
 
@@ -329,7 +365,7 @@
       border-bottom: 1px solid #666;
       color: #fff;
       font-size: var(--font-size-edit_text);
-      padding: 5px;
+      padding: 0.15rem;
     }
 
     /*故事大綱的章卡片的描述輸入框*/
@@ -352,7 +388,7 @@
       margin-left: 20px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 0.3rem;
     }
 
     /*小節框框*/
@@ -417,7 +453,7 @@
     /*文字按鈕*/
     .btn {
       font-size: var(--btn-size-lg);
-      margin: 5px 6px;
+      margin: 0.15rem 6px;
       padding: 4px 20px;
     }
 
@@ -467,7 +503,7 @@
     .editor-title {
       font-size: var(--font-size-edit_text);
       line-height: 1.5;
-      margin-bottom: 5px;
+      margin-bottom: 0.15rem;
       color: var(--c-accent-light);
       background: transparent;
       border: 1px solid var(--c-border);
@@ -475,7 +511,7 @@
       width: 100%;
       min-height: 3rem;
       outline: none;
-      padding: 10px;
+      padding: 0.3rem;
     }
 
     .editor-title:focus {
@@ -489,7 +525,7 @@
       border: 1px solid var(--c-border);
       border-radius: 8px;
       color: hsl(0, 0%, 94%);
-      padding: 10px;
+      padding: 0.3rem;
       font-size: var(--font-size-edit_text);
       line-height: 1.5;
       resize: none;
@@ -498,14 +534,13 @@
 
     /* Story Premise Styles */
     #story-premise-container {
-      width: 350px;
       transition: width 0.3s ease;
       position: relative;
     }
 
     #story-premise-container.collapsed {
-      width: 50px !important;
-      min-width: 50px !important;
+      width: 30px !important;
+      min-width: 30px !important;
       overflow: hidden;
     }
 
@@ -521,7 +556,7 @@
       background: rgba(255, 255, 255, 0.1);
       border: 1px solid var(--c-border);
       border-radius: 4px;
-      padding: 2px 8px;
+      padding: 2px 2px;
       transition: all 0.2s;
     }
 
@@ -548,13 +583,13 @@
       font-size: var(--font-size-xl);
       cursor: pointer;
       user-select: none;
-      padding: 0 5px;
+      padding: 00.15rem;
     }
 
     /* Toolbox 每個直欄最上方的標題工具列，AI生成按鈕與 +圈圈*/
     .toolbox {
       display: flex;
-      gap: 10px;
+      gap: 0.3rem;
     }
 
     /* Scrollbar */
@@ -568,7 +603,61 @@
 
     ::-webkit-scrollbar-thumb {
       background: var(--c-border);
-      border-radius: 10px;
+      border-radius: 0.3rem;
+    }
+
+    /* Resizer Styles */
+    .resizer {
+      width: 4px;
+      cursor: col-resize;
+      background: rgba(255, 255, 255, 0.05);
+      transition: background 0.2s;
+      z-index: 10;
+      position: relative;
+    }
+
+    .resizer:hover,
+    .resizer.resizing {
+      background: var(--c-accent-light, #a78bfa);
+    }
+
+    /* 確保拖動時不會選取文字 */
+    .resizing-active {
+      cursor: col-resize;
+      user-select: none;
+    }
+
+    /* Collapsed Column Styles */
+    #char-col-container.collapsed,
+    #story-premise-container.collapsed {
+      width: 30px !important;
+      min-width: 30px !important;
+      overflow: hidden;
+    }
+
+    #char-col-container.collapsed .col-header h3,
+    #char-col-container.collapsed .scroll-area-char-card,
+    #char-col-container.collapsed .server-status-row,
+    #char-col-container.collapsed #log-output,
+    #char-col-container.collapsed .cloud-status,
+    #char-col-container.collapsed .toolbox,
+    #char-col-container.collapsed div[onclick],
+    #story-premise-container.collapsed .col-header h3,
+    #story-premise-container.collapsed .scroll-area,
+    #story-premise-container.collapsed .toolbox {
+      display: none;
+    }
+
+    .collapse-btn {
+      cursor: pointer;
+      font-size: var(--font-size-xl);
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--c-border);
+      border-radius: 4px;
+      padding: 2px 2px;
+      transition: all 0.2s;
+      flex-shrink: 0;
     }
   </style>
 </head>
@@ -579,7 +668,7 @@
   <div class="app-container">
     <header class="top-nav">
       <div class="logo"> 📖 開心花園AI小說自動產生器 <small style="font-size: 1.0rem; opacity: 0.6;">v1.0</small></div>
-      <div style="margin-left: 20px; display: flex; align-items: center; gap: 10px;">
+      <div style="margin-left: 20px; display: flex; align-items: center; gap: 0.3rem;">
         <label style="color: var(--c-text-sec); font-size: var(--font-size-lg);">小說名稱：</label>
         <div class="book-title">
           <input type="text" id="book-title" placeholder="請輸入小說名稱...">
@@ -590,215 +679,353 @@
           <div style="display:inline-flex; align-items:center; gap:5px; margin-right:6px;">
             <button class="btn secondary-btn" id="btn-load-cloud" style="margin-right:0;">☁️ 讀取雲端小說</button>
             <select id="cloud-novel-select"
-              style="display:none; background: #111; color: #fff; border: 1px solid var(--c-border); padding: 4px 10px; border-radius: 4px; font-size: 1rem; width: 250px;">
+              style="display:none; background: #111; color: #fff; border: 1px solid var(--c-border); padding: 4px 0.3rem; border-radius: 4px; font-size: 1rem; width: 250px;">
               <option value="">-- 請選擇小說 --</option>
             </select>
           </div>
           <button class="btn secondary-btn" id="btn-load">📂 讀取小說</button>
           <button class="btn primary-btn" id="btn-save">💾 儲存小說</button>
         </div>
+      </div>
     </header>
+    <div id="main-columns-grid" style="display: grid; grid-template-columns: 1fr 4px 1fr 4px 1fr 4px 1fr; grid-column: 1 / -1; height: 100%; width: 100%; min-height: 0;">
+      <!-- 角色挑選 -->
+      <div class="col" id="char-col-container">
+        <div class="col-header">
+          <button class="collapse-btn" id="toggle-char-col" title="縮放">↔</button>
+          <h3>🎭 登場角色</h3>
+          <div class="toolbox">
+            <button class="btn-circle" id="add-char" title="增加角色">+</button>
+          </div>
+        </div>
+        <div class="scroll-area-char-card" id="char-list">
+          <div class="char-mode-toggle">
+            <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
+              <input type="checkbox" id="use-local-data"> 讀取本機資料 (除錯用)
+            </label>
+            <div id="char-source-status" style="font-size:var(--font-size-md); color:#aaa;">☁️ 預設讀取雲端角色卡</div>
+          </div>
+          <div id="char-slots-container">
+            <!-- JS 動態生成 -->
+          </div>
+        </div>
+        <!--LOG狀態欄-->
+        <div class="server-status-row">
+          <span class="server-status-dot offline" id="server-dot"></span>
+          <button id="start-server-btn" disabled>🚀 請自行啟動伺服器</button>
+          <span class="server-status-text" id="server-status-text">偵測中…</span>
 
-    <!-- 角色挑選 -->
-    <div class="col">
-      <div class="col-header">
-        <h3>🎭 登場角色</h3>
-        <div class="toolbox">
-          <button class="btn-circle" id="add-char" title="增加角色">+</button>
+          <div id="model-container"
+            style="margin-left:auto; display:flex; flex-direction: column; align-items:flex-start; gap:4px; opacity: 0.8;">
+            <label style="font-size:0.9rem; color:#aaa;">🤖 AI 模型：</label>
+            <select id="model-select"
+              style="background:#111; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 8px; font-size:0.9rem; width: 100%;">
+              <option value="gemma4">gemma4</option>
+            </select>
+          </div>
+          <div id="model-options-container"
+            style="margin-left:auto; display:flex; flex-direction: column; align-items:flex-start; gap:4px;">
+            <label style="font-size:0.9rem; color:#aaa;">⚙️ 模型參數：</label>
+            <div style="display:flex; gap:4px; width: 100%;">
+              <select id="model-options-select"
+                style="width: 80%; background:#111; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 8px; font-size:0.9rem; flex:1;">
+                <option value="">預設</option>
+              </select>
+              <button id="btn-add-model-option" class="ai-btn"
+                style="padding: 2px 8px; font-size: 0.8rem; border-radius: 4px; margin: 0;">編輯</button>
+            </div>
+          </div>
+          <div id="writer-style-container"
+            style="margin-left:auto; display:flex; flex-direction: column; align-items:flex-start; gap:4px;">
+            <label style="font-size:0.9rem; color:#aaa;">🖋️ 寫作風格：</label>
+            <div style="display:flex; gap:4px; width: 100%;">
+              <select id="writer-style-select" class="ws-style-dropdown"
+                style="width: 80%; background:#111; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 8px; font-size:0.9rem; flex:1;">
+                <option value="">無</option>
+              </select>
+              <button id="btn-edit-writer-style" class="ai-btn"
+                style="padding: 2px 8px; font-size: 0.8rem; border-radius: 4px; margin: 0;"
+                onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select').value)">編輯</button>
+            </div>
+          </div>
+          <div id="writer-sample-container"
+            style="margin-left:auto; display:flex; flex-direction: column; align-items:flex-start; gap:4px;">
+            <label style="font-size:0.9rem; color:#aaa;">📝 寫作範本：</label>
+            <div style="display:flex; gap:4px; width: 100%;">
+              <select id="writer-sample-select" class="ws-sample-dropdown"
+                style="width: 80%; background:#111; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 8px; font-size:0.9rem; flex:1;">
+                <option value="">無</option>
+              </select>
+              <button id="btn-edit-writer-sample" class="ai-btn"
+                style="padding: 2px 8px; font-size: 0.8rem; border-radius: 4px; margin: 0;"
+                onclick="WriterSettingsApp.openSampleModal(document.getElementById('writer-sample-select').value)">編輯</button>
+            </div>
+          </div>
+        </div>
+        <div id="log-output" class="log-area">等待任務...</div>
+        <div style="display:flex; gap:8px; margin-top:8px; margin-right: 1rem; justify-content: right;">
+          <button class="small-btn" onclick="clearLogOutput()">🗑️清空</button>
+          <button class="small-btn" onclick="copyLogOutput()">📋複製</button>
+          <button class="small-btn" onclick="showLogModal()">🔲大型彈窗</button>
+        </div>
+        <div id="diary-cloud-status" class="cloud-status">雲端狀態</div>
+      </div>
+
+      <div class="resizer" data-index="1"></div>
+
+      <!-- 故事粗綱欄位 -->
+      <div class="col" id="story-premise-container">
+        <div class="col-header">
+          <button class="collapse-btn" id="toggle-premise" title="縮放">↔</button>
+          <h3>📝故事粗綱</h3>
+          <div class="toolbox">
+            <button class="ai-btn" id="btn-ai-gen-full-auto" title="全自動：依粗綱生成章節→節大綱→節內文（跳過已鎖定）" style="background:linear-gradient(135deg,#7c3aed,#f472b6); font-weight:bold;">🚀 全自動生成</button>
+            <button class="ai-btn" id="btn-ai-gen-chapters" title="根據粗鋼生成各章節">🤖 AI各章描述</button>
+          </div>
+        </div>
+        <div class="scroll-area">
+          <textarea class="story-premise-textarea" id="story-premise" placeholder="在此編寫故事粗綱，包含整體走向、結局設想等..."></textarea>
         </div>
       </div>
-      <div class="scroll-area" id="char-list">
-        <div class="char-mode-toggle">
-          <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
-            <input type="checkbox" id="use-local-data"> 讀取本機資料 (除錯用)
-          </label>
-          <div id="char-source-status" style="font-size:var(--font-size-md); color:#aaa;">☁️ 預設讀取雲端角色卡</div>
+
+      <div class="resizer" data-index="3"></div>
+
+      <!-- 故事大綱 -->
+      <div class="col">
+        <div class="col-header">
+          <h3>📖 故事大綱</h3>
+          <div class="toolbox">
+            <button class="ai-btn" id="btn-ai-gen-all-outlines" title="撰寫所有未鎖定的小節大綱">🤖 AI 撰寫所有大綱</button>
+            <button class="btn-circle" id="add-chapter" title="增加章節">+</button>
+          </div>
         </div>
-        <div id="char-slots-container">
+        <div class="scroll-area" id="chapter-list">
           <!-- JS 動態生成 -->
         </div>
       </div>
-      <!--LOG狀態欄-->
-      <div class="server-status-row">
-        <span class="server-status-dot offline" id="server-dot"></span>
-        <button id="start-server-btn" disabled>🚀 請自行啟動伺服器</button>
-        <span class="server-status-text" id="server-status-text">偵測中…</span>
 
-        <div id="model-container"
-          style="margin-left:auto; display:flex; flex-direction: column; align-items:flex-start; gap:4px; opacity: 0.8;">
-          <label style="font-size:0.9rem; color:#aaa;">🤖 AI 模型：</label>
-          <select id="model-select"
-            style="background:#111; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 8px; font-size:0.9rem; width: 100%;">
-            <option value="gemma4">gemma4</option>
-          </select>
-        </div>
-        <div id="model-options-container"
-          style="margin-left:auto; display:flex; flex-direction: column; align-items:flex-start; gap:4px;">
-          <label style="font-size:0.9rem; color:#aaa;">⚙️ 模型參數：</label>
-          <div style="display:flex; gap:4px; width: 100%;">
-            <select id="model-options-select"
-              style="width: 80%; background:#111; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 8px; font-size:0.9rem; flex:1;">
-              <option value="">預設</option>
-            </select>
-            <button id="btn-add-model-option" class="ai-btn"
-              style="padding: 2px 8px; font-size: 0.8rem; border-radius: 4px; margin: 0;">編輯</button>
+      <div class="resizer" data-index="5"></div>
+
+      <!-- 編輯器 -->
+      <div class="col">
+        <div class="col-header">
+          <h3>🖋️ 內文編輯器</h3>
+          <div class="toolbox">
+            <button class="ai-btn" id="btn-ai-gen-all-content" title="撰寫所有未鎖定的小節內容">🤖 AI 撰寫所有小節的內文</button>
+            <button class="ai-btn" id="btn-ai-gen-content">🤖 AI 本節小說</button>
           </div>
         </div>
-        <div id="writer-style-container"
-          style="margin-left:auto; display:flex; flex-direction: column; align-items:flex-start; gap:4px;">
-          <label style="font-size:0.9rem; color:#aaa;">🖋️ 寫作風格：</label>
-          <div style="display:flex; gap:4px; width: 100%;">
-            <select id="writer-style-select" class="ws-style-dropdown"
-              style="width: 80%; background:#111; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 8px; font-size:0.9rem; flex:1;">
-              <option value="">無</option>
-            </select>
-            <button id="btn-edit-writer-style" class="ai-btn"
-              style="padding: 2px 8px; font-size: 0.8rem; border-radius: 4px; margin: 0;"
-              onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select').value)">編輯</button>
-          </div>
-        </div>
-        <div id="writer-sample-container"
-          style="margin-left:auto; display:flex; flex-direction: column; align-items:flex-start; gap:4px;">
-          <label style="font-size:0.9rem; color:#aaa;">📝 寫作範本：</label>
-          <div style="display:flex; gap:4px; width: 100%;">
-            <select id="writer-sample-select" class="ws-sample-dropdown"
-              style="width: 80%; background:#111; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 8px; font-size:0.9rem; flex:1;">
-              <option value="">無</option>
-            </select>
-            <button id="btn-edit-writer-sample" class="ai-btn"
-              style="padding: 2px 8px; font-size: 0.8rem; border-radius: 4px; margin: 0;"
-              onclick="WriterSettingsApp.openSampleModal(document.getElementById('writer-sample-select').value)">編輯</button>
-          </div>
-        </div>
-      </div>
-      <div id="log-output" class="log-area">等待任務...</div>
-      <div style="display:flex; gap:8px; margin-top:8px; margin-right: 1rem; justify-content: right;">
-        <button class="small-btn" onclick="clearLogOutput()">🗑️清空</button>
-        <button class="small-btn" onclick="copyLogOutput()">📋複製</button>
-        <button class="small-btn" onclick="showLogModal()">🔲大型彈窗</button>
-      </div>
-      <div id="diary-cloud-status" class="cloud-status">雲端狀態</div>
-    </div>
+        <div class="scroll-area editor-container" id="editor-side">
+          <textarea class="editor-title" id="active-section-title" placeholder="請選擇一個章節開始" readonly
+            style="height:300px;"></textarea>
+          <textarea id="main-editor" placeholder="在此編寫故事內容..."></textarea>
 
-    <!-- 故事粗綱欄位 -->
-    <div class="col" id="story-premise-container">
-      <div class="col-header">
-        <button class="collapse-btn" id="toggle-premise" title="縮放">↔</button>
-        <h3>📝 故事粗綱</h3>
-        <div class="toolbox">
-          <button class="ai-btn" id="btn-ai-gen-chapters" title="根據粗鋼生成各章節">🤖 AI 生成各章描述</button>
         </div>
-      </div>
-      <div class="scroll-area">
-        <textarea class="story-premise-textarea" id="story-premise" placeholder="在此編寫故事粗綱，包含整體走向、結局設想等..."></textarea>
-      </div>
-    </div>
-
-    <!-- 故事大綱 -->
-    <div class="col">
-      <div class="col-header">
-        <h3>📖 故事大綱</h3>
-        <div class="toolbox">
-          <button class="ai-btn" id="btn-ai-gen-all-outlines" title="撰寫所有未鎖定的小節大綱">🤖 AI 撰寫所有大綱</button>
-          <button class="btn-circle" id="add-chapter" title="增加章節">+</button>
-        </div>
-      </div>
-      <div class="scroll-area" id="chapter-list">
-        <!-- JS 動態生成 -->
-      </div>
-    </div>
-
-    <!-- 編輯器 -->
-    <div class="col">
-      <div class="col-header">
-        <h3>🖋️ 內文編輯器</h3>
-        <div class="toolbox">
-          <button class="ai-btn" id="btn-ai-gen-all-content" title="撰寫所有未鎖定的小節內容">🤖 AI 撰寫所有小節的內文</button>
-          <button class="ai-btn" id="btn-ai-gen-content">🤖 AI 本節小說</button>
-        </div>
-      </div>
-      <div class="scroll-area editor-container" id="editor-side">
-        <textarea class="editor-title" id="active-section-title" placeholder="請選擇一個章節開始" readonly
-          style="height:300px;"></textarea>
-        <textarea id="main-editor" placeholder="在此編寫故事內容..."></textarea>
-
-      </div>
-      <!-- ── Modal: Save Novel ── -->
-      <div id="modal-novel-save"
-        style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:10000; display:none; align-items:center; justify-content:center; padding:20px;">
-        <div
-          style="background:#222; color:#eee; padding:24px; border-radius:12px; width:400px; max-width:90%; border:1px solid #444; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-          <h3 style="margin-top:0; color:#f472b6;">💾 儲存小說專案</h3>
-          <div style="margin-bottom:15px;">
-            <label style="display:block; font-size:0.9rem; color:#aaa; margin-bottom:5px;">小說名稱：</label>
-            <input type="text" id="save-novel-name"
-              style="width:100%; padding:10px; background:#111; color:#fff; border:1px solid #444; border-radius:6px; box-sizing:border-box;">
-          </div>
-          <div style="margin-bottom:20px;">
-            <label style="display:block; font-size:0.9rem; color:#aaa; margin-bottom:5px;">密碼 (雲端存取用)：</label>
-            <input type="password" id="save-novel-password"
-              style="width:100%; padding:10px; background:#111; color:#fff; border:1px solid #444; border-radius:6px; box-sizing:border-box;">
-          </div>
-          <div style="display:flex; justify-content:flex-end; gap:12px;">
-            <button id="btn-save-cancel"
-              style="padding:8px 20px; background:#444; color:#fff; border:none; border-radius:6px; cursor:pointer;">取消</button>
-            <button id="btn-save-confirm"
-              style="padding:8px 24px; background:#f472b6; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">確定儲存</button>
+        <!-- ── Modal: Save Novel ── -->
+        <div id="modal-novel-save"
+          style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:10000; display:none; align-items:center; justify-content:center; padding:20px;">
+          <div
+            style="background:#222; color:#eee; padding:24px; border-radius:12px; width:400px; max-width:90%; border:1px solid #444; box-shadow: 0 0.3rem 30px rgba(0,0,0,0.5);">
+            <h3 style="margin-top:0; color:#f472b6;">💾 儲存小說專案</h3>
+            <div style="margin-bottom:15px;">
+              <label style="display:block; font-size:0.9rem; color:#aaa; margin-bottom:5px;">小說名稱：</label>
+              <input type="text" id="save-novel-name"
+                style="width:100%; padding:0.3rem; background:#111; color:#fff; border:1px solid #444; border-radius:6px; box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:20px;">
+              <label style="display:block; font-size:0.9rem; color:#aaa; margin-bottom:5px;">密碼 (雲端存取用)：</label>
+              <input type="password" id="save-novel-password"
+                style="width:100%; padding:0.3rem; background:#111; color:#fff; border:1px solid #444; border-radius:6px; box-sizing:border-box;">
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:12px;">
+              <button id="btn-save-cancel"
+                style="padding:8px 20px; background:#444; color:#fff; border:none; border-radius:6px; cursor:pointer;">取消</button>
+              <button id="btn-save-confirm"
+                style="padding:8px 24px; background:#f472b6; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">確定儲存</button>
+            </div>
           </div>
         </div>
       </div>
     </div>
-    <!-- ── Modal: Novel Password Check ── -->
-    <div id="modal-novel-password"
-      style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:10000; display:none; align-items:center; justify-content:center; padding:20px;">
-      <div
-        style="background:#222; color:#eee; padding:24px; border-radius:12px; width:360px; max-width:90%; border:1px solid #444; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-        <h3 style="margin-top:0; color:#f472b6;">🔐 雲端專案驗證</h3>
-        <p style="font-size:0.9rem; color:#ccc; margin-bottom:15px;">請輸入此小說專案的讀取密碼：</p>
-        <input type="password" id="novel-password-input" placeholder="輸入密碼..."
-          style="width:100%; padding:12px; background:#111; color:#fff; border:1px solid #444; border-radius:6px; box-sizing:border-box; margin-bottom:20px;">
-        <div style="display:flex; justify-content:flex-end; gap:12px;">
-          <button id="btn-password-cancel"
-            style="padding:8px 20px; background:#444; color:#fff; border:none; border-radius:6px; cursor:pointer;">取消</button>
-          <button id="btn-password-ok"
-            style="padding:8px 24px; background:#f472b6; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">確定</button>
-        </div>
+  </div>
+  <!-- ── Modal: Novel Password Check ── -->
+  <div id="modal-novel-password"
+    style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:10000; display:none; align-items:center; justify-content:center; padding:20px;">
+    <div
+      style="background:#222; color:#eee; padding:24px; border-radius:12px; width:360px; max-width:90%; border:1px solid #444; box-shadow: 0 0.3rem 30px rgba(0,0,0,0.5);">
+      <h3 style="margin-top:0; color:#f472b6;">🔐 雲端專案驗證</h3>
+      <p style="font-size:0.9rem; color:#ccc; margin-bottom:15px;">請輸入此小說專案的讀取密碼：</p>
+      <input type="password" id="novel-password-input" placeholder="輸入密碼..."
+        style="width:100%; padding:12px; background:#111; color:#fff; border:1px solid #444; border-radius:6px; box-sizing:border-box; margin-bottom:20px;">
+      <div style="display:flex; justify-content:flex-end; gap:12px;">
+        <button id="btn-password-cancel"
+          style="padding:8px 20px; background:#444; color:#fff; border:none; border-radius:6px; cursor:pointer;">取消</button>
+        <button id="btn-password-ok"
+          style="padding:8px 24px; background:#f472b6; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">確定</button>
       </div>
     </div>
+  </div>
 
-    <script>
-      // Log 輔助功能
-      window.clearLogOutput = () => { document.getElementById('log-output').textContent = ''; };
-      window.copyLogOutput = () => {
-        const log = document.getElementById('log-output').textContent;
-        navigator.clipboard.writeText(log);
-        alert('已複製到剪貼簿');
+  <script>
+    // Log 輔助功能
+    window.clearLogOutput = () => { document.getElementById('log-output').textContent = ''; };
+    window.copyLogOutput = () => {
+      const log = document.getElementById('log-output').textContent;
+      navigator.clipboard.writeText(log);
+      alert('已複製到剪貼簿');
+    };
+    window.showLogModal = () => {
+      const log = document.getElementById('log-output').textContent;
+      document.getElementById('system-log-content').value = log;
+      document.getElementById('modal-system-log').style.display = 'flex';
+    };
+
+    // --- 欄位拖拉縮放邏輯 ---
+    (function initResizableColumns() {
+      const grid = document.getElementById('main-columns-grid');
+      const resizers = document.querySelectorAll('.resizer');
+      let isResizing = false;
+      let currentResizer = null;
+
+      // 儲存每個直欄的比例 (fr)
+      // 初始比例根據預設寬度設定
+      let colFractions = [192, 320, 500, 400]; // 概略對應 12rem, 20rem, 1fr, 25rem
+
+      function updateGridTemplate() {
+        const charCol = document.getElementById('char-col-container');
+        const premiseCol = document.getElementById('story-premise-container');
+        
+        let template = [];
+        // Col 0
+        template.push(charCol.classList.contains('collapsed') ? '30px' : `${colFractions[0]}fr`);
+        template.push('4px'); // Resizer 1
+        // Col 1
+        template.push(premiseCol.classList.contains('collapsed') ? '30px' : `${colFractions[1]}fr`);
+        template.push('4px'); // Resizer 2
+        // Col 2
+        template.push(`${colFractions[2]}fr`);
+        template.push('4px'); // Resizer 3
+        // Col 3
+        template.push(`${colFractions[3]}fr`);
+        
+        grid.style.gridTemplateColumns = template.join(' ');
+      }
+
+      // 初始化比例
+      function initFractions() {
+        const gridStyle = window.getComputedStyle(grid);
+        const computedCols = gridStyle.gridTemplateColumns.split(' ');
+        if (computedCols.length >= 7) {
+          colFractions = [
+            parseFloat(computedCols[0]),
+            parseFloat(computedCols[2]),
+            parseFloat(computedCols[4]),
+            parseFloat(computedCols[6])
+          ];
+          updateGridTemplate();
+        }
+      }
+
+      // 延遲初始化以確保瀏覽器已完成初步版面計算
+      if (document.readyState === 'complete') {
+        setTimeout(initFractions, 200);
+      } else {
+        window.addEventListener('load', () => setTimeout(initFractions, 200));
+      }
+
+      resizers.forEach(resizer => {
+        resizer.addEventListener('mousedown', (e) => {
+          isResizing = true;
+          currentResizer = resizer;
+          resizer.classList.add('resizing');
+          document.body.classList.add('resizing-active');
+          
+          const index = parseInt(resizer.getAttribute('data-index'));
+          const targetColIdx = Math.floor(index / 2); // Res 1 -> Col 0, Res 3 -> Col 1, Res 5 -> Col 2
+
+          const onMouseMove = (moveEvent) => {
+            if (!isResizing) return;
+            
+            const gridRect = grid.getBoundingClientRect();
+            const mouseX = moveEvent.clientX - gridRect.left;
+            const totalAvailWidth = gridRect.width - 12; // 扣除 3 個 4px resizer
+
+            // 計算目標欄位的新像素寬度
+            let newWidthPx = 0;
+            if (index === 1) {
+              newWidthPx = mouseX;
+            } else if (index === 3) {
+              const r1Pos = resizers[0].getBoundingClientRect().right - gridRect.left;
+              newWidthPx = mouseX - r1Pos;
+            } else if (index === 5) {
+              const r2Pos = resizers[1].getBoundingClientRect().right - gridRect.left;
+              newWidthPx = mouseX - r2Pos;
+            }
+
+            const minWidth = 50;
+            const maxWidth = totalAvailWidth - 150;
+            newWidthPx = Math.max(minWidth, Math.min(newWidthPx, maxWidth));
+
+            // 公式：newFr = (newWidthPx * sumOfOtherFrs) / (totalAvailWidth - newWidthPx)
+            // 這能確保目標欄位寬度為 newWidthPx，且其他欄位依比例縮放
+            const otherFrSum = colFractions.reduce((sum, fr, i) => i === targetColIdx ? sum : sum + fr, 0);
+            const newFr = (newWidthPx * otherFrSum) / (totalAvailWidth - newWidthPx);
+
+            if (newFr > 0 && isFinite(newFr)) {
+              colFractions[targetColIdx] = newFr;
+              updateGridTemplate();
+            }
+          };
+
+          const onMouseUp = () => {
+            isResizing = false;
+            currentResizer.classList.remove('resizing');
+            document.body.classList.remove('resizing-active');
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+          };
+
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onMouseUp);
+        });
+      });
+
+      // 處理折疊按鈕
+      const setupToggle = (btnId, containerId) => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const container = document.getElementById(containerId);
+            container.classList.toggle('collapsed');
+            updateGridTemplate();
+          });
+        }
       };
-      window.showLogModal = () => {
-        const log = document.getElementById('log-output').textContent;
-        document.getElementById('system-log-content').value = log;
-        document.getElementById('modal-system-log').style.display = 'flex';
-      };
-    </script>
-    <script src="js/novel_generator_app.js" defer></script>
-    <!-- ── Modal: System Message LOG ── -->
-    <div id="modal-system-log"
-      style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:20000; align-items:center; justify-content:center; padding:20px;">
-      <div
-        style="background:#222; color:#eee; width:90%; max-width:95%; height:90%; border-radius:12px; border:1px solid #444; display:flex; flex-direction:column; overflow:hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-        <div
-          style="display:flex; align-items:center; padding:12px 20px; background:#333; border-bottom:1px solid #444;">
-          <span id="close-system-log"
-            style="cursor:pointer; font-size:1.5rem; font-weight:bold; color:#aaa; margin-right: 15px;"
-            onclick="document.getElementById('modal-system-log').style.display='none'">&times;</span>
-          <h3 style="margin:0; font-size:1.1rem; color:#f472b6;">系統訊息 LOG</h3>
-        </div>
-        <div style="flex:1; padding:20px; overflow:hidden; background:#111;">
-          <textarea id="system-log-content" readonly
-            style="width:100%; height:100%; background:transparent; color:hsl(120, 50%, 70%); border:none; padding:0; font-family:monospace; resize:none; font-size:1.2rem; line-height:1.5; outline:none;"></textarea>
-        </div>
+
+      setupToggle('toggle-char-col', 'char-col-container');
+      setupToggle('toggle-premise', 'story-premise-container');
+
+    })();
+  </script>
+  <script src="js/novel_generator_app.js" defer></script>
+  <!-- ── Modal: System Message LOG ── -->
+  <div id="modal-system-log"
+    style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:20000; align-items:center; justify-content:center; padding:20px;">
+    <div
+      style="background:#222; color:#eee; width:90%; max-width:95%; height:90%; border-radius:12px; border:1px solid #444; display:flex; flex-direction:column; overflow:hidden; box-shadow: 0 0.3rem 30px rgba(0,0,0,0.5);">
+      <div style="display:flex; align-items:center; padding:12px 20px; background:#333; border-bottom:1px solid #444;">
+        <span id="close-system-log"
+          style="cursor:pointer; font-size:1.5rem; font-weight:bold; color:#aaa; margin-right: 15px;"
+          onclick="document.getElementById('modal-system-log').style.display='none'">&times;</span>
+        <h3 style="margin:0; font-size:1.1rem; color:#f472b6;">系統訊息 LOG</h3>
+      </div>
+      <div style="flex:1; padding:20px; overflow:hidden; background:#111;">
+        <textarea id="system-log-content" readonly
+          style="width:100%; height:100%; background:transparent; color:hsl(120, 50%, 70%); border:none; padding:0; font-family:monospace; resize:none; font-size:1.2rem; line-height:1.5; outline:none; white-space:pre-wrap; word-break:break-all;"></textarea>
       </div>
     </div>
+  </div>
 </body>
 
 </html>

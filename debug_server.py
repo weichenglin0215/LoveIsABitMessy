@@ -430,8 +430,20 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header('Content-type', 'application/json; charset=utf-8')
                 self.end_headers()
                 self.wfile.write(json.dumps(models).encode('utf-8'))
+            except ConnectionRefusedError:
+                # Ollama 尚未啟動，回傳空清單而不是 500 錯誤
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps([]).encode('utf-8'))
             except Exception as e:
-                self.send_error(500, f"Error: {e}")
+                # 其他錯誤也回傳空清單，避免干擾 CMD
+                print(f">> [/api/models] Ollama 尚未連線或發生錯誤: {type(e).__name__}")
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps([]).encode('utf-8'))
+
         else:
             return super().do_GET()
 
@@ -572,7 +584,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 timestamp = time.strftime("%H:%M:%S", time.localtime())
                 print("結束時間:", timestamp)
                 print("="*50)
-                
+
                 chapters = []
                 # 提取 JSON 陣列，解析各章標題與描述
                 try:
@@ -584,7 +596,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 except Exception as e:
                     print(f">> JSON 解析失敗 (嘗試修復後): {e}")
                     print(f">> 嘗試修復後的內容: {repaired_text[:200]}...")
-                
+
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json; charset=utf-8')
                 self.end_headers()
@@ -616,14 +628,16 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                     
                 main_char = chars[0] if chars else {}
                 story_premise  = params.get('story_premise', '')
-                all_chapters   = params.get('all_chapters', [])   # [{"title":"","description":""},...]
+                all_chapters   = params.get('all_chapters', [])   # [{"title":"","description":"","locked":bool},...]
                 chapter_index  = params.get('chapter_index', 0)   # 0-based
+                locked_sections = params.get('locked_sections', [])  # [{"index":int, "title":str},...]
                 writer_settings = params.get('writer_settings', {})
                 prompt = build_chapter_outline_prompt(
                     main_char, book_title, desc, chars[1:],
                     story_premise=story_premise,
                     all_chapters=all_chapters,
                     chapter_index=chapter_index,
+                    locked_sections=locked_sections,
                     writer_settings=writer_settings
                 )
                 
@@ -726,7 +740,22 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                     
                 main_char = chars[0] if chars else {}
                 writer_settings = params.get('writer_settings', {})
-                prompt = build_novel_content_prompt(main_char, ctx.get('chapter_title', ''), f"{ctx.get('chapter_desc', '')} - {ctx.get('section_title', '')}", ctx.get('section_title', ''), chars[1:], writer_settings=writer_settings)
+                story_premise = params.get('story_premise', '')
+                prompt = build_novel_content_prompt(
+                    main_char,
+                    ctx.get('chapter_title', ''),
+                    f"{ctx.get('chapter_desc', '')} - {ctx.get('section_title', '')}",
+                    ctx.get('section_title', ''),
+                    chars[1:],
+                    writer_settings=writer_settings,
+                    chapter_index=ctx.get('chapter_index', 0),
+                    section_index=ctx.get('section_index', 0),
+                    prev_section_title=ctx.get('prev_section_title') or '',
+                    prev_section_content=ctx.get('prev_section_content') or '',
+                    next_section_title=ctx.get('next_section_title') or '',
+                    next_section_locked=bool(ctx.get('next_section_locked', False)),
+                    story_premise=story_premise
+                )
                 
                 if params.get('preview'):
                     print("\n" + "="*50)

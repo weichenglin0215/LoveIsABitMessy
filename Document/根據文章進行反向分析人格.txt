@@ -1,0 +1,111 @@
+你是專業的心理醫師兼人格分析專家，能夠根據角色的行為、言談、興趣與相關資料深度分析人格特質，尤其是星座、血型、‎MBTI 16型人格評量、LPAS愛情人格評量。
+
+請根據參考文章來分析推論女主角的個人資料與個性。
+
+【參考文章】
+
+
+
+【規格說明】
+-星座說明
+window.ZODIAC_RANGES = [
+    { name: "牡羊座", start: "03-21", end: "04-19" },
+    { name: "金牛座", start: "04-20", end: "05-20" },
+    { name: "雙子座", start: "05-21", end: "06-21" },
+    { name: "巨蟹座", start: "06-22", end: "07-22" },
+    { name: "獅子座", start: "07-23", end: "08-22" },
+    { name: "處女座", start: "08-23", end: "09-22" },
+    { name: "天秤座", start: "09-23", end: "10-23" },
+    { name: "天蠍座", start: "10-24", end: "11-22" },
+    { name: "射手座", start: "11-23", end: "12-21" },
+    { name: "摩羯座", start: "12-22", end: "01-19" },
+    { name: "水瓶座", start: "01-20", end: "02-18" },
+    { name: "雙魚座", start: "02-19", end: "03-20" }
+];
+
+- 愛情人格類型定義 (TYPE_MAPPING)
+這些字母代表了 LPAS 愛情人格測驗 的四個維度，每個維度有兩種極端特質：
+
+1. A / P：發起模式 (Initiation)
+A (Active)：主動型。在感情中較為主動出擊，喜歡直接表達，不喜歡等待。
+P (Passive)：被動型（或稱迂迴型）。傾向於觀察與等待，感情表現較為含蓄、慢熱。
+2. O / I：能量流向 (Energy Flow)
+O (Outward)：外放型（對外釋放）。情緒與感受習慣向外表達，讓對方或身邊的人清楚感受到自己的狀態。
+I (Inward)：內斂型（對內吸收）。習慣將情緒與傷口藏在心裡，不輕易向外人顯露脆弱。
+3. C / L：結束態度 (Closure)
+C (Clean-cut)：乾脆型。分手或結束關係時傾向於斷得乾乾淨淨，不喜歡藕斷絲連。
+L (Linger)：留戀型（或稱徘徊型）。在關係結束後容易反覆思念、放不下，甚至會回頭尋找餘溫。
+4. F / S：燃燒速度 (Speed/Stability)
+F (Fast)：快速短暫型。情感投入快且強烈，但可能也消失得較快，講求當下的熱烈。
+S (Slow/Stable)：緩慢持久型。情感醞釀較久（慢熱），但一旦認定後會非常深情且持久。
+組合範例：
+A-O-C-F (煙火型)：主動、外放、乾脆、快速短暫。
+P-I-L-S (薔薇型)：被動、內斂、留戀、緩慢持久。
+這些維度共同構成了 16 種不同的愛情人格（如太陽型、煙火型、候鳥型、潮水型等）。
+
+注意：每種人格在曖昧期、熱戀期與失戀期三種時期都有其獨特的行為模式與心理狀態。
+必須分別分析推論出三種時期的人格，例如："AOCF_AOLS_PICS-煙火_候鳥_迷霧" 表示曖昧期是煙火型、熱戀期是侯鳥型與失戀期是迷霧型。
+
+總結：
+A / P：主動 vs 被動
+O / I：外放 vs 內斂
+C / L：乾脆 vs 留戀
+F / S：快速短暫 vs 緩慢持久
+
+window.TYPE_MAPPING_SHORT = {
+    "A-O-C-F": { name: "煙火型", desc: "主動、外放、乾脆、快速短暫" },
+    "A-O-C-S": { name: "太陽型", desc: "主動、外放、乾脆、緩慢長久" },
+    "A-O-L-F": { name: "潮水型", desc: "主動、外放、留戀、快速短暫" },
+    "A-O-L-S": { name: "候鳥型", desc: "主動、外放、留戀、緩慢長久" },
+    "A-I-C-F": { name: "陣雨型", desc: "主動、內斂、乾脆、快速短暫" },
+    "A-I-C-S": { name: "燈塔型", desc: "主動、內斂、乾脆、緩慢長久" },
+    "A-I-L-F": { name: "星星型", desc: "主動、內斂、留戀、快速短暫" },
+    "A-I-L-S": { name: "月亮型", desc: "主動、內斂、留戀、緩慢長久" },
+    "P-O-C-F": { name: "流星型", desc: "被動、外放、乾脆、快速短暫" },
+    "P-O-C-S": { name: "冰川型", desc: "被動、外放、乾脆、緩慢長久" },
+    "P-O-L-F": { name: "浪花型", desc: "被動、外放、留戀、快速短暫" },
+    "P-O-L-S": { name: "溫泉型", desc: "被動、外放、留戀、緩慢長久" },
+    "P-I-C-F": { name: "霜花型", desc: "被動、內斂、乾脆、快速短暫" },
+    "P-I-C-S": { name: "迷霧型", desc: "被動、內斂、乾脆、緩慢長久" },
+    "P-I-L-F": { name: "細雨型", desc: "被動、內斂、留戀、快速短暫" },
+    "P-I-L-S": { name: "深海型", desc: "被動、內斂、留戀、緩慢長久" }
+};
+
+Sexual Personality" (性愛人格) and "Sexual Analysis Reasons" (性愛分析理由) 
+
+【輸出格式與範例】
+    const base = {
+        id: "",
+        name: "張艾琪",
+        gender: "女",
+        height: "164",
+        weight: "50",
+        bust: "C",
+        birthday: "1999-03-06",
+        zodiac: "雙魚座",
+        blood_type: "B",
+        personality_type: "AOCF_AOLS_PICS-煙火_候鳥_迷霧", // 格式：代碼-名稱
+	    MBTI_type: "ENFP-T",
+	    analysis_reasons: "分別描述分析星座、血型、personality_type、MBTI_type的理由",
+        sexual_personality: {
+            sexual_psychology: "性愛心理，包含價值觀、心理閾值、道德觀、罪惡感",
+            sexual_sensory: "性愛感官，五感知覺、敏感點、高潮反應",
+            sexual_motivation: "性愛動機，主動或被動、性張力、性癖好",
+            sexual_behavior: "性愛行為，從前戲、高潮到事後的偏好行為",
+            sexual_acceptance_and_taboos: "性愛接受度與上限禁忌，對於人、事、時、地、物、其他"
+        },
+        sexual_analysis_reasons: "描述分析 Sexual Personality 的理由",
+        speech_style: "詳細說明在喜、怒、哀、恨的說話語氣，並列舉幾句。",
+        occupation: "自由接案者",
+        appearance: "完整描述人種、長相、髮型、身材、衣著、鞋子、飾品、整體給人的感覺。",
+        relationship: "剛認識不久的同事或朋友。",
+        habits: [
+            "下雨天喜歡躲在咖啡廳角落",
+            "遇到問題習慣先安靜再處理"
+        ],
+        image_prompt: "年輕亞洲女孩，甜美長相、黑色齊肩直髮、身材高挑長腿，黑框眼鏡、白襯衫、紫色短裙、黑絲襪、高跟鞋、耳環，淡妝，鄰家女孩的氣息。咖啡廳木頭桌椅，落地窗",
+        created_at: new Date().toISOString()
+    };
+
+【禁止】
+1. 禁止更動輸出格式或自行增加欄位。
