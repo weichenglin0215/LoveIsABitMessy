@@ -1,8 +1,36 @@
+/* ═══════════════════════════════════════════════════════
+   screen_adaptive.js — 滿版縮放核心邏輯 + 業務邏輯
+
+   設計邏輯尺寸（依長寬比 5:8.5）：
+     DESIGN_W = 500px
+     DESIGN_H = 850px
+
+   縮放公式：
+     scale = Math.min(視窗寬 / DESIGN_W, 視窗高 / DESIGN_H)
+
+   為什麼用 visualViewport 而非 vw/vh？
+     → zoom 後 vw 不變，但 visualViewport.width 反映真實可用寬度。
+     → 手機軟鍵盤彈出時 visualViewport 會縮小，innerHeight 不一定會。
+
+   字體為什麼在 stage 內用 px？
+     → rem / em 受系統字體大小影響，
+       系統字體放大 150% → rem 跟著放大 → 元件跑版。
+     → px 在 transform:scale() 容器內是固定的邏輯像素，
+       整體一起縮放，不受外部 rem 基準影響。
+   ═══════════════════════════════════════════════════════ */
+
+/* ─── 縮放核心已遷移至 screen_adaptive.js ─── */
 const instructions = [
     "每道題目都是關於你自己的描述，\n請根據同意程度來圈選。",
     "選擇的答案是你實際上的反應，\n而不是你理想中的自己。",
     "不要想太久，\n第一直覺往往最真實。"
 ];
+
+
+
+
+/* ─── 應用程式邏輯 ─── */
+
 
 let app = {
     currentScreen: '',
@@ -20,11 +48,15 @@ let app = {
     feedbackScores: {}, // 存儲各階段評分
 
     init() {
+        applyScale();
         this.bindEvents();
         this.showScreen('screen-landing');
     },
 
+
     bindEvents() {
+        /* ─── 業務邏輯事件監聽 ─── */
+
         // 基本資料送出
         document.querySelector('.submit-info-btn').addEventListener('click', () => {
             this.alias = document.getElementById('input-alias').value;
@@ -98,7 +130,7 @@ let app = {
         this.answers = [];
         this.sessionId = crypto?.randomUUID ? crypto.randomUUID() : `sess_${Date.now()}_${Math.random().toString(16).slice(2)}`;
         this.sessionStartedAt = new Date().toISOString();
-        
+
         // 取得第一題的時期並顯示換場效果
         const firstQ = this.questionQueue[0];
         if (firstQ) {

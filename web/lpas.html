@@ -3,7 +3,15 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!--
+        ★ 關鍵 meta：
+        · initial-scale=1 → 預設不縮放
+        · user-scalable=no → 防止手機雙指縮放（遊戲通常需要）
+        · viewport-fit=cover → iPhone 瀏海/圓角安全區支援
+      -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,
+                     maximum-scale=1.0, user-scalable=no,
+                     viewport-fit=cover">
     <title>LPAS - 你是哪一種愛情人格？ - LoveIsABitMessy</title>
     <!-- 引入 Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,9 +29,9 @@
     <!-- Supabase JS (UMD) -->
     <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
     <script src="js/supabaseClient.js" defer></script>
+    <script src="js/screen_adaptive.js" defer></script>
     <script src="js/lpas_app.js" defer></script>
-    <link rel="stylesheet" href="css/responsive.css">
-    <script src="js/responsive.js" defer></script>
+
 </head>
 
 <body data-period="night">
@@ -32,12 +40,12 @@
 
 
 
-    <main id="app-container" class="aspect-5-8">
+    <main id="stage">
         <!-- 音樂控制 (左下角) -->
         <div id="music-control">
             <span class="music-icon">🎵</span>
         </div>
-        <div class="debug-frame"></div>
+        <div id="debug-frame" class="debug-frame"></div>
         <!-- 1. 首頁 (Landing Page) -->
         <section id="screen-landing" class="screen active">
             <h1 class="main-title">你在感情裡是哪一種人？</h1>

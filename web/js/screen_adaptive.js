@@ -32,29 +32,29 @@ const stage = document.getElementById('stage');
  * 同時更新右上角 debug 資訊（可移除）
  */
 function applyScale() {
-    /* 優先用 visualViewport（手機鍵盤彈出 / iOS Safari 縮放更精確） */
-    const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
-    const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  /* 優先用 visualViewport（手機鍵盤彈出 / iOS Safari 縮放更精確） */
+  const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+  const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
 
-    /* 以「不超出畫面」為原則，取較小縮放值 */
-    const scale = Math.min(vw / DESIGN_W, vh / DESIGN_H);
+  /* 以「不超出畫面」為原則，取較小縮放值 */
+  const scale = Math.min(vw / DESIGN_W, vh / DESIGN_H);
 
-    const scaledW = DESIGN_W * scale;
-    const scaledH = DESIGN_H * scale;
+  const scaledW = DESIGN_W * scale;
+  const scaledH = DESIGN_H * scale;
 
-    /* 水平、垂直置中 */
-    const left = (vw - scaledW) / 2;
-    const top = (vh - scaledH) / 2;
+  /* 水平、垂直置中 */
+  const left = (vw - scaledW) / 2;
+  const top = (vh - scaledH) / 2;
 
-    stage.style.transform = `scale(${scale})`;
-    stage.style.left = `${left}px`;
-    stage.style.top = `${top}px`;
+  stage.style.transform = `scale(${scale})`;
+  stage.style.left = `${left}px`;
+  stage.style.top = `${top}px`;
 
-    /* Debug 資訊（可移除） */
-    const elScale = document.getElementById('info-scale');
-    const elSize = document.getElementById('info-size');
-    if (elScale) elScale.textContent = `×${scale.toFixed(3)}`;
-    if (elSize) elSize.textContent = `${Math.round(vw)} × ${Math.round(vh)}`;
+  /* Debug 資訊（可移除） */
+  const elScale = document.getElementById('info-scale');
+  const elSize = document.getElementById('info-size');
+  if (elScale) elScale.textContent = `×${scale.toFixed(3)}`;
+  if (elSize) elSize.textContent = `${Math.round(vw)} × ${Math.round(vh)}`;
 }
 
 /* ─── 事件監聽 ─── */
@@ -64,8 +64,8 @@ window.addEventListener('resize', applyScale);
 
 /* visualViewport 事件（手機鍵盤彈出 / iOS Safari 縮放列顯示/隱藏） */
 if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', applyScale);
-    window.visualViewport.addEventListener('scroll', applyScale);
+  window.visualViewport.addEventListener('resize', applyScale);
+  window.visualViewport.addEventListener('scroll', applyScale);
 }
 
 /* ─── 初始化：DOM 載入後立即執行 ─── */
@@ -82,10 +82,10 @@ document.addEventListener('DOMContentLoaded', applyScale);
  * @param {string} type  - '' | 'ok' | 'err'
  */
 function setStatus(msg, type = '') {
-    const el = document.getElementById('status-text');
-    if (!el) return;
-    el.textContent = msg;
-    el.className = type;
+  const el = document.getElementById('status-text');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = type;
 }
 
 /**
@@ -93,14 +93,14 @@ function setStatus(msg, type = '') {
  * 確認建立按鈕的處理函式
  */
 function onSubmit() {
-    const cls = document.getElementById('sel-class').value;
-    const name = document.getElementById('inp-name').value.trim();
-    const story = document.getElementById('inp-story').value.trim();
+  const cls = document.getElementById('sel-class').value;
+  const name = document.getElementById('inp-name').value.trim();
+  const story = document.getElementById('inp-story').value.trim();
 
-    if (!cls) { setStatus('❌ 請選擇職業', 'err'); return; }
-    if (!name) { setStatus('❌ 請輸入角色名稱', 'err'); return; }
+  if (!cls) { setStatus('❌ 請選擇職業', 'err'); return; }
+  if (!name) { setStatus('❌ 請輸入角色名稱', 'err'); return; }
 
-    setStatus(`✅ 角色「${name}」建立成功！`, 'ok');
+  setStatus(`✅ 角色「${name}」建立成功！`, 'ok');
 }
 
 /**
@@ -108,8 +108,8 @@ function onSubmit() {
  * 重置按鈕的處理函式
  */
 function onReset() {
-    document.getElementById('sel-class').value = '';
-    document.getElementById('inp-name').value = '';
-    document.getElementById('inp-story').value = '';
-    setStatus('已重置，等待輸入…', '');
+  document.getElementById('sel-class').value = '';
+  document.getElementById('inp-name').value = '';
+  document.getElementById('inp-story').value = '';
+  setStatus('已重置，等待輸入…', '');
 }
