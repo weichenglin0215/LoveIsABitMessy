@@ -537,33 +537,61 @@ async function getAIReply(sess, participant, userMessage) {
       }
     }
 
-    // Step 2: 真正生成回覆
-    appendLog(">> 正在呼叫 AI 執行生成任務...");
-    const res = await fetch('http://localhost:8081/api/chat_reply', {
+    // Step 2: 真正生成回覆（非同步 Job 模式，Log 即時顯示）
+    appendLog(`>> 正在呼叫 AI 產生「${charName}」的回覆...`);
+    const startRes = await fetch('http://localhost:8081/api/chat_reply_async', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    removeTypingIndicator();
+    if (!startRes.ok) throw new Error(`HTTP ${startRes.status}`);
+    const { job_id } = await startRes.json();
+    if (!job_id) throw new Error('未取得 job_id');
 
-    if (res.ok) {
-      const data = await res.json();
-      const reply = data.reply || '（無回應）';
-      // 此處不再重複顯示提示詞，因為 Step 1 已顯示
+    appendLog(`>> Job 已啟動 (id: ${job_id.slice(0, 8)}...)`);
+
+    // 輪詢 /api/job 直到完成
+    let lastLogs = '';
+    let reply = null;
+    for (let i = 0; i < 300; i++) {
+      await new Promise(r => setTimeout(r, 1000));
+      let jd;
+      try {
+        const jr = await fetch(`http://localhost:8081/api/job?id=${encodeURIComponent(job_id)}`);
+        jd = await jr.json();
+      } catch (e) { continue; }
+
+      if (jd.logs && jd.logs !== lastLogs) {
+        lastLogs = jd.logs;
+        const logBox = document.getElementById('log-output');
+        if (logBox) {
+          logBox.textContent = lastLogs.replace(/\\n/g, '\n');
+          logBox.scrollTop = logBox.scrollHeight;
+        }
+      }
+
+      if (jd.status === 'done') {
+        reply = jd.result?.reply || null;
+        break;
+      }
+      if (jd.status === 'error') {
+        appendLog('❌ 後端 Job 執行失敗，請查看 CMD 視窗。');
+        break;
+      }
+    }
+
+    removeTypingIndicator();
+    if (reply) {
       appendLog(`🤖 接收到 AI (${charName}) 的回答: ${reply}`);
-      
       const now = new Date().toISOString();
       const aiMsg = {
         id: 'tmp_ai', session_id: sess.id, sender_type: 'character',
         sender_char_id: charData.id, sender_name: charName, content: reply, created_at: now
       };
-
       if (!sess.messages) sess.messages = [];
       sess.messages.push(aiMsg);
       renderMessages();
       await saveMessage(sess.id, 'character', null, charData.id, charName, reply, state.currentModel);
-    } else {
-      appendLog('⚠️ AI 回覆失敗: HTTP ' + res.status);
     }
   } catch (e) {
     removeTypingIndicator();

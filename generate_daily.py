@@ -104,8 +104,10 @@ def _ollama_generate(prompt: str, num_predict: int = 4096, temperature: float = 
             method='POST',
             headers={'Content-Type': 'application/json'}
         )
-        print("\n--- 正在流式生成故事內容 ---")
-        with urllib.request.urlopen(req, timeout=300) as resp:
+        print(">"*100)
+        print("\ngenerate_daily.py : --- 正在流式生成故事內容，測試流式生成的功能 ---\n")
+        print("<"*100)
+        with urllib.request.urlopen(req, timeout=3000) as resp:
             for raw_line in resp:
                 line = raw_line.strip()
                 if line:
@@ -115,19 +117,29 @@ def _ollama_generate(prompt: str, num_predict: int = 4096, temperature: float = 
                     full_response.append(content)
                     if chunk.get('done'):
                         break
-        print("\n--- 生成結束 ---")
+        print("\n")
+        print(">"*100)
+        print("\ngenerate_daily.py : --- 結束流式生成故事內容 ---\n")
+        print("<"*100)
+
         return "".join(full_response).strip()
     except urllib.error.HTTPError as e:
-        print(f"\n[ERROR] Ollama 回傳錯誤 {e.code}: {e.read().decode('utf-8', errors='replace')}")
+        print("\n")
+        print(">"*100)
+        print(f"\ngenerate_daily.py : [ERROR] Ollama 回傳錯誤 {e.code}: {e.read().decode('utf-8', errors='replace')}")
+        print("<"*100)
         return ""
     except Exception as e:
-        print(f"\n[ERROR] Ollama 連線失敗: {e}")
+        print("\n")
+        print(">"*100)
+        print(f"\ngenerate_daily.py : [ERROR] Ollama 連線失敗: {e}")
+        print("<"*100)
         return ""
 
 def generate_story():
     chars_dir = 'characters'
     if not os.path.exists(chars_dir) or not [f for f in os.listdir(chars_dir) if f.endswith('.json')]:
-        print(f"Error: {chars_dir} 資料夾內無角色卡 JSON。")
+        print(f"generate_daily.py : Error: {chars_dir} 資料夾內無角色卡 JSON。")
         return
     forced_char_id = os.environ.get("LAMB_CHAR_ID", "").strip()
     candidates = [f for f in os.listdir(chars_dir) if f.endswith('.json')]
@@ -158,13 +170,14 @@ def generate_story():
             except: pass
         final_prompt = build_daily_prompt(char_data, user_input, None, writer_settings=writer_settings)
     
-    print("\n" + "="*50)
-    print("【DEBUG: 產生的 PROMPT】")
+    print("\n" + ">"*100 + "\n")
+    print("generate_daily.py : 生成日記\n")
+    print("【DEBUG: 產生的 PROMPT，不再重複寫出】\n")
     # 這裡印出的內容必須與實際送給 Ollama 的 prompt 完全一致
-    print(final_prompt)
-    print("="*50 + "\n")
-
-    print(f"正在透過 Ollama 生成 {char_data.get('name', char_file)} 的日記... (請稍候)")
+    # print(final_prompt)
+    print("\n" + ">"*100 + "\n")
+    print(f"generate_daily.py : 正在透過 Ollama 生成 {char_data.get('name', char_file)} 的日記... (請稍候)")
+    print("\n" + "<"*100 + "\n")
     # 如何讓網頁畫面先更新過，再繼續往下執行
     try:
         result_text = _ollama_generate(final_prompt, num_predict=4096, temperature=0.85)
@@ -172,7 +185,7 @@ def generate_story():
         # 若被截斷（常見：最後一句中途停掉），自動續寫補齊
         # 只補 1 次，避免耗時倍增
         if _need_continuation(result_text):
-            print("⚠️ 偵測到內容可能被裁斷，嘗試自動續寫補齊…")
+            print("⚠️ generate_daily.py：偵測到內容可能被裁斷，嘗試自動續寫補齊…")
         for i in range(1):
             if not _need_continuation(result_text):
                 break
@@ -191,9 +204,12 @@ def generate_story():
             return None
 
         # 顯示所有 print 內容
-        print("\n【DEBUG: AI 回應內容】")
+        print("\n")
+        print("(*)" * 30 + "\n")
+        print("\n【generate_daily.py：DEBUG: AI 已完成最終的生成日記內容如下】\n")
         print(result_text)
-        print("-" * 50)
+        print("\n")
+        print("($)" * 30 + "\n")
 
         # 獲取日期與時間
         now = datetime.now()

@@ -208,10 +208,10 @@ def build_daily_prompt(char_data: dict, scenario: str, relationship_params: dict
     if rel_context:
         final_scenario += f"【女主角的複雜關係與心理狀態說明】：\n{rel_context}\n"
     if past_diaries_context:
-        final_scenario += f"\n\n{past_diaries_context}\n"
+        final_scenario += f"\n{past_diaries_context}\n"
     final_scenario += f"【重點日誌與情境設定】\n{scenario}\n"
     if time_context:
-        final_scenario += f"\n\n【重要指令】：請撰寫今天 {time_context} 的日記。"
+        final_scenario += f"【重要指令】：請撰寫今天 {time_context} 的日記。"
 
 
     system_prompt = f"""
@@ -226,6 +226,7 @@ def build_daily_prompt(char_data: dict, scenario: str, relationship_params: dict
 第一行請寫 {char_data.get('name', '')} 的日記 {timestamp} 
 
 【女主角角色設定】
+
 {_format_char_context(char_data, is_main=True)}
 女主角目前關係：{char_data.get('relationship', '')}
 
@@ -257,7 +258,7 @@ def build_daily_prompt(char_data: dict, scenario: str, relationship_params: dict
 
 
 
-    return f"{system_prompt}\n\n請開始執行（以繁體中文）："
+    return f"{system_prompt}\n\n請開始執行（以繁體中文撰寫）："
 
 def build_chapters_from_premise_prompt(char_data: dict, book_title: str, story_premise: str, other_chars: list = None,
                                        locked_chapters: list = None, writer_settings: dict = None) -> str:
@@ -297,7 +298,7 @@ def build_chapters_from_premise_prompt(char_data: dict, book_title: str, story_p
 
 【指令】
 1. 根據粗綱描述，請規劃適當的章節數量。
-2. 每個章節需要有「章節標題」與「章節描述（約 100 字，交代本章重點）」。
+2. 每個章節需要有「章節標題」與「章節描述（約300字，交代本章重點）」。
 3. 每個項目是一個包含 "title" 與 "description" 的物件。
 4. **必須**回傳標準的 JSON 格式列表，不可遺漏任何標示符號。
 5. 不要有任何額外前言、後記或 Markdown 區塊。
@@ -401,7 +402,7 @@ def build_chapter_outline_prompt(char_data: dict, book_title: str, outline_desc:
 {position_hint}
 
 【指令】
-1. 請規劃 3~5 個小節，並為每個小節提供標題與簡短大綱。
+1. 請規劃 3~5 個小節，並為每個小節提供標題與簡短大綱，字數約300字。
 2. 風格應對位當下流行的都會愛情長篇小說。
 3. 必須與前後章節的劇情銜接，保持故事連貫性。
 4. **必須**回傳標準的 JSON 格式列表，每個項目包含標題與大綱，合併成單一字串。
@@ -459,8 +460,8 @@ def build_novel_content_prompt(char_data: dict, current_chapter: str, chapter_ou
     if prev_section_title:
         prev_context = f"\n【上一節銜接】\n上一節標題：{prev_section_title}\n"
         if prev_section_content and prev_section_content.strip():
-            # 只取最後約 300 字，避免 prompt 過長
-            snippet = prev_section_content.strip()[-300:]
+            # 只取最後約 900 字，避免 prompt 過長
+            snippet = prev_section_content.strip()[-900:]
             prev_context += f"上一節結尾片段（請自然銜接此後的劇情，勿重複）：\n「...{snippet}」\n"
         else:
             prev_context += "（上一節尚未生成內容，請自行根據大綱銜接）\n"

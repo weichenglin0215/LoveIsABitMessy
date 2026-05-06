@@ -133,10 +133,10 @@ def _ollama_generate_direct(model, prompt, options=None):
     
     # 預設參數
     default_options = {
-        "temperature": 0.85,
-        "num_predict": 1024,
-        "num_ctx": 4096,
-        "repeat_penalty": 1.3,
+        "temperature": 0.95,
+        "num_predict": -1,
+        "num_ctx": 65536,
+        "repeat_penalty": 1.2,
         "top_k": 40,
         "top_p": 0.9
         #"num_gpu": 55 #搞不定這個參數，對實際狀況也沒改善。
@@ -185,8 +185,9 @@ def _ollama_generate_direct(model, prompt, options=None):
 
         print(">>>> 正在發送 POST 請求至 Ollama...")
         try:
-            with urllib.request.urlopen(req, timeout=300) as resp:
+            with urllib.request.urlopen(req, timeout=3000) as resp:
                 print(f">>>> 伺服器回應碼: {resp.status}")
+                print("(O)"*15 + "流式生成文字開始" + "(O)"*15)
                 if resp.status != 200:
                     err_body = resp.read().decode('utf-8', errors='replace')
                     print(f"\n>>>> [OLLAMA API ERROR] Status: {resp.status}")
@@ -208,8 +209,7 @@ def _ollama_generate_direct(model, prompt, options=None):
             import traceback
             traceback.print_exc()
             return f"（連線錯誤：{str(e)}）"
-
-        print("\n>>>> 生成結束。")
+        print("\n" + "(O)"*15 + "流式生成文字結束" + "(O)"*15)
         return "".join(full_response).strip()
     except urllib.error.HTTPError as e:
         err_body = e.read().decode('utf-8', errors='replace')
@@ -228,15 +228,17 @@ def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_
     #####################################################################################
     try:
         timestamp = time.strftime("%H:%M:%S", time.localtime())
-        if scenario:
-            _append_job_log(job_id, f"[{timestamp}] [Scenario] {scenario}")
         
         print("="*50 + "\n")
-        print(f"\n[{timestamp}] === 執行「生成日記」任務，準備發送給 OLLAMA 的提示詞 ===")
+        print(f"[{timestamp}] debug_server.py : === 執行「生成日記」任務，準備發送給 OLLAMA 的提示詞 ===")
+        print("="*20 + "以下是提示詞" + "="*20 +"\n\n")
         print(diary_prompt)
-
-        _append_job_log(job_id, f"[{timestamp}] === 執行「生成日記」任務，準備發送給 OLLAMA 的提示詞 ===")
+        print("\n" + "="*20 + "提示詞結束" + "="*20 +"\n")
+        _append_job_log(job_id,"="*50)
+        _append_job_log(job_id, f"[{timestamp}] debug_server.py : === 執行「生成日記」任務，準備發送給 OLLAMA 的提示詞 ===")
+        _append_job_log(job_id, "="*20 + "以下是提示詞" + "="*20 +"\n")
         _append_job_log(job_id, diary_prompt)
+        _append_job_log(job_id, "\n" + "="*20 + "提示詞結束" + "="*20 +"\n")
         env = os.environ.copy()
         env["LAMB_MODEL"] = model
         if char_id:
@@ -262,22 +264,31 @@ def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_
         )
         timestamp = time.strftime("%H:%M:%S", time.localtime())
         if res_story.stdout:
-            _append_job_log(job_id, f"[{timestamp}] === 完成「生成日記」任務 ===\n")
+            _append_job_log(job_id, f"="*100)
+            _append_job_log(job_id, f"[{timestamp}] debug_server.py : === 處理完「生成日記」任務與準備好提示詞 ===")
+            _append_job_log(job_id, f"debug_server.py : === 以下交給 generate_daily.py 處理 ===")
+            # 顯示generate_daily.py的輸出內容
             _append_job_log(job_id, res_story.stdout)
-            print(f"\n[{timestamp}] === 完成「生成日記」任務 ===\n")
+
+            print("="*100 + "\n")
+            print(f"[{timestamp}] debug_server.py : === 處理完「生成日記」任務與準備好提示詞 ===\n")
+            print(f"debug_server.py : === 以下交給 generate_daily.py 處理 ===\n")
             print(res_story.stdout)
+
         if res_story.stderr:
-            _append_job_log(job_id, f"[{timestamp}] === 發生錯誤，無法完成「生成日記」任務 ===\n")
+            _append_job_log(job_id, "="*100 + "\n")
+            _append_job_log(job_id, f"[{timestamp}] debug_server.py : === 發生錯誤，無法完成「生成日記」任務 ===\n")
             _append_job_log(job_id, "Error: " + res_story.stderr)
-            print(f"\n[{timestamp}] === 發生錯誤，無法完成「生成日記」任務 ===\n")
-            print("Error: " + res_story.stderr)
-        
+            print("="*100 + "\n")
+            print(f"[{timestamp}] debug_server.py : === 發生錯誤，無法完成「生成日記」任務 ===\n")
+            print("debug_server.py : Error: " + res_story.stderr)
+            print("="*100 + "\n")
 
 
         timestamp = time.strftime("%H:%M:%S", time.localtime())
-        print(f"\n[{timestamp}] === 執行「生成圖片」任務，準備發送給 ComfyUI 的提示詞 ===")
+        print(f"\n[{timestamp}] debug_server.py : === 執行「生成圖片」任務，準備發送給 ComfyUI 的提示詞 ===")
         # print(image_prompt) # 避免提示詞太長洗版
-        _append_job_log(job_id, f"\n[{timestamp}] === 執行「生成圖片」任務，準備發送給 ComfyUI 的提示詞 ===")
+        _append_job_log(job_id, f"\n[{timestamp}] debug_server.py : === 執行「生成圖片」任務，準備發送給 ComfyUI 的提示詞 ===")
         # _append_job_log(job_id, image_prompt)
 
         res_img = subprocess.run(
@@ -290,19 +301,19 @@ def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_
         )
         timestamp = time.strftime("%H:%M:%S", time.localtime())
         if res_img.stdout:
-            _append_job_log(job_id, f"\n[{timestamp}] == 完成「生成圖片」任務 ===" + res_img.stdout.strip())
-            print(f"[{timestamp}] == 完成「生成圖片」任務 === [generate_image.py] stdout: {res_img.stdout.strip()}")
+            _append_job_log(job_id, f"\n[{timestamp}] debug_server.py : == 完成「生成圖片」任務 ===" + res_img.stdout.strip())
+            print(f"[{timestamp}] debug_server.py : == 完成「生成圖片」任務 === [generate_image.py] stdout: {res_img.stdout.strip()}")
         
         if res_img.stderr:
             # 只有在真的有錯誤時才輸出 stderr，且避免重複輸出
             err_msg = res_img.stderr.strip()
             if err_msg and "Error" in err_msg:
-                _append_job_log(job_id, f"[{timestamp}] === 發生錯誤，無法完成「生成圖片」任務 === " + err_msg)
-                print(f"[{timestamp}] === 發生錯誤，無法完成「生成圖片」任務 === stderr: {err_msg}")
+                _append_job_log(job_id, f"[{timestamp}] debug_server.py : === 發生錯誤，無法完成「生成圖片」任務 === " + err_msg)
+                print(f"[{timestamp}] debug_server.py : === 發生錯誤，無法完成「生成圖片」任務 === stderr: {err_msg}")
 
         timestamp = time.strftime("%H:%M:%S", time.localtime())
-        _append_job_log(job_id, f"\n[{timestamp}] === 正在編譯頁面 ===")
-        print(f"\n[{timestamp}] === 正在編譯頁面 ===")
+        _append_job_log(job_id, f"\n[{timestamp}] debug_server.py : === 正在編譯頁面 ===")
+        print(f"\n[{timestamp}] debug_server.py : === 正在編譯頁面 ===")
         res_build = subprocess.run(
             [sys.executable, "daily_page_build.py"],
             capture_output=True,
@@ -313,12 +324,12 @@ def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_
         )
         timestamp = time.strftime("%H:%M:%S", time.localtime())
         if res_build.stdout:
-            _append_job_log(job_id, f"\n[{timestamp}]" + res_build.stdout)
-            print(f"\n[{timestamp}] === 完成「編譯頁面」任務 ===\n")
+            _append_job_log(job_id, f"\n[{timestamp}] debug_server.py : === 完成「編譯頁面」任務 ===\n" + res_build.stdout)
+            print(f"\n[{timestamp}] debug_server.py : === 完成「編譯頁面」任務 ===\n")
             print(res_build.stdout)
         if res_build.stderr:
-            _append_job_log(job_id, f"[{timestamp}]" + "Error: " + res_build.stderr)
-            print(f"\n[{timestamp}] === 發生錯誤，無法完成「編譯頁面」任務 ===\n")
+            _append_job_log(job_id, f"[{timestamp}] debug_server.py : === 發生錯誤，無法完成「編譯頁面」任務 ===\n" + "Error: " + res_build.stderr)
+            print(f"\n[{timestamp}] debug_server.py : === 發生錯誤，無法完成「編譯頁面」任務 ===\n")
             print(f"\n[{timestamp}]" + "Error: " + res_build.stderr)
 
         with JOBS_LOCK:
@@ -331,6 +342,307 @@ def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_
             if job_id in JOBS:
                 JOBS[job_id]["status"] = "error"
                 JOBS[job_id]["updated_at"] = time.time()
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 非同步 Job 函式（小說產生器 / LoveLine 聊天）
+# 前端透過 /api/job?id=... 輪詢 logs，即時顯示後端 print 訊息
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _run_novel_chapters_job(job_id: str, params: dict):
+    """非同步執行「根據粗綱生成各章標題與描述」任務"""
+    def log(text):
+        print(text)
+        _append_job_log(job_id, text)
+    try:
+        premise      = params.get('story_premise', '')
+        book_title   = params.get('book_title', '未命名小說')
+        characters   = params.get('characters', [])
+        character_ids= params.get('character_ids', [])
+        chars = []
+        for i in range(max(len(characters), len(character_ids), 1) if (characters or character_ids) else 0):
+            c   = characters[i]   if i < len(characters)    else {}
+            cid = character_ids[i] if i < len(character_ids) else ""
+            if not c and cid:
+                cpath = _resolve_character_json_path(cid)
+                if cpath:
+                    try:
+                        with open(cpath, 'r', encoding='utf-8') as f:
+                            c = json.load(f)
+                    except: pass
+            chars.append(c)
+        main_char       = chars[0] if chars else {}
+        locked_chapters = params.get('locked_chapters', [])
+        writer_settings = params.get('writer_settings', {})
+        prompt = build_chapters_from_premise_prompt(
+            main_char, book_title, premise, chars[1:], locked_chapters,
+            writer_settings=writer_settings
+        )
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        log("=" * 50)
+        log(f"[{timestamp}] debug_server.py：【非同步】根據粗綱生成各章標題與描述")
+        log(f">> 正在呼叫 Ollama 產生「各章標題與描述」(請稍候)...")
+
+        response_text = _ollama_generate_direct(
+            params.get('model', 'gemma4'), prompt,
+            options=params.get('model_options')
+        )
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        log(f"[{timestamp}] debug_server.py：「各章標題與描述」產生完畢！")
+
+        chapters = []
+        try:
+            repaired_text = _try_repair_json(response_text)
+            start = repaired_text.find('[')
+            end   = repaired_text.rfind(']')
+            if start != -1 and end != -1:
+                chapters = json.loads(repaired_text[start:end + 1])
+        except Exception as e:
+            log(f">> JSON 解析失敗 (嘗試修復後): {e}")
+
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["result"]     = {"chapters": chapters, "debug_prompt": prompt}
+                JOBS[job_id]["status"]     = "done"
+                JOBS[job_id]["updated_at"] = time.time()
+    except Exception as e:
+        _append_job_log(job_id, f"[ERROR] _run_novel_chapters_job failed: {e}")
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["status"]     = "error"
+                JOBS[job_id]["updated_at"] = time.time()
+
+
+def _run_novel_outline_job(job_id: str, params: dict):
+    """非同步執行「建立各小節大綱」任務"""
+    def log(text):
+        print(text)
+        _append_job_log(job_id, text)
+    try:
+        desc         = params.get('description', '')
+        book_title   = params.get('book_title', '故事專案')
+        characters   = params.get('characters', [])
+        character_ids= params.get('character_ids', [])
+        chars = []
+        for i in range(max(len(characters), len(character_ids), 1) if (characters or character_ids) else 0):
+            c   = characters[i]    if i < len(characters)    else {}
+            cid = character_ids[i] if i < len(character_ids) else ""
+            if not c and cid:
+                cpath = _resolve_character_json_path(cid)
+                if cpath:
+                    try:
+                        with open(cpath, 'r', encoding='utf-8') as f:
+                            c = json.load(f)
+                    except: pass
+            chars.append(c)
+        main_char       = chars[0] if chars else {}
+        story_premise   = params.get('story_premise', '')
+        all_chapters    = params.get('all_chapters', [])
+        chapter_index   = params.get('chapter_index', 0)
+        locked_sections = params.get('locked_sections', [])
+        writer_settings = params.get('writer_settings', {})
+        prompt = build_chapter_outline_prompt(
+            main_char, book_title, desc, chars[1:],
+            story_premise=story_premise,
+            all_chapters=all_chapters,
+            chapter_index=chapter_index,
+            locked_sections=locked_sections,
+            writer_settings=writer_settings
+        )
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        log("=" * 50)
+        log(f"[{timestamp}] debug_server.py：【非同步】建立各小節大綱")
+        log(f">> 正在呼叫 Ollama 產生「各小節大綱」(請稍候)...")
+
+        response_text = _ollama_generate_direct(
+            params.get('model', 'gemma4'), prompt,
+            options=params.get('model_options')
+        )
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        log(f"[{timestamp}] debug_server.py：「各小節大綱」產生完畢！")
+
+        sections = []
+        try:
+            repaired_text = _try_repair_json(response_text)
+            start = repaired_text.find('[')
+            end   = repaired_text.rfind(']')
+            if start != -1 and end != -1:
+                json_str = repaired_text[start:end + 1].replace('\n', ' ').strip()
+                try:
+                    data = json.loads(json_str)
+                    if isinstance(data, list):
+                        for item in data:
+                            if isinstance(item, dict):
+                                title_val   = item.get('title',   item.get('標題', ''))
+                                outline_val = item.get('outline', item.get('大綱', ''))
+                                combined    = f"{title_val} {outline_val}".strip()
+                            else:
+                                combined = str(item)
+                            combined = " ".join(combined.split()).strip(' "「」\'')
+                            if combined:
+                                sections.append(combined)
+                except:
+                    raw_titles = re.findall(r'"([^"]+)"', json_str)
+                    if raw_titles:
+                        sections = [t.strip() for t in raw_titles if t.strip()]
+        except Exception as e:
+            log(f">> JSON 解析失敗 (大綱): {e}")
+            sections = [s.strip() for s in response_text.split('\n')
+                        if s.strip() and not s.startswith('[') and not s.startswith('`')]
+
+        if not sections:
+            sections = ["第一階段", "第二階段", "第三階段"]
+        sections = [s.replace('"', '').replace("'", '').strip() for s in sections if s.strip()]
+        if not sections:
+            sections = ["新小節"]
+
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["result"]     = {"sections": sections, "debug_prompt": prompt}
+                JOBS[job_id]["status"]     = "done"
+                JOBS[job_id]["updated_at"] = time.time()
+    except Exception as e:
+        _append_job_log(job_id, f"[ERROR] _run_novel_outline_job failed: {e}")
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["status"]     = "error"
+                JOBS[job_id]["updated_at"] = time.time()
+
+
+def _run_novel_content_job(job_id: str, params: dict):
+    """非同步執行「小說本文生成」任務"""
+    def log(text):
+        print(text)
+        _append_job_log(job_id, text)
+    try:
+        ctx          = params.get('context', {})
+        characters   = params.get('characters', [])
+        character_ids= params.get('character_ids', [])
+        chars = []
+        for i in range(max(len(characters), len(character_ids), 1) if (characters or character_ids) else 0):
+            c   = characters[i]    if i < len(characters)    else {}
+            cid = character_ids[i] if i < len(character_ids) else ""
+            if not c and cid:
+                cpath = _resolve_character_json_path(cid)
+                if cpath:
+                    try:
+                        with open(cpath, 'r', encoding='utf-8') as f:
+                            c = json.load(f)
+                    except: pass
+            chars.append(c)
+        main_char       = chars[0] if chars else {}
+        writer_settings = params.get('writer_settings', {})
+        story_premise   = params.get('story_premise', '')
+        section_title   = ctx.get('section_title', '')
+        prompt = build_novel_content_prompt(
+            main_char,
+            ctx.get('chapter_title', ''),
+            f"{ctx.get('chapter_desc', '')} - {section_title}",
+            section_title,
+            chars[1:],
+            writer_settings=writer_settings,
+            chapter_index=ctx.get('chapter_index', 0),
+            section_index=ctx.get('section_index', 0),
+            prev_section_title=ctx.get('prev_section_title') or '',
+            prev_section_content=ctx.get('prev_section_content') or '',
+            next_section_title=ctx.get('next_section_title') or '',
+            next_section_locked=bool(ctx.get('next_section_locked', False)),
+            story_premise=story_premise
+        )
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        log("=" * 50)
+        log(f"[{timestamp}] debug_server.py：【非同步】小說本文生成 - {section_title}")
+        log(f">> 正在呼叫 Ollama 產生「小說本文生成」(這會花費較長時間，請稍候)...")
+
+        content = _ollama_generate_direct(
+            params.get('model', 'gemma4'), prompt,
+            options=params.get('model_options')
+        )
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        log(f"[{timestamp}] debug_server.py：「小說本文生成」完畢！ - {section_title}")
+
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["result"]     = {"content": content, "debug_prompt": prompt}
+                JOBS[job_id]["status"]     = "done"
+                JOBS[job_id]["updated_at"] = time.time()
+    except Exception as e:
+        _append_job_log(job_id, f"[ERROR] _run_novel_content_job failed: {e}")
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["status"]     = "error"
+                JOBS[job_id]["updated_at"] = time.time()
+
+
+def _run_chat_reply_job(job_id: str, params: dict):
+    """非同步執行「LoveLine 角色回覆」任務"""
+    from prompt_utils import build_chat_reply_prompt
+    def log(text):
+        print(text)
+        _append_job_log(job_id, text)
+    try:
+        character             = params.get('character', {})
+        character_name        = params.get('character_name', '角色')
+        user_name             = params.get('user_name', '使用者')
+        user_message          = params.get('user_message', '')
+        history               = params.get('history', [])
+        persona_override      = params.get('persona_override', '')
+        session_extra         = params.get('session_extra', '')
+        user_char_data        = params.get('user_character', {})
+        user_persona_override = params.get('user_persona_override', '')
+        user_extra            = params.get('user_extra', '')
+        session_type          = params.get('session_type', 'one_on_one')
+        participants          = params.get('participants', [])
+        model_name            = params.get('model', 'gemma4')
+        writer_settings       = params.get('writer_settings', {})
+
+        prompt = build_chat_reply_prompt(
+            character, character_name, user_name, user_message, history,
+            persona_override=persona_override,
+            session_extra=session_extra,
+            user_char_data=user_char_data,
+            user_persona_override=user_persona_override,
+            user_extra=user_extra,
+            session_type=session_type,
+            other_participants=participants,
+            writer_settings=writer_settings
+        )
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        log("=" * 50)
+        log(f"[{timestamp}] debug_server.py：【非同步】LoveLine 角色回覆 - {character_name}")
+        log(f">> 正在呼叫 Ollama 產生「{character_name}」的回覆({model_name})...")
+
+        opts = params.get('model_options') or {}
+        if 'temperature' not in opts:
+            opts['temperature'] = 0.80
+        reply_text = _ollama_generate_direct(model_name, prompt, options=opts)
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        log(f"[{timestamp}] debug_server.py：「{character_name}」的回覆產生完畢！")
+
+        # 清理回覆內容（與同步版保持一致）
+        reply_text = reply_text.strip()
+        reply_text = re.sub(rf'^{character_name}[:：\s]*', '', reply_text).strip()
+        reply_text = reply_text.strip('"').strip("'")
+
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["result"]     = {"reply": reply_text, "debug_prompt": prompt}
+                JOBS[job_id]["status"]     = "done"
+                JOBS[job_id]["updated_at"] = time.time()
+    except Exception as e:
+        _append_job_log(job_id, f"[ERROR] _run_chat_reply_job failed: {e}")
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["status"]     = "error"
+                JOBS[job_id]["updated_at"] = time.time()
+
 
 class DebugHandler(http.server.SimpleHTTPRequestHandler):
     #####################################################################################
@@ -401,7 +713,8 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                         "status": job["status"],
                         "logs": "\n".join(job["logs"]),
                         "diary_prompt": job.get("diary_prompt", ""),
-                        "image_prompt": job.get("image_prompt", "")
+                        "image_prompt": job.get("image_prompt", ""),
+                        "result": job.get("result")   # 新增：供非同步 Job 回傳 AI 結果
                     }
             self.send_response(200)
             self.send_header('Content-type', 'application/json; charset=utf-8')
@@ -423,7 +736,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
             try:
                 import urllib.request
                 req = urllib.request.Request('http://localhost:11434/api/tags')
-                with urllib.request.urlopen(req, timeout=5) as resp:
+                with urllib.request.urlopen(req, timeout=500) as resp:
                     data = json.loads(resp.read().decode('utf-8'))
                 models = [m['name'] for m in data.get('models', [])]
                 self.send_response(200)
@@ -452,7 +765,19 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
         # 處理 HTTP POST 請求（處理建立任務）
         #####################################################################################
         try:
-            print(f"\n[POST] {self.path}")
+            print("="*100+ "\n")
+            timestamp = time.strftime("%H:%M:%S", time.localtime())
+            print(f"開始執行時間: {timestamp}"+ "\n")
+            print("debug_server.py : 開始執行 HTTP POST 請求（處理建立任務）"+ "\n")
+            print(f"[POST] {self.path}" + "\n")
+            print("="*100+ "\n")
+
+            #_append_job_log(self.path, f"="*100 + "\n")
+            #_append_job_log(self.path, f"開始執行時間: {timestamp}"+ "\n")
+            #_append_job_log(self.path, f"debug_server.py : 開始執行 HTTP POST 請求（處理建立任務）"+ "\n")
+            #_append_job_log(self.path, f"[POST] {self.path}" + "\n")
+            #_append_job_log(self.path, f"="*100+ "\n")
+            
             content_length = int(self.headers.get('Content-Length', 0))
             if content_length > 0:
                 body = self.rfile.read(content_length).decode('utf-8')
@@ -560,10 +885,10 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 prompt = build_chapters_from_premise_prompt(main_char, book_title, premise, chars[1:], locked_chapters, writer_settings=writer_settings)
                 
                 if params.get('preview'):
-                    print("\n" + "="*50)
-                    print("【PREVIEW: AI 根據粗綱生成各章標題與描述的 PROMPT 如下】")
-                    print(prompt)
                     print("="*50)
+                    print("debug_server.py：【PREVIEW: AI 根據粗綱生成各章標題與描述的 PROMPT 如下】\n")
+                    print(prompt)
+                    print("\n" + "="*50)
                     self.send_response(200)
                     self.send_header('Content-type', 'application/json; charset=utf-8')
                     self.end_headers()
@@ -571,16 +896,18 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                     return
 
                 print("\n" + "="*50)
-                print("【DEBUG: AI 根據粗綱生成各章標題與描述的 PROMPT 如下】")
+                print("debug_server.py：【DEBUG: AI 根據粗綱生成各章標題與描述的 PROMPT 如下】\n")
                 print(prompt)
-                print(">> 正在呼叫 Ollama 產生「各章標題與描述」 (請稍候)...")
+                print("\n" + "="*50)
+                print(">> debug_server.py：正在呼叫 Ollama 產生「各章標題與描述」 (請稍候)...")
                 timestamp = time.strftime("%H:%M:%S", time.localtime())
                 print("起始時間:", timestamp)
                 
                 response_text = _ollama_generate_direct(params.get('model', 'gemma4'), prompt, options=params.get('model_options'))
 
-                print(">> 「各章標題與描述」產生完畢！\n")
-                print(response_text)
+                print(">> debug_server.py：「各章標題與描述」產生完畢！\n")
+                # 已經顯示過成果，不再顯示一次
+                #print(response_text)
                 timestamp = time.strftime("%H:%M:%S", time.localtime())
                 print("結束時間:", timestamp)
                 print("="*50)
@@ -861,6 +1188,99 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header('Content-type', 'application/json; charset=utf-8')
                 self.end_headers()
                 self.wfile.write(json.dumps({"reply": reply_text, "debug_prompt": prompt}, ensure_ascii=False).encode('utf-8'))
+
+            elif self.path == '/api/novel_chapters_async':
+                ############################################################################
+                # 非同步：根據粗綱生成各章標題與描述（前端可透過 /api/job 輪詢 Log）
+                ############################################################################
+                job_id = str(uuid.uuid4())
+                with JOBS_LOCK:
+                    JOBS[job_id] = {
+                        "status": "running",
+                        "logs": [">> 任務啟動：根據粗綱生成各章標題與描述..."],
+                        "result": None,
+                        "created_at": time.time(),
+                        "updated_at": time.time()
+                    }
+                threading.Thread(
+                    target=_run_novel_chapters_job,
+                    args=(job_id, params),
+                    daemon=True
+                ).start()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"job_id": job_id, "status": "running"}, ensure_ascii=False).encode('utf-8'))
+
+            elif self.path == '/api/novel_outline_async':
+                ############################################################################
+                # 非同步：建立各小節大綱（前端可透過 /api/job 輪詢 Log）
+                ############################################################################
+                job_id = str(uuid.uuid4())
+                with JOBS_LOCK:
+                    JOBS[job_id] = {
+                        "status": "running",
+                        "logs": [">> 任務啟動：建立各小節大綱..."],
+                        "result": None,
+                        "created_at": time.time(),
+                        "updated_at": time.time()
+                    }
+                threading.Thread(
+                    target=_run_novel_outline_job,
+                    args=(job_id, params),
+                    daemon=True
+                ).start()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"job_id": job_id, "status": "running"}, ensure_ascii=False).encode('utf-8'))
+
+            elif self.path == '/api/novel_content_async':
+                ############################################################################
+                # 非同步：小說本文生成（前端可透過 /api/job 輪詢 Log）
+                ############################################################################
+                job_id = str(uuid.uuid4())
+                with JOBS_LOCK:
+                    JOBS[job_id] = {
+                        "status": "running",
+                        "logs": [f">> 任務啟動：小說本文生成 - {params.get('context', {}).get('section_title', '')}..."],
+                        "result": None,
+                        "created_at": time.time(),
+                        "updated_at": time.time()
+                    }
+                threading.Thread(
+                    target=_run_novel_content_job,
+                    args=(job_id, params),
+                    daemon=True
+                ).start()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"job_id": job_id, "status": "running"}, ensure_ascii=False).encode('utf-8'))
+
+            elif self.path == '/api/chat_reply_async':
+                ############################################################################
+                # 非同步：LoveLine 角色回覆（前端可透過 /api/job 輪詢 Log）
+                ############################################################################
+                job_id = str(uuid.uuid4())
+                char_name = params.get('character_name', '角色')
+                with JOBS_LOCK:
+                    JOBS[job_id] = {
+                        "status": "running",
+                        "logs": [f">> 任務啟動：等待「{char_name}」回覆中..."],
+                        "result": None,
+                        "created_at": time.time(),
+                        "updated_at": time.time()
+                    }
+                threading.Thread(
+                    target=_run_chat_reply_job,
+                    args=(job_id, params),
+                    daemon=True
+                ).start()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"job_id": job_id, "status": "running"}, ensure_ascii=False).encode('utf-8'))
 
             elif self.path == '/api/save_diary':
                 filename = params.get('filename')

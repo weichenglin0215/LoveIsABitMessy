@@ -5,21 +5,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI生成日記 - LoveIsABitMessy</title>
-    <link rel="stylesheet" href="css/lpas_styles.css">
+    <!-- 編輯器共用css/editer.css -->
+    <link rel="stylesheet" href="css/editer.css">
     <!-- 中央角色資料與邏輯 -->
     <script src="js/character_logic.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabaseClient.js"></script>
     <script src="js/model_options_app.js" defer></script>
     <script src="js/writer_settings_app.js" defer></script>
+    <!--
     <style>
+        html,
+        body {
+            height: auto !important;
+            overflow: auto !important;
+        }
+
         body {
             display: block;
             background-color: var(--c-bg-main);
             padding: 20px;
             color: white;
-            overflow-y: auto;
-            height: auto;
         }
 
         .debug-panel {
@@ -61,16 +67,17 @@
 
         .form-label {
             display: block;
-            margin-top: 8px;
-            margin-bottom: 2px;
+            margin-top: 0.3rem;
+            margin-bottom: 0.3rem;
             color: var(--c-accent-light);
             font-weight: 500;
         }
 
         select,
         input {
+            height: 2rem;
             width: 100%;
-            padding: 5px;
+            padding: 0.1rem 0.3rem;
             background: #000;
             border: 1px solid hsl(0, 0%, 33%);
             border-radius: 8px;
@@ -355,42 +362,42 @@
             font-family: monospace;
         }
     </style>
+-->
 </head>
 
-<body>
+<body class="daily-page">
     <div class="debug-panel">
         <div class="col-left">
-            <h2 style="font-weight: 500; margin-bottom: 5px; color: var(--c-accent-light);">🎭 AI
-                生成日記</h2>
-            <p style="color: var(--c-text-sec); font-size: 1rem; margin-bottom: 15px;">
+            <h2 class="section-h2">🎭 AI 生成日記</h2>
+            <p class="section-desc">
                 挑選角色，填寫情境 (Scenario)，點擊【AI生成：日記與插圖】按鈕，自動生成日記，ComfyUI 繪製專屬插圖。
             </p>
 
-            <div class="form-section"
-                style="background: rgba(255,255,255,0.05); padding: 5px 10px; border-radius: 12px; margin-bottom: 10px;">
-                <label class="form-label" style="margin-top:0;">📂 日記專案管理 (雲端)</label>
-                <div style="display: flex; gap: 8px; margin-bottom: 5px; align-items: center;">
+            <!-- 專案管理 -->
+            <div class="form-section project-panel">
+                <label class="form-label">📂 日記專案管理 (雲端)</label>
+                <div class="project-bar">
                     <input type="text" id="project-id" placeholder="專案 ID (唯讀)" readonly
-                        style="flex: 1.2; opacity: 0.8;">
-                    <button class="btn secondary-btn" id="btn-load-project" style="flex: 1;">讀取專案</button>
-                    <button class="btn primary-btn" id="btn-save-new-project" style="flex: 1;">儲存新專案...</button>
-                    <button class="btn primary-btn" id="btn-save-project" style="flex: 1;">儲存專案(更新)</button>
+                        class="project-id-input flex-1">
+                    <button class="btn secondary-btn flex-1" id="btn-load-project">讀取專案</button>
+                    <button class="btn primary-btn flex-1" id="btn-save-new-project">儲存新專案...</button>
+                    <button class="btn primary-btn flex-1" id="btn-save-project">儲存專案(更新)</button>
                 </div>
-                <select id="project-select"
-                    style="display: none; margin-bottom: 10px; border: 1px solid var(--c-accent);"></select>
+                <select id="project-select" class="project-select-dropdown"></select>
             </div>
 
+            <!-- 選角 -->
             <div class="form-section">
                 <label class="form-label">1. 選擇演員</label>
                 <div class="toggle-row">
                     <input type="checkbox" id="use-local-data">
                     <label for="use-local-data">讀取本機資料 (除錯用)...</label>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 5px;">
+                <div class="char-grid">
                     <div class="status-item">
                         <label class="form-label">主角演員</label>
-                        <div style="display: flex; gap: 8px;">
-                            <select id="char-select" style="flex: 1;"></select>
+                        <div class="char-select-row">
+                            <select id="char-select"></select>
                             <button class="reload-btn" onclick="initCharacters()">🔄</button>
                         </div>
                     </div>
@@ -443,20 +450,20 @@
                             <option value="失戀期">失戀期</option>
                         </select>
                     </div>
-                    <div class="toggle-row">
+                    <div class="status-item checkbox-item">
                         <input type="checkbox" id="others-have-partner">
                         <label for="others-have-partner">伴侶或新朋友已有對象</label>
                     </div>
                 </div>
             </div>
 
+            <!-- 日期 -->
             <div class="form-section">
                 <label class="form-label">2. 日期 / 時間</label>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div style="display: flex; gap: 5px;">
-                        <input type="date" id="diary-date" style="flex:1;">
-                        <button class="btn secondary-btn" id="btn-today" style="padding: 2px 10px;"
-                            title="回到今天的日期">今天</button>
+                <div class="grid-2">
+                    <div class="date-row">
+                        <input type="date" id="diary-date">
+                        <button class="btn secondary-btn btn-today" id="btn-today" title="回到今天的日期">今天</button>
                     </div>
                     <select id="diary-time">
                         <option value="18">晚上 6 點</option>
@@ -475,103 +482,100 @@
                 </div>
             </div>
 
+            <!-- 情境 -->
             <div class="form-section">
-                <label class="form-label">2. 設定情境 (Scenario)</label>
-                <textarea id="input-scenario" placeholder="例如：雨天的咖啡廳..." style="height: 300px;"></textarea>
+                <label class="form-label">3. 設定情境 (Scenario)</label>
+                <textarea id="input-scenario" placeholder="例如：雨天的咖啡廳..." class="scenario-textarea"></textarea>
             </div>
 
+            <!-- 日記 prompt 預覽 -->
             <div class="form-section">
-                <label class="form-label">3. 產生日記的AI提示詞(唯讀)</label>
-                <textarea id="diary-prompt-box" readonly class="prompt-preview" style="min-height:100px;"></textarea>
+                <label class="form-label">4. 產生日記的AI提示詞(唯讀)</label>
+                <textarea id="diary-prompt-box" readonly class="prompt-preview prompt-textarea"></textarea>
             </div>
 
+            <!-- 圖片 prompt 預覽 -->
             <div class="form-section">
-                <label class="form-label">4. 產生照片的AI提示詞(唯讀)</label>
-                <textarea id="image-prompt-box" readonly class="prompt-preview" style="min-height:60px;"></textarea>
+                <label class="form-label">5. 產生照片的AI提示詞(唯讀)</label>
+                <textarea id="image-prompt-box" readonly class="prompt-preview img-prompt-preview"></textarea>
             </div>
 
+            <!-- AI 生成按鈕 -->
             <div class="ai-btn-container">
                 <button class="ai-btn" id="run-btn">🎭AI生成：日記與插圖</button>
             </div>
 
-            <div class="server-status-row" style=" gap:10px 30px;margin-top:20px; flex-wrap: wrap;">
+            <!-- 伺服器狀態 + 模型設定 -->
+            <div class="server-status-row server-settings-row">
                 <span class="server-status-dot offline" id="server-dot"></span>
                 <span class="server-status-text" id="server-status-text">偵測中…</span>
                 <button id="start-server-btn" disabled>🚀 請自行啟動伺服器</button>
-                <div id="model-container" style=" gap:8px; opacity: 0.5; pointer-events: none;">
-                    <label style="font-size:1rem; color:#aaa;">🤖 AI 模型：</label>
-                    <select id="model-select" style="max-width: 300px; ">
+                <div id="model-container" class="model-container-row" style="opacity:0.5; pointer-events:none;">
+                    <label class="model-label">🤖 AI 模型：</label>
+                    <select id="model-select" class="model-select-wide">
                         <option value="gemma4">gemma4</option>
                     </select>
                 </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <label style="font-size:1rem; color:#aaa;">⚙️ 模型參數：</label>
-                    <select id="model-options-select" style="max-width: 200px;">
+                <div class="model-container-row">
+                    <label class="model-label">⚙️ 模型參數：</label>
+                    <select id="model-options-select" class="model-select-narrow">
                         <option value="">預設</option>
                     </select>
-                    <button id="btn-add-model-option" class="ai-btn"
-                        style="width: 70px;padding: 4px 10px; font-size: 1.0rem;">+編輯</button>
+                    <button id="btn-add-model-option" class="ai-btn btn-edit-sm">+編輯</button>
                 </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <label style="font-size:1rem; color:#aaa;">🖋️ 寫作風格：</label>
-                    <select id="writer-style-select" class="ws-style-dropdown" style="max-width: 200px;">
+                <div class="model-container-row">
+                    <label class="model-label">🖋️ 寫作風格：</label>
+                    <select id="writer-style-select" class="ws-style-dropdown model-select-narrow">
                         <option value="">無</option>
                     </select>
-                    <button id="btn-edit-writer-style" class="ai-btn"
-                        style="width: 70px;padding: 4px 10px; font-size: 1.0rem;"
+                    <button id="btn-edit-writer-style" class="ai-btn btn-edit-sm"
                         onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select').value)">+編輯</button>
                 </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <label style="font-size:1rem; color:#aaa;">📝 寫作範本：</label>
-                    <select id="writer-sample-select" class="ws-sample-dropdown" style="max-width: 200px;">
+                <div class="model-container-row">
+                    <label class="model-label">📝 寫作範本：</label>
+                    <select id="writer-sample-select" class="ws-sample-dropdown model-select-narrow">
                         <option value="">無</option>
                     </select>
-                    <button id="btn-edit-writer-sample" class="ai-btn"
-                        style="width: 70px; padding: 4px 10px; font-size: 1.0rem;"
+                    <button id="btn-edit-writer-sample" class="ai-btn btn-edit-sm"
                         onclick="WriterSettingsApp.openSampleModal(document.getElementById('writer-sample-select').value)">+編輯</button>
                 </div>
             </div>
-            <div id="log-output" class="log-area" style="height: 300px; font-size: 1.2rem;">等待任務...</div>
-            <div style="display:flex; gap:2px; margin-top:2px;">
-                <button class="btn secondary-btn" style="flex:1; font-size:0.9rem; padding:2px;"
-                    onclick="clearLogOutput()">🗑️清空</button>
-                <button class="btn secondary-btn" style="flex:1; font-size:0.9rem; padding:2px;"
-                    onclick="copyLogOutput()">📋複製</button>
-                <button class="btn secondary-btn" style="flex:1; font-size:0.9rem; padding:2px;"
-                    onclick="showLogModal()">🔲大型彈窗</button>
+
+            <!-- LOG -->
+            <div id="log-output" class="log-area log-area-daily">等待任務...</div>
+            <div class="log-actions-sm">
+                <button class="btn secondary-btn log-action-btn" onclick="clearLogOutput()">🗑️清空</button>
+                <button class="btn secondary-btn log-action-btn" onclick="copyLogOutput()">📋複製</button>
+                <button class="btn secondary-btn log-action-btn" onclick="showLogModal()">🔲大型彈窗</button>
             </div>
             <div id="diary-cloud-status" class="cloud-status">雲端狀態</div>
         </div>
 
+        <!-- 右欄：日記編輯器 -->
         <div class="col-right">
             <div class="editor-section">
-                <h2
-                    style="font-weight: 500; margin-bottom: 5px; color: var(--c-accent-light); display:flex; align-items:center; gap:8px;">
-                    📝 日記修改與編輯區
-                </h2>
+                <h2 class="section-h2">📝 日記修改與編輯區</h2>
 
                 <div class="form-section">
                     <label class="form-label">載入現有日記 (雲端 / 本機)</label>
-                    <div style="display: flex; gap: 8px;">
-                        <button class="btn secondary-btn" id="load-cloud-diaries-btn"
-                            style="flex:1; padding: 6px; font-size:1.2rem;">☁️ 從雲端讀取(更新)清單</button>
-                        <button class="btn secondary-btn" id="load-local-diaries-btn"
-                            style="flex:1; padding: 6px; font-size:1.2rem;">📁 從本機讀取(更新)清單</button>
+                    <div class="load-buttons-row">
+                        <button class="btn secondary-btn load-btn" id="load-cloud-diaries-btn">☁️ 從雲端讀取(更新)清單</button>
+                        <button class="btn secondary-btn load-btn" id="load-local-diaries-btn">📁 從本機讀取(更新)清單</button>
                     </div>
-                    <select id="diary-select" disabled style="opacity: 0.5; transition: opacity 0.3s;">
+                    <select id="diary-select" disabled class="diary-select-dropdown" style="opacity:0.5;">
                         <option value="">-- 請先點選讀取按鈕 --</option>
                     </select>
                 </div>
 
-                <div class="form-section" style="flex:1; display:flex; flex-direction:column;">
+                <div class="form-section form-section-fill">
                     <label class="form-label">日記文字內容 (Story)</label>
-                    <textarea id="edit-diary-text" placeholder="先點擊上方☁️從雲端讀取清單 或 📁從本地讀取清單。再選取您要修改的日記。"
-                        style="flex:1; min-height:300px;"></textarea>
+                    <textarea id="edit-diary-text" class="diary-text-area"
+                        placeholder="先點擊上方☁️從雲端讀取清單 或 📁從本地讀取清單。再選取您要修改的日記。"></textarea>
                 </div>
 
                 <div class="form-section">
                     <label class="form-label">生圖提示詞 (Image Prompt)</label>
-                    <textarea id="edit-image-prompt" style="height:200px;"></textarea>
+                    <textarea id="edit-image-prompt" class="image-prompt-area"></textarea>
                 </div>
 
                 <div class="btn-row">
@@ -592,7 +596,9 @@
             alert('已複製到剪貼簿');
         };
         window.showLogModal = () => {
-            document.getElementById('system-log-content').value = logBox.textContent;
+            // 將內容中的字面 \n 替換為實際換行符，確保彈窗內能正確顯示
+            const rawText = logBox.innerText || logBox.textContent;
+            document.getElementById('system-log-content').value = rawText.replace(/\\n/g, '\n');
             document.getElementById('modal-system-log').style.display = 'flex';
         };
 
@@ -1159,8 +1165,9 @@
                     const jr = await fetch(`http://localhost:8081/api/job?id=${encodeURIComponent(jobId)}`);
                     const jd = await jr.json();
                     if (jd.logs && jd.logs !== lastText) {
+                        // 處理字面上的 \n 轉為實際換行
                         lastText = jd.logs;
-                        logBox.innerText = lastText;
+                        logBox.innerText = lastText.replace(/\\n/g, '\n');
                         logBox.scrollTop = logBox.scrollHeight;
                     }
                     if (jd.status === 'done') {
@@ -1340,20 +1347,15 @@
         })();
     </script>
     <!-- ── Modal: System Message LOG ── -->
-    <div id="modal-system-log"
-        style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:20000; align-items:center; justify-content:center; padding:20px;">
-        <div
-            style="background:#222; color:#eee; width:800px; width:90%; height:90%; border-radius:12px; border:1px solid #444; display:flex; flex-direction:column; overflow:hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-            <div
-                style="display:flex; align-items:center; padding:12px 20px; background:#333; border-bottom:1px solid #444;">
-                <span id="close-system-log"
-                    style="cursor:pointer; font-size:1.5rem; font-weight:bold; color:#aaa; margin-right: 15px;"
-                    onclick="document.getElementById('modal-system-log').style.display='none'">&times;</span>
-                <h3 style="margin:0; font-size:1.1rem; color:#f472b6;">系統訊息 LOG</h3>
+    <div id="modal-system-log" style="display:none;">
+        <div class="modal-box modal-box-lg">
+            <div class="modal-header-bar">
+                <button class="modal-close-btn"
+                    onclick="document.getElementById('modal-system-log').style.display='none'">&times;</button>
+                <h3 class="modal-title">系統訊息 LOG</h3>
             </div>
-            <div style="flex:1; padding:20px; overflow:hidden; background:#111;">
-                <textarea id="system-log-content" readonly
-                    style="width:100%; height:100%; background:transparent; color:hsl(120, 50%, 70%); border:none; padding:0; font-family:monospace; resize:none; font-size:1.2rem; line-height:1.5; outline:none;"></textarea>
+            <div class="modal-body-area">
+                <textarea id="system-log-content" class="modal-log-textarea" readonly></textarea>
             </div>
         </div>
     </div>

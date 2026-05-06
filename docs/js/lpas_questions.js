@@ -1,90 +1,90 @@
 const LPAS_QUESTIONS = [
     // ========== 曖昧期 (Period 1) ==========
     // ----- Dim1 靠近與表達 (方式) -----
-    { id: "Q01", period: 1, dimension: 1, direction: 1, text: "喜歡上一個人後，我會主動製造偶遇，多出現在他面前。" },
-    { id: "Q02", period: 1, dimension: 1, direction: 1, text: "我習慣用通訊軟體傳訊息，慢慢拉近與對方的距離。" },
-    { id: "Q03", period: 1, dimension: 1, direction: 1, text: "我會找機會輕觸對方的手或肩膀，試探肢體接觸的反應。" },
-    { id: "Q04", period: 1, dimension: 1, direction: -1, text: "我的表達方式比較含蓄，多半透過書信或小禮物傳遞好感。" },
-    { id: "Q05", period: 1, dimension: 1, direction: -1, text: "我傾向先觀察對方，很少直接開口邀約見面。" },
+    { id: "Q01", period: 1, dimension: 1, direction: 1, text: "喜歡一個人，\n我會主動製造偶遇，\n經常出現在他面前。" },
+    { id: "Q02", period: 1, dimension: 1, direction: 1, text: "我習慣傳訊息，\n慢慢拉近與對方的距離。" },
+    { id: "Q03", period: 1, dimension: 1, direction: 1, text: "我會輕觸對方的手或肩膀，\n試探肢體接觸的反應。" },
+    { id: "Q04", period: 1, dimension: 1, direction: -1, text: "我的表達方式比較含蓄，\n透過書信或小禮物傳遞好感。" },
+    { id: "Q05", period: 1, dimension: 1, direction: -1, text: "我傾向先觀察對方，\n很少直接開口邀約見面。" },
 
     // ----- Dim2 受傷消化 (下決定：直接表達 vs 隱忍等) -----
-    { id: "Q06", period: 1, dimension: 2, direction: 1, text: "曖昧對象讓我難過時，我會直接告訴他我的感受。" },
-    { id: "Q07", period: 1, dimension: 2, direction: 1, text: "若對方反覆冷淡，我會主動提出「我們是不是該說清楚」。" },
-    { id: "Q08", period: 1, dimension: 2, direction: 1, text: "我無法忍受曖昧中的委屈，寧可早點把話講開。" },
-    { id: "Q09", period: 1, dimension: 2, direction: -1, text: "就算被對方冷落，我還是會替他找理由，說他只是太忙。" },
-    { id: "Q10", period: 1, dimension: 2, direction: -1, text: "曖昧期受的傷，我會自己吞下去，不想破壞氣氛。" },
+    { id: "Q06", period: 1, dimension: 2, direction: 1, text: "曖昧對象讓我難過時，\n我會直接告訴他我的感受。" },
+    { id: "Q07", period: 1, dimension: 2, direction: 1, text: "若對方反覆冷淡，\n我會主動提出\n「我們是不是該說清楚？」" },
+    { id: "Q08", period: 1, dimension: 2, direction: 1, text: "我無法忍受曖昧中的委屈，\n寧可早點把話講開。" },
+    { id: "Q09", period: 1, dimension: 2, direction: -1, text: "就算被對方冷落，\n我還是會替他找理由，\n說他只是太忙。" },
+    { id: "Q10", period: 1, dimension: 2, direction: -1, text: "曖昧期受的傷，\n我會自己吞下去，\n不想破壞氣氛。" },
 
     // ----- Dim3 告別疏遠 (能否下決心：果斷離開 vs 藕斷絲連) -----
-    { id: "Q11", period: 1, dimension: 3, direction: 1, text: "確定對方無意後，我會果斷停止聯絡，不再浪費時間。" },
-    { id: "Q12", period: 1, dimension: 3, direction: 1, text: "我會刪除對話記錄和社群好友，幫助自己快速抽離。" },
-    { id: "Q13", period: 1, dimension: 3, direction: 1, text: "曖昧無結果時，我會告訴自己「下一個人會更好」。 " },
-    { id: "Q14", period: 1, dimension: 3, direction: -1, text: "即使知道沒希望，我還是會繼續關注他的動態，放不下。" },
-    { id: "Q15", period: 1, dimension: 3, direction: -1, text: "我會找朋友幫忙傳話或試探，希望還有一絲轉圜餘地。" },
+    { id: "Q11", period: 1, dimension: 3, direction: 1, text: "確定對方無意後，\n我會果斷停止聯絡，\n不再浪費時間。" },
+    { id: "Q12", period: 1, dimension: 3, direction: 1, text: "對方已讀不回，\n我會刪除對話記錄和社群好友，\n幫助自己快速抽離。" },
+    { id: "Q13", period: 1, dimension: 3, direction: 1, text: "曖昧無結果時，\n我會告訴自己\n「下一個人會更好」。" },
+    { id: "Q14", period: 1, dimension: 3, direction: -1, text: "即使知道沒希望，\n我還是會繼續關注他的動態，\n放不下過去的相處時光。" },
+    { id: "Q15", period: 1, dimension: 3, direction: -1, text: "我會找朋友幫忙傳話或試探，\n希望還有一絲轉圜餘地。" },
 
     // ----- Dim4 關係節奏 (時間快慢) -----
-    { id: "Q16", period: 1, dimension: 4, direction: 1, text: "曖昧超過一個月沒進展，我會覺得太慢，想加快腳步。" },
-    { id: "Q17", period: 1, dimension: 4, direction: 1, text: "我希望曖昧期越短越好，趕快確定彼此關係。" },
-    { id: "Q18", period: 1, dimension: 4, direction: 1, text: "我習慣主動推進節奏，不喜歡被動等待對方表態。" },
-    { id: "Q19", period: 1, dimension: 4, direction: -1, text: "我覺得曖昧期長一點無妨，慢慢觀察比較安心。" },
-    { id: "Q20", period: 1, dimension: 4, direction: -1, text: "我不會刻意設定時間表，一切跟著感覺走。" },
+    { id: "Q16", period: 1, dimension: 4, direction: 1, text: "曖昧超過一個月沒進展，\n我會覺得太慢，想加快腳步。" },
+    { id: "Q17", period: 1, dimension: 4, direction: 1, text: "我希望曖昧期越短越好，\n趕快確定彼此關係。" },
+    { id: "Q18", period: 1, dimension: 4, direction: 1, text: "我習慣主動推進節奏，\n不喜歡被動等待對方表態。" },
+    { id: "Q19", period: 1, dimension: 4, direction: -1, text: "我覺得曖昧期長一點無妨，\n慢慢觀察比較安心。" },
+    { id: "Q20", period: 1, dimension: 4, direction: -1, text: "我不會刻意設定時間表，\n一切跟著感覺走。" },
 
     // ========== 熱戀期 (Period 2) ==========
     // ----- Dim1 靠近與表達 (方式) -----
-    { id: "Q21", period: 2, dimension: 1, direction: 1, text: "熱戀時我會頻繁用言語說「我愛你」或「我想你」。 " },
-    { id: "Q22", period: 2, dimension: 1, direction: 1, text: "我會安排共同運動或健身，增進兩人的身體互動。" },
-    { id: "Q23", period: 2, dimension: 1, direction: 1, text: "我習慣每天傳訊息或通話，保持緊密聯繫。" },
-    { id: "Q24", period: 2, dimension: 1, direction: -1, text: "我比較常用行動表達愛，例如幫忙處理事情或送禮物。" },
-    { id: "Q25", period: 2, dimension: 1, direction: -1, text: "我不太擅長說甜言蜜語，但會用擁抱和牽手傳達感情。" },
+    { id: "Q21", period: 2, dimension: 1, direction: 1, text: "熱戀時我會頻繁用言語說\n「我愛你」或「我想你」。" },
+    { id: "Q22", period: 2, dimension: 1, direction: 1, text: "我會安排共同運動或健身，\n增進兩人的身體互動。" },
+    { id: "Q23", period: 2, dimension: 1, direction: 1, text: "我習慣每天傳訊息或通話，\n保持緊密聯繫。" },
+    { id: "Q24", period: 2, dimension: 1, direction: -1, text: "我比較常用行動表達愛，\n主動邀約或送禮物。" },
+    { id: "Q25", period: 2, dimension: 1, direction: -1, text: "我不太擅長說甜言蜜語，\n習慣微笑、擁抱和牽手傳達感情。" },
 
     // ----- Dim2 受傷消化 (下決定：直接表達 vs 越痛越愛等) -----
-    { id: "Q26", period: 2, dimension: 2, direction: 1, text: "另一半說話傷到我時，我會立刻告訴他「你這樣讓我很難過」。 " },
-    { id: "Q27", period: 2, dimension: 2, direction: 1, text: "我無法忍受委屈，會要求對方當面說清楚。" },
-    { id: "Q28", period: 2, dimension: 2, direction: 1, text: "若對方一再犯同樣的錯，我會提出暫時分開冷靜。" },
-    { id: "Q29", period: 2, dimension: 2, direction: -1, text: "越是被另一半傷害，我反而越想抓住他，離不開。" },
-    { id: "Q30", period: 2, dimension: 2, direction: -1, text: "即使對方讓我痛苦，我也會在外人面前替他講好話。" },
+    { id: "Q26", period: 2, dimension: 2, direction: 1, text: "另一半說話傷到我時，\n我會立刻告訴他\n「你這樣讓我很難過」。" },
+    { id: "Q27", period: 2, dimension: 2, direction: 1, text: "我無法忍受委屈，\n會要求對方當面說清楚。" },
+    { id: "Q28", period: 2, dimension: 2, direction: 1, text: "若對方一再犯同樣的錯，\n我會提出暫時分開冷靜。" },
+    { id: "Q29", period: 2, dimension: 2, direction: -1, text: "越是被另一半傷害，\n我反而越想抓住他，離不開。" },
+    { id: "Q30", period: 2, dimension: 2, direction: -1, text: "即使對方讓我痛苦，\n我也會在外人面前替他講好話。" },
 
     // ----- Dim3 告別疏遠 (能否下決心：果斷分手 vs 尋求協助等) -----
-    { id: "Q31", period: 2, dimension: 3, direction: 1, text: "感情出現無法修復的問題時，我會主動提分手。" },
-    { id: "Q32", period: 2, dimension: 3, direction: 1, text: "我會封鎖對方的聯絡方式，避免自己回頭。" },
-    { id: "Q33", period: 2, dimension: 3, direction: 1, text: "我認為長痛不如短痛，分手後立刻展開新生活。" },
-    { id: "Q34", period: 2, dimension: 3, direction: -1, text: "即使感情很糟，我還是會找共同朋友幫忙勸和。" },
-    { id: "Q35", period: 2, dimension: 3, direction: -1, text: "我會一邊說要分手，一邊又忍不住聯繫對方，反反覆覆。" },
+    { id: "Q31", period: 2, dimension: 3, direction: 1, text: "感情出現無法修復的問題時，\n我會主動提分手。" },
+    { id: "Q32", period: 2, dimension: 3, direction: 1, text: "我會封鎖對方的聯絡方式，\n避免自己回頭。" },
+    { id: "Q33", period: 2, dimension: 3, direction: 1, text: "我認為長痛不如短痛，\n分手後立刻展開新生活。" },
+    { id: "Q34", period: 2, dimension: 3, direction: -1, text: "萬一感情變糟了，\n我會找共同朋友幫忙勸和。" },
+    { id: "Q35", period: 2, dimension: 3, direction: -1, text: "我會一邊說要分手，\n一邊又忍不住聯繫對方，\n反反覆覆。" },
 
     // ----- Dim4 關係節奏 (時間快慢) -----
-    { id: "Q36", period: 2, dimension: 4, direction: 1, text: "熱戀期我希望每天見面，甚至想趕快同居。" },
-    { id: "Q37", period: 2, dimension: 4, direction: 1, text: "我喜歡感情進展快速，三個月內就帶對方見家人。" },
-    { id: "Q38", period: 2, dimension: 4, direction: 1, text: "我會主動規劃未來，例如討論結婚或買房。" },
-    { id: "Q39", period: 2, dimension: 4, direction: -1, text: "我覺得熱戀期不用太黏，保持各自的生活空間更重要。" },
-    { id: "Q40", period: 2, dimension: 4, direction: -1, text: "我傾向慢慢經營感情，不想被時間壓力綁住。" },
+    { id: "Q36", period: 2, dimension: 4, direction: 1, text: "熱戀期我希望每天見面，\n甚至想趕快同居。" },
+    { id: "Q37", period: 2, dimension: 4, direction: 1, text: "我喜歡感情進展快速，\n三個月內就帶對方見家人。" },
+    { id: "Q38", period: 2, dimension: 4, direction: 1, text: "我會主動規劃未來，\n例如討論結婚或買房。" },
+    { id: "Q39", period: 2, dimension: 4, direction: -1, text: "我覺得熱戀期不用太黏，\n保持各自的生活空間更重要。" },
+    { id: "Q40", period: 2, dimension: 4, direction: -1, text: "我傾向慢慢經營感情，\n不想被時間壓力綁住。" },
 
     // ========== 失戀期 (Period 3) ==========
     // ----- Dim1 靠近與表達 (方式) -----
-    { id: "Q41", period: 3, dimension: 1, direction: 1, text: "失戀後我會找朋友哭訴，把情緒全部說出來。" },
-    { id: "Q42", period: 3, dimension: 1, direction: 1, text: "我會在社群網站抒發心情，讓大家知道我的狀態。" },
-    { id: "Q43", period: 3, dimension: 1, direction: 1, text: "我會透過運動健身發洩情緒，讓自己累到不想思考。" },
-    { id: "Q44", period: 3, dimension: 1, direction: -1, text: "我習慣獨處，用書寫或畫畫消化悲傷，不讓別人看見。" },
-    { id: "Q45", period: 3, dimension: 1, direction: -1, text: "即使很痛，我也會在對方面前保持冷靜，假裝沒事。" },
+    { id: "Q41", period: 3, dimension: 1, direction: 1, text: "失戀後我會找朋友哭訴，\n把情緒全部說出來。" },
+    { id: "Q42", period: 3, dimension: 1, direction: 1, text: "我會在社群網站抒發心情，\n讓大家知道我的狀態。" },
+    { id: "Q43", period: 3, dimension: 1, direction: 1, text: "我會透過運動健身發洩情緒，\n讓自己累到不想思考。" },
+    { id: "Q44", period: 3, dimension: 1, direction: -1, text: "我習慣獨處，\n用書寫或畫畫消化悲傷，\n不讓別人看見。" },
+    { id: "Q45", period: 3, dimension: 1, direction: -1, text: "即使很痛，\n我也會在對方面前保持冷靜，\n假裝沒事。" },
 
     // ----- Dim2 受傷消化 (下決定：直接表達 vs 只能我負人等) -----
-    { id: "Q46", period: 3, dimension: 2, direction: 1, text: "失戀後我會把怨恨說出來，甚至直接罵對方一頓。" },
-    { id: "Q47", period: 3, dimension: 2, direction: 1, text: "我認為被分手就要立刻反擊，絕不讓對方好過。" },
-    { id: "Q48", period: 3, dimension: 2, direction: 1, text: "我會主動告訴對方「是你對不起我」，把責任推給他。" },
-    { id: "Q49", period: 3, dimension: 2, direction: -1, text: "即使被甩了，我還是會幫對方找理由，覺得是自己不夠好。" },
-    { id: "Q50", period: 3, dimension: 2, direction: -1, text: "我習慣把痛苦往肚裡吞，不想讓任何人知道我有多難過。" },
+    { id: "Q46", period: 3, dimension: 2, direction: 1, text: "失戀後我會把怨恨說出來，\n甚至直接罵對方一頓。" },
+    { id: "Q47", period: 3, dimension: 2, direction: 1, text: "我認為被分手就要立刻反擊，\n絕不讓對方好過。" },
+    { id: "Q48", period: 3, dimension: 2, direction: 1, text: "我會主動告訴對方\n「是你對不起我」，\n把責任推給他。" },
+    { id: "Q49", period: 3, dimension: 2, direction: -1, text: "即使被甩了，\n我還是會幫對方找理由，\n覺得是自己不夠好。" },
+    { id: "Q50", period: 3, dimension: 2, direction: -1, text: "我習慣把痛苦往肚裡吞，\n不想讓任何人知道我有多難過。" },
 
     // ----- Dim3 告別疏遠 (能否下決心：消失療傷 vs 找新戀情等) -----
-    { id: "Q51", period: 3, dimension: 3, direction: 1, text: "失戀後我會直接消失，不接電話也不回訊息，專心療傷。" },
-    { id: "Q52", period: 3, dimension: 3, direction: 1, text: "我會立刻認識新對象，用下一段戀情沖淡痛苦。" },
-    { id: "Q53", period: 3, dimension: 3, direction: 1, text: "我把所有回憶物品丟掉或封箱，徹底切斷過去。" },
-    { id: "Q54", period: 3, dimension: 3, direction: -1, text: "我還是會偷偷關注前任的近況，甚至找藉口聯絡他。" },
-    { id: "Q55", period: 3, dimension: 3, direction: -1, text: "我會不斷回想過去的美好，遲遲無法下定決心離開。" },
+    { id: "Q51", period: 3, dimension: 3, direction: 1, text: "失戀後我會直接消失，\n不接電話也不回訊息，\n專心療傷。" },
+    { id: "Q52", period: 3, dimension: 3, direction: 1, text: "我會立刻認識新對象，\n用下一段戀情沖淡痛苦。" },
+    { id: "Q53", period: 3, dimension: 3, direction: 1, text: "我把所有回憶物品封箱丟掉，\n徹底切斷過去。" },
+    { id: "Q54", period: 3, dimension: 3, direction: -1, text: "我還是會偷偷關注前任的近況，\n甚至找藉口聯絡他。" },
+    { id: "Q55", period: 3, dimension: 3, direction: -1, text: "我會不斷回想過去的美好，\n遲遲無法下定決心離開。" },
 
     // ----- Dim4 關係節奏 (時間快慢) -----
-    { id: "Q56", period: 3, dimension: 4, direction: 1, text: "我失戀後恢復很快，一個月內就能正常生活。" },
-    { id: "Q57", period: 3, dimension: 4, direction: 1, text: "我認為傷痛不必拖太久，會強迫自己趕快走出來。" },
-    { id: "Q58", period: 3, dimension: 4, direction: 1, text: "分手後三個月內，我就可以準備接受新的感情。" },
-    { id: "Q59", period: 3, dimension: 4, direction: -1, text: "我至少需要半年以上，才有辦法稍微放下前任。" },
-    { id: "Q60", period: 3, dimension: 4, direction: -1, text: "失戀的傷痕會在我心裡停留很久，無法快速復原。" }
+    { id: "Q56", period: 3, dimension: 4, direction: 1, text: "我失戀後恢復很快，\n一個月內就能正常生活。" },
+    { id: "Q57", period: 3, dimension: 4, direction: 1, text: "我認為傷痛不必拖太久，\n會強迫自己趕快走出來。" },
+    { id: "Q58", period: 3, dimension: 4, direction: 1, text: "分手後三個月內，\n我就可以準備接受新的感情。" },
+    { id: "Q59", period: 3, dimension: 4, direction: -1, text: "我至少需要半年以上，\n才有辦法稍微放下前任。" },
+    { id: "Q60", period: 3, dimension: 4, direction: -1, text: "失戀的傷痕在我心裡停留很久，\n無法快速復原。" }
 ];
 
 const LPAS_QUESTIONS_ALT = [

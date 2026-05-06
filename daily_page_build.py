@@ -105,7 +105,7 @@ body {{ display: block; padding: 40px; background-color: var(--c-bg-main); overf
             print(f"⚠️ 複製 images 失敗: {e}")
 
     # 避免 Windows cp950 主控台遇到 emoji 造成 UnicodeEncodeError
-    print(f"[OK] 已編譯 {len(all_stories)} 個日記網頁並輸出到 {out_dir}/，並更新首頁。")
+    print(f"daily_page_build.py：[OK] 已編譯 {len(all_stories)} 個日記網頁並輸出到 {out_dir}/，並更新首頁。\n")
 
 if __name__ == "__main__":
     build_page()

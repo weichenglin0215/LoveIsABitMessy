@@ -248,7 +248,7 @@ async function initCharacters() {
 function renderAll() {
     qs('#book-title').value = state.bookTitle || "";
     qs('#story-premise').value = state.storyPremise || "";
-    
+
     // 恢復 AI 設定 (如果存在)
     if (state.aiModel) qs('#model-select').value = state.aiModel;
     if (state.modelOptions) qs('#model-options-select').value = state.modelOptions;
@@ -284,21 +284,21 @@ function renderCharacters() {
         const div = document.createElement('div');
         div.className = "char-card";
         div.innerHTML = `
-            <div style="font-size:1rem; margin-bottom:5px; color:#aaa;">${displayName}</div>
+            <label>${displayName}</label>
             <select data-idx="${idx}">
                 <option value="">-- 選取角色卡 --</option>
                 ${(isLocal ? localCharacters : cloudCharacters).map(c => {
-                    const id = isLocal ? c : c.id;
-                    let label = isLocal ? c : c.name;
-                    if (!isLocal) {
-                        const dateStr = c.updated_at ? c.updated_at.split('T')[0].replace(/-/g, '') : '';
-                        const lpasStr = c.lpas || (c.card_json ? c.card_json.personality_type?.split('-')[0] : '');
-                        label = `${c.name || '未命名'}-${lpasStr || '無LPAS'}-${dateStr}`;
-                    }
-                    return `<option value="${id}" ${id === charId ? 'selected' : ''}>${label}</option>`;
-                }).join('')}
+            const id = isLocal ? c : c.id;
+            let label = isLocal ? c : c.name;
+            if (!isLocal) {
+                const dateStr = c.updated_at ? c.updated_at.split('T')[0].replace(/-/g, '') : '';
+                const lpasStr = c.lpas || (c.card_json ? c.card_json.personality_type?.split('-')[0] : '');
+                label = `${c.name || '未命名'}-${lpasStr || '無LPAS'}-${dateStr}`;
+            }
+            return `<option value="${id}" ${id === charId ? 'selected' : ''}>${label}</option>`;
+        }).join('')}
             </select>
-            <button style="position:absolute; top:5px; right:5px; background:none; border:none; color:#f44; cursor:pointer;" onclick="removeChar(${idx})">🗑️</button>
+            <button class="btn-remove-char" onclick="removeChar(${idx})">🗑️</button>
         `;
         div.querySelector('select').addEventListener('change', (e) => {
             state.characters[idx] = e.target.value;
@@ -323,7 +323,7 @@ function renderChapters() {
                 </span>
                 <input type="text" value="${ch.title}" placeholder="章節標題" onchange="state.chapters[${chIdx}].title = this.value">
                 <button class="ai-btn" onclick="aiGenChapterOutline(${chIdx})">🤖 AI 大綱</button>
-                <button class="btn-del-sec" style="font-size:1.2rem;" onclick="removeChapter(${chIdx})">🗑️</button>
+                <button class="btn-del-sec" onclick="removeChapter(${chIdx})">🗑️</button>
             </div>
             <textarea class="chapter-desc" placeholder="輸入本章大綱說明（AI 將以此產生小節）..." 
                       onchange="state.chapters[${chIdx}].description = this.value">${ch.description || ""}</textarea>
@@ -335,21 +335,21 @@ function renderChapters() {
                          ondragover="event.preventDefault()"
                          ondrop="handleDrop(event, ${chIdx}, ${secIdx})"
                          onclick="setActive(${chIdx}, ${secIdx})">
-                        <span style="flex:1; font-size:1.1rem; color:#ccc; cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        <span class="sec-title-text">
                             ${sec.title || "未命名小節"}
                         </span>
-                        <span style="font-size:1rem; color:${sec.content ? '#4caf50' : '#666'}; margin: 0 5px;">${sec.content ? '✓' : '...'}</span>
-                        <div style="display:flex; align-items:center; gap:8px; margin-left:auto;">
-                            <span class="lock-btn" title="鎖定後將不會被 AI 重寫"
-                                  style="font-size:1.1rem; cursor:pointer; user-select:none; opacity: ${sec.locked ? '1' : '0.3'}" 
+                        <span class="sec-status-icon" style="color:${sec.content ? 'var(--c-ok)' : '#666'};">${sec.content ? '✓' : '...'}</span>
+                        <div class="sec-actions">
+                            <span class="lock-btn sec-lock" title="鎖定後將不會被 AI 重寫"
+                                  style="opacity: ${sec.locked ? '1' : '0.3'}" 
                                   onclick="event.stopPropagation(); toggleLock(${chIdx}, ${secIdx})">
                                 ${sec.locked ? '🔒' : '🔓'}
                             </span>
-                            <button class="btn-del-sec" style="font-size:1.0rem;" onclick="event.stopPropagation(); removeSection(${chIdx}, ${secIdx})">🗑️</button>
+                            <button class="btn-del-sec" onclick="event.stopPropagation(); removeSection(${chIdx}, ${secIdx})">🗑️</button>
                         </div>
                     </div>
                 `).join('')}
-                <button class="btn-circle" style="width:24px; height:24px; font-size:1.2rem; align-self:flex-start;" onclick="addSection(${chIdx})">+</button>
+                <button class="btn-circle" onclick="addSection(${chIdx})">+</button>
             </div>
         `;
         container.appendChild(div);
@@ -413,14 +413,13 @@ function setupEventListeners() {
     qs('#btn-ai-gen-all-outlines').addEventListener('click', aiGenAllOutlines);
     qs('#btn-ai-gen-all-content').addEventListener('click', aiGenAllContent);
     qs('#btn-ai-gen-chapters').addEventListener('click', aiGenChaptersFromPremise);
+    qs('#btn-ai-gen-full-auto').addEventListener('click', aiGenFullAuto);
 
     qs('#btn-load-cloud').addEventListener('click', listCloudNovels);
     qs('#cloud-novel-select').addEventListener('change', loadCloudNovel);
 
-    qs('#toggle-premise').addEventListener('click', () => {
-        const container = qs('#story-premise-container');
-        container.classList.toggle('collapsed');
-    });
+    // #toggle-premise 縮放按鈕監聽已移動至 novel_generator.html 中的 initResizableColumns 統一處理
+
 
     qs('#story-premise').addEventListener('input', (e) => {
         state.storyPremise = e.target.value;
@@ -557,7 +556,9 @@ function setAIGeneratingState(isGenerating, logMessage = "") {
     if (logMessage) {
         const logBox = qs('#log-output');
         if (logBox) {
-            logBox.innerText += `\n[${new Date().toLocaleTimeString()}] ${logMessage}\n`;
+            // 處理字面上的 \n
+            const formattedMsg = logMessage.replace(/\\n/g, '\n');
+            logBox.innerText += `\n[${new Date().toLocaleTimeString()}] ${formattedMsg}\n`;
             logBox.scrollTop = logBox.scrollHeight;
         }
     }
@@ -566,7 +567,9 @@ function setAIGeneratingState(isGenerating, logMessage = "") {
 function appendLog(text) {
     const logBox = qs('#log-output');
     if (logBox) {
-        logBox.innerText += text + "\n";
+        // 處理字面上的 \n
+        const formattedText = text.replace(/\\n/g, '\n');
+        logBox.innerText += formattedText + "\n";
         logBox.scrollTop = logBox.scrollHeight;
     }
 }
@@ -577,16 +580,31 @@ async function aiGenChapterOutline(chIdx) {
         return;
     }
 
-    setAIGeneratingState(true, ">> 任務啟動...\n正在呼叫 Ollama 大模型產生大綱，這可能需要一分鐘以上，請稍候...");
+    const chNum = chIdx + 1;
+    setAIGeneratingState(true, `>> 任務啟動...\n正在為第 ${chNum} 章產生小節大綱，請稍候...`);
 
     try {
-        // 傳入全書章節一覽與目前章號，讓 AI 有完整前後文
+        // 收集本章「已上鎖」的小節，讓 AI 知道哪些位置是固定的
+        const locked_sections = chapter.sections
+            .map((s, i) => ({ index: i + 1, title: s.title, locked: s.locked }))
+            .filter(s => s.locked)
+            .map(({ index, title }) => ({ index, title }));
+
+        // 全書章節一覽（含上鎖狀態），讓 AI 有前後文
+        const all_chapters = state.chapters.map((ch, i) => ({
+            index: i + 1,
+            title: ch.title,
+            description: ch.description,
+            locked: ch.locked
+        }));
+
         const payload = {
             book_title: state.bookTitle || '故事專案',
             description: chapter.description,
             story_premise: state.storyPremise,
             all_chapters,
             chapter_index: chIdx,   // 0-based
+            locked_sections,        // 本章已上鎖的節（含 1-based index 與 title）
             characters: state.characters.map(id => {
                 const found = cloudCharacters.find(c => c.id === id);
                 return found ? found.card_json : null;
@@ -605,8 +623,8 @@ async function aiGenChapterOutline(chIdx) {
         }
 
         // Step 2: 真正生成
-        appendLog(">> 正在呼叫 AI 執行生成任務...");
-        const res = await callDebugServer('/api/generate_outline', payload);
+        appendLog(`>> 正在呼叫 AI 為第 ${chNum} 章產生小節大綱，請稍候...`);
+        const res = await callDebugServerAsync('/api/novel_outline_async', payload);
         if (res && res.sections) {
             const newSections = res.sections;
             const currentSections = chapter.sections;
@@ -634,7 +652,7 @@ async function aiGenChapterOutline(chIdx) {
             }
 
             renderChapters();
-            appendLog(">> 大綱產生完畢！未上鎖的小節已成功更新。");
+            appendLog(`>> 第 ${chNum} 章大綱產生完畢！未上鎖的小節已成功更新。`);
         }
     } catch (e) {
         console.error(e);
@@ -661,7 +679,6 @@ async function aiGenAllContent() {
         const ch = state.chapters[i];
         for (let j = 0; j < ch.sections.length; j++) {
             if (!ch.locked && !ch.sections[j].locked) {
-                // 設為當前 active 以便呼叫 aiGenSectionContent
                 state.activeIndex = { chapter: i, section: j };
                 renderAll();
                 await aiGenSectionContent();
@@ -671,12 +688,59 @@ async function aiGenAllContent() {
     appendLog(">> 所有未鎖定小節的內容已生成完畢。");
 }
 
-async function aiGenChaptersFromPremise() {
+async function aiGenFullAuto() {
     if (!state.storyPremise) {
         alert("請先輸入故事粗綱。");
         return;
     }
-    if (!confirm("這將根據粗綱生成各章標題與描述，會覆蓋現有未鎖定的章節，確定嗎？")) return;
+    if (state.characters.filter(Boolean).length === 0) {
+        alert("請至少選擇一位登場角色（生成內文需要角色資料）。");
+        return;
+    }
+    if (!confirm("⚠️ 全自動生成將依序執行：\n1. 根據粗綱生成各章標題與描述（跳過已鎖定）\n2. 為每章生成各節大綱（跳過已鎖定）\n3. 為每節生成內文（跳過已鎖定）\n\n這可能需要非常長的時間，確定開始？")) return;
+
+    appendLog("\n==============================\n🚀 全自動生成模式已啟動\n==============================");
+
+    // Phase 1: 生成章節
+    appendLog("\n--- Phase 1: 根據故事粗綱生成各章節 ---");
+    await aiGenChaptersFromPremise(true); // true = skip confirm
+
+    // Phase 2: 為每個未鎖定章節生成節大綱
+    appendLog("\n--- Phase 2: 為各章節生成節大綱 ---");
+    for (let i = 0; i < state.chapters.length; i++) {
+        if (!state.chapters[i].locked) {
+            appendLog(`\n>> 正在為第 ${i + 1} 章生成節大綱...`);
+            await aiGenChapterOutline(i);
+        } else {
+            appendLog(`\n>> 第 ${i + 1} 章已鎖定，跳過。`);
+        }
+    }
+
+    // Phase 3: 為每個未鎖定節生成內文
+    appendLog("\n--- Phase 3: 為各節生成內文 ---");
+    for (let i = 0; i < state.chapters.length; i++) {
+        const ch = state.chapters[i];
+        for (let j = 0; j < ch.sections.length; j++) {
+            if (!ch.locked && !ch.sections[j].locked) {
+                appendLog(`\n>> 正在為第 ${i + 1} 章第 ${j + 1} 節生成內文...`);
+                state.activeIndex = { chapter: i, section: j };
+                renderAll();
+                await aiGenSectionContent();
+            } else {
+                appendLog(`\n>> 第 ${i + 1} 章第 ${j + 1} 節已鎖定，跳過。`);
+            }
+        }
+    }
+
+    appendLog("\n==============================\n✅ 全自動生成完畢！\n==============================");
+}
+
+async function aiGenChaptersFromPremise(skipConfirm = false) {
+    if (!state.storyPremise) {
+        alert("請先輸入故事粗綱。");
+        return;
+    }
+    if (!skipConfirm && !confirm("這將根據粗綱生成各章標題與描述，會覆蓋現有未鎖定的章節，確定嗎？")) return;
 
     setAIGeneratingState(true, ">> 正在根據故事粗綱生成章節規劃...");
 
@@ -709,8 +773,8 @@ async function aiGenChaptersFromPremise() {
         }
 
         // Step 2: 真正生成
-        appendLog(">> 正在呼叫 AI 執行生成任務...");
-        const res = await callDebugServer('/api/generate_chapters', payload);
+        appendLog(">> 正在呼叫 AI 執行章節規劃生成任務...");
+        const res = await callDebugServerAsync('/api/novel_chapters_async', payload);
         if (res && res.chapters) {
             const newChapters = res.chapters;
             const currentChapters = state.chapters;
@@ -787,10 +851,23 @@ async function aiGenSectionContent() {
         return;
     }
 
-    const sectionTitleText = sec.title || `第 ${section + 1} 節`;
-    setAIGeneratingState(true, `>> 任務啟動...\n正在呼叫 Ollama 產生章節 [${sectionTitleText}] 的內容，這可能會花費數分鐘，請稍候...`);
+    const chNum = chapter + 1;
+    const secNum = section + 1;
+    const sectionTitleText = sec.title || `第 ${secNum} 節`;
+    setAIGeneratingState(true, `>> 任務啟動...\n正在呼叫 Ollama 產生第 ${chNum} 章第 ${secNum} 節 [${sectionTitleText}] 的內容，請稍候...`);
 
     try {
+        // 上一節（同章）
+        const prevSec = section > 0 ? ch.sections[section - 1] : null;
+        // 下一節（同章，優先取已鎖定的；無則取下一節）
+        const nextSec = section < ch.sections.length - 1 ? ch.sections[section + 1] : null;
+        // 所有章節的所有節大綱（供全書連貫）
+        const all_sections_overview = state.chapters.map((c, ci) => ({
+            chapter_index: ci + 1,
+            chapter_title: c.title,
+            sections: c.sections.map((s, si) => ({ index: si + 1, title: s.title, locked: s.locked }))
+        }));
+
         const payload = {
             characters: state.characters.map(id => {
                 const found = cloudCharacters.find(c => c.id === id);
@@ -800,11 +877,21 @@ async function aiGenSectionContent() {
             model: state.currentModel || qs('#model-select')?.value || 'gemma4',
             model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
             writer_settings: (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || null,
+            story_premise: state.storyPremise,
             context: {
+                chapter_index: chNum,     // 1-based
+                section_index: secNum,    // 1-based
                 chapter_title: ch.title,
                 chapter_desc: ch.description,
-                section_title: sec.title
-            }
+                section_title: sec.title,
+                // 上一節標題與已生成的內文（讓 AI 銜接）
+                prev_section_title: prevSec ? prevSec.title : null,
+                prev_section_content: prevSec ? (prevSec.content || '') : null,
+                // 下一節標題（讓 AI 預留伏筆）
+                next_section_title: nextSec ? nextSec.title : null,
+                next_section_locked: nextSec ? !!nextSec.locked : false
+            },
+            all_sections_overview
         };
 
         // Step 1: 取得提示詞預覽
@@ -815,13 +902,13 @@ async function aiGenSectionContent() {
         }
 
         // Step 2: 真正生成
-        appendLog(">> 正在呼叫 AI 執行生成任務...");
-        const res = await callDebugServer('/api/generate_story_content', payload);
+        appendLog(">> 正在呼叫 AI 執行小節內文生成任務...");
+        const res = await callDebugServerAsync('/api/novel_content_async', payload);
         if (res && res.content) {
             sec.content = res.content;
             renderEditor();
             renderChapters();
-            appendLog(">> 小說內文產生完畢！已自動更新至編輯器中。");
+            appendLog(`>> 第 ${chNum} 章第 ${secNum} 節內文產生完畢！`);
         }
     } catch (e) {
         appendLog(`\n❌ AI 寫作失敗: ${e.message}`);
@@ -845,6 +932,64 @@ async function callDebugServer(endpoint, payload) {
     } catch (e) {
         throw e;
     }
+}
+
+/**
+ * 非同步 Job 版：發送請求取得 job_id，然後輪詢 /api/job 直到完成。
+ * 執行過程中後端的所有 print 訊息都會即時顯示在 log-output。
+ * @param {string} asyncEndpoint - 非同步 API 路由，如 '/api/novel_chapters_async'
+ * @param {object} payload       - POST 的資料
+ * @returns {object|null}        - 完成時 job.result 的內容，失敗時 null
+ */
+async function callDebugServerAsync(asyncEndpoint, payload) {
+    if (!serverOnline) await checkServerStatus();
+    if (!serverOnline) throw new Error("Server offline");
+
+    // Step 1: 發送請求，立即取得 job_id
+    const startRes = await fetch(`http://localhost:8081${asyncEndpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    if (!startRes.ok) throw new Error(`HTTP ${startRes.status}`);
+    const { job_id } = await startRes.json();
+    if (!job_id) throw new Error("未取得 job_id");
+
+    appendLog(`>> Job 已啟動 (id: ${job_id.slice(0, 8)}...)`);
+
+    // Step 2: 輪詢 /api/job 直到 done 或 error（最多等 600 秒）
+    let lastLogs = "";
+    for (let i = 0; i < 600; i++) {
+        await new Promise(r => setTimeout(r, 1000));
+        let jd;
+        try {
+            const jr = await fetch(`http://localhost:8081/api/job?id=${encodeURIComponent(job_id)}`);
+            jd = await jr.json();
+        } catch (e) {
+            appendLog("⚠️ 輪詢失敗，重試中...");
+            continue;
+        }
+
+        // 即時更新 Log 欄位
+        if (jd.logs && jd.logs !== lastLogs) {
+            lastLogs = jd.logs;
+            const logBox = qs('#log-output');
+            if (logBox) {
+                logBox.innerText = lastLogs.replace(/\\n/g, '\n');
+                logBox.scrollTop = logBox.scrollHeight;
+            }
+        }
+
+        if (jd.status === 'done') {
+            return jd.result || null;
+        }
+        if (jd.status === 'error') {
+            appendLog("❌ 後端 Job 執行失敗，請查看 CMD 視窗的錯誤訊息。");
+            return null;
+        }
+    }
+    appendLog("⏰ 等待超時（600 秒），請確認後端是否正常運作。");
+    return null;
 }
 
 // ====== 儲存與讀取 ======
@@ -888,7 +1033,7 @@ async function saveProject() {
 async function confirmSaveProject() {
     const name = qs('#save-novel-name').value.trim();
     const password = qs('#save-novel-password').value.trim();
-    
+
     if (!name || !password) {
         alert("請輸入小說名稱與密碼");
         return;
@@ -948,7 +1093,7 @@ async function confirmSaveProject() {
 async function listCloudNovels() {
     const btn = qs('#btn-load-cloud');
     const select = qs('#cloud-novel-select');
-    
+
     appendLog("☁️ 正在讀取雲端小說清單...");
     try {
         const sb = window.SupabaseClient.getClient();
@@ -1019,7 +1164,7 @@ async function confirmLoadCloudNovel() {
             state = data.edit_data;
             renderAll();
             appendLog(`✅ 已成功載入「${state.bookTitle}」`);
-            
+
             // 重置 UI
             qs('#btn-load-cloud').style.display = 'inline-block';
             qs('#cloud-novel-select').style.display = 'none';

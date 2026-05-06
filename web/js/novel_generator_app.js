@@ -298,7 +298,7 @@ function renderCharacters() {
             return `<option value="${id}" ${id === charId ? 'selected' : ''}>${label}</option>`;
         }).join('')}
             </select>
-            <button style="position:absolute; top:5px; right:5px; background:none; border:none; color:#f44; cursor:pointer;" onclick="removeChar(${idx})">🗑️</button>
+            <button class="btn-remove-char" onclick="removeChar(${idx})">🗑️</button>
         `;
         div.querySelector('select').addEventListener('change', (e) => {
             state.characters[idx] = e.target.value;
@@ -323,7 +323,7 @@ function renderChapters() {
                 </span>
                 <input type="text" value="${ch.title}" placeholder="章節標題" onchange="state.chapters[${chIdx}].title = this.value">
                 <button class="ai-btn" onclick="aiGenChapterOutline(${chIdx})">🤖 AI 大綱</button>
-                <button class="btn-del-sec" style="font-size:1.2rem;" onclick="removeChapter(${chIdx})">🗑️</button>
+                <button class="btn-del-sec" onclick="removeChapter(${chIdx})">🗑️</button>
             </div>
             <textarea class="chapter-desc" placeholder="輸入本章大綱說明（AI 將以此產生小節）..." 
                       onchange="state.chapters[${chIdx}].description = this.value">${ch.description || ""}</textarea>
@@ -335,21 +335,21 @@ function renderChapters() {
                          ondragover="event.preventDefault()"
                          ondrop="handleDrop(event, ${chIdx}, ${secIdx})"
                          onclick="setActive(${chIdx}, ${secIdx})">
-                        <span style="flex:1; font-size:1.1rem; color:#ccc; cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        <span class="sec-title-text">
                             ${sec.title || "未命名小節"}
                         </span>
-                        <span style="font-size:1rem; color:${sec.content ? '#4caf50' : '#666'}; margin: 0 5px;">${sec.content ? '✓' : '...'}</span>
-                        <div style="display:flex; align-items:center; gap:8px; margin-left:auto;">
-                            <span class="lock-btn" title="鎖定後將不會被 AI 重寫"
-                                  style="font-size:1.1rem; cursor:pointer; user-select:none; opacity: ${sec.locked ? '1' : '0.3'}" 
+                        <span class="sec-status-icon" style="color:${sec.content ? 'var(--c-ok)' : '#666'};">${sec.content ? '✓' : '...'}</span>
+                        <div class="sec-actions">
+                            <span class="lock-btn sec-lock" title="鎖定後將不會被 AI 重寫"
+                                  style="opacity: ${sec.locked ? '1' : '0.3'}" 
                                   onclick="event.stopPropagation(); toggleLock(${chIdx}, ${secIdx})">
                                 ${sec.locked ? '🔒' : '🔓'}
                             </span>
-                            <button class="btn-del-sec" style="font-size:1.0rem;" onclick="event.stopPropagation(); removeSection(${chIdx}, ${secIdx})">🗑️</button>
+                            <button class="btn-del-sec" onclick="event.stopPropagation(); removeSection(${chIdx}, ${secIdx})">🗑️</button>
                         </div>
                     </div>
                 `).join('')}
-                <button class="btn-circle" style="width:24px; height:24px; font-size:1.2rem; align-self:flex-start;" onclick="addSection(${chIdx})">+</button>
+                <button class="btn-circle" onclick="addSection(${chIdx})">+</button>
             </div>
         `;
         container.appendChild(div);
@@ -556,7 +556,9 @@ function setAIGeneratingState(isGenerating, logMessage = "") {
     if (logMessage) {
         const logBox = qs('#log-output');
         if (logBox) {
-            logBox.innerText += `\n[${new Date().toLocaleTimeString()}] ${logMessage}\n`;
+            // 處理字面上的 \n
+            const formattedMsg = logMessage.replace(/\\n/g, '\n');
+            logBox.innerText += `\n[${new Date().toLocaleTimeString()}] ${formattedMsg}\n`;
             logBox.scrollTop = logBox.scrollHeight;
         }
     }
@@ -565,7 +567,9 @@ function setAIGeneratingState(isGenerating, logMessage = "") {
 function appendLog(text) {
     const logBox = qs('#log-output');
     if (logBox) {
-        logBox.innerText += text + "\n";
+        // 處理字面上的 \n
+        const formattedText = text.replace(/\\n/g, '\n');
+        logBox.innerText += formattedText + "\n";
         logBox.scrollTop = logBox.scrollHeight;
     }
 }
@@ -619,8 +623,8 @@ async function aiGenChapterOutline(chIdx) {
         }
 
         // Step 2: 真正生成
-        appendLog(">> 正在呼叫 AI 執行生成任務...");
-        const res = await callDebugServer('/api/generate_outline', payload);
+        appendLog(`>> 正在呼叫 AI 為第 ${chNum} 章產生小節大綱，請稍候...`);
+        const res = await callDebugServerAsync('/api/novel_outline_async', payload);
         if (res && res.sections) {
             const newSections = res.sections;
             const currentSections = chapter.sections;
@@ -769,8 +773,8 @@ async function aiGenChaptersFromPremise(skipConfirm = false) {
         }
 
         // Step 2: 真正生成
-        appendLog(">> 正在呼叫 AI 執行生成任務...");
-        const res = await callDebugServer('/api/generate_chapters', payload);
+        appendLog(">> 正在呼叫 AI 執行章節規劃生成任務...");
+        const res = await callDebugServerAsync('/api/novel_chapters_async', payload);
         if (res && res.chapters) {
             const newChapters = res.chapters;
             const currentChapters = state.chapters;
@@ -898,8 +902,8 @@ async function aiGenSectionContent() {
         }
 
         // Step 2: 真正生成
-        appendLog(">> 正在呼叫 AI 執行生成任務...");
-        const res = await callDebugServer('/api/generate_story_content', payload);
+        appendLog(">> 正在呼叫 AI 執行小節內文生成任務...");
+        const res = await callDebugServerAsync('/api/novel_content_async', payload);
         if (res && res.content) {
             sec.content = res.content;
             renderEditor();
@@ -928,6 +932,64 @@ async function callDebugServer(endpoint, payload) {
     } catch (e) {
         throw e;
     }
+}
+
+/**
+ * 非同步 Job 版：發送請求取得 job_id，然後輪詢 /api/job 直到完成。
+ * 執行過程中後端的所有 print 訊息都會即時顯示在 log-output。
+ * @param {string} asyncEndpoint - 非同步 API 路由，如 '/api/novel_chapters_async'
+ * @param {object} payload       - POST 的資料
+ * @returns {object|null}        - 完成時 job.result 的內容，失敗時 null
+ */
+async function callDebugServerAsync(asyncEndpoint, payload) {
+    if (!serverOnline) await checkServerStatus();
+    if (!serverOnline) throw new Error("Server offline");
+
+    // Step 1: 發送請求，立即取得 job_id
+    const startRes = await fetch(`http://localhost:8081${asyncEndpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    if (!startRes.ok) throw new Error(`HTTP ${startRes.status}`);
+    const { job_id } = await startRes.json();
+    if (!job_id) throw new Error("未取得 job_id");
+
+    appendLog(`>> Job 已啟動 (id: ${job_id.slice(0, 8)}...)`);
+
+    // Step 2: 輪詢 /api/job 直到 done 或 error（最多等 600 秒）
+    let lastLogs = "";
+    for (let i = 0; i < 600; i++) {
+        await new Promise(r => setTimeout(r, 1000));
+        let jd;
+        try {
+            const jr = await fetch(`http://localhost:8081/api/job?id=${encodeURIComponent(job_id)}`);
+            jd = await jr.json();
+        } catch (e) {
+            appendLog("⚠️ 輪詢失敗，重試中...");
+            continue;
+        }
+
+        // 即時更新 Log 欄位
+        if (jd.logs && jd.logs !== lastLogs) {
+            lastLogs = jd.logs;
+            const logBox = qs('#log-output');
+            if (logBox) {
+                logBox.innerText = lastLogs.replace(/\\n/g, '\n');
+                logBox.scrollTop = logBox.scrollHeight;
+            }
+        }
+
+        if (jd.status === 'done') {
+            return jd.result || null;
+        }
+        if (jd.status === 'error') {
+            appendLog("❌ 後端 Job 執行失敗，請查看 CMD 視窗的錯誤訊息。");
+            return null;
+        }
+    }
+    appendLog("⏰ 等待超時（600 秒），請確認後端是否正常運作。");
+    return null;
 }
 
 // ====== 儲存與讀取 ======
