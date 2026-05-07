@@ -14,170 +14,162 @@
   <link rel="stylesheet" href="css/editer.css">
 </head>
 
-<body class="generator-page">
-  <div id="glass-overlay"></div>
-
-  <div class="app-container">
-    <header class="top-nav">
-      <div class="logo"> 📖 開心花園AI小說自動產生器 <small class="nav-version">v1.0</small></div>
-      <div class="nav-book-bar">
-        <label class="nav-label">小說名稱：</label>
-        <div class="book-title">
-          <input type="text" id="book-title" placeholder="請輸入小說名稱...">
-        </div>
-        <div class="flex-spacer"></div>
-        <div class="global-actions">
-          <button class="btn secondary-btn" id="btn-export">📤 匯出小說</button>
-          <div class="cloud-load-wrapper">
-            <button class="btn secondary-btn" id="btn-load-cloud">☁️ 讀取雲端小說</button>
-            <select id="cloud-novel-select" style="display:none;">
-              <option value="">-- 請選擇小說 --</option>
-            </select>
-          </div>
-          <button class="btn secondary-btn" id="btn-load">📂 讀取小說</button>
-          <button class="btn primary-btn" id="btn-save">💾 儲存小說</button>
+<body>
+  <div class="app-topbar">
+    <div class="app-title-small">📖 開心花園AI小說自動產生器 <small class="nav-version">v1.0</small></div>
+    <nav class="app-topbar-nav">
+      <label class="nav-label">小說名稱：</label>
+      <div class="book-title">
+        <input type="text" id="book-title" placeholder="請輸入小說名稱...">
+      </div>
+      <button class="btn secondary-btn" id="btn-export">📤 匯出小說</button>
+      <div class="cloud-load-wrapper">
+        <button class="btn secondary-btn" id="btn-load-cloud">☁️ 讀取雲端小說</button>
+        <select id="cloud-novel-select" style="display:none;">
+          <option value="">-- 請選擇小說 --</option>
+        </select>
+      </div>
+      <button class="btn secondary-btn" id="btn-load">📂 讀取小說</button>
+      <button class="btn primary-btn" id="btn-save">💾 儲存小說</button>
+    </nav>
+  </div>
+  <div id="main-columns-grid" class="main-columns-grid">
+    <!-- 角色挑選 -->
+    <div class="col" id="char-col-container">
+      <div class="col-header">
+        <button class="collapse-btn" id="toggle-char-col" title="縮放">↔</button>
+        <h3>🎭 登場角色</h3>
+        <div class="toolbox">
+          <button class="btn-circle" id="add-char" title="增加角色">+</button>
         </div>
       </div>
-    </header>
-    <div id="main-columns-grid" class="main-columns-grid">
-      <!-- 角色挑選 -->
-      <div class="col" id="char-col-container">
-        <div class="col-header">
-          <button class="collapse-btn" id="toggle-char-col" title="縮放">↔</button>
-          <h3>🎭 登場角色</h3>
-          <div class="toolbox">
-            <button class="btn-circle" id="add-char" title="增加角色">+</button>
-          </div>
+      <div class="scroll-area-char-card" id="char-list">
+        <div class="char-mode-toggle">
+          <label class="checkbox-label">
+            <input type="checkbox" id="use-local-data"> 讀取本機資料 (除錯用)
+          </label>
+          <div id="char-source-status">☁️ 預設讀取雲端角色卡</div>
         </div>
-        <div class="scroll-area-char-card" id="char-list">
-          <div class="char-mode-toggle">
-            <label class="checkbox-label">
-              <input type="checkbox" id="use-local-data"> 讀取本機資料 (除錯用)
-            </label>
-            <div id="char-source-status">☁️ 預設讀取雲端角色卡</div>
-          </div>
-          <div id="char-slots-container">
-            <!-- JS 動態生成 -->
-          </div>
-        </div>
-        <!--LOG狀態欄-->
-        <div class="server-status-row">
-          <span class="server-status-dot offline" id="server-dot"></span>
-          <button id="start-server-btn" disabled>🚀 請自行啟動伺服器</button>
-          <span class="server-status-text" id="server-status-text">偵測中…</span>
-
-          <div id="model-container" class="settings-group">
-            <label class="settings-label">🤖 AI 模型：</label>
-            <select id="model-select" class="settings-select">
-              <option value="gemma4">gemma4</option>
-            </select>
-          </div>
-          <div id="model-options-container" class="settings-group">
-            <label class="settings-label">⚙️ 模型參數：</label>
-            <div class="settings-row-inline">
-              <select id="model-options-select" class="settings-select">
-                <option value="">預設</option>
-              </select>
-              <button id="btn-add-model-option" class="ai-btn ai-btn-sm">編輯</button>
-            </div>
-          </div>
-          <div id="writer-style-container" class="settings-group">
-            <label class="settings-label">🖋️ 寫作風格：</label>
-            <div class="settings-row-inline">
-              <select id="writer-style-select" class="ws-style-dropdown settings-select">
-                <option value="">無</option>
-              </select>
-              <button id="btn-edit-writer-style" class="ai-btn ai-btn-sm"
-                onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select').value)">編輯</button>
-            </div>
-          </div>
-          <div id="writer-sample-container" class="settings-group">
-            <label class="settings-label">📝 寫作範本：</label>
-            <div class="settings-row-inline">
-              <select id="writer-sample-select" class="ws-sample-dropdown settings-select">
-                <option value="">無</option>
-              </select>
-              <button id="btn-edit-writer-sample" class="ai-btn ai-btn-sm"
-                onclick="WriterSettingsApp.openSampleModal(document.getElementById('writer-sample-select').value)">編輯</button>
-            </div>
-          </div>
-        </div>
-        <div id="log-output" class="log-area">等待任務...</div>
-        <div class="log-actions">
-          <button class="small-btn" onclick="clearLogOutput()">🗑️清空</button>
-          <button class="small-btn" onclick="copyLogOutput()">📋複製</button>
-          <button class="small-btn" onclick="showLogModal()">🔲大型彈窗</button>
-        </div>
-        <div id="diary-cloud-status" class="cloud-status">雲端狀態</div>
-      </div>
-
-      <div class="resizer" data-index="1"></div>
-
-      <!-- 故事粗綱欄位 -->
-      <div class="col" id="story-premise-container">
-        <div class="col-header">
-          <button class="collapse-btn" id="toggle-premise" title="縮放">↔</button>
-          <h3>📝故事粗綱</h3>
-          <div class="toolbox">
-            <button class="ai-btn" id="btn-ai-gen-full-auto" title="全自動：依粗綱生成章節→節大綱→節內文（跳過已鎖定）"
-              style="background:linear-gradient(135deg,#7c3aed,#f472b6); font-weight:bold;">🚀 全自動生成</button>
-            <button class="ai-btn" id="btn-ai-gen-chapters" title="根據粗鋼生成各章節">🤖 AI各章描述</button>
-          </div>
-        </div>
-        <div class="scroll-area">
-          <textarea class="story-premise-textarea" id="story-premise" placeholder="在此編寫故事粗綱，包含整體走向、結局設想等..."></textarea>
-        </div>
-      </div>
-
-      <div class="resizer" data-index="3"></div>
-
-      <!-- 故事大綱 -->
-      <div class="col">
-        <div class="col-header">
-          <h3>📖 故事大綱</h3>
-          <div class="toolbox">
-            <button class="ai-btn" id="btn-ai-gen-all-outlines" title="撰寫所有未鎖定的小節大綱">🤖 AI 撰寫所有大綱</button>
-            <button class="btn-circle" id="add-chapter" title="增加章節">+</button>
-          </div>
-        </div>
-        <div class="scroll-area" id="chapter-list">
+        <div id="char-slots-container">
           <!-- JS 動態生成 -->
         </div>
       </div>
+      <!--LOG狀態欄-->
+      <div class="server-status-row">
+        <span class="server-status-dot offline" id="server-dot"></span>
+        <button id="start-server-btn" disabled>🚀 請自行啟動伺服器</button>
+        <span class="server-status-text" id="server-status-text">偵測中…</span>
 
-      <div class="resizer" data-index="5"></div>
-
-      <!-- 編輯器 -->
-      <div class="col">
-        <div class="col-header">
-          <h3>🖋️ 內文編輯器</h3>
-          <div class="toolbox">
-            <button class="ai-btn" id="btn-ai-gen-all-content" title="撰寫所有未鎖定的小節內容">🤖 AI 撰寫所有小節的內文</button>
-            <button class="ai-btn" id="btn-ai-gen-content">🤖 AI 本節小說</button>
+        <div id="model-container" class="settings-group">
+          <label class="settings-label">🤖 AI 模型：</label>
+          <select id="model-select" class="settings-select">
+            <option value="gemma4">gemma4</option>
+          </select>
+        </div>
+        <div id="model-options-container" class="settings-group">
+          <label class="settings-label">⚙️ 模型參數：</label>
+          <div class="settings-row-inline">
+            <select id="model-options-select" class="settings-select">
+              <option value="">預設</option>
+            </select>
+            <button id="btn-add-model-option" class="ai-btn ai-btn-sm">編輯</button>
           </div>
         </div>
-        <div class="scroll-area editor-container" id="editor-side">
-          <textarea class="editor-title" id="active-section-title" placeholder="請選擇一個章節開始" readonly></textarea>
-          <textarea id="main-editor" placeholder="在此編寫故事內容..."></textarea>
-
-        </div>
-        <!-- ── Modal: Save Novel ── -->
-        <div id="modal-novel-save" style="display:none;">
-          <div class="modal-box">
-            <h3 class="modal-title">💾 儲存小說專案</h3>
-            <div class="modal-field">
-              <label class="modal-label">小說名稱：</label>
-              <input type="text" id="save-novel-name">
-            </div>
-            <div class="modal-field-last">
-              <label class="modal-label">密碼 (雲端存取用)：</label>
-              <input type="password" id="save-novel-password">
-            </div>
-            <div class="modal-actions">
-              <button id="btn-save-cancel" class="btn-modal-cancel">取消</button>
-              <button id="btn-save-confirm" class="btn-modal-confirm">確定儲存</button>
-            </div>
+        <div id="writer-style-container" class="settings-group">
+          <label class="settings-label">🖋️ 寫作風格：</label>
+          <div class="settings-row-inline">
+            <select id="writer-style-select" class="ws-style-dropdown settings-select">
+              <option value="">無</option>
+            </select>
+            <button id="btn-edit-writer-style" class="ai-btn ai-btn-sm"
+              onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select').value)">編輯</button>
           </div>
+        </div>
+        <div id="writer-sample-container" class="settings-group">
+          <label class="settings-label">📝 寫作範本：</label>
+          <div class="settings-row-inline">
+            <select id="writer-sample-select" class="ws-sample-dropdown settings-select">
+              <option value="">無</option>
+            </select>
+            <button id="btn-edit-writer-sample" class="ai-btn ai-btn-sm"
+              onclick="WriterSettingsApp.openSampleModal(document.getElementById('writer-sample-select').value)">編輯</button>
+          </div>
+        </div>
+      </div>
+      <div id="log-output" class="log-area">等待任務...</div>
+      <div class="log-actions">
+        <button class="small-btn" onclick="clearLogOutput()">🗑️清空</button>
+        <button class="small-btn" onclick="copyLogOutput()">📋複製</button>
+        <button class="small-btn" onclick="showLogModal()">🔲大型彈窗</button>
+      </div>
+      <div id="diary-cloud-status" class="cloud-status">雲端狀態</div>
+    </div>
+
+    <div class="resizer" data-index="1"></div>
+
+    <!-- 故事粗綱欄位 -->
+    <div class="col" id="story-premise-container">
+      <div class="col-header">
+        <button class="collapse-btn" id="toggle-premise" title="縮放">↔</button>
+        <h3>📝故事粗綱</h3>
+        <div class="toolbox">
+          <button class="ai-btn" id="btn-ai-gen-full-auto" title="全自動：依粗綱生成章節→節大綱→節內文（跳過已鎖定）"
+            style="background:linear-gradient(135deg,#7c3aed,#f472b6); font-weight:bold;">🚀 全自動生成</button>
+          <button class="ai-btn" id="btn-ai-gen-chapters" title="根據粗鋼生成各章節">🤖 AI各章描述</button>
+        </div>
+      </div>
+      <div class="scroll-area">
+        <textarea class="story-premise-textarea" id="story-premise" placeholder="在此編寫故事粗綱，包含整體走向、結局設想等..."></textarea>
+      </div>
+    </div>
+
+    <div class="resizer" data-index="3"></div>
+
+    <!-- 故事大綱 -->
+    <div class="col">
+      <div class="col-header">
+        <h3>📖 故事大綱</h3>
+        <div class="toolbox">
+          <button class="ai-btn" id="btn-ai-gen-all-outlines" title="撰寫所有未鎖定的小節大綱">🤖 AI 撰寫所有大綱</button>
+          <button class="btn-circle" id="add-chapter" title="增加章節">+</button>
+        </div>
+      </div>
+      <div class="scroll-area" id="chapter-list">
+        <!-- JS 動態生成 -->
+      </div>
+    </div>
+
+    <div class="resizer" data-index="5"></div>
+
+    <!-- 編輯器 -->
+    <div class="col">
+      <div class="col-header">
+        <h3>🖋️ 內文編輯器</h3>
+        <div class="toolbox">
+          <button class="ai-btn" id="btn-ai-gen-all-content" title="撰寫所有未鎖定的小節內容">🤖 AI全節內文</button>
+          <button class="ai-btn" id="btn-ai-gen-content">🤖 AI本節內文</button>
+        </div>
+      </div>
+      <div class="scroll-area editor-container" id="editor-side">
+        <textarea class="editor-title" id="active-section-title" placeholder="請選擇一個章節開始" readonly></textarea>
+        <textarea id="main-editor" placeholder="在此編寫故事內容..."></textarea>
+      </div>
+    </div>
+    <!-- ── Modal: Save Novel ── -->
+    <div id="modal-novel-save" style="display:none;">
+      <div class="modal-box">
+        <h3 class="modal-title">💾 儲存小說專案</h3>
+        <div class="modal-field">
+          <label class="modal-label">小說名稱：</label>
+          <input type="text" id="save-novel-name">
+        </div>
+        <div class="modal-field-last">
+          <label class="modal-label">密碼 (雲端存取用)：</label>
+          <input type="password" id="save-novel-password">
+        </div>
+        <div class="modal-actions">
+          <button id="btn-save-cancel" class="btn-modal-cancel">取消</button>
+          <button id="btn-save-confirm" class="btn-modal-confirm">確定儲存</button>
         </div>
       </div>
     </div>

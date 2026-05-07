@@ -19,25 +19,20 @@
   <script src="js/characters_editor_app.js"></script>
 </head>
 
-<body data-period="night">
-  <div id="star-bg"></div>
+<body>
   <div class="debug-panel">
     <div class="col-left">
-
       <div class="editor-header">
-        <h1>🎭 角色資料編輯器</h1>
+        <div class="app-title">🎭 角色資料編輯器</div>
         <div class="conn-panel">
           <div class="conn-desc">管理 Supabase 雲端角色卡、生日、血型與人格特質</div>
           <div class="conn-status" id="conn-status">🔄 正在自動連線至 Supabase…</div>
         </div>
       </div>
-
-
-
       <div class="editor-container">
         <div class="editor-panel">
           <h2><span class="icon">🎭</span> 登場角色管理</h2>
-          <div class="toolbar">
+          <div class="char-row-manager">
             <select id="char-dropdown">
               <option value="">-- 選擇角色卡 --</option>
             </select>
@@ -134,25 +129,23 @@
       <div class="hint">💡 儲存角色時會自動同步更新 Supabase 中的 characters 資料表。</div>
     </div>
     <div class="col-right">
-      <div style="margin-bottom: 15px;">
-        <label class="field-label">人格特質與類型說明 (唯讀)</label>
-        <div style="display: flex; flex-direction: column; gap: 8px;">
-          <label class="field-label">♈♉♊♋♌♍♎♏♐♑♒♓星座說明 (唯讀🔻)</label>
-          <textarea class="editor-textarea" id="desc-zodiac" readonly placeholder="星座說明"
-            style="min-height: 140px; background: var(--c-bg-card);"></textarea>
-          <label class="field-label">🅰🅱🆎🅾血型說明 (唯讀🔻)</label>
-          <textarea class="editor-textarea" id="desc-blood" readonly placeholder="血型說明"
-            style="min-height: 140px; background: var(--c-bg-card);"></textarea>
-          <label class="field-label">💜曖昧期說明 (唯讀🔻)</label>
-          <textarea class="editor-textarea" id="desc-type-1" readonly placeholder="曖昧期說明"
-            style="min-height: 140px; background: var(--c-bg-card);"></textarea>
-          <label class="field-label">🧡熱戀期說明 (唯讀🔻)</label>
-          <textarea class="editor-textarea" id="desc-type-2" readonly placeholder="熱戀期說明"
-            style="min-height: 140px; background: var(--c-bg-card);"></textarea>
-          <label class="field-label">💔失戀期說明 (唯讀🔻)</label>
-          <textarea class="editor-textarea" id="desc-type-3" readonly placeholder="失戀期說明"
-            style="min-height: 140px; background: var(--c-bg-card);"></textarea>
-        </div>
+      <label class="field-label">人格特質與類型說明 (唯讀)</label>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <label class="field-label">♈♉♊♋♌♍♎♏♐♑♒♓星座說明 (唯讀🔻)</label>
+        <textarea class="editor-textarea" id="desc-zodiac" readonly placeholder="星座說明"
+          style="min-height: 140px; background: var(--c-bg-card);"></textarea>
+        <label class="field-label">🅰🅱🆎🅾血型說明 (唯讀🔻)</label>
+        <textarea class="editor-textarea" id="desc-blood" readonly placeholder="血型說明"
+          style="min-height: 140px; background: var(--c-bg-card);"></textarea>
+        <label class="field-label">💜曖昧期說明 (唯讀🔻)</label>
+        <textarea class="editor-textarea" id="desc-type-1" readonly placeholder="曖昧期說明"
+          style="min-height: 140px; background: var(--c-bg-card);"></textarea>
+        <label class="field-label">🧡熱戀期說明 (唯讀🔻)</label>
+        <textarea class="editor-textarea" id="desc-type-2" readonly placeholder="熱戀期說明"
+          style="min-height: 140px; background: var(--c-bg-card);"></textarea>
+        <label class="field-label">💔失戀期說明 (唯讀🔻)</label>
+        <textarea class="editor-textarea" id="desc-type-3" readonly placeholder="失戀期說明"
+          style="min-height: 140px; background: var(--c-bg-card);"></textarea>
       </div>
     </div>
   </div>

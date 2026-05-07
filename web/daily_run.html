@@ -16,10 +16,10 @@
 
 </head>
 
-<body class="daily-page">
+<body>
     <div class="debug-panel">
         <div class="col-left">
-            <h2 class="section-h2">🎭 AI 生成日記</h2>
+            <div class="app-title">🎭 AI 生成日記</div>
             <p class="section-desc">
                 挑選角色，填寫情境 (Scenario)，點擊【AI生成：日記與插圖】按鈕，自動生成日記，ComfyUI 繪製專屬插圖。
             </p>
@@ -44,69 +44,72 @@
                     <input type="checkbox" id="use-local-data">
                     <label for="use-local-data">讀取本機資料 (除錯用)...</label>
                 </div>
-                <div class="char-grid">
-                    <div class="status-item">
-                        <label class="form-label">主角演員</label>
-                        <div class="char-select-row">
-                            <select id="char-select"></select>
-                            <button class="reload-btn" onclick="initCharacters()">🔄</button>
-                        </div>
-                    </div>
-                    <div class="status-item">
-                        <label class="form-label">閨密 A (演員)</label>
-                        <select id="bestie-a-select" class="bestie-select">
-                            <option value="">-- 無 --</option>
-                        </select>
-                    </div>
-                    <div class="status-item">
-                        <label class="form-label">閨密 B (演員)</label>
-                        <select id="bestie-b-select" class="bestie-select">
-                            <option value="">-- 無 --</option>
-                        </select>
-                    </div>
-                    <div class="status-item">
-                        <label class="form-label">閨密 C (演員)</label>
-                        <select id="bestie-c-select" class="bestie-select">
-                            <option value="">-- 無 --</option>
-                        </select>
-                    </div>
-                </div>
-                <div id="char-personality-type-display" class="personality-type-tag" style="display:none;"></div>
-                <div id="char-source-status" class="cloud-status">☁️ 預設讀取雲端角色卡</div>
-
                 <div class="status-row">
-                    <div class="status-item">
-                        <label>🎭 伴侶狀態</label>
-                        <select id="partner-status">
-                            <option value="曖昧期">曖昧期</option>
-                            <option value="戀愛期" selected>戀愛期</option>
-                            <option value="失戀期">失戀期</option>
-                        </select>
-                    </div>
-                    <div class="status-item">
-                        <label>👋 新朋友 A 狀態</label>
-                        <select id="friend-a-status">
-                            <option value="無" selected>無</option>
-                            <option value="曖昧期">曖昧期</option>
-                            <option value="戀愛期">戀愛期</option>
-                            <option value="失戀期">失戀期</option>
-                        </select>
-                    </div>
-                    <div class="status-item">
-                        <label>👋 新朋友 B 狀態</label>
-                        <select id="friend-b-status">
-                            <option value="無" selected>無</option>
-                            <option value="曖昧期">曖昧期</option>
-                            <option value="戀愛期">戀愛期</option>
-                            <option value="失戀期">失戀期</option>
-                        </select>
-                    </div>
-                    <div class="status-item checkbox-item">
-                        <input type="checkbox" id="others-have-partner">
-                        <label for="others-have-partner">伴侶或新朋友已有對象</label>
+                    <div class="char-grid">
+                        <div class="status-item">
+                            <label class="form-label">主角演員</label>
+                            <div class="char-select-row">
+                                <select id="char-select"></select>
+                                <button class="reload-btn" onclick="initCharacters()">🔄</button>
+                            </div>
+                        </div>
+                        <div class="status-item">
+                            <label class="form-label">閨密 A (演員)</label>
+                            <select id="bestie-a-select" class="bestie-select">
+                                <option value="">-- 無 --</option>
+                            </select>
+                        </div>
+                        <div class="status-item">
+                            <label class="form-label">閨密 B (演員)</label>
+                            <select id="bestie-b-select" class="bestie-select">
+                                <option value="">-- 無 --</option>
+                            </select>
+                        </div>
+                        <div class="status-item">
+                            <label class="form-label">閨密 C (演員)</label>
+                            <select id="bestie-c-select" class="bestie-select">
+                                <option value="">-- 無 --</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
+            <div id="char-personality-type-display" class="personality-type-tag" style="display:none;"></div>
+            <div id="char-source-status" class="cloud-status">☁️ 預設讀取雲端角色卡</div>
+
+            <div class="status-row">
+                <div class="status-item">
+                    <label>🎭 伴侶狀態</label>
+                    <select id="partner-status">
+                        <option value="曖昧期">曖昧期</option>
+                        <option value="戀愛期" selected>戀愛期</option>
+                        <option value="失戀期">失戀期</option>
+                    </select>
+                </div>
+                <div class="status-item">
+                    <label>👋 新朋友 A 狀態</label>
+                    <select id="friend-a-status">
+                        <option value="無" selected>無</option>
+                        <option value="曖昧期">曖昧期</option>
+                        <option value="戀愛期">戀愛期</option>
+                        <option value="失戀期">失戀期</option>
+                    </select>
+                </div>
+                <div class="status-item">
+                    <label>👋 新朋友 B 狀態</label>
+                    <select id="friend-b-status">
+                        <option value="無" selected>無</option>
+                        <option value="曖昧期">曖昧期</option>
+                        <option value="戀愛期">戀愛期</option>
+                        <option value="失戀期">失戀期</option>
+                    </select>
+                </div>
+                <div class="status-item checkbox-item">
+                    <input type="checkbox" id="others-have-partner">
+                    <label for="others-have-partner">伴侶或新朋友已有對象</label>
+                </div>
+            </div>
+
 
             <!-- 日期 -->
             <div class="form-section">
@@ -193,14 +196,19 @@
             </div>
 
             <!-- LOG -->
-            <div id="log-output" class="log-area log-area-daily">等待任務...</div>
+            <div class="form-section">
+                <textarea id="log-output" class="log-area log-area-daily">等待任務...</textarea>
+            </div>
+
             <div class="log-actions-sm">
                 <button class="btn secondary-btn log-action-btn" onclick="clearLogOutput()">🗑️清空</button>
                 <button class="btn secondary-btn log-action-btn" onclick="copyLogOutput()">📋複製</button>
                 <button class="btn secondary-btn log-action-btn" onclick="showLogModal()">🔲大型彈窗</button>
             </div>
+
             <div id="diary-cloud-status" class="cloud-status">雲端狀態</div>
         </div>
+
 
         <!-- 右欄：日記編輯器 -->
         <div class="col-right">
@@ -218,13 +226,13 @@
                     </select>
                 </div>
 
-                <div class="form-section form-section-fill">
+                <div class="form-section">
                     <label class="form-label">日記文字內容 (Story)</label>
                     <textarea id="edit-diary-text" class="diary-text-area"
                         placeholder="先點擊上方☁️從雲端讀取清單 或 📁從本地讀取清單。再選取您要修改的日記。"></textarea>
                 </div>
 
-                <div class="form-section">
+                <div class="form-section  form-section-fill">
                     <label class="form-label">生圖提示詞 (Image Prompt)</label>
                     <textarea id="edit-image-prompt" class="image-prompt-area"></textarea>
                 </div>

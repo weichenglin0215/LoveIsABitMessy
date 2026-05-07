@@ -10,17 +10,17 @@
 :root {
 
   /* ── 背景 ── */
-  --c-bg-root: #0d0d12;
-  --c-bg-main: #12121a;
+  --c-bg-root: hsl(240, 16%, 6%);
+  --c-bg-main: hsl(240, 18%, 9%);
   --c-bg-card: hsla(240, 15%, 13%, 0.92);
-  --c-bg-panel: hsla(240, 0%, 10%, 0.85);
+  --c-bg-panel: hsla(240, 10%, 10%, 0.85);
   --c-bg-input: var(--c-bg-main);
   /* 標準輸入框底色 */
-  --c-bg-input-dark: #000;
+  --c-bg-input-dark: hsl(0, 0%, 0%);
   /* daily_run 純黑底色 */
-  --c-bg-ghost: rgba(255, 255, 255, 0.06);
+  --c-bg-ghost: hsla(0, 0%, 100%, 0.06);
   /* secondary 按鈕底色 */
-  --c-bg-ghost-hover: rgba(255, 255, 255, 0.14);
+  --c-bg-ghost-hover: hsla(0, 0%, 100%, 0.14);
 
   /* ── 邊框 ── */
   --c-border: hsla(266, 0%, 64%, 0.3);
@@ -34,20 +34,27 @@
 
   /* ── 主色 (紫) ── */
   --c-accent: hsl(266, 55%, 52%);
-  --c-accent-light: hsl(266, 80%, 76%);
-  --c-accent-hover: hsl(266, 55%, 42%);
+  --c-accent-hover: hsl(266, 80%, 76%);
+  --c-accent-field-label: hsl(266, 40%, 76%);
+  --c-accent-light: hsl(266, 80%, 75%);
   --c-accent-glow: hsla(266, 0%, 64%, 0.6);
   --c-accent-subtle: rgba(156, 111, 214, 0.20);
   /* 圓形按鈕、active 背景 */
+
+  /* ── 輔色 (secondary) ── */
+  --c-secondary: hsl(220, 50%, 40%);
+  --c-secondary-light: hsl(220, 50%, 55%);
+  --c-secondary-bg: hsl(220, 40%, 30%);
+  --c-secondary-hover: hsl(220, 50%, 75%);
 
   /* ── 輔色 (粉) ── */
   --c-pink: #f472b6;
   --c-pink-bg: rgba(244, 114, 182, 0.10);
 
   /* ── 文字 ── */
-  --c-text-main: #e0e0e0;
-  --c-text-sec: #9090b0;
-  --c-text-muted: #aaa;
+  --c-text-main: hsl(0, 0%, 88%);
+  --c-text-sec: hsl(240, 17%, 63%);
+  --c-text-muted: hsl(0, 0%, 67%);
   /* 更暗的次要文字 */
   --c-text-dark: #000;
   /* hover 反色文字 */
@@ -58,26 +65,33 @@
   --c-log-text: hsl(120, 50%, 70%);
 
   /* ── 間距 ── */
-  --gap: 10px;
-  --gap-sm: 5px;
-  --gap-xs: 2px;
+  --gap-xl: 24px;
+  --gap-ls: 16px;
+  --gap-md: 10px;
+  --gap-sm: 7px;
+  --gap-xs: 4px;
 
   /* ── 內距 ── */
-  --pad: 8px 16px;
   /* 通用 padding（兩值） */
-  --pad-col: 12px;
+  --pad-both-lg: 14px;
+  --pad-both-md: 10px;
+  --pad-both-sm: 7px;
+  --pad-both-xs: 4px;
   /* .col / .editor-panel 的單值 padding */
-  --pad-sm: 4px 8px;
-  --pad-xs: 2px 4px;
+  --pad-md: 10px 20px;
+  --pad-sm: 7px 14px;
+  --pad-xs: 4px 8px;
   --pad-icon: 4px 8px;
   /* 圖示按鈕 padding */
 
   /* ── 圓角 ── */
-  --radius: 12px;
+  --radius-xl: 16px;
+  --radius-lg: 12px;
+  --radius-md: 10px;
   --radius-sm: 8px;
   --radius-xs: 6px;
   --radius-2xs: 4px;
-  --radius-pill: 20px;
+  --radius-pill: 15px;
   /* 膠囊按鈕 */
   --radius-circle: 50%;
   /* 圓形按鈕 */
@@ -85,12 +99,14 @@
   /* ── 輸入欄 ── */
   --input-height: 2rem;
   --input-padding: 0.2rem 0.4rem;
-  --input-font-size: var(--font-size-lg);
+  --input-font-size: var(--font-size-edit_text);
 
   /* ── 按鈕尺寸 ── */
-  --btn-padding: 4px 20px;
+  --btn-padding-md: 6px 20px;
   --btn-padding-sm: 4px 8px;
   --btn-padding-xs: 2px 4px;
+  --btn-padding-sm-wild: 4px 12px;
+  --btn-padding-xs-wild: 2px 8px;
   --btn-circle-size: 30px;
   --btn-circle-size-sm: 24px;
 
@@ -108,14 +124,14 @@
   --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Monaco, 'Courier New', monospace;
 
   /* ── 字體尺寸 ── */
-  --font-size-xs: 0.5rem;
-  --font-size-sm: 0.7rem;
-  --font-size-md: 0.85rem;
-  --font-size-lg: 1.0rem;
+  --font-size-xs: 0.6rem;
+  --font-size-sm: 0.8rem;
+  --font-size-md: 1.0rem;
+  --font-size-lg: 1.2rem;
   --font-size-edit_text: 1.0rem;
-  --font-size-xl: 1.2rem;
-  --font-size-2xl: 1.5rem;
-  --font-size-3xl: 2.0rem;
+  --font-size-xl: 1.4rem;
+  --font-size-2xl: 1.8rem;
+  --font-size-3xl: 2.2rem;
 
   /* ── 按鈕字體尺寸（向後相容別名） ── */
   --btn-size-sm: var(--font-size-sm);
@@ -154,66 +170,24 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* characters_editor.html <body data-period="night"> */
-body[data-period] {
-  display: flex;
-  flex-direction: column;
-  padding: 0.4rem;
-  box-sizing: border-box;
-}
-
 
 /* ─────────────────────────────────────────────────────────────
    3. 背景層
 ───────────────────────────────────────────────────────────── */
-#star-bg {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-}
-
-#glass-overlay {
-  position: fixed;
-  inset: 0;
-  background: hsla(0, 0%, 0%, 0.60);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  z-index: -1;
-  pointer-events: none;
-}
-
 
 /* ─────────────────────────────────────────────────────────────
-   4. novel_generator ── .app-container 主版型 (4 欄 grid)
+   3-A. 頂部導覽列（.app-topbar）左邊是app名稱，右邊是按鈕
 ───────────────────────────────────────────────────────────── */
-.app-container {
-  display: grid;
-  grid-template-columns: 280px auto 1fr 1.6fr;
-  grid-template-rows: 60px 1fr;
-  height: 100vh;
-  gap: var(--gap);
-  padding: var(--gap);
-  box-sizing: border-box;
-}
-
-.app-container>header {
-  grid-column: 1 / 5;
-}
-
-header,
-.top-nav {
+.app-topbar {
+  position: relative;
+  z-index: 2;
+  background: var(--c-bg-panel);
+  border-bottom: 1px solid var(--c-border);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--gap);
-  padding: 0 20px;
-  background: var(--c-bg-panel);
-  border-radius: var(--radius);
-  border: 1px solid var(--c-border);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  gap: var(--pad-both-lg);
+  padding: 0 16px;
+  height: var(--ll-topbar-h);
   flex-shrink: 0;
 }
 
@@ -221,8 +195,7 @@ header,
 /* ─────────────────────────────────────────────────────────────
    5. Logo
 ───────────────────────────────────────────────────────────── */
-.logo,
-.nav-logo {
+.app-logo {
   font-size: var(--font-size-xl);
   font-weight: 700;
   background: linear-gradient(45deg, #a78bfa, var(--c-pink));
@@ -231,10 +204,83 @@ header,
   background-clip: text;
   display: flex;
   align-items: center;
-  gap: var(--gap);
+  gap: var(--gap-md);
   white-space: nowrap;
   flex-shrink: 0;
 }
+
+/* ─────────────────────────────────────────────────────────────
+   27. novel_generator ── 頁首導覽列元素
+───────────────────────────────────────────────────────────── */
+.nav-version {
+  font-size: var(--font-size-lg);
+  opacity: 0.6;
+}
+
+.cloud-load-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  margin-right: var(--gap-sm);
+}
+
+#cloud-novel-select {
+  background: #111;
+  color: #fff;
+  border: 1px solid var(--c-border);
+  padding: var(--gap-sm) 0.3rem;
+  border-radius: var(--radius-2xs);
+  font-size: var(--font-size-lg);
+  width: 250px;
+  height: auto;
+}
+
+.book-title {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.book-title input {
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid var(--c-border);
+  color: #fff;
+  padding: 3px 0.3rem;
+  border-radius: var(--radius-2xs);
+  width: 15rem;
+  font-size: var(--input-font-size);
+  height: auto;
+}
+
+/* 頂部導覽連結 */
+.app-topbar-nav {
+  display: flex;
+  gap: var(--pad-both-md);
+  font-size: var(--ll-font-md);
+}
+
+/* .app-topbar-nav a 加上"a"是針對loveline.html的頁首導覽列，不要更動*/
+.app-topbar-nav a {
+  color: var(--c-text-sec);
+  text-decoration: none;
+  font-size: var(--ll-font-sm);
+  padding: 3px var(--gap-md);
+  border-radius: var(--radius-md);
+  transition: all 0.2s;
+}
+
+.app-topbar-nav a:hover {
+  color: #fff;
+  background: var(--ll-item-bg-hover);
+}
+
+.app-topbar-nav a.active {
+  color: var(--c-accent-light);
+  background: rgba(162, 89, 255, 0.15);
+}
+
+
+
 
 
 /* ─────────────────────────────────────────────────────────────
@@ -242,7 +288,7 @@ header,
 ───────────────────────────────────────────────────────────── */
 .col {
   background: var(--c-bg-panel);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   border: 1px solid var(--c-border);
   display: flex;
   flex-direction: column;
@@ -253,7 +299,7 @@ header,
 }
 
 .col-header {
-  padding: var(--gap-sm) var(--pad-col);
+  padding: var(--gap-sm) var(--pad-both-md);
   border-bottom: 1px solid var(--c-border);
   display: flex;
   justify-content: space-between;
@@ -266,7 +312,7 @@ header,
 .scroll-area {
   flex: 1;
   overflow-y: auto;
-  padding: var(--pad-col);
+  padding: var(--pad-both-md);
   font-size: var(--font-size-lg);
   min-height: 0;
 }
@@ -278,10 +324,12 @@ header,
 .debug-panel {
   max-width: 1800px;
   width: 100%;
+  height: 100%;
   margin: 0 auto;
-  background: var(--c-bg-card);
-  padding: 0.3rem 0.9rem;
-  border-radius: var(--radius);
+  /*auto可以讓區塊左右置中*/
+  background: var(--c-bg-root);
+  padding: var(--pad-both-lg);
+  border-radius: var(--radius-md);
   border: 1px solid #444;
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -289,22 +337,28 @@ header,
   flex: 1;
   min-height: 0;
   box-sizing: border-box;
+  /*文字太多時可以上下捲動*/
+  overflow-y: scroll;
 }
 
 .col-left {
+  background: var(--c-bg-root);
   border-right: 1px solid #444;
-  padding-right: 20px;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.col-right {
+  padding: var(--pad-both-md);
   display: flex;
   flex-direction: column;
   min-height: 0;
   overflow-y: auto;
-  padding-right: var(--gap-sm);
+}
+
+.col-right {
+  background: var(--c-bg-root);
+  border-right: 1px solid #444;
+  padding: var(--pad-both-md);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 
@@ -313,13 +367,13 @@ header,
 ───────────────────────────────────────────────────────────── */
 .editor-header {
   max-width: 1200px;
-  margin: 0 auto var(--gap);
+  margin: 0 auto var(--gap-md);
   text-align: center;
   flex-shrink: 0;
 }
 
 .editor-header h1 {
-  font-weight: 300;
+  font-weight: 500;
   font-size: var(--heading-xl);
   margin-bottom: var(--gap-sm);
   color: var(--c-text-main);
@@ -331,12 +385,12 @@ header,
 ───────────────────────────────────────────────────────────── */
 .conn-panel {
   background: var(--c-bg-card);
-  border-radius: var(--radius);
-  padding: var(--gap-sm) var(--pad-col);
+  border-radius: var(--radius-md);
+  padding: var(--gap-sm) var(--pad-both-md);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--pad-col);
+  gap: var(--pad-both-md);
 }
 
 
@@ -353,8 +407,8 @@ header,
 
 .editor-panel {
   background: var(--c-bg-card);
-  border-radius: var(--radius);
-  padding: var(--gap-sm) var(--pad-col);
+  border-radius: var(--radius-md);
+  padding: var(--gap-sm) var(--pad-both-md);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   display: flex;
   flex-direction: column;
@@ -366,30 +420,11 @@ header,
 /* ─────────────────────────────────────────────────────────────
    11. Toolbar / Toolbox
 ───────────────────────────────────────────────────────────── */
-.toolbar {
-  display: flex;
-  gap: var(--gap-sm);
-  align-items: center;
-  margin-bottom: var(--gap-sm);
-  flex-wrap: wrap;
-}
-
-.toolbar select {
-  flex: 1 1 200px;
-  padding: 0.2rem 0.4rem;
-  border-radius: 10px;
-  border: 1px solid var(--c-border-input);
-  background-color: var(--c-bg-input);
-  color: var(--c-text-main);
-  font-family: var(--font-ui);
-  font-size: var(--font-size-lg);
-  max-width: 440px;
-}
 
 .toolbox {
   display: flex;
   align-items: center;
-  gap: var(--gap);
+  gap: var(--gap-md);
   flex-wrap: wrap;
   margin-top: var(--gap-sm);
 }
@@ -400,27 +435,38 @@ header,
 ───────────────────────────────────────────────────────────── */
 
 /* ── 欄位標籤 ──
-   .field-label：次要色（characters_editor JSON 欄位標籤）
-   .form-label ：強調色（daily_run 表單標籤）                    */
-.field-label,
-.form-label {
+    .form-label ：強調色（主表單標籤） 
+    .field-label：次要色（次要欄位標籤）
+    盡量讓表單都使用這兩個標籤。*/
+.app-title,
+.app-title-small {
+  font-size: var(--font-size-2xl);
+  font-weight: 500;
+  color: var(--c-text-main);
   display: block;
-  font-size: var(--font-size-lg);
-  font-weight: var(--heading-weight);
-  margin-top: 0.2rem;
-  margin-bottom: 0.2rem;
-  user-select: none;
 }
 
-.field-label {
-  color: var(--c-text-sec);
+.app-title-small {
+  font-size: var(--font-size-lg);
 }
 
 .form-label {
   color: var(--c-accent-light);
-  margin-top: 0.3rem;
-  margin-bottom: 0.3rem;
+  font-size: var(--font-size-lg);
+  display: block;
+  font-weight: var(--heading-weight);
+  margin-top: var(--pad-both-xs);
 }
+
+.field-label {
+  color: var(--c-accent-field-label);
+  font-size: var(--font-size-md);
+  display: block;
+  font-weight: var(--heading-weight);
+  margin: var(--pad-both-xs);
+}
+
+
 
 /* ── 次要 / 狀態說明文字 ── */
 .hint,
@@ -430,34 +476,16 @@ header,
 .section-desc,
 .server-status-text {
   color: var(--c-text-sec);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-md);
   line-height: 1.4;
 }
 
-.hint {
-  margin-top: 0;
-  opacity: 0.7;
-}
-
-.cloud-status {
-  font-size: 0.85rem;
-  margin-top: var(--gap-sm);
-  padding: 0 2px;
-}
-
-.conn-status {
-  text-align: center;
-}
-
-.section-desc {
-  margin-bottom: 15px;
-}
-
 /* ── 設定組 / 模型列 小標籤 ── */
+.model-select-wrap label,
 .settings-label,
 .model-label,
 .nav-label {
-  font-size: 0.9rem;
+  font-size: var(--font-size-md);
   color: var(--c-text-muted);
   white-space: nowrap;
 }
@@ -562,15 +590,17 @@ textarea,
 .story-premise-textarea,
 textarea#main-editor {
   width: 100%;
+  flex: 1;
+  min-height: 5rem;
   background: rgba(0, 0, 0, 0.30);
   border: 1px solid var(--c-border);
   border-radius: var(--radius-sm);
   color: var(--c-text-main);
-  padding: var(--pad-col);
-  font-size: var(--font-size-xl);
-  line-height: 1.6;
-  resize: none;
-  font-family: var(--font-ui);
+  padding: var(--pad-both-md);
+  font-size: var(--font-size-lg);
+  line-height: 1.4;
+  resize: vertical;
+  font-family: var(--font-mono);
   transition: border-color 0.2s;
 }
 
@@ -582,15 +612,7 @@ textarea#main-editor:focus {
   border-color: var(--c-border-focus);
 }
 
-/* .editor-textarea：characters_editor 等寬字，可撐高 */
-.editor-textarea {
-  flex: 1;
-  min-height: 5rem;
-  padding: 0.2rem 0.5rem;
-  border-radius: 10px;
-  font-family: var(--font-mono);
-  font-size: var(--font-size-xl);
-}
+
 
 /* .story-premise-textarea：故事粗綱，撐滿 */
 .story-premise-textarea {
@@ -603,7 +625,7 @@ textarea#main-editor:focus {
 /* textarea#main-editor：小說內文主編輯器 */
 textarea#main-editor {
   flex: 1;
-  padding: var(--gap);
+  padding: var(--gap-md);
   color: hsl(0, 0%, 94%);
 }
 
@@ -614,8 +636,8 @@ textarea#main-editor {
   border-radius: var(--radius-2xs);
   color: var(--c-text-muted);
   font-size: var(--font-size-xl);
-  padding: var(--gap-sm) var(--gap);
-  margin-bottom: var(--pad-col);
+  padding: var(--gap-sm) var(--gap-md);
+  margin-bottom: var(--pad-both-md);
   resize: vertical;
   min-height: 3rem;
   font-family: var(--font-ui);
@@ -658,7 +680,7 @@ textarea#main-editor {
 .editor-title {
   font-size: var(--input-font-size);
   line-height: 1.6;
-  margin-bottom: var(--gap);
+  margin-bottom: var(--gap-md);
   color: var(--c-accent-light);
   background: transparent;
   border: 1px solid var(--c-border);
@@ -677,7 +699,7 @@ textarea#main-editor {
 /* ── 唯讀提示詞預覽框 ── */
 .prompt-preview {
   background: #1a1a1a;
-  padding: var(--gap);
+  padding: var(--gap-md);
   border-radius: var(--radius-sm);
   color: var(--c-text-muted);
   font-size: var(--font-size-lg);
@@ -696,14 +718,15 @@ body.daily-page select {
   color: #fff;
 }
 
+/* 日記的 textarea */
 body.daily-page textarea {
   background: var(--c-bg-input-dark);
   border-color: var(--c-border-dark);
   color: #fff;
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-xl);
   font-family: var(--font-mono);
   line-height: 1.6;
-  padding: var(--pad-col);
+  padding: var(--pad-both-md);
 }
 
 
@@ -718,9 +741,9 @@ body.daily-page textarea {
   justify-content: center;
   gap: var(--gap-sm);
   font-family: var(--font-ui);
-  font-size: var(--font-size-xl);
-  margin: var(--gap-sm) 6px;
-  padding: var(--btn-padding);
+  font-size: var(--font-size-lg);
+  margin: 0;
+  padding: var(--btn-padding-xs-wild);
   border-radius: var(--radius-pill);
   border: 1px solid transparent;
   cursor: pointer;
@@ -736,7 +759,7 @@ body.daily-page textarea {
 /* ── 主要 (紫填色) ── */
 .primary-btn {
   background: var(--c-accent);
-  border-color: var(--c-accent);
+  border-color: var(--c-accent-light);
   color: #fff;
 }
 
@@ -744,10 +767,10 @@ body.daily-page textarea {
   background: var(--c-accent-hover);
 }
 
-/* ── 次要 (幽靈框) ── */
+/* ── 次要 (藍色) ── */
 .secondary-btn {
-  background: var(--c-bg-ghost);
-  border-color: var(--c-border);
+  background: var(--c-secondary);
+  border-color: var(--c-secondary-light);
   color: var(--c-text-main);
 }
 
@@ -761,7 +784,7 @@ body.daily-page textarea {
   align-items: center;
   justify-content: center;
   gap: var(--gap-sm);
-  padding: var(--btn-padding-sm);
+  padding: var(--btn-padding-xs-wild);
   border-radius: 15px;
   border: 1px solid var(--c-pink);
   background: var(--c-pink-bg);
@@ -785,7 +808,7 @@ body.daily-page textarea {
 
 /* daily_run 的 .ai-btn 較大 */
 body.daily-page .ai-btn {
-  padding: 0 var(--pad-col);
+  padding: 0 var(--pad-both-md);
   font-size: var(--font-size-2xl);
 }
 
@@ -826,9 +849,8 @@ body.daily-page .ai-btn {
 }
 
 /* ── 幽靈圖示按鈕（透明底，hover 微亮）──
-   .btn-icon / .toolbar .btn-icon / .btn-lock-ch / .sec-lock / .btn-remove-char */
+   .btn-icon / .btn-lock-ch / .sec-lock / .btn-remove-char */
 .btn-icon,
-.toolbar .btn-icon,
 .btn-lock-ch,
 .sec-lock,
 .btn-remove-char {
@@ -842,17 +864,7 @@ body.daily-page .ai-btn {
   user-select: none;
 }
 
-.btn-icon,
-.toolbar .btn-icon {
-  color: var(--c-text-sec);
-  border-radius: var(--radius-xs);
-}
 
-.btn-icon:hover,
-.toolbar .btn-icon:hover {
-  background: rgba(255, 255, 255, 0.07);
-  color: var(--c-accent-light);
-}
 
 .btn-lock-ch,
 .sec-lock {
@@ -918,7 +930,7 @@ body.daily-page .ai-btn {
 }
 
 .reload-btn {
-  margin-left: var(--gap);
+  margin-left: var(--gap-md);
 }
 
 /* ── 小型操作按鈕（日誌操作 / 載入清單 / 今天 / AI編輯）──
@@ -930,8 +942,8 @@ body.daily-page .ai-btn {
 .ai-btn-sm,
 .btn-edit-sm {
   font-size: var(--font-size-md);
-  padding: var(--btn-padding-sm);
-  border-radius: var(--radius-sm);
+  padding: var(--btn-padding-xs-wild);
+  border-radius: var(--radius-md);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -963,8 +975,8 @@ body.daily-page .ai-btn {
 
 .btn-today {
   height: var(--input-height);
-  padding: 0 var(--gap);
-  margin: 0 4rem 0 var(--gap);
+  padding: 0 var(--gap-md);
+  margin: 0 4rem 0 var(--gap-md);
 }
 
 .ai-btn-sm {
@@ -980,7 +992,7 @@ body.daily-page .ai-btn {
 
 /* ── 伺服器啟動按鈕 ── */
 #start-server-btn {
-  padding: var(--btn-padding-sm);
+  padding: var(--btn-padding-xs-wild);
   font-size: var(--font-size-lg);
   margin-top: 0;
   background: #2a1a3e;
@@ -1065,14 +1077,14 @@ body.daily-page .ai-btn {
   letter-spacing: 0.1rem;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.10);
-  padding: var(--gap);
+  padding: var(--gap-md);
   border-radius: var(--radius-sm);
-  margin-bottom: var(--gap);
+  margin-bottom: var(--gap-md);
   position: relative;
 }
 
 .char-mode-toggle {
-  padding: var(--gap);
+  padding: var(--gap-md);
   border-bottom: 1px solid var(--c-border);
   display: flex;
   flex-direction: column;
@@ -1087,7 +1099,7 @@ body.daily-page .ai-btn {
   background: #111;
   color: #fff;
   border: 1px solid #444;
-  padding: var(--gap-sm) var(--gap);
+  padding: var(--gap-sm) var(--gap-md);
   border-radius: var(--radius-2xs);
   margin-top: var(--gap-sm);
   height: auto;
@@ -1098,10 +1110,10 @@ body.daily-page .ai-btn {
    17. novel_generator ── 伺服器狀態列
 ───────────────────────────────────────────────────────────── */
 .server-status-row {
-  margin: 0 var(--gap) var(--gap);
+  margin: 0 var(--gap-md) var(--gap-md);
   display: flex;
   align-items: center;
-  gap: var(--gap);
+  gap: var(--gap-md);
   flex-wrap: wrap;
 }
 
@@ -1143,16 +1155,15 @@ body.daily-page .ai-btn {
 
 
 /* ─────────────────────────────────────────────────────────────
-   18. novel_generator ── 設定格 (.status-row / .status-item)
+   18. 將幾個設定格包起來有外框 (.status-row / .status-item)
 ───────────────────────────────────────────────────────────── */
 .status-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 15px;
-  margin-top: var(--gap);
+  gap: var(--gap-md);
   background: rgba(255, 255, 255, 0.05);
-  padding: 15px;
-  border-radius: var(--radius);
+  padding: var(--pad-both-md);
+  border-radius: var(--radius-md);
   border: 1px solid #444;
 }
 
@@ -1165,7 +1176,7 @@ body.daily-page .ai-btn {
 
 .status-item select {
   margin-bottom: 0;
-  padding: var(--gap-sm) var(--gap);
+  padding: var(--gap-sm) var(--gap-md);
   height: auto;
 }
 
@@ -1181,10 +1192,12 @@ body.daily-page .ai-btn {
    19. LOG 區
 ───────────────────────────────────────────────────────────── */
 .log-area {
+  flex: 1;
+  display: flex;
   background: #000;
   color: var(--c-log-text);
   font-family: 'Courier New', monospace;
-  padding: var(--gap);
+  padding: var(--gap-md);
   border-radius: var(--radius-sm);
   overflow-y: scroll;
   white-space: pre-wrap;
@@ -1192,11 +1205,13 @@ body.daily-page .ai-btn {
   font-size: var(--font-size-xl);
   line-height: 1.5;
   border: 1px solid #333;
-  resize: vertical;
 }
 
 .log-area-daily {
-  height: 300px;
+  flex: 1;
+  display: flex;
+  height: 6rem;
+  min-height: 3rem;
 }
 
 
@@ -1213,7 +1228,7 @@ body.daily-page .ai-btn {
 
 .chapter-title-row {
   display: flex;
-  gap: var(--gap);
+  gap: var(--gap-md);
   margin-bottom: var(--gap-sm);
   align-items: center;
 }
@@ -1222,7 +1237,7 @@ body.daily-page .ai-btn {
   margin-left: 20px;
   display: flex;
   flex-direction: column;
-  gap: var(--gap);
+  gap: var(--gap-md);
 }
 
 .section-item {
@@ -1260,7 +1275,7 @@ body.daily-page .ai-btn {
   background: #222;
   color: #eee;
   padding: 24px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   width: 400px;
   max-width: 90%;
   border: 1px solid #444;
@@ -1309,13 +1324,13 @@ body.daily-page .ai-btn {
 .modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: var(--pad-col);
+  gap: var(--pad-both-md);
 }
 
 .modal-header-bar {
   display: flex;
   align-items: center;
-  padding: var(--pad-col) 20px;
+  padding: var(--pad-both-md) 20px;
   background: #333;
   border-bottom: 1px solid #444;
   flex-shrink: 0;
@@ -1387,15 +1402,15 @@ body.layout-fullscreen {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  padding: var(--gap);
-  gap: var(--gap);
+  padding: var(--gap-md);
+  gap: var(--gap-md);
 }
 
 .layout-fullscreen .col-area {
   flex: 1;
   min-height: 0;
   display: flex;
-  gap: var(--gap);
+  gap: var(--gap-md);
 }
 
 body.layout-scroll {
@@ -1408,22 +1423,22 @@ body.layout-scroll {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  padding: var(--gap);
-  gap: var(--gap);
+  padding: var(--gap-md);
+  gap: var(--gap-md);
 }
 
 .layout-scroll .page-content {
   display: flex;
   flex-direction: column;
-  gap: var(--gap);
+  gap: var(--gap-md);
   padding-bottom: 2rem;
 }
 
 .layout-scroll .section-block {
   background: var(--c-bg-card);
   border: 1px solid var(--c-border);
-  border-radius: var(--radius);
-  padding: var(--pad);
+  border-radius: var(--radius-md);
+  padding: var(--pad-md);
   backdrop-filter: blur(4px);
 }
 
@@ -1431,7 +1446,7 @@ body.layout-scroll {
   display: flex;
   align-items: center;
   gap: var(--gap-sm);
-  margin-bottom: var(--pad-col);
+  margin-bottom: var(--pad-both-md);
   padding-bottom: var(--gap-sm);
   border-bottom: 1px solid var(--c-border);
 }
@@ -1440,61 +1455,33 @@ body.layout-scroll {
 .grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--gap);
+  gap: var(--gap-md);
 }
 
 .grid-3 {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: var(--gap);
+  gap: var(--gap-md);
 }
 
 .grid-4 {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--gap);
+  gap: var(--gap-md);
 }
 
 .grid-auto {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: var(--gap);
+  gap: var(--gap-md);
 }
 
 .flex-1 {
   flex: 1;
 }
 
-.flex-spacer {
-  flex: 1;
-}
 
 
-/* ─────────────────────────────────────────────────────────────
-   24. novel_generator 頁面 body & .app-container 版型
-───────────────────────────────────────────────────────────── */
-body.generator-page {
-  background: var(--c-bg-root) url('https://w.wallhaven.cc/full/8o/wallhaven-8o9m6j.jpg') no-repeat center center fixed;
-  background-size: cover;
-  display: grid !important;
-  place-items: stretch;
-  width: 100vw;
-}
-
-body.generator-page .app-container {
-  grid-template-columns: unset;
-  grid-template-rows: 2.5rem minmax(0, 1fr);
-  width: 100vw;
-  max-width: 100vw;
-  gap: 0;
-  padding: 0;
-  margin: 0;
-  overflow: hidden;
-}
-
-body.generator-page header {
-  grid-column: 1 / -1;
-}
 
 
 /* ─────────────────────────────────────────────────────────────
@@ -1504,7 +1491,7 @@ body.generator-page header {
   display: grid;
   grid-template-columns: 1fr 4px 1fr 4px 1fr 4px 1fr;
   grid-column: 1 / -1;
-  height: 100%;
+  height: calc(100vh - var(--ll-topbar-h));
   width: 100%;
   min-height: 0;
 }
@@ -1549,60 +1536,6 @@ body.generator-page header {
 }
 
 
-/* ─────────────────────────────────────────────────────────────
-   27. novel_generator ── 頁首導覽列元素
-───────────────────────────────────────────────────────────── */
-.nav-version {
-  font-size: var(--font-size-lg);
-  opacity: 0.6;
-}
-
-.nav-book-bar {
-  margin-left: 20px;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-}
-
-.global-actions {
-  display: flex;
-  align-items: center;
-}
-
-.cloud-load-wrapper {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--gap-sm);
-  margin-right: var(--gap-sm);
-}
-
-#cloud-novel-select {
-  background: #111;
-  color: #fff;
-  border: 1px solid var(--c-border);
-  padding: var(--gap-sm) 0.3rem;
-  border-radius: var(--radius-2xs);
-  font-size: var(--font-size-lg);
-  width: 250px;
-  height: auto;
-}
-
-.book-title {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-}
-
-.book-title input {
-  background: rgba(255, 255, 255, 0.10);
-  border: 1px solid var(--c-border);
-  color: #fff;
-  padding: 3px 0.3rem;
-  border-radius: var(--radius-2xs);
-  width: 15rem;
-  font-size: var(--input-font-size);
-  height: auto;
-}
 
 
 /* ─────────────────────────────────────────────────────────────
@@ -1651,7 +1584,7 @@ body.generator-page header {
   color: #fff;
   border: 1px solid #444;
   border-radius: var(--radius-2xs);
-  padding: var(--gap-sm) var(--gap);
+  padding: var(--gap-sm) var(--gap-md);
   font-size: 0.9rem;
   width: 100%;
   height: auto;
@@ -1688,7 +1621,7 @@ body.generator-page header {
 ───────────────────────────────────────────────────────────── */
 .log-actions {
   display: flex;
-  gap: var(--gap);
+  gap: var(--gap-md);
   margin-top: var(--gap-sm);
   margin-right: 1rem;
   justify-content: flex-end;
@@ -1696,7 +1629,7 @@ body.generator-page header {
 
 .log-actions-sm {
   display: flex;
-  gap: var(--gap-xs);
+  gap: var(--gap-xl);
   margin-top: var(--gap-xs);
 }
 
@@ -1732,24 +1665,34 @@ body.generator-page header {
 
 
 /* ─────────────────────────────────────────────────────────────
-   32. characters_editor ── 特定版型
+   32. characters_editor ── 特定版型，勿取消或合併，因為每個ROW的內容物個數皆不同
 ───────────────────────────────────────────────────────────── */
-.char-row-main {
+.char-row-manager,
+.char-row-main,
+.char-row-dates,
+.char-row-types {
   display: grid;
-  grid-template-columns: 3fr 1fr 1fr 1fr 1fr;
-  gap: var(--pad-col);
+  gap: var(--pad-both-md);
+  align-items: center;
+  flex-wrap: wrap;
+  color: var(--c-text-sec);
+  border-radius: var(--radius-xs);
+}
+
+.char-row-manager {
+  grid-template-columns: 1.5fr auto 1fr 1fr;
+}
+
+.char-row-main {
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
 }
 
 .char-row-dates {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr;
-  gap: var(--pad-col);
+  grid-template-columns: 1fr 1fr 1fr;
 }
 
 .char-row-types {
-  display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: var(--pad-col);
 }
 
 .editor-textarea[readonly] {
@@ -1775,21 +1718,22 @@ body.daily-page {
 
 /* ── 表單區塊 ── */
 .form-section {
-  margin-bottom: 3px;
-  padding-bottom: 3px;
+  margin-bottom: 0px;
+  padding-bottom: 0px;
 }
 
 .form-section-fill {
   flex: 1;
   display: flex;
   flex-direction: column;
+  height: 3rem;
 }
 
 /* ── 右欄編輯器外框 ── */
 .editor-section {
   background: rgba(255, 255, 255, 0.03);
   padding: 15px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   border: 1px solid #333;
   height: 100%;
   display: flex;
@@ -1800,22 +1744,22 @@ body.daily-page {
 .btn-row {
   display: flex;
   gap: 15px;
-  margin-top: var(--gap);
+  margin-top: var(--gap-md);
   flex-wrap: wrap;
   align-items: center;
 }
 
 /* ── AI 大按鈕容器 ── */
 .ai-btn-container {
-  padding: 0 var(--pad-col);
+  padding: 0 var(--pad-both-md);
 }
 
 /* ── 勾選列 ── */
 .toggle-row {
   display: flex;
   align-items: center;
-  gap: var(--gap);
-  margin-bottom: var(--pad-col);
+  gap: var(--gap-md);
+  margin-bottom: var(--pad-both-md);
 }
 
 .toggle-row input[type="checkbox"] {
@@ -1850,9 +1794,9 @@ body.daily-page {
 /* ── 日記專案管理面板 ── */
 .project-panel {
   background: rgba(255, 255, 255, 0.05);
-  padding: var(--gap-sm) var(--gap);
-  border-radius: var(--radius);
-  margin-bottom: var(--gap);
+  padding: var(--gap-sm) var(--gap-md);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--gap-md);
 }
 
 .project-panel .form-label {
@@ -1873,7 +1817,7 @@ body.daily-page {
 
 .project-select-dropdown {
   display: none;
-  margin-bottom: var(--gap);
+  margin-bottom: var(--gap-md);
   border: 1px solid var(--c-accent) !important;
 }
 
@@ -1881,7 +1825,7 @@ body.daily-page {
 .char-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--gap);
+  gap: var(--gap-md);
 }
 
 .char-select-row {
@@ -1922,7 +1866,7 @@ body.daily-page {
 }
 
 .image-prompt-area {
-  height: 200px;
+  min-height: 200px;
 }
 
 /* ── 伺服器 + 模型設定列 ── */
@@ -1989,84 +1933,6 @@ body.daily-page {
 }
 
 
-/* ─────────────────────────────────────────────────────────────
-   34-A. 頁面外層 Shell（.app-outer / .app-inner）
-───────────────────────────────────────────────────────────── */
-.app-outer {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  width: 100vw;
-}
-
-.app-inner {
-  flex: 1;
-  overflow: hidden;
-}
-
-
-/* ─────────────────────────────────────────────────────────────
-   34-B. 頂部導覽列（.app-topbar）
-        ── 與 editer.css header/.top-nav 相似，但高度固定，
-           故獨立定義，不合併以避免影響其他頁面 ──
-───────────────────────────────────────────────────────────── */
-.app-topbar {
-  position: relative;
-  z-index: 2;
-  background: var(--c-bg-panel);
-  border-bottom: 1px solid var(--c-border);
-  display: flex;
-  align-items: center;
-  gap: var(--pad-col);
-  padding: 0 16px;
-  height: var(--ll-topbar-h);
-  flex-shrink: 0;
-}
-
-/* Logo：聚合 .logo, .nav-logo（已在 Section 5），此處新增 .app-logo */
-.logo,
-.nav-logo,
-.app-logo {
-  font-size: var(--font-size-xl);
-  font-weight: 700;
-  background: linear-gradient(45deg, #a78bfa, var(--c-pink));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  display: flex;
-  align-items: center;
-  gap: var(--gap);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* 頂部導覽連結 */
-.topbar-nav {
-  display: flex;
-  gap: var(--gap-sm);
-}
-
-.topbar-nav a {
-  color: var(--c-text-sec);
-  text-decoration: none;
-  font-size: var(--ll-font-sm);
-  padding: 3px var(--gap);
-  border-radius: var(--radius);
-  transition: all 0.2s;
-}
-
-.topbar-nav a:hover {
-  color: #fff;
-  background: var(--ll-item-bg-hover);
-}
-
-.topbar-nav a.active {
-  color: var(--c-accent-light);
-  background: rgba(162, 89, 255, 0.15);
-}
-
 
 /* ─────────────────────────────────────────────────────────────
    34-C. 三欄 App Shell（.app-shell）
@@ -2118,7 +1984,7 @@ body.daily-page {
            但此頁 font-size / bg 不同，以 .panel-header 覆蓋 ──
 ───────────────────────────────────────────────────────────── */
 .panel-header {
-  padding: var(--gap) var(--pad-col);
+  padding: var(--gap-md) var(--pad-both-md);
   font-size: var(--ll-font-md);
   font-weight: 600;
   color: var(--c-accent-light);
@@ -2177,7 +2043,7 @@ body.daily-page {
    34-H. 左欄：使用者區塊（.user-section）
 ───────────────────────────────────────────────────────────── */
 .user-section {
-  padding: var(--gap);
+  padding: var(--gap-md);
   border-bottom: 1px solid var(--c-border);
   flex-shrink: 0;
 }
@@ -2197,7 +2063,7 @@ body.daily-page {
   border: 1px solid var(--c-border);
   color: #fff;
   border-radius: var(--radius-xs);
-  padding: var(--gap-sm) var(--gap);
+  padding: var(--gap-sm) var(--gap-md);
   font-size: var(--ll-font-md);
   height: auto;
 }
@@ -2219,8 +2085,8 @@ body.daily-page {
 .user-row {
   display: flex;
   align-items: center;
-  gap: var(--gap);
-  margin-bottom: var(--gap);
+  gap: var(--gap-md);
+  margin-bottom: var(--gap-md);
 }
 
 .user-name {
@@ -2237,7 +2103,7 @@ body.daily-page {
 
 /* 使用者新增列 */
 .user-add-row {
-  margin-top: var(--gap);
+  margin-top: var(--gap-md);
   display: flex;
   gap: var(--gap-sm);
 }
@@ -2248,7 +2114,7 @@ body.daily-page {
   border: none;
   color: #fff;
   border-radius: var(--radius-xs);
-  padding: var(--gap-sm) var(--gap);
+  padding: var(--gap-sm) var(--gap-md);
   cursor: pointer;
   font-size: var(--ll-font-sm);
 }
@@ -2273,7 +2139,7 @@ body.daily-page {
    34-I. 左欄：伺服器 / 模型區塊（.server-section）
 ───────────────────────────────────────────────────────────── */
 .server-section {
-  padding: var(--gap-sm) var(--gap);
+  padding: var(--gap-sm) var(--gap-md);
   border-top: 1px solid var(--c-border);
   flex: 1;
   display: flex;
@@ -2284,7 +2150,7 @@ body.daily-page {
 .server-row {
   display: flex;
   align-items: center;
-  gap: var(--gap);
+  gap: var(--gap-md);
   margin-bottom: var(--gap-sm);
 }
 
@@ -2328,7 +2194,7 @@ body.daily-page {
 }
 
 .model-select-wrap+.model-select-wrap {
-  margin-top: var(--gap);
+  margin-top: var(--gap-md);
 }
 
 .model-select-wrap select {
@@ -2352,17 +2218,6 @@ body.daily-page {
   flex: 1;
 }
 
-/* 模型區 label，聚合 .settings-label / .model-label */
-.model-select-wrap label,
-.settings-label,
-.model-label,
-.nav-label {
-  font-size: var(--ll-font-md);
-  color: var(--c-text-muted);
-  display: block;
-  margin-bottom: 3px;
-  white-space: nowrap;
-}
 
 /* 模型內的編輯按鈕（小紫色按鈕）*/
 .btn-model-edit {
@@ -2385,8 +2240,7 @@ body.daily-page {
    34-J. LOG 區（.log-box）
         ── 聚合 .log-area（Section 19），僅 font-size 略小 ──
 ───────────────────────────────────────────────────────────── */
-.log-box,
-.log-area {
+.log-box {
   background: #000;
   color: var(--c-log-text);
   font-family: monospace;
@@ -2397,18 +2251,12 @@ body.daily-page {
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.5;
-}
-
-.log-box {
   font-size: var(--font-size-lg);
   flex: 1;
   margin-top: var(--gap-sm);
 }
 
-.log-area {
-  font-size: var(--font-size-xl);
-  resize: vertical;
-}
+
 
 
 /* ─────────────────────────────────────────────────────────────
@@ -2418,7 +2266,7 @@ body.daily-page {
   font-size: var(--ll-font-xs);
   font-weight: 700;
   color: var(--c-text-sec);
-  padding: var(--gap-sm) var(--gap);
+  padding: var(--gap-sm) var(--gap-md);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   display: flex;
@@ -2444,14 +2292,14 @@ body.daily-page {
 .list-empty-hint {
   font-size: var(--ll-font-xs);
   color: #555;
-  padding: var(--gap-sm) var(--gap);
+  padding: var(--gap-sm) var(--gap-md);
 }
 
 .chat-item {
   display: flex;
   align-items: center;
-  gap: var(--gap);
-  padding: var(--gap);
+  gap: var(--gap-md);
+  padding: var(--gap-md);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background 0.15s;
@@ -2484,7 +2332,7 @@ body.daily-page {
 
 /* 群組聊天室用方角 */
 .chat-avatar.group {
-  border-radius: var(--gap);
+  border-radius: var(--gap-md);
 }
 
 .chat-info {
@@ -2532,11 +2380,11 @@ body.daily-page {
    34-L. 右欄：聊天室頭部（#chat-header）
 ───────────────────────────────────────────────────────────── */
 #chat-header {
-  padding: var(--gap) 16px;
+  padding: var(--gap-md) 16px;
   border-bottom: 1px solid var(--c-border);
   display: flex;
   align-items: center;
-  gap: var(--gap);
+  gap: var(--gap-md);
   flex-shrink: 0;
   background: rgba(255, 255, 255, 0.03);
 }
@@ -2590,12 +2438,12 @@ body.daily-page {
   padding: 16px 20px;
   display: flex;
   flex-direction: column;
-  gap: var(--pad-col);
+  gap: var(--pad-both-md);
 }
 
 .msg-row {
   display: flex;
-  gap: var(--gap);
+  gap: var(--gap-md);
   align-items: flex-end;
 }
 
@@ -2678,10 +2526,10 @@ body.daily-page {
    34-N. 右欄：訊息輸入列（#chat-input-area）
 ───────────────────────────────────────────────────────────── */
 #chat-input-area {
-  padding: var(--gap) 16px;
+  padding: var(--gap-md) 16px;
   border-top: 1px solid var(--c-border);
   display: flex;
-  gap: var(--gap);
+  gap: var(--gap-md);
   align-items: flex-end;
   flex-shrink: 0;
   background: rgba(0, 0, 0, 0.2);
@@ -2747,7 +2595,7 @@ body.daily-page {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--pad-col);
+  gap: var(--pad-both-md);
   color: #444;
 }
 
@@ -2785,7 +2633,7 @@ body.daily-page {
 .modal {
   background: hsl(255, 30%, 10%);
   border: 1px solid var(--c-border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   padding: 24px;
   width: 420px;
   max-width: 95vw;
@@ -2819,7 +2667,7 @@ body.daily-page {
   font-size: 0.8rem;
   color: var(--c-text-sec);
   margin-bottom: var(--gap-xs);
-  margin-top: var(--gap);
+  margin-top: var(--gap-md);
 }
 
 /* Modal 內輸入框，聚合黑底輸入的共同規格 */
@@ -2831,7 +2679,7 @@ body.daily-page {
   border: 1px solid var(--c-border);
   color: #fff;
   border-radius: var(--radius-sm);
-  padding: 7px var(--gap);
+  padding: 7px var(--gap-md);
   font-size: var(--ll-font-rg);
   font-family: var(--font-ui);
   height: auto;
@@ -2845,7 +2693,7 @@ body.daily-page {
 /* Modal 按鈕列，聚合 .modal-actions（Section 21）*/
 .modal-actions {
   display: flex;
-  gap: var(--gap);
+  gap: var(--gap-md);
   justify-content: flex-end;
   margin-top: 16px;
 }
@@ -2891,7 +2739,7 @@ body.daily-page {
 .modal-password-msg {
   font-size: var(--ll-font-md);
   color: var(--c-text-sec);
-  margin-bottom: var(--pad-col);
+  margin-bottom: var(--pad-both-md);
 }
 
 /* 密碼輸入框底部間距 */
@@ -2915,7 +2763,7 @@ body.daily-page {
 .char-check-item {
   display: flex;
   align-items: center;
-  gap: var(--gap);
+  gap: var(--gap-md);
   padding: var(--gap-sm) var(--gap-sm);
   border-radius: var(--radius-xs);
 }
