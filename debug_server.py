@@ -47,60 +47,121 @@ def _resolve_character_json_path(char_id: str) -> str:
 
 def _try_repair_json(s: str) -> str:
     """
-    嘗試修復 AI 回傳的殘缺 JSON 格式
-    例如：缺少結尾引號、括號等
+    嘗試修復 AI 回傳的殘缺 JSON 格式。
+    處理：缺少結尾引號、多餘逗號、未閉合括號、字串內實際換行字元、markdown 圍欄。
     """
     s = s.strip()
     if not s:
         return s
-    
-    # 尋找第一個 [ 或 {
-    start_idx = s.find('[')
-    brace_idx = s.find('{')
-    if start_idx == -1 or (brace_idx != -1 and brace_idx < start_idx):
-        start_idx = brace_idx
-    
+
+    # 移除 Markdown 程式碼區塊標記（```json ... ``` 或 ``` ... ```）
+    s = re.sub(r'^```(?:json)?\s*\n?', '', s)
+    s = re.sub(r'\n?```\s*$', '', s)
+    s = s.strip()
+
+    # 尋找 JSON 起始位置（[ 或 {），忽略前綴說明文字
+    start_idx = -1
+    for i, c in enumerate(s):
+        if c in '[{':
+            start_idx = i
+            break
     if start_idx == -1:
         return s
-    
     s = s[start_idx:]
-    
-    # 基礎修復：平衡引號與括號
-    fixed = []
+
+    # 第一次嘗試：直接解析（最常見情況，零開銷）
+    try:
+        json.loads(s)
+        return s
+    except Exception:
+        pass
+
+    # 修復1：移除多餘的結尾逗號（, 後面緊接 } 或 ]）
+    s = re.sub(r',(\s*[}\]])', r'\1', s)
+    try:
+        json.loads(s)
+        return s
+    except Exception:
+        pass
+
+    # 修復2：逐字元掃描
+    # ・字串內實際換行：往後看第一個非空白字元，
+    #   若為 }、]、, 代表字串值已結束但缺少結尾引號 → 補上 "
+    #   否則視為字串內換行 → 轉義為 \n
+    # ・字串內 tab → 轉義為 \t
+    # ・補齊整體未閉合的引號與括號
+    result = []
     in_string = False
     escape = False
     stack = []
-    
-    for char in s:
+    i = 0
+
+    while i < len(s):
+        char = s[i]
+
         if in_string:
             if escape:
                 escape = False
+                result.append(char)
             elif char == '\\':
                 escape = True
+                result.append(char)
             elif char == '"':
                 in_string = False
+                result.append(char)
+            elif char in '\n\r':
+                # 往前看：跳過空白，看下一個有效字元
+                j = i + 1
+                while j < len(s) and s[j] in ' \t\r\n':
+                    j += 1
+                if j < len(s) and s[j] in '}],':
+                    # 字串值後面接的是結構字元 → 補遺漏的結尾引號
+                    result.append('"')
+                    in_string = False
+                    result.append('\n')
+                else:
+                    # 正常字串內換行 → 轉義
+                    result.append('\\n')
+            elif char == '\t':
+                result.append('\\t')
+            else:
+                result.append(char)
         else:
             if char == '"':
                 in_string = True
+                result.append(char)
             elif char == '{':
                 stack.append('}')
+                result.append(char)
             elif char == '[':
                 stack.append(']')
+                result.append(char)
             elif char == '}':
-                if stack and stack[-1] == '}': stack.pop()
+                if stack and stack[-1] == '}':
+                    stack.pop()
+                result.append(char)
             elif char == ']':
-                if stack and stack[-1] == ']': stack.pop()
-        fixed.append(char)
-    
+                if stack and stack[-1] == ']':
+                    stack.pop()
+                result.append(char)
+            else:
+                result.append(char)
+        i += 1
+
     # 補齊未閉合的引號
     if in_string:
-        fixed.append('"')
-    
+        result.append('"')
+
     # 補齊未閉合的括號
     while stack:
-        fixed.append(stack.pop())
-        
-    return "".join(fixed)
+        result.append(stack.pop())
+
+    fixed = ''.join(result)
+
+    # 修復後再次移除可能產生的多餘結尾逗號
+    fixed = re.sub(r',(\s*[}\]])', r'\1', fixed)
+
+    return fixed
 
 def _build_diary_prompt(char_path, scenario, char_data_override=None, relationship_params=None, other_chars=None, writer_settings=None, time_context="", past_diaries_context=""):
     #####################################################################################
@@ -397,9 +458,14 @@ def _run_novel_chapters_job(job_id: str, params: dict):
             start = repaired_text.find('[')
             end   = repaired_text.rfind(']')
             if start != -1 and end != -1:
-                chapters = json.loads(repaired_text[start:end + 1])
+                json_str = repaired_text[start:end + 1].replace('\n', ' ').strip()
+                chapters = json.loads(json_str)
+                log(f">> JSON 解析成功，共 {len(chapters)} 章")
+            else:
+                log(f">> JSON 修復後找不到有效陣列範圍")
         except Exception as e:
             log(f">> JSON 解析失敗 (嘗試修復後): {e}")
+            log(f">> 原始回傳（前500字）: {response_text[:500]}")
 
         with JOBS_LOCK:
             if job_id in JOBS:
@@ -484,12 +550,15 @@ def _run_novel_outline_job(job_id: str, params: dict):
                             combined = " ".join(combined.split()).strip(' "「」\'')
                             if combined:
                                 sections.append(combined)
-                except:
+                except Exception as inner_e:
+                    log(f">> JSON 解析失敗，嘗試 regex 提取: {inner_e}")
+                    log(f">> 修復後文字（前500字）: {json_str[:500]}")
                     raw_titles = re.findall(r'"([^"]+)"', json_str)
                     if raw_titles:
                         sections = [t.strip() for t in raw_titles if t.strip()]
         except Exception as e:
             log(f">> JSON 解析失敗 (大綱): {e}")
+            log(f">> 原始回傳（前500字）: {response_text[:500]}")
             sections = [s.strip() for s in response_text.split('\n')
                         if s.strip() and not s.startswith('[') and not s.startswith('`')]
 

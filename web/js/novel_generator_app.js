@@ -970,14 +970,11 @@ async function callDebugServerAsync(asyncEndpoint, payload) {
             continue;
         }
 
-        // 即時更新 Log 欄位
+        // 即時更新 Log 欄位（只追加新增部分，不覆蓋現有內容）
         if (jd.logs && jd.logs !== lastLogs) {
+            const newPart = jd.logs.slice(lastLogs.length);
             lastLogs = jd.logs;
-            const logBox = qs('#log-output');
-            if (logBox) {
-                logBox.innerText = lastLogs.replace(/\\n/g, '\n');
-                logBox.scrollTop = logBox.scrollHeight;
-            }
+            if (newPart) appendLog(newPart);
         }
 
         if (jd.status === 'done') {

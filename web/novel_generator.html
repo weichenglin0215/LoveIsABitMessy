@@ -196,12 +196,54 @@
       alert('已複製到剪貼簿');
     };
     window.showLogModal = () => {
-      // 將內容中的字面 \n 替換為實際換行符
       const logBox = document.getElementById('log-output');
       const rawText = logBox.innerText || logBox.textContent;
       document.getElementById('system-log-content').value = rawText.replace(/\\n/g, '\n');
       document.getElementById('modal-system-log').style.display = 'flex';
+      document.getElementById('log-search-input').value = '';
+      document.getElementById('log-search-count').textContent = '';
     };
+
+    // LOG 彈窗搜尋功能
+    (function initLogSearch() {
+      let matches = [];
+      let currentMatch = -1;
+
+      function goToMatch(idx) {
+        if (!matches.length) return;
+        const ta    = document.getElementById('system-log-content');
+        const query = document.getElementById('log-search-input').value;
+        currentMatch = ((idx % matches.length) + matches.length) % matches.length;
+        const start = matches[currentMatch], end = start + query.length;
+        ta.focus();
+        ta.setSelectionRange(start, end);
+        const lh   = parseFloat(window.getComputedStyle(ta).lineHeight) || 20;
+        const line  = ta.value.substring(0, start).split('\n').length - 1;
+        ta.scrollTop = Math.max(0, (line - 3) * lh);
+        document.getElementById('log-search-count').textContent = `${currentMatch + 1} / ${matches.length}`;
+      }
+
+      function doSearch() {
+        const query   = document.getElementById('log-search-input').value;
+        const ta      = document.getElementById('system-log-content');
+        const countEl = document.getElementById('log-search-count');
+        matches = [];
+        currentMatch = -1;
+        if (!query) { countEl.textContent = ''; ta.focus(); return; }
+        const lo = ta.value.toLowerCase(), lq = query.toLowerCase();
+        let i = 0;
+        while ((i = lo.indexOf(lq, i)) !== -1) { matches.push(i); i += lq.length; }
+        matches.length ? goToMatch(0) : (countEl.textContent = '找不到', ta.focus());
+      }
+
+      window.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('log-search-input').addEventListener('keydown', e => {
+          if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
+        });
+        document.getElementById('log-search-prev').addEventListener('click', () => goToMatch(currentMatch - 1));
+        document.getElementById('log-search-next').addEventListener('click', () => goToMatch(currentMatch + 1));
+      });
+    })();
 
     // --- 欄位拖拉縮放邏輯 ---
     (function initResizableColumns() {
@@ -339,6 +381,13 @@
         <button class="modal-close-btn"
           onclick="document.getElementById('modal-system-log').style.display='none'">&times;</button>
         <h3 class="modal-title">系統訊息 LOG</h3>
+      </div>
+      <div class="log-search-bar">
+        <span class="log-search-icon">🔍</span>
+        <span id="log-search-count" class="log-search-count"></span>
+        <button class="log-search-nav-btn" id="log-search-prev" title="上一個（Shift+Enter）">▲</button>
+        <button class="log-search-nav-btn" id="log-search-next" title="下一個（Enter）">▼</button>
+        <input type="text" id="log-search-input" class="log-search-input" placeholder="搜尋 LOG 文字...">
       </div>
       <div class="modal-body-area">
         <textarea id="system-log-content" class="modal-log-textarea" readonly></textarea>
