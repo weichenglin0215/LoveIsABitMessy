@@ -53,7 +53,7 @@ function calculateScores(answers) {
     });
 
     const radarData = {
-        labels: ["靠近與表達(主動/被動)", "受傷消化\n(外放/內收)", "告別疏遠(乾脆/拖延)", "關係節奏\n(快/慢)"],
+        labels: ["示愛行為(主動/被動)", "情緒表達(外放/內收)", "互動(乾脆/拖延)", "節奏(快/慢)"],
         datasets: []
     };
 

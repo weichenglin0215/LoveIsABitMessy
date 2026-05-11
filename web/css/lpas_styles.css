@@ -24,28 +24,32 @@
     --c-secondary-text-sec: hsl(220, 30%, 75%);
 
     /* 情境色彩 */
-    --c-period-1: hsl(298, 60%, 30%);
+    --c-period-1: hsl(298, 50%, 30%);
     /* 曖昧 */
-    --c-period-2: hsl(348, 50%, 50%);
+    --c-period-2: hsl(348, 40%, 50%);
     /* 熱戀 */
-    --c-period-3: hsl(220, 50%, 30%);
+    --c-period-3: hsl(220, 40%, 30%);
     /* 失戀 */
 
-    /* 量表色彩 */
-    --c-scale-empty: hsl(259, 30%, 30%);
-    --c-scale-hover: hsl(262, 60%, 90%);
-    --c-scale-disagree: hsl(200, 60%, 60%);
-    --c-scale-mid: hsl(290, 60%, 65%);
-    --c-scale-agree: hsl(360, 70%, 70%);
+    /* 量表色彩 七個圈圈*/
+    --c-scale-empty: hsl(0, 0%, 85%);
+    --c-scale-hover: hsl(262, 0%, 100%);
+    --c-scale-disagree: hsl(200, 70%, 60%);
+    --c-scale-mid: hsl(290, 70%, 65%);
+    --c-scale-agree: hsl(360, 90%, 80%);
 
     /*字型尺寸*/
     --fs-title: 36px;
     --fs-subtitle: 24px;
     --fs-desc: 20px;
     --fs-instruction: 26px;
-    --fs-note: 12px;
+    --fs-note: 15px;
     --fs-question: 30px;
-    --fs-back-btn: 20px;
+    --fs-primary-btn: 24px;
+    --fs-radio-btn: 20px;
+    /*padding*/
+    --pd-primary-btn: 4px 20px;
+    --pd-secondary-btn: 4px 20px;
 }
 
 /* ═══════════════════════════════════════════
@@ -148,7 +152,7 @@ body[data-period="3"] main#stage {
     white-space: pre;
 }
 
-/* main#stage 已與上面的 #stage 合併 */
+/* 每一頁的基礎底層 */
 .screen {
     position: absolute;
     top: 0;
@@ -172,10 +176,10 @@ body[data-period="3"] main#stage {
 
 /* 按鈕樣式 */
 .btn {
-    padding: 4px 20px;
+    padding: 6px 30px;
     border-radius: 30px;
     border: none;
-    font-size: 24px;
+    font-size: var(--fs-primary-btn);
     cursor: pointer;
     transition: all 0.3s ease;
     font-family: inherit;
@@ -206,8 +210,8 @@ body[data-period="3"] main#stage {
 }
 
 .text-btn {
-    background: hsla(0, 0%, 0%, 0.1);
-    border: 1px hsla(0, 0%, 100%, 0.2);
+    background: hsla(0, 0%, 0%, 0.0);
+    border: 1px hsla(0, 0%, 100%, 0.0);
     color: var(--c-text-sec);
     cursor: pointer;
     font-size: 20px;
@@ -248,8 +252,9 @@ body[data-period="3"] main#stage {
 .instruction-content {
     font-size: var(--fs-instruction);
     line-height: 1.8;
-    letter-spacing: 4px;
+    letter-spacing: 3px;
     color: var(--c-text-sec);
+    padding: 20px 0px;
     margin-bottom: 60px;
 }
 
@@ -297,7 +302,7 @@ input[type="text"] {
 }
 
 .radio-btn {
-    padding: 10px 20px;
+    padding: 5px 16px;
     background-color: var(--c-accent);
     border: 1px solid var(--c-accent-light);
     color: var(--c-text-sec);
@@ -305,7 +310,7 @@ input[type="text"] {
     border-radius: 20px;
     cursor: pointer;
     transition: 0.2s;
-    font-size: 20px;
+    font-size: var(--fs-radio-btn);
 }
 
 .radio-btn.selected {
@@ -415,8 +420,8 @@ input[type="text"] {
 /* 動態標記顏色將由 JS 根據同意度控制 */
 .back-btn {
     position: absolute;
-    bottom: 20px;
-    right: 40px;
+    top: 60px;
+    left: 40px;
     font-size: 20px;
 }
 
@@ -488,22 +493,9 @@ input[type="text"] {
     overflow-y: auto;
 }
 
-.result-header {
-    text-align: center;
-    margin-bottom: 10px;
-}
 
-.result-header h1 {
-    font-size: 32px;
-    color: var(--c-accent-light);
-    margin-bottom: 10px;
-}
 
-.type-code {
-    font-size: 36px;
-    color: var(--c-text-sec);
-    letter-spacing: 4px;
-}
+
 
 /*結果頁的說明文字框，這個好像無效，要再研究看看*/
 .result-description {
@@ -574,19 +566,13 @@ input[type="text"] {
     text-align: center;
 }
 
-/* 結果頁標題，取消了*/
-.result-title {
-    font-size: 24px;
-    letter-spacing: 4px;
-    margin-bottom: 10px;
-    flex-shrink: 0;
-}
+
 
 /*結果頁雷達*/
 .result-radar {
-    flex: 0 0 25%;
+    flex: 0 0 40%;
     /* 佔比約 30% */
-    max-height: 212px;
+    max-height: 340px;
     /* 基於 850px 的 25% */
     width: 100%;
     margin-bottom: 20px;
@@ -627,16 +613,16 @@ input[type="text"] {
 
 /* 星星評分 */
 .feedback-section {
-    margin: 0px 0;
+    margin: 16px 0;
     text-align: center;
     /*沒有捲動軸*/
     overflow: hidden;
 }
 
 .feedback-q {
-    font-size: 20px;
-    color: var(--c-text-sec);
-    margin-bottom: 4px;
+    font-size: 24px;
+    color: var(--c-text-main);
+    margin-bottom: 6px;
 }
 
 .star-rating {
@@ -650,7 +636,7 @@ input[type="text"] {
 
 .star {
     font-size: 40px;
-    color: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.7);
     cursor: pointer;
     transition: all 0.2s ease;
     line-height: 1;
@@ -666,8 +652,8 @@ input[type="text"] {
 }
 
 .feedback-labels {
-    font-size: 20px;
-    color: var(--c-text-sec);
+    font-size: 24px;
+    color: var(--c-text-main);
     white-space: nowrap;
 }
 

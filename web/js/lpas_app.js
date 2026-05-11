@@ -163,7 +163,7 @@ let app = {
             // 回填之前選的
             let existingAns = this.answers.find(a => a.id === q.id);
             if (existingAns && existingAns.score == i) {
-                circle.style.backgroundColor = i >= 5 ? "var(--c-scale-agree)" : (i <= 3 ? "var(--c-scale-disagree)" : "var(--c-scale-mid)");
+                circle.style.backgroundColor = i >= 6 ? "var(--c-scale-agree)" : (i <= 2 ? "var(--c-scale-disagree)" : "var(--c-scale-mid)");
             }
 
             circle.addEventListener('click', () => {
@@ -187,7 +187,7 @@ let app = {
         scaleContainer.querySelectorAll('.scale-circle').forEach(c => c.style.backgroundColor = 'var(--c-scale-empty)');
         let clicked = scaleContainer.querySelector(`[data-val="${score}"]`);
         if (clicked) {
-            clicked.style.backgroundColor = score >= 5 ? "var(--c-scale-agree)" : (score <= 3 ? "var(--c-scale-disagree)" : "var(--c-scale-mid)");
+            clicked.style.backgroundColor = score >= 6 ? "var(--c-scale-agree)" : (score <= 2 ? "var(--c-scale-disagree)" : "var(--c-scale-mid)");
         }
 
         // 儲存答案
@@ -266,7 +266,7 @@ let app = {
             if (statusEl) statusEl.textContent = '⚠️ 無法取得 Supabase client';
             return;
         }
-        if (statusEl) statusEl.textContent = '☁️ 正在同步至雲端…';
+        if (statusEl) statusEl.textContent = '☁️ 正在同步…';
 
         /** 將 schema cache 錯誤轉成更友善的訊息 */
         function friendlyError(msg) {
@@ -336,7 +336,7 @@ let app = {
             if (resErr) throw new Error(friendlyError(resErr.message));
             console.log('[Cloud] lpas_results inserted');
 
-            if (statusEl) statusEl.textContent = '✅ 已同步至雲端';
+            if (statusEl) statusEl.textContent = '✅ 已同步';
         } catch (err) {
             console.error('[Cloud] 雲端儲存失敗:', err);
             if (statusEl) statusEl.textContent = '❌ 雲端儲存失敗: ' + err.message;
@@ -443,7 +443,7 @@ let app = {
                     r: {
                         angleLines: { color: 'rgba(255, 255, 255, 0.2)' },
                         grid: { color: 'rgba(255, 255, 255, 0.2)' },
-                        pointLabels: { color: '#E8E0F5', font: { size: 12 } },
+                        pointLabels: { color: '#E8E0F5', font: { size: 20 } },
                         min: 1,
                         max: 7,
                         ticks: { display: false, stepSize: 1 }
