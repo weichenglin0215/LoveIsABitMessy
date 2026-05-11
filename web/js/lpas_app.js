@@ -352,7 +352,6 @@ let app = {
         document.getElementById('result-type-code').innerText = resultData.typeCode;
 
         this.renderResultStep(resultData);
-        this.initStarRating(resultData);
     },
     // 渲染結果分階段
     renderResultStep(resultData) {
@@ -389,8 +388,24 @@ let app = {
         // 更新雷達圖 (高亮當前階段)
         this.updateRadarChart(resultData, this.currentFeedbackStep, periodColor);
 
+        // 將雷達圖/說明區域捲到最上方
+        const descWrapper = document.querySelector('.result-description-wrapper');
+        if (descWrapper) {
+            descWrapper.scrollTop = 0;
+        }
+
         // 重設星星狀態
         document.querySelectorAll('.star').forEach(s => s.classList.remove('active'));
+
+        // 重設同意按鈕並隱藏（改為全透明與禁用）
+        const confirmBtn = document.getElementById('confirm-feedback-btn');
+        if (confirmBtn) {
+            confirmBtn.style.opacity = '0';
+            confirmBtn.style.pointerEvents = 'none';
+            confirmBtn.disabled = true;
+        }
+
+        this.initStarRating(resultData);
     },
     // 更新雷達圖
     updateRadarChart(resultData, activeIndex, periodColor) {
@@ -416,8 +431,8 @@ let app = {
                     ds.borderColor = ds.borderColor.replace(/[\d\.]+\)$/, '1.0)');
                 }
                 */
-                ds.borderWidth = 3;
-                ds.pointRadius = 8;
+                ds.borderWidth = 2;
+                ds.pointRadius = 5;
             } else {
                 ds.backgroundColor = 'rgba(255, 255, 255, 0.05)';
                 ds.borderColor = 'rgba(255, 255, 255, 0.1)';
@@ -458,6 +473,22 @@ let app = {
     // 初始化評分
     initStarRating(resultData) {
         const stars = document.querySelectorAll('.star');
+        const confirmBtn = document.getElementById('confirm-feedback-btn');
+
+        // 記錄目前選定的分數，以供 hover 恢復用
+        let currentScore = 0;
+
+        // 避免重複綁定，先 clone button
+        if (confirmBtn) {
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+            newConfirmBtn.addEventListener('click', () => {
+                if (currentScore > 0) {
+                    this.handleFeedback(currentScore, resultData);
+                }
+            });
+        }
+
         stars.forEach(star => {
             // 移除舊事件
             const newStar = star.cloneNode(true);
@@ -468,11 +499,19 @@ let app = {
                 this.highlightStars(val);
             });
             newStar.addEventListener('mouseout', () => {
-                this.highlightStars(0); // 恢復成灰色
+                this.highlightStars(currentScore); // 恢復成選中的分數
             });
             newStar.addEventListener('click', (e) => {
-                const val = parseInt(e.target.dataset.val);
-                this.handleFeedback(val, resultData);
+                currentScore = parseInt(e.target.dataset.val);
+                this.highlightStars(currentScore);
+
+                // 顯示同意按鈕
+                const activeConfirmBtn = document.getElementById('confirm-feedback-btn');
+                if (activeConfirmBtn) {
+                    activeConfirmBtn.style.opacity = '1';
+                    activeConfirmBtn.style.pointerEvents = 'auto';
+                    activeConfirmBtn.disabled = false;
+                }
             });
         });
     },
@@ -490,13 +529,28 @@ let app = {
 
         if (this.currentFeedbackStep < 2) {
             this.currentFeedbackStep++;
-            this.renderResultStep(resultData);
+            this.showResultTransition(resultData);
         } else {
             // 完成所有評分
             document.getElementById('feedback-section').style.display = 'none';
             document.getElementById('final-actions').style.display = 'flex';
             this.finishAndSave(resultData);
         }
+    },
+    // 結果頁換場
+    showResultTransition(resultData) {
+        const step = this.currentFeedbackStep;
+        const periodIds = [1, 2, 3];
+        const nextPeriod = periodIds[step];
+
+        this.showScreen('screen-transition');
+        document.getElementById('transition-text').innerText = "";
+        document.body.setAttribute('data-period', nextPeriod);
+
+        setTimeout(() => {
+            this.renderResultStep(resultData);
+            this.showScreen('screen-result');
+        }, 2000);
     },
     // 完成並儲存
     finishAndSave(resultData) {

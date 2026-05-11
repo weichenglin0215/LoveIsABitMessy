@@ -116,7 +116,7 @@
                     <span class="scale-label">同意😀→</span>
                 </div>
             </div>
-            <button class="text-btn back-btn" id="prev-question-btn">《上一題</button>
+            <button class="text-btn back-btn" id="prev-question-btn">《 上一題</button>
         </section>
 
         <!-- 6. 計算中頁面 -->
@@ -167,12 +167,16 @@
                             <span>😀好準！</span>
                         </div>
                     </div>
-
+                    <!-- 新增同意按鈕 -->
+                    <button id="confirm-feedback-btn" class="btn primary-btn"
+                        style="opacity: 0; pointer-events: none; transition: opacity 0.3s; margin-top: 10px;"
+                        disabled>同意</button>
                 </div>
 
                 <!-- 最終行動按鈕 (初始隱藏) -->
                 <div class="result-actions" id="final-actions" style="display: none;">
-                    <div class="result-description-wrapper">感謝您的參與，祝您一切順心！</div>
+                    <div class="sub-title">感謝您的參與，祝您徜徉愛情海！</div>
+                    <div id="cloud-save-status" class="note">☁️</div>
                     <!--
                     <button class="btn primary-btn" id="download-json-btn">下載角色卡</button>
                     <button class="btn primary-btn" id="download-record-btn">下載測驗紀錄</button>
@@ -182,7 +186,6 @@
 
 
             </div>
-            <div id="cloud-save-status" class="note">☁️</div>
         </section>
     </main>
 </body>

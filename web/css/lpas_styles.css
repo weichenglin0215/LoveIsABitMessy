@@ -193,9 +193,11 @@ body[data-period="3"] main#stage {
     box-shadow: 0 0 20px rgba(156, 111, 214, 0.4);
 }
 
-.primary-btn:hover {
-    background-color: var(--c-accent-hover);
-    box-shadow: 0 0 30px rgba(156, 111, 214, 0.6);
+@media (hover: hover) {
+    .primary-btn:hover {
+        background-color: var(--c-accent-hover);
+        box-shadow: 0 0 30px rgba(156, 111, 214, 0.6);
+    }
 }
 
 .secondary-btn {
@@ -204,9 +206,11 @@ body[data-period="3"] main#stage {
     border: 1px solid var(--c-accent);
 }
 
-.secondary-btn:hover {
-    background-color: var(--c-accent-hover);
-    color: #fff;
+@media (hover: hover) {
+    .secondary-btn:hover {
+        background-color: var(--c-accent-hover);
+        color: #fff;
+    }
 }
 
 .text-btn {
@@ -217,8 +221,10 @@ body[data-period="3"] main#stage {
     font-size: 20px;
 }
 
-.text-btn:hover {
-    filter: brightness(1.3);
+@media (hover: hover) {
+    .text-btn:hover {
+        filter: brightness(1.3);
+    }
 }
 
 /* 首頁 */
@@ -394,9 +400,11 @@ input[type="text"] {
     position: relative;
 }
 
-.scale-circle:hover {
-    transform: scale(1.2);
-    background-color: var(--c-scale-hover);
+@media (hover: hover) {
+    .scale-circle:hover {
+        transform: scale(1.2);
+        background-color: var(--c-scale-hover);
+    }
 }
 
 /* 強度漸變大小 */
@@ -620,7 +628,7 @@ input[type="text"] {
 }
 
 .feedback-q {
-    font-size: 24px;
+    font-size: 20px;
     color: var(--c-text-main);
     margin-bottom: 6px;
 }
@@ -642,9 +650,11 @@ input[type="text"] {
     line-height: 1;
 }
 
-.star:hover {
-    color: goldenrod;
-    transform: scale(1.2);
+@media (hover: hover) {
+    .star:hover {
+        color: goldenrod;
+        transform: scale(1.2);
+    }
 }
 
 .star.active {
