@@ -5,13 +5,18 @@ description: 開始任何任務前必讀，所有修改必須符合本規範
 
 # 專案規範
 
-## 介面設計
-- 採用深色模式
-- 使用 CSS 變數管理顏色，以hsl()表示
-- 使用 rem 單位
-- 所有字體至少1.0rem
+## lpas.html/lpas_app.js 介面設計
+- 手機瀏覽器與PC瀏覽器皆可顯示滿畫面，套用screen_adaptive.js
+- 採用 web/css/lpas_styles.css
+- 使用 px 單位
 - 使用 flexbox 佈局
-- 使用 grid 佈局
+
+## 其他網頁的介面設計
+- 主要以PC瀏覽器為準
+- 採用 web/css/editer.css
+- 使用 rem 單位
+- 使用 flexbox 和 grid 佈局
+
 
 ## 資料儲存
 - 使用 Supabase 作為資料庫

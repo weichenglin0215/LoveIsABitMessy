@@ -1,8 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
-    // 注入 Modal HTML 與 CSS
+    // 注入 modal HTML 與 CSS
     const modalHTML = `
     <style>
-      .modal-overlay {
+      .modal-LLM-overlay {
         position: fixed;
         inset: 0;
         background: rgba(0, 0, 0, 0.6);
@@ -11,67 +11,70 @@ document.addEventListener("DOMContentLoaded", () => {
         justify-content: center;
         z-index: 10000;
       }
-      .modal-overlay.hidden {
+      .modal-LLM-overlay.hidden {
         display: none;
       }
-      .modal {
+      .modal-LLM {
         background: hsl(255, 30%, 10%);
         border: 1px solid hsla(266, 0%, 64%, 0.3);
         border-radius: 14px;
         padding: 24px;
-        width: 500px;
+        width: 900px;
         max-width: 95vw;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
         color: #e0e0e0;
       }
-      .modal h3 {
+      .modal-LLM h3 {
         font-size: 1.05rem;
         color: #a78bfa;
         margin-top: 0;
         margin-bottom: 16px;
       }
-      .modal label {
+      .modal-LLM label {
         display: block;
-        font-size: 0.8rem;
+        font-size: 1.2rem;
         color: #aaa;
+        /* 避免文字太長自動換行，保持整齊 */
+        white-space: pre-wrap;
+        max-width: 100%;
         margin-bottom: 4px;
         margin-top: 10px;
       }
-      .modal input, .modal select {
+      .modal-LLM input, .modal-LLM select {
         width: 100%;
         background: rgba(0, 0, 0, 0.4);
         border: 1px solid hsla(266, 0%, 64%, 0.3);
         color: #fff;
         border-radius: 8px;
         padding: 7px 10px;
-        font-size: 0.88rem;
+        font-size: 1.2rem;
         box-sizing: border-box;
       }
-      .btn-modal {
+      .btn-modal-LLM {
         padding: 6px 16px;
         border-radius: 6px;
         font-size: 0.9rem;
         cursor: pointer;
         border: 1px solid hsla(266, 0%, 64%, 0.3);
       }
-      .btn-modal.cancel {
+      .btn-modal-LLM.cancel {
         background: transparent;
         color: #ccc;
       }
-      .btn-modal.primary {
+      .btn-modal-LLM.primary {
         background: #a78bfa;
         color: #fff;
         border: none;
       }
     </style>
-    <div class="modal-overlay hidden" id="modal-model-options">
-      <div class="modal">
-        <h3>⚙️ AI大模型呼叫參數</h3>
+    <div class="modal-LLM-overlay hidden" id="modal-LLM-model-options">
+      <div class="modal-LLM">
+        <h2>⚙️ AI大模型呼叫參數</h2>
         
         <label>參數名稱 (Name)</label>
         <input type="text" id="mo-name" placeholder="LLM大模型參數表" value="LLM大模型參數表" style="width: 100%; margin-bottom: 10px; padding: 5px;">
         
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:30px;">
             <div>
                 <label>逐字傳輸 (stream)</label>
                 <select id="mo-stream" style="width: 100%; padding: 5px;">
@@ -105,9 +108,9 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
         </div>
 
-        <div class="modal-actions" style="margin-top:20px; display: flex; gap: 10px; justify-content: flex-end;">
-          <button class="btn-modal cancel" id="btn-mo-cancel" style="padding: 5px 15px;">取消</button>
-          <button class="btn-modal primary" id="btn-mo-save" style="padding: 5px 15px;">儲存設定</button>
+        <div class="modal-LLM-actions" style="margin-top:20px; display: flex; gap: 10px; justify-content: flex-end;">
+          <button class="btn-modal-LLM cancel" id="btn-mo-cancel" style="padding: 5px 15px;">取消</button>
+          <button class="btn-modal-LLM primary" id="btn-mo-save" style="padding: 5px 15px;">儲存設定</button>
         </div>
       </div>
     </div>
@@ -116,7 +119,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const btnAdd = document.getElementById('btn-add-model-option');
     const selectEl = document.getElementById('model-options-select');
-    const modal = document.getElementById('modal-model-options');
+    const modal = document.getElementById('modal-LLM-model-options');
 
     let modelOptionsList = [];
 

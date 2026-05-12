@@ -7,6 +7,7 @@
   <title>LoveLine 💬 - LoveIsABitMessy</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <!-- 編輯器共用css/editer.css -->
   <link rel="stylesheet" href="css/editer.css">
   <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
   <script src="js/supabaseClient.js" defer></script>
@@ -34,8 +35,8 @@
     <!-- ═══ LEFT PANEL ═══ -->
     <div class="panel" id="panel-left">
       <!-- Header with collapse button -->
-      <div class="panel-header">
-        <span class="left-content" style="font-size:0.85rem;">⚙️ 控制台</span>
+      <div class="col-header">
+        <span class="left-content">⚙️ 控制台</span>
         <button class="collapse-btn" id="btn-collapse-left" title="縮放左側欄">◀</button>
       </div>
 
@@ -46,19 +47,17 @@
             <div class="user-avatar" id="user-avatar-icon">👤</div>
             <div style="flex:1;">
               <div class="user-name" id="current-user-name">— 請選擇 —</div>
-              <div style="font-size:0.7rem;color:var(--c-text-sec);">目前使用者</div>
+              <div class="hint">目前使用者</div>
             </div>
-            <button id="btn-edit-user-profile" title="編輯使用者資料"
-              style="background:none;border:none;color:var(--c-accent-light);cursor:pointer;font-size:1.1rem;">⚙️</button>
+            <button id="btn-edit-user-profile" title="編輯使用者資料" class="btn-icon">⚙️</button>
           </div>
-          <label>選擇使用者</label>
+          <div class="field-label">選擇使用者</div>
           <select id="user-select">
             <option value="">— 請選擇 —</option>
           </select>
-          <div style="margin-top:8px;display:flex;gap:6px;">
-            <input type="text" id="new-user-input" placeholder="新增使用者名稱..." style="flex:1;">
-            <button id="btn-add-user"
-              style="background:var(--c-accent);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.8rem;">+新增</button>
+          <div class="model-wrap-row">
+            <input type="text" id="new-user-input" class="editor-input" placeholder="新增使用者名稱...">
+            <button id="btn-add-user" class="ai-btn btn-edit-sm">+新增</button>
           </div>
         </div>
 
@@ -68,53 +67,49 @@
             <div class="dot" id="server-dot"></div>
             <span class="server-label" id="server-status-text">偵測中…</span>
           </div>
-          <div class="model-select-wrap">
-            <label style="font-size:0.85rem;color:var(--c-text-sec);display:block;margin-bottom:3px;">🤖 AI
-              模型</label>
+          <div class="model-container-row">
+            <label class="model-label">🤖 AI 模型</label>
             <select id="model-select">
               <option value="gemma4">gemma4</option>
             </select>
           </div>
-          <div class="model-select-wrap" style="margin-top:10px;">
-            <label style="font-size:0.85rem;color:var(--c-text-sec);display:block;margin-bottom:3px;">⚙️
-              模型參數</label>
-            <div style="display:flex; gap:4px;">
-              <select id="model-options-select" style="flex:1;">
+          <div class="model-container-row">
+            <label class="model-label">⚙️ 模型參數</label>
+            <div class="model-wrap-row">
+              <select id="model-options-select">
                 <option value="">預設</option>
               </select>
-              <button id="btn-add-model-option"
-                style="background:var(--c-accent);border:none;color:#fff;border-radius:4px;padding:2px 8px;cursor:pointer;">編輯</button>
+              <button id="btn-add-model-option" class="ai-btn btn-edit-sm">編輯</button>
             </div>
           </div>
-          <div class="model-select-wrap" style="margin-top:10px;">
-            <label style="font-size:0.85rem;color:var(--c-text-sec);display:block;margin-bottom:3px;">🖋️
-              寫作風格</label>
-            <div style="display:flex; gap:4px;">
-              <select id="writer-style-select" class="ws-style-dropdown" style="flex:1;">
+          <div class="model-container-row">
+            <label class="model-label">🖋️ 寫作風格</label>
+            <div class="model-wrap-row">
+              <select id="writer-style-select" class="ws-style-dropdown">
                 <option value="">無</option>
               </select>
-              <button id="btn-edit-writer-style"
-                style="background:var(--c-accent);border:none;color:#fff;border-radius:4px;padding:2px 8px;cursor:pointer;"
+              <button id="btn-edit-writer-style" class="ai-btn btn-edit-sm"
                 onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select').value)">編輯</button>
             </div>
           </div>
-          <div class="model-select-wrap" style="margin-top:10px;">
-            <label style="font-size:0.85rem;color:var(--c-text-sec);display:block;margin-bottom:3px;">📝
-              寫作範本</label>
-            <div style="display:flex; gap:4px;">
-              <select id="writer-sample-select" class="ws-sample-dropdown" style="flex:1;">
+          <div class="model-container-row">
+            <label class="model-label">📝 寫作範本</label>
+            <div class="model-wrap-row">
+              <select id="writer-sample-select" class="ws-sample-dropdown">
                 <option value="">無</option>
               </select>
-              <button id="btn-edit-writer-sample"
-                style="background:var(--c-accent);border:none;color:#fff;border-radius:4px;padding:2px 8px;cursor:pointer;"
+              <button id="btn-edit-writer-sample" class="ai-btn btn-edit-sm"
                 onclick="WriterSettingsApp.openSampleModal(document.getElementById('writer-sample-select').value)">編輯</button>
             </div>
           </div>
-          <div class="log-box" id="log-output">等待中…</div>
-          <div class="log-actions-sm">
-            <button class="btn secondary-btn log-action-btn" onclick="clearLogOutput()">🗑️清空</button>
-            <button class="btn secondary-btn log-action-btn" onclick="copyLogOutput()">📋複製</button>
-            <button class="btn secondary-btn log-action-btn" onclick="showLogModal()">🔲大型彈窗</button>
+          <!-- LOG -->
+          <div class="form-section">
+            <textarea id="log-output" class="log-area">等待任務...</textarea>
+          </div>
+          <div class="log-actions">
+            <button class="small-btn" onclick="clearLogOutput()">🗑️清空</button>
+            <button class="small-btn" onclick="copyLogOutput()">📋複製</button>
+            <button class="small-btn" onclick="showLogModal()">🔲大型彈窗</button>
           </div>
         </div>
       </div>
@@ -128,25 +123,25 @@
 
     <!-- ═══ MIDDLE PANEL ═══ -->
     <div class="panel" id="panel-mid">
-      <div class="panel-header">
+      <div class="col-header">
         <span>💬 聊天</span>
       </div>
       <div class="panel-scroll">
         <!-- 1-on-1 -->
-        <div class="list-section-title">
+        <div class="field-label">
           <span>👤 好友</span>
-          <button id="btn-new-1on1" title="加入好友">＋</button>
+          <button id="btn-new-1on1" title="加入好友" class="small-btn">＋</button>
         </div>
         <div id="list-1on1">
-          <div style="font-size:0.75rem;color:#555;padding:6px 8px;">尚無好友</div>
+          <div class="form-label">尚無好友</div>
         </div>
         <!-- Group -->
-        <div class="list-section-title" style="margin-top:10px;">
+        <div class="field-label" style="margin-top:10px;">
           <span>👥 聊天室</span>
-          <button id="btn-new-group" title="建立多人聊天室">＋</button>
+          <button id="btn-new-group" title="建立多人聊天室" class="small-btn">＋</button>
         </div>
         <div id="list-group">
-          <div style="font-size:0.75rem;color:#555;padding:6px 8px;">尚無聊天室</div>
+          <div class="form-label">尚無聊天室</div>
         </div>
       </div>
     </div>
@@ -157,12 +152,10 @@
         <div class="chat-avatar" id="chat-header-avatar">💬</div>
         <div>
           <div id="chat-title">請選擇一個對話</div>
-          <div id="chat-subtitle" style="font-size:0.72rem;color:var(--c-text-sec);"></div>
+          <div id="chat-subtitle" class="field-label"></div>
         </div>
         <div style="margin-left:auto;display:flex;gap:6px;">
-          <button id="btn-clear-chat" title="清空畫面"
-            style="background:none;border:none;color:#666;cursor:pointer;font-size:1rem;padding:4px 8px;border-radius:6px;"
-            disabled>🗑️</button>
+          <button id="btn-clear-chat" title="清空畫面" class="btn-del-sec" disabled>🗑️</button>
         </div>
       </div>
 
@@ -186,11 +179,10 @@
     <div class="modal" style="width: 640px;">
       <h3 id="modal-user-title">👤 編輯使用者資料</h3>
       <label>暱稱</label>
-      <input type="text" id="modal-user-name" placeholder="輸入您的暱稱">
+      <input type="text" id="modal-user-name" placeholder="輸入您的暱稱" class="editor-input">
 
       <label>登入密碼 (必要)</label>
-      <input type="password" id="modal-user-password" placeholder="輸入登入密碼"
-        style="background: rgba(0, 0, 0, 0.4); border: 1px solid var(--c-border); color: #fff; border-radius: 8px; padding: 7px 10px; width: 100%;">
+      <input type="password" id="modal-user-password" placeholder="輸入登入密碼" class="editor-input">
 
       <label>關聯角色卡 (選填)</label>
       <select id="modal-user-char-select">
@@ -212,8 +204,8 @@
 
   <!-- ── Modal: Friend (Add / Edit) ── -->
   <div class="modal-overlay hidden" id="modal-friend">
-    <div class="modal" style="width: 480px;">
-      <h3 id="modal-friend-title">💬 新增好友</h3>
+    <div class="modal" style="width: 600px;">
+      <h2 id="modal-friend-title">💬 新增好友</h2>
       <label>好友名稱 (暱稱)</label>
       <input type="text" id="modal-friend-name" placeholder="預設空白，不可與現有其他好友同名">
 
@@ -230,8 +222,7 @@
 
       <div class="modal-actions">
         <button class="btn-modal cancel" id="btn-modal-friend-cancel">取消</button>
-        <button class="btn-modal" id="btn-modal-friend-delete"
-          style="background:rgba(244,67,54,0.2);color:#f44336;margin-right:auto;">🗑️ 刪除</button>
+        <button class="btn-modal btn-del-sec" id="btn-modal-friend-delete" style="margin-right:auto;">🗑️ 刪除</button>
         <button class="btn-modal primary" id="btn-modal-friend-ok">儲存</button>
       </div>
     </div>
@@ -239,8 +230,8 @@
 
   <!-- ── Modal: Group Chat (Add / Edit) ── -->
   <div class="modal-overlay hidden" id="modal-group">
-    <div class="modal" style="width: 480px;">
-      <h3 id="modal-group-title">👥 建立聊天室</h3>
+    <div class="modal" style="width: 600px;">
+      <h2 id="modal-group-title">👥 建立聊天室</h2>
       <label>聊天室名稱</label>
       <input type="text" id="modal-group-name" placeholder="例如：班級群組、約會計劃">
 
@@ -252,8 +243,8 @@
 
       <div class="modal-actions">
         <button class="btn-modal cancel" id="btn-modal-group-cancel">取消</button>
-        <button class="btn-modal" id="btn-modal-group-delete"
-          style="background:rgba(244,67,54,0.2);color:#f44336;margin-right:auto;display:none;">🗑️ 刪除</button>
+        <button class="btn-modal btn-del-sec" id="btn-modal-group-delete" style="margin-right:auto;display:none;">🗑️
+          刪除</button>
         <button class="btn-modal primary" id="btn-modal-group-ok">儲存</button>
       </div>
     </div>
@@ -262,10 +253,9 @@
 
   <!-- ── Modal: Password Check ── -->
   <div class="modal-overlay hidden" id="modal-password-check">
-    <div class="modal" style="width: 360px;">
-      <h3 id="password-check-title">🔐 安全驗證</h3>
-      <p id="password-check-msg" style="font-size: 0.85rem; color: var(--c-text-sec); margin-bottom: 12px;">
-        請輸入該使用者的登入密碼以載入資料：</p>
+    <div class="modal" style="width: 600px;">
+      <h2 id="password-check-title">🔐 安全驗證</h2>
+      <p id="password-check-msg" class="form-label">請輸入該使用者的登入密碼以載入資料：</p>
       <input type="password" id="password-input-val" placeholder="輸入密碼..." style="margin-bottom: 20px;">
       <div class="modal-actions" style="display: flex; justify-content: flex-end; gap: 10px;">
         <button class="btn-modal cancel" id="btn-password-cancel">取消</button>
@@ -278,18 +268,18 @@
     // Log 輔助功能
     window.clearLogOutput = () => {
       const logBox = document.getElementById('log-output');
-      if (logBox) logBox.textContent = '';
+      if (logBox) logBox.value = '';
     };
     window.copyLogOutput = () => {
       const logBox = document.getElementById('log-output');
-      navigator.clipboard.writeText(logBox ? logBox.textContent : '');
+      navigator.clipboard.writeText(logBox ? logBox.value : '');
       alert('已複製到剪貼簿');
     };
     window.showLogModal = () => {
       const logBox = document.getElementById('log-output');
-      const rawText = logBox ? (logBox.innerText || logBox.textContent) : '';
+      const rawText = logBox ? logBox.value : '';
       document.getElementById('system-log-content').value = rawText.replace(/\\n/g, '\n');
-      document.getElementById('modal-system-log').style.display = 'flex';
+      document.getElementById('modal-system-log').classList.remove('hidden');
       document.getElementById('log-search-input').value = '';
       document.getElementById('log-search-count').textContent = '';
     };
@@ -334,14 +324,16 @@
   </script>
   <script src="js/loveline_app.js" defer></script>
   <!-- ── Modal: System Message LOG ── -->
-  <div id="modal-system-log" style="display:none;">
-    <div class="modal-box modal-box-lg">
-      <div class="modal-header-bar">
+  <div id="modal-system-log" class="modal-overlay hidden">
+    <div class="modal"
+      style="background-color: var(--c-bg-card-light); width: 80%; height: 80%; display: flex; flex-direction: column; max-width: none;">
+      <div class="modal-header-bar"
+        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-shrink: 0;">
+        <h2 class="modal-title" style="margin:0;">系統訊息 LOG</h2>
         <button class="modal-close-btn"
-          onclick="document.getElementById('modal-system-log').style.display='none'">&times;</button>
-        <h3 class="modal-title">系統訊息 LOG</h3>
+          onclick="document.getElementById('modal-system-log').classList.add('hidden')">&times;</button>
       </div>
-      <div class="log-search-bar">
+      <div class="log-search-bar" style="flex-shrink: 0;">
         <span class="log-search-icon">🔍</span>
         <span id="log-search-count" class="log-search-count"></span>
         <button class="log-search-nav-btn" id="log-search-prev" title="上一個">▲</button>

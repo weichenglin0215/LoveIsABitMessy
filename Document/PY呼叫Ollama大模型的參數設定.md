@@ -50,6 +50,7 @@ payload = {
         "num_ctx": 4096,
         "num_gpu": 32,          # 視模型層數而定
         "temperature": 0.7,
+        "top_k": 40,
         "top_p": 0.9,
         "num_predict": 1024,
         "repeat_penalty": 1.1,

@@ -32,7 +32,7 @@
       <div class="editor-container">
         <div class="editor-panel">
           <h2><span class="icon">🎭</span> 登場角色管理</h2>
-          <div class="char-row-manager">
+          <div class="sub-row-group" style="grid-template-columns: 1.5fr auto 1fr 1fr;">
             <select id="char-dropdown">
               <option value="">-- 選擇角色卡 --</option>
             </select>
@@ -46,7 +46,7 @@
             <input type="text" class="editor-input-text" id="char-id" readonly placeholder="系統自動生成">
           </div>
 
-          <div class="char-row-main">
+          <div class="sub-row-group" style="grid-template-columns: 2fr 1fr 1fr 1fr 1fr;">
             <div class="field-group">
               <label class="field-label">姓名 (Name)</label>
               <input type="text" class="editor-input-text" id="char-name" placeholder="輸入角色姓名">
@@ -80,7 +80,7 @@
             </div>
           </div>
 
-          <div class="char-row-dates">
+          <div class="sub-row-group" style="grid-template-columns: 1fr 1fr 1fr;">
             <div class="field-group">
               <label class="field-label" id="lbl-birthday">生日 (Birthday)</label>
               <input type="date" class="editor-input" id="char-birthday">
@@ -99,7 +99,7 @@
             </div>
           </div>
 
-          <div class="char-row-types">
+          <div class="sub-row-group" style="grid-template-columns: 1fr 1fr 1fr;">
             <div class="field-group">
               <label class="field-label">曖昧期類型</label>
               <select class="editor-input" id="char-type-1">

@@ -10,11 +10,13 @@
 :root {
 
   /* ── 背景 ── */
-  --c-bg-root: hsl(240, 16%, 6%);
-  --c-bg-main: hsl(240, 18%, 9%);
-  --c-bg-card: hsla(240, 15%, 13%, 0.92);
+  --c-bg-root: hsl(240, 16%, 5%);
+  --c-bg-main: hsl(240, 18%, 10%);
+  --c-bg-card: hsla(240, 15%, 15%, 0.66);
+  --c-bg-card-light: hsla(240, 33%, 60%, 0.66);
   --c-bg-panel: hsla(240, 10%, 10%, 0.85);
-  --c-bg-input: var(--c-bg-main);
+  /*--c-bg-input: var(--c-bg-main);*/
+  --c-bg-input: hsl(0, 0%, 0%);
   /* 標準輸入框底色 */
   --c-bg-input-dark: hsl(0, 0%, 0%);
   /* daily_run 純黑底色 */
@@ -33,10 +35,11 @@
   /* 向後相容別名 */
 
   /* ── 主色 (紫) ── */
-  --c-accent: hsl(266, 55%, 52%);
-  --c-accent-hover: hsl(266, 80%, 76%);
+  --c-accent: hsl(266, 55%, 55%);
+  --c-accent-bg: hsl(266, 50%, 35%);
+  --c-accent-hover: hsl(266, 80%, 80%);
   --c-accent-field-label: hsl(266, 40%, 76%);
-  --c-accent-light: hsl(266, 80%, 75%);
+  --c-accent-light: hsl(266, 80%, 70%);
   --c-accent-glow: hsla(266, 0%, 64%, 0.6);
   --c-accent-subtle: rgba(156, 111, 214, 0.20);
   /* 圓形按鈕、active 背景 */
@@ -81,7 +84,7 @@
   --pad-md: 10px 20px;
   --pad-sm: 7px 14px;
   --pad-xs: 4px 8px;
-  --pad-icon: 4px 8px;
+  --pad-icon: 4px 4px;
   /* 圖示按鈕 padding */
 
   /* ── 圓角 ── */
@@ -142,6 +145,42 @@
   --btn-size-3xl: var(--font-size-3xl);
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   34. loveline 聊天介面專屬，將來要刪除所以--ll開頭的變數
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── 新增變數（統一在此調整聊天 UI 所有尺寸）── */
+:root {
+  /* 訊息氣泡底色 */
+  --c-msg-user-bg: linear-gradient(135deg, hsl(262, 60%, 35%), hsl(290, 50%, 28%));
+  --c-msg-ai-bg: hsla(240, 20%, 16%, 0.9);
+
+  /* 頂部導覽列高度 */
+  --ll-topbar-h: 46px;
+
+  /* 三欄寬度初始值 */
+  --ll-panel-l-w: 260px;
+  --ll-panel-mid-w: 220px;
+
+  /* 頭像尺寸 */
+  --ll-avatar-user: 36px;
+  /* 使用者頭像 */
+  --ll-avatar-chat: 38px;
+  /* 聊天列表頭像 */
+  --ll-avatar-msg: 32px;
+  /* 訊息頭像 */
+
+  /* 伺服器狀態圓點（loveline 用 10px，novel_generator 用 20px）*/
+  --ll-dot-size: 10px;
+
+  /* 氣泡圓角 & 字體 */
+  --ll-bubble-radius: 14px;
+
+  /* 聊天列表 */
+  --ll-item-bg-hover: rgba(255, 255, 255, 0.06);
+  --ll-item-bg-active: rgba(162, 89, 255, 0.18);
+
+}
 
 /* ─────────────────────────────────────────────────────────────
    2. Reset / 基礎
@@ -256,14 +295,14 @@ body {
 .app-topbar-nav {
   display: flex;
   gap: var(--pad-both-md);
-  font-size: var(--ll-font-md);
+  font-size: var(--font-size-md);
 }
 
 /* .app-topbar-nav a 加上"a"是針對loveline.html的頁首導覽列，不要更動*/
 .app-topbar-nav a {
   color: var(--c-text-sec);
   text-decoration: none;
-  font-size: var(--ll-font-sm);
+  font-size: var(--ll-font-xl);
   padding: 3px var(--gap-md);
   border-radius: var(--radius-md);
   transition: all 0.2s;
@@ -276,7 +315,7 @@ body {
 
 .app-topbar-nav a.active {
   color: var(--c-accent-light);
-  background: rgba(162, 89, 255, 0.15);
+  background: rgba(162, 89, 255, 0.5);
 }
 
 
@@ -450,24 +489,6 @@ body {
   font-size: var(--font-size-lg);
 }
 
-.form-label {
-  color: var(--c-accent-light);
-  font-size: var(--font-size-lg);
-  display: block;
-  font-weight: var(--heading-weight);
-  margin-top: var(--pad-both-xs);
-}
-
-.field-label {
-  color: var(--c-accent-field-label);
-  font-size: var(--font-size-md);
-  display: block;
-  font-weight: var(--heading-weight);
-  margin: var(--pad-both-xs);
-}
-
-
-
 /* ── 次要 / 狀態說明文字 ── */
 .hint,
 .cloud-status,
@@ -480,8 +501,26 @@ body {
   line-height: 1.4;
 }
 
+.form-label {
+  color: var(--c-accent-light);
+  font-size: var(--font-size-lg);
+  display: block;
+  font-weight: var(--heading-weight);
+  margin-top: var(--pad-both-sm);
+  margin-bottom: var(--pad-both-xs);
+}
+
+.field-label {
+  color: var(--c-accent-field-label);
+  font-size: var(--font-size-md);
+  display: block;
+  font-weight: var(--heading-weight);
+  margin: var(--pad-both-xs);
+}
+
+
 /* ── 設定組 / 模型列 小標籤 ── */
-.model-select-wrap label,
+label,
 .settings-label,
 .model-label,
 .nav-label {
@@ -548,6 +587,8 @@ input[type="date"],
 input[type="password"],
 input[type="email"],
 select,
+.select-wide,
+.select-narrow,
 .editor-input-text,
 .editor-input {
   height: var(--input-height);
@@ -562,6 +603,14 @@ select,
   margin-bottom: 0;
   box-sizing: border-box;
   transition: border-color 0.2s;
+}
+
+.select-wide {
+  max-width: 500px;
+}
+
+.select-narrow {
+  max-width: 200px;
 }
 
 input[type="text"]:focus,
@@ -584,30 +633,42 @@ textarea[readonly] {
   cursor: default;
 }
 
+
+
 /* ── 多行文字區 (標準深色底) ── */
 /*故事粗綱 .story-premise-textarea*/
+/*章描述 .chapter-desc*/
 textarea,
 .editor-textarea,
 .story-premise-textarea,
+.chapter-desc,
+.editor-title,
 textarea#main-editor {
   width: 100%;
   flex: 1;
   min-height: 5rem;
-  background: rgba(0, 0, 0, 0.30);
+  background: hsla(0, 0%, 0%, 0.3);
   border: 1px solid var(--c-border);
   border-radius: var(--radius-sm);
   color: var(--c-text-main);
   padding: var(--pad-both-md);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-xl);
   line-height: 1.4;
   resize: vertical;
   font-family: var(--font-mono);
   transition: border-color 0.2s;
 }
 
+/* ── 節標題顯示區 textarea ── */
+.editor-title {
+  color: var(--c-accent-light);
+}
+
 textarea:focus,
 .editor-textarea:focus,
 .story-premise-textarea:focus,
+.chapter-desc:focus,
+.editor-title:focus,
 textarea#main-editor:focus {
   outline: none;
   border-color: var(--c-border-focus);
@@ -635,12 +696,11 @@ textarea#main-editor {
 
 /* ── 唯讀提示詞預覽框 ── */
 .prompt-preview {
-  background: #1a1a1a;
+  background: hsl(0, 0%, 10%);
   padding: var(--gap-md);
   border-radius: var(--radius-sm);
   color: var(--c-text-muted);
   font-size: var(--font-size-lg);
-  margin-top: var(--gap-sm);
 }
 
 /* ── daily_run 輸入欄覆蓋（純黑底） ── */
@@ -809,13 +869,6 @@ body.daily-page .ai-btn {
   padding: 0 var(--gap-sm);
 }
 
-.btn-remove-char {
-  position: absolute;
-  top: var(--gap-sm);
-  right: var(--gap-sm);
-  color: var(--c-err);
-  padding: 0;
-}
 
 /* ── 刪除按鈕（透明底，hover 變紅）── */
 .btn-del-sec {
@@ -842,7 +895,7 @@ body.daily-page .ai-btn {
   color: #fff;
   border-radius: var(--radius-2xs);
   cursor: pointer;
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-md);
   padding: 2px var(--gap-sm);
   transition: background 0.2s, color 0.2s;
   white-space: nowrap;
@@ -873,13 +926,12 @@ body.daily-page .ai-btn {
 /* ── 小型操作按鈕（日誌操作 / 載入清單 / 今天 / AI編輯）──
    共用：小尺寸字體、小 padding、圓角、flex 對齊                 */
 .small-btn,
-.log-action-btn,
 .load-btn,
 .btn-today,
 .ai-btn-sm,
 .btn-edit-sm {
   font-size: var(--font-size-md);
-  padding: var(--btn-padding-xs-wild);
+  padding: var(--btn-padding-xs);
   border-radius: var(--radius-md);
   cursor: pointer;
   display: inline-flex;
@@ -900,9 +952,6 @@ body.daily-page .ai-btn {
   color: var(--c-text-dark);
 }
 
-.log-action-btn {
-  flex: 1;
-}
 
 .load-btn {
   flex: 1;
@@ -923,9 +972,6 @@ body.daily-page .ai-btn {
   padding: 2px var(--gap-sm);
 }
 
-.btn-edit-sm {
-  width: 70px;
-}
 
 /* ── 伺服器啟動按鈕 ── */
 #start-server-btn {
@@ -977,8 +1023,8 @@ body.daily-page .ai-btn {
   cursor: pointer;
   font-size: var(--font-size-2xl);
   font-weight: bold;
-  color: var(--c-text-muted);
-  margin-right: 15px;
+  color: var(--c-text-main);
+  margin-right: 10px;
   background: none;
   border: none;
   line-height: 1;
@@ -1005,40 +1051,6 @@ body.daily-page .ai-btn {
 }
 
 
-/* ─────────────────────────────────────────────────────────────
-   16. novel_generator ── 角色欄元件
-───────────────────────────────────────────────────────────── */
-.char-card {
-  letter-spacing: 0.1rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  padding: var(--gap-md);
-  border-radius: var(--radius-sm);
-  margin-bottom: var(--gap-md);
-  position: relative;
-}
-
-.char-mode-toggle {
-  padding: var(--gap-md);
-  border-bottom: 1px solid var(--c-border);
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-sm);
-  font-size: var(--font-size-lg);
-  flex-shrink: 0;
-}
-
-.char-card select {
-  font-size: var(--font-size-lg);
-  width: 100%;
-  background: #111;
-  color: #fff;
-  border: 1px solid #444;
-  padding: var(--gap-sm) var(--gap-md);
-  border-radius: var(--radius-2xs);
-  margin-top: var(--gap-sm);
-  height: auto;
-}
 
 
 /* ─────────────────────────────────────────────────────────────
@@ -1090,7 +1102,7 @@ body.daily-page .ai-btn {
 
 
 /* ─────────────────────────────────────────────────────────────
-   18. 將幾個設定格包起來有外框 (.status-row / .status-item)
+   18. 將幾個設定格包起來有外框 (.status-row )
 ───────────────────────────────────────────────────────────── */
 .status-row {
   display: grid;
@@ -1102,26 +1114,6 @@ body.daily-page .ai-btn {
   border: 1px solid #444;
 }
 
-.status-item label {
-  display: block;
-  font-size: var(--font-size-lg);
-  color: var(--c-text-sec);
-  margin-bottom: var(--gap-sm);
-}
-
-.status-item select {
-  margin-bottom: 0;
-  padding: var(--gap-sm) var(--gap-md);
-  height: auto;
-}
-
-.status-item.checkbox-item {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-sm);
-  justify-content: center;
-}
-
 
 /* ─────────────────────────────────────────────────────────────
    19. LOG 區 novel_generator
@@ -1129,24 +1121,19 @@ body.daily-page .ai-btn {
 .log-area {
   flex: 1;
   display: flex;
+  height: 6rem;
+  min-height: 3rem;
   background: #000;
   color: var(--c-log-text);
   font-family: 'Courier New', monospace;
+  font-size: var(--font-size-md);
+  line-height: 1.5;
   padding: var(--gap-md);
   border-radius: var(--radius-sm);
   overflow-y: scroll;
   white-space: pre-wrap;
   word-break: break-word;
-  font-size: var(--font-size-md);
-  line-height: 1.5;
   border: 1px solid #333;
-}
-
-.log-area-daily {
-  flex: 1;
-  display: flex;
-  height: 6rem;
-  min-height: 3rem;
 }
 
 
@@ -1181,9 +1168,8 @@ body.daily-page .ai-btn {
   color: #fff;
   font-size: var(--font-size-lg);
   border-bottom: 1px solid #666;
-  padding: var(--gap-sm);
+  padding: var(--gap-xs);
   box-shadow: none;
-  height: auto;
 }
 
 .chapter-title-row input:focus,
@@ -1197,43 +1183,9 @@ body.daily-page .ai-btn {
 }
 
 
-/* .chapter-desc：章節描述（灰底） */
-.chapter-desc {
-  background: rgba(0, 0, 0, 0.20);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: var(--radius-2xs);
-  color: var(--c-text-main);
-  font-size: var(--font-size-lg);
-  padding: var(--gap-sm) var(--gap-md);
-  margin-bottom: var(--pad-both-md);
-  resize: vertical;
-  min-height: 3rem;
-  font-family: var(--font-mono);
-  line-height: 1.5;
-  width: 100%;
-}
 
 
 
-/* ── 節標題顯示區 textarea ── */
-.editor-title {
-  font-size: var(--font-size-lg);
-  line-height: 1.6;
-  margin-bottom: var(--gap-md);
-  color: var(--c-accent-light);
-  background: transparent;
-  border: 1px solid var(--c-border);
-  border-radius: 0;
-  width: 100%;
-  min-height: 3rem;
-  outline: none;
-  padding: var(--gap-md);
-  resize: vertical;
-}
-
-.editor-title:focus {
-  border-bottom-color: var(--c-accent-light);
-}
 
 
 
@@ -1264,30 +1216,20 @@ body.daily-page .ai-btn {
 /* ─────────────────────────────────────────────────────────────
    21. 彈窗 Modal
 ───────────────────────────────────────────────────────────── */
-[id^="modal-"] {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.80);
-  z-index: 10000;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
 
 .modal-box {
   background: #222;
   color: #eee;
-  padding: 24px;
+  padding: var(--pad-both-md);
   border-radius: var(--radius-md);
-  width: 400px;
+  width: 1000px;
   max-width: 90%;
   border: 1px solid #444;
   box-shadow: 0 0.3rem 30px rgba(0, 0, 0, 0.5);
 }
 
 .modal-box-sm {
-  width: 360px;
+  width: 480px;
 }
 
 .modal-box-lg {
@@ -1305,11 +1247,11 @@ body.daily-page .ai-btn {
 }
 
 .modal-field {
-  margin-bottom: 15px;
+  margin-bottom: 5px;
 }
 
 .modal-field-last {
-  margin-bottom: 20px;
+  margin-bottom: 5px;
 }
 
 .modal-label {
@@ -1334,7 +1276,7 @@ body.daily-page .ai-btn {
 .modal-header-bar {
   display: flex;
   align-items: center;
-  padding: var(--pad-both-md) 20px;
+  padding: var(--pad-both-sm) 20px;
   background: #333;
   border-bottom: 1px solid #444;
   flex-shrink: 0;
@@ -1342,27 +1284,35 @@ body.daily-page .ai-btn {
 
 .modal-header-bar .modal-title {
   margin: 0;
-  font-size: var(--heading-sm);
+  font-size: var(--heading-lg);
 }
 
 .modal-body-area {
   flex: 1;
-  padding: 20px;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+  padding: 0px;
   background: #111;
+  font-size: var(--font-size-xl);
 }
 
 .modal-log-textarea {
+  flex: 1;
   width: 100%;
   height: 100%;
+  min-height: 0;
   background: transparent;
-  color: var(--c-log-text);
+  color: var(--c-log-text) !important;
   border: none;
-  padding: 0;
-  font-family: monospace;
+  padding: 10px;
+  font-family: monospace !important;
   resize: none;
-  font-size: var(--font-size-xl);
-  line-height: 1.5;
+  font-size: var(--font-size-xl) !important;
+  line-height: 1.5 !important;
   outline: none;
   /* 保留原始換行，並在單字邊界自動換行 */
   white-space: pre-wrap;
@@ -1382,7 +1332,7 @@ body.daily-page .ai-btn {
 }
 
 .log-search-icon {
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-lg);
   opacity: 0.7;
   flex-shrink: 0;
 }
@@ -1394,7 +1344,7 @@ body.daily-page .ai-btn {
   border-radius: var(--radius-sm);
   color: #eee;
   padding: 4px 10px;
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-lg);
   min-width: 0;
 }
 
@@ -1404,10 +1354,11 @@ body.daily-page .ai-btn {
 }
 
 .log-search-count {
-  font-size: var(--font-size-sm);
-  color: #888;
+  font-size: var(--font-size-lg);
+  font-weight: 400;
+  color: var(--c-text-primary);
   white-space: nowrap;
-  min-width: 56px;
+  min-width: 120px;
   text-align: center;
 }
 
@@ -1418,7 +1369,7 @@ body.daily-page .ai-btn {
   color: #ccc;
   cursor: pointer;
   padding: 3px 10px;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-md);
   flex-shrink: 0;
 }
 
@@ -1600,21 +1551,30 @@ body.layout-scroll {
 
 
 /* ─────────────────────────────────────────────────────────────
-   28. novel_generator ── 角色欄補充
+   28. novel_generator ── 角色欄捲動區
 ───────────────────────────────────────────────────────────── */
 .scroll-area-char-card {
   flex: 1;
   overflow-y: auto;
-  padding: var(--gap-sm);
+  padding: var(--gap-xs);
   font-size: var(--font-size-md);
   min-height: 0;
 }
 
-.char-card label {
-  font-size: var(--font-size-md);
-  margin: 0;
-  color: var(--c-text-muted);
+/* ─────────────────────────────────────────────────────────────
+   16. novel_generator ── 角色欄元件
+───────────────────────────────────────────────────────────── */
+
+.char-mode-toggle {
+  padding: var(--gap-md);
+  border-bottom: 1px solid var(--c-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  font-size: var(--font-size-lg);
+  flex-shrink: 0;
 }
+
 
 .checkbox-label {
   display: flex;
@@ -1646,7 +1606,7 @@ body.layout-scroll {
   border: 1px solid #444;
   border-radius: var(--radius-2xs);
   padding: var(--gap-sm) var(--gap-md);
-  font-size: 0.9rem;
+  font-size: var(--font-size-md);
   width: 100%;
   height: auto;
 }
@@ -1665,16 +1625,10 @@ body.layout-scroll {
 .model-container-row {
   display: flex;
   align-items: center;
-  gap: var(--gap-sm);
+  gap: var(--gap-xs);
 }
 
-.model-select-wide {
-  max-width: 300px;
-}
 
-.model-select-narrow {
-  max-width: 200px;
-}
 
 
 /* ─────────────────────────────────────────────────────────────
@@ -1684,15 +1638,9 @@ body.layout-scroll {
   display: flex;
   gap: var(--gap-md);
   margin-top: var(--gap-sm);
-  margin-right: 1rem;
   justify-content: flex-end;
 }
 
-.log-actions-sm {
-  display: flex;
-  gap: var(--gap-xl);
-  margin-top: var(--gap-xs);
-}
 
 
 /* ─────────────────────────────────────────────────────────────
@@ -1728,32 +1676,13 @@ body.layout-scroll {
 /* ─────────────────────────────────────────────────────────────
    32. characters_editor ── 特定版型，勿取消或合併，因為每個ROW的內容物個數皆不同
 ───────────────────────────────────────────────────────────── */
-.char-row-manager,
-.char-row-main,
-.char-row-dates,
-.char-row-types {
+.sub-row-group {
   display: grid;
   gap: var(--pad-both-md);
   align-items: center;
   flex-wrap: wrap;
   color: var(--c-text-sec);
   border-radius: var(--radius-xs);
-}
-
-.char-row-manager {
-  grid-template-columns: 1.5fr auto 1fr 1fr;
-}
-
-.char-row-main {
-  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
-}
-
-.char-row-dates {
-  grid-template-columns: 1fr 1fr 1fr;
-}
-
-.char-row-types {
-  grid-template-columns: 1fr 1fr 1fr;
 }
 
 .editor-textarea[readonly] {
@@ -1832,12 +1761,7 @@ body.daily-page {
   cursor: pointer;
 }
 
-.toggle-row label {
-  color: var(--c-text-sec);
-  font-size: var(--font-size-lg);
-  cursor: pointer;
-  user-select: none;
-}
+
 
 /* ── 性格類型標籤 ── */
 .personality-type-tag {
@@ -1860,7 +1784,7 @@ body.daily-page {
   margin-bottom: var(--gap-md);
 }
 
-.project-panel .form-label {
+.project-panel {
   margin-top: 0;
 }
 
@@ -1922,12 +1846,12 @@ body.daily-page {
 }
 
 .diary-text-area {
-  flex: 1;
-  min-height: 300px;
+  height: 400px;
 }
 
 .image-prompt-area {
-  min-height: 200px;
+  flex: 1;
+  height: 200px;
 }
 
 /* ── 伺服器 + 模型設定列 ── */
@@ -1949,49 +1873,6 @@ body.daily-page {
 }
 
 
-/* ═══════════════════════════════════════════════════════════════
-   34. loveline 聊天介面專屬
-   ═══════════════════════════════════════════════════════════════ */
-
-/* ── 新增變數（統一在此調整聊天 UI 所有尺寸）── */
-:root {
-  /* 訊息氣泡底色 */
-  --c-msg-user-bg: linear-gradient(135deg, hsl(262, 60%, 35%), hsl(290, 50%, 28%));
-  --c-msg-ai-bg: hsla(240, 20%, 16%, 0.9);
-
-  /* 頂部導覽列高度 */
-  --ll-topbar-h: 46px;
-
-  /* 三欄寬度初始值 */
-  --ll-panel-l-w: 260px;
-  --ll-panel-mid-w: 220px;
-
-  /* 頭像尺寸 */
-  --ll-avatar-user: 36px;
-  /* 使用者頭像 */
-  --ll-avatar-chat: 38px;
-  /* 聊天列表頭像 */
-  --ll-avatar-msg: 32px;
-  /* 訊息頭像 */
-
-  /* 伺服器狀態圓點（loveline 用 10px，novel_generator 用 20px）*/
-  --ll-dot-size: 10px;
-
-  /* 氣泡圓角 & 字體 */
-  --ll-bubble-radius: 14px;
-  --ll-msg-font: 0.88rem;
-
-  /* 聊天列表 */
-  --ll-item-bg-hover: rgba(255, 255, 255, 0.06);
-  --ll-item-bg-active: rgba(162, 89, 255, 0.18);
-
-  /* Panel 小字體 */
-  --ll-font-xs: 0.72rem;
-  --ll-font-sm: 0.78rem;
-  --ll-font-md: 0.85rem;
-  --ll-font-rg: 0.88rem;
-  --ll-font-lg: 0.95rem;
-}
 
 
 
@@ -2046,7 +1927,7 @@ body.daily-page {
 ───────────────────────────────────────────────────────────── */
 .panel-header {
   padding: var(--gap-md) var(--pad-both-md);
-  font-size: var(--ll-font-md);
+  font-size: var(--font-size-md);
   font-weight: 600;
   color: var(--c-accent-light);
   letter-spacing: 0.1em;
@@ -2079,10 +1960,6 @@ body.daily-page {
         ── 聚合 editer Section 14 的 .collapse-btn，
            loveline 版 font-size 較小，此處以選擇器加權覆蓋 ──
 ───────────────────────────────────────────────────────────── */
-.panel-header .collapse-btn {
-  font-size: var(--ll-font-md);
-  color: var(--c-text-muted);
-}
 
 /* 折疊後顯示的垂直圖示欄 */
 #collapsed-icon {
@@ -2095,7 +1972,7 @@ body.daily-page {
 }
 
 .collapsed-icon-label {
-  font-size: var(--ll-font-xs);
+  font-size: var(--font-size-xs);
   color: var(--c-text-sec);
 }
 
@@ -2110,7 +1987,7 @@ body.daily-page {
 }
 
 .user-section label {
-  font-size: var(--ll-font-sm);
+  font-size: var(--font-size-sm);
   color: var(--c-text-sec);
   display: block;
   margin-bottom: var(--gap-sm);
@@ -2125,7 +2002,7 @@ body.daily-page {
   color: #fff;
   border-radius: var(--radius-xs);
   padding: var(--gap-sm) var(--gap-md);
-  font-size: var(--ll-font-md);
+  font-size: var(--font-size-md);
   height: auto;
 }
 
@@ -2151,14 +2028,14 @@ body.daily-page {
 }
 
 .user-name {
-  font-size: var(--ll-font-lg);
-  font-weight: 600;
+  font-size: var(--font-size-lg);
+  font-weight: 500;
   color: #fff;
 }
 
 /* 使用者小標籤（"目前使用者"） */
 .user-meta-label {
-  font-size: var(--ll-font-xs);
+  font-size: var(--font-size-xs);
   color: var(--c-text-sec);
 }
 
@@ -2177,7 +2054,7 @@ body.daily-page {
   border-radius: var(--radius-xs);
   padding: var(--gap-sm) var(--gap-md);
   cursor: pointer;
-  font-size: var(--ll-font-sm);
+  font-size: var(--font-size-sm);
 }
 
 .btn-add-user:hover {
@@ -2241,35 +2118,8 @@ body.daily-page {
   animation: dot-flash 0.5s ease-out;
 }
 
-/* 伺服器狀態文字（loveline 版）
-   ── 聚合 .server-status-text（Section 12）──                */
-.server-label,
-.server-status-text {
-  font-size: var(--ll-font-sm);
-  color: var(--c-text-sec);
-}
 
-/* 模型選取組（標籤 + select + 按鈕）*/
-.model-select-wrap {
-  margin-top: var(--gap-sm);
-}
-
-.model-select-wrap+.model-select-wrap {
-  margin-top: var(--gap-md);
-}
-
-.model-select-wrap select {
-  width: 100%;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid var(--c-border);
-  color: #fff;
-  border-radius: var(--radius-xs);
-  padding: var(--gap-xs) var(--gap-sm);
-  font-size: var(--ll-font-sm);
-  height: auto;
-}
-
-/* 模型選取列（select + 編輯按鈕）*/
+/* 模型選取列，容器寬度太窄就需要包這一層來換行（select + 編輯按鈕）*/
 .model-wrap-row {
   display: flex;
   gap: var(--gap-sm);
@@ -2288,7 +2138,7 @@ body.daily-page {
   border-radius: var(--radius-2xs);
   padding: 2px var(--gap-sm);
   cursor: pointer;
-  font-size: var(--ll-font-md);
+  font-size: var(--font-size-md);
   white-space: nowrap;
 }
 
@@ -2299,7 +2149,7 @@ body.daily-page {
 
 /* ─────────────────────────────────────────────────────────────
    34-J. LOG 區（.log-box）
-        ── 聚合 .log-area（Section 19），僅 font-size 略小 ──
+        ── 聚合 Section 19），僅 font-size 略小 ──
 ───────────────────────────────────────────────────────────── */
 .log-box {
   background: #000;
@@ -2324,7 +2174,7 @@ body.daily-page {
    34-K. 中欄：聊天列表（.list-section-title / .chat-item）
 ───────────────────────────────────────────────────────────── */
 .list-section-title {
-  font-size: var(--ll-font-xs);
+  font-size: var(--ll-font-xl);
   font-weight: 700;
   color: var(--c-text-sec);
   padding: var(--gap-sm) var(--gap-md);
@@ -2351,7 +2201,7 @@ body.daily-page {
 
 /* 空清單提示文字 */
 .list-empty-hint {
-  font-size: var(--ll-font-xs);
+  font-size: var(--font-size-xs);
   color: #555;
   padding: var(--gap-sm) var(--gap-md);
 }
@@ -2402,8 +2252,8 @@ body.daily-page {
 }
 
 .chat-name {
-  font-size: var(--ll-font-rg);
-  font-weight: 600;
+  font-size: var(--ll-font-xl);
+  font-weight: 500;
   color: #fff;
   white-space: nowrap;
   overflow: hidden;
@@ -2411,7 +2261,7 @@ body.daily-page {
 }
 
 .chat-preview {
-  font-size: var(--ll-font-xs);
+  font-size: var(--font-size-md);
   color: var(--c-text-sec);
   white-space: nowrap;
   overflow: hidden;
@@ -2424,7 +2274,7 @@ body.daily-page {
   border: none;
   color: #666;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--ll-font-xl);
   padding: 2px var(--gap-xs);
   border-radius: var(--radius-2xs);
   flex-shrink: 0;
@@ -2457,7 +2307,7 @@ body.daily-page {
 }
 
 #chat-subtitle {
-  font-size: var(--ll-font-xs);
+  font-size: var(--font-size-xs);
   color: var(--c-text-sec);
 }
 
@@ -2502,6 +2352,7 @@ body.daily-page {
   gap: var(--pad-both-md);
 }
 
+/*每一行對話*/
 .msg-row {
   display: flex;
   gap: var(--gap-md);
@@ -2523,10 +2374,11 @@ body.daily-page {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.9rem;
+  font-size: var(--font-size-md);
   border: 1px solid var(--c-border);
 }
 
+/*對話泡泡外框*/
 .msg-bubble-wrap {
   max-width: 70%;
   display: flex;
@@ -2537,18 +2389,20 @@ body.daily-page {
   align-items: flex-end;
 }
 
+/*對話發送者*/
 .msg-sender {
-  font-size: var(--ll-font-xs);
+  font-size: var(--font-size-md);
   color: var(--c-text-sec);
   margin-bottom: 3px;
   padding: 0 var(--gap-xs);
 }
 
+/*對話氣泡*/
 .msg-bubble {
   padding: 9px 13px;
   border-radius: var(--ll-bubble-radius);
-  font-size: var(--ll-msg-font);
-  line-height: 1.55;
+  font-size: var(--font-size-lg);
+  line-height: 1.5;
   word-break: break-word;
   white-space: pre-wrap;
   background: var(--c-msg-ai-bg);
@@ -2562,8 +2416,8 @@ body.daily-page {
 }
 
 .msg-time {
-  font-size: 0.65rem;
-  color: #555;
+  font-size: var(--font-size-sm);
+  color: var(--c-text-sec);
   margin-top: 3px;
   padding: 0 var(--gap-xs);
 }
@@ -2587,7 +2441,7 @@ body.daily-page {
    34-N. 右欄：訊息輸入列（#chat-input-area）
 ───────────────────────────────────────────────────────────── */
 #chat-input-area {
-  padding: var(--gap-md) 16px;
+  padding: var(--gap-md);
   border-top: 1px solid var(--c-border);
   display: flex;
   gap: var(--gap-md);
@@ -2602,8 +2456,8 @@ body.daily-page {
   border: 1px solid var(--c-border);
   border-radius: var(--radius-pill);
   color: #fff;
-  font-size: 0.9rem;
-  padding: 9px 16px;
+  font-size: var(--font-size-md);
+  padding: var(--pad-both-md);
   font-family: var(--font-ui);
   resize: none;
   outline: none;
@@ -2616,7 +2470,7 @@ body.daily-page {
 }
 
 #msg-input::placeholder {
-  color: #555;
+  color: var(--c-text-muted);
 }
 
 /* 送出按鈕（圓形紫色）──
@@ -2657,7 +2511,7 @@ body.daily-page {
   align-items: center;
   justify-content: center;
   gap: var(--pad-both-md);
-  color: #444;
+  color: var(--c-text-muted);
 }
 
 .empty-chat .icon {
@@ -2665,7 +2519,7 @@ body.daily-page {
 }
 
 .empty-chat p {
-  font-size: 0.9rem;
+  font-size: var(--font-size-md);
 }
 
 
@@ -2695,10 +2549,10 @@ body.daily-page {
   background: hsl(255, 30%, 10%);
   border: 1px solid var(--c-border);
   border-radius: var(--radius-md);
-  padding: 24px;
+  padding: var(--pad-both-md);
   width: 420px;
   max-width: 95vw;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  /*box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);*/
 }
 
 /* Modal 寬度修飾類（由 HTML style 改 class 後用）*/
@@ -2725,13 +2579,12 @@ body.daily-page {
 .modal label,
 .modal-label {
   display: block;
-  font-size: 0.8rem;
+  font-size: var(--font-size-lg);
   color: var(--c-text-sec);
   margin-bottom: var(--gap-xs);
   margin-top: var(--gap-md);
 }
 
-/* Modal 內輸入框，聚合黑底輸入的共同規格 */
 .modal input,
 .modal select,
 .modal textarea {
@@ -2741,13 +2594,18 @@ body.daily-page {
   color: #fff;
   border-radius: var(--radius-sm);
   padding: 7px var(--gap-md);
-  font-size: var(--ll-font-rg);
+  font-size: var(--font-size-md);
   font-family: var(--font-ui);
   height: auto;
 }
 
 .modal textarea {
-  min-height: 60px;
+  min-height: 80px;
+}
+
+.modal-overlay .modal textarea {
+  min-height: 80px !important;
+  height: auto !important;
   resize: vertical;
 }
 
@@ -2763,16 +2621,16 @@ body.daily-page {
    .primary → 聚合 .primary-btn
    .cancel  → 聚合 .secondary-btn                               */
 .btn-modal {
-  padding: 7px 18px;
+  padding: var(--pad-both-md) var(--pad-both-lg);
   border-radius: var(--radius-pill);
   border: none;
   cursor: pointer;
-  font-size: var(--ll-font-rg);
+  font-size: var(--font-size-lg);
   transition: background 0.2s;
 }
 
 .btn-modal.primary {
-  background: var(--c-accent);
+  background: var(--c-accent-bg);
   color: #fff;
 }
 
@@ -2789,6 +2647,12 @@ body.daily-page {
   background: rgba(255, 255, 255, 0.15);
 }
 
+.btn-modal.btn-del-sec {
+  background: rgba(244, 67, 54, 0.2);
+  color: var(--c-err);
+  margin-right: auto;
+}
+
 /* 刪除按鈕（modal 左側紅色）*/
 .btn-modal-delete {
   background: rgba(244, 67, 54, 0.2);
@@ -2798,7 +2662,7 @@ body.daily-page {
 
 /* 密碼確認 modal 說明文字 */
 .modal-password-msg {
-  font-size: var(--ll-font-md);
+  font-size: var(--font-size-md);
   color: var(--c-text-sec);
   margin-bottom: var(--pad-both-md);
 }
@@ -2813,7 +2677,7 @@ body.daily-page {
    34-Q. 角色多選清單（.char-check-list / .char-check-item）
 ───────────────────────────────────────────────────────────── */
 .char-check-list {
-  max-height: 180px;
+  max-height: 240px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -2822,22 +2686,27 @@ body.daily-page {
 }
 
 .char-check-item {
-  display: flex;
-  align-items: center;
   gap: var(--gap-md);
-  padding: var(--gap-sm) var(--gap-sm);
+  margin-top: var(--gap-sm);
+  padding: var(--gap-sm);
   border-radius: var(--radius-xs);
+  cursor: pointer;
 }
 
 .char-check-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.char-check-item input[type="checkbox"] {
+  cursor: pointer;
+  margin: 0;
 }
 
 .char-check-item label {
   cursor: pointer;
-  font-size: var(--ll-font-md);
+  font-size: var(--font-size-lg);
   color: #ddd;
-  margin: 0;
+
 }
 
 /* 角色無可選提示文字 */
@@ -2846,6 +2715,59 @@ body.daily-page {
   font-size: 0.8rem;
 }
 
+
+/* ─────────────────────────────────────────────────────────────
+   34-S. 訊息泡泡：選取狀態 & 操作選單
+───────────────────────────────────────────────────────────── */
+.msg-bubble {
+  cursor: pointer;
+  transition: outline 0.12s;
+}
+
+.msg-bubble.selected {
+  outline: 2px solid var(--c-accent-light);
+  outline-offset: 3px;
+}
+
+.bubble-menu {
+  background: hsl(250, 22%, 16%);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  gap: 4px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55);
+  animation: fadeIn 0.1s ease;
+}
+
+.bubble-menu-btn {
+  background: transparent;
+  border: none;
+  color: var(--c-text-main);
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  font-family: var(--font-ui);
+}
+
+.bubble-menu-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.bubble-menu-btn-del {
+  color: var(--c-err, #f05555);
+}
+
+.bubble-menu-btn-del:hover {
+  background: rgba(244, 67, 54, 0.15);
+}
+
+.bubble-menu-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 
 /* ─────────────────────────────────────────────────────────────
    34-R. 捲動條覆蓋（loveline 用較細的 4px）

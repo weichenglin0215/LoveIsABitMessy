@@ -26,26 +26,39 @@ function getSB() {
 window.addEventListener('load', async () => {
   if (window.SupabaseClient) window.SupabaseClient.init();
   await loadCharacters(); // 先讀角色再 render，因為 user edit modal 需要角色選單
-  await loadUsersFromCloud(); // 改從雲端載入或同步
-  renderUserSelect();
+  await loadUsersFromCloud(); // 設定 state._pendingUser（不直接設定 currentUser）
+  renderUserSelect();         // currentUser 為 null，不會呼叫 updateUserDisplay
   startServerPolling();
   setupEventListeners();
 
-  // 如果有預載使用者，彈出密碼視窗進行驗證
-  if (state.currentUser) {
-    const u = state.currentUser;
-    state.currentUser = null; // 先清空，驗證通過才設定
-    state._tempTargetUser = u;
-    qs('#password-check-msg').textContent = `請輸入「${u.name}」的登入密碼以進入系統：`;
-    qs('#password-input-val').value = '';
-    qs('#modal-password-check').classList.remove('hidden');
-    
-    // 清空介面顯示直到驗證通過
-    qs('#current-user-name').textContent = '— 請登入 —';
-    qs('#user-avatar-icon').textContent = '👤';
-  }
+  // 頁面載入後，依密碼是否存在決定自動登入或彈出驗證視窗
+  if (state._pendingUser) {
+    const u = state._pendingUser;
+    state._pendingUser = null;
 
-  appendLog('💌 LoveLine 已載入');
+    if (!u.password) {
+      // 無密碼使用者：直接自動登入
+      state.currentUser = u;
+      renderUserSelect();
+      appendLog(`💌 LoveLine 已載入，自動登入：${u.name}`);
+    } else {
+      // 有密碼：彈出驗證視窗，不載入任何資料
+      state._tempTargetUser = u;
+      qs('#password-check-msg').textContent = `請輸入「${u.name}」的登入密碼以進入系統：`;
+      qs('#password-input-val').value = '';
+      qs('#modal-password-check').classList.remove('hidden');
+      // 確保未登入時，資料不會顯示
+      state.sessions = [];
+      state.currentSession = null;
+      renderSessionLists();
+      renderChatArea();
+      qs('#current-user-name').textContent = '— 請登入 —';
+      qs('#user-avatar-icon').textContent = '👤';
+      appendLog('💌 LoveLine 已載入，請先輸入密碼');
+    }
+  } else {
+    appendLog('💌 LoveLine 已載入');
+  }
 });
 
 // ══════════════════════════════════════════
@@ -68,31 +81,31 @@ async function loadUsersFromCloud() {
       // 將雲端的 users 合併進來
       const merged = [...localUsers];
       cloudData.forEach(cloud => {
-          const existing = merged.find(u => u.key === cloud.user_key);
-          if (existing) {
-              existing.name = cloud.nickname;
-              existing.char_id = cloud.char_id;
-              existing.persona = cloud.persona;
-              existing.extra = cloud.extra_info;
-              existing.password = cloud.password;
-              existing.ai_model = cloud.ai_model;
-              existing.model_options = cloud.model_options;
-              existing.writer_style = cloud.writer_style;
-              existing.writer_sample = cloud.writer_sample;
-          } else {
-              merged.push({
-                  key: cloud.user_key,
-                  name: cloud.nickname,
-                  char_id: cloud.char_id,
-                  persona: cloud.persona,
-                  extra: cloud.extra_info,
-                  password: cloud.password,
-                  ai_model: cloud.ai_model,
-                  model_options: cloud.model_options,
-                  writer_style: cloud.writer_style,
-                  writer_sample: cloud.writer_sample
-              });
-          }
+        const existing = merged.find(u => u.key === cloud.user_key);
+        if (existing) {
+          existing.name = cloud.nickname;
+          existing.char_id = cloud.char_id;
+          existing.persona = cloud.persona;
+          existing.extra = cloud.extra_info;
+          existing.password = cloud.password;
+          existing.ai_model = cloud.ai_model;
+          existing.model_options = cloud.model_options;
+          existing.writer_style = cloud.writer_style;
+          existing.writer_sample = cloud.writer_sample;
+        } else {
+          merged.push({
+            key: cloud.user_key,
+            name: cloud.nickname,
+            char_id: cloud.char_id,
+            persona: cloud.persona,
+            extra: cloud.extra_info,
+            password: cloud.password,
+            ai_model: cloud.ai_model,
+            model_options: cloud.model_options,
+            writer_style: cloud.writer_style,
+            writer_sample: cloud.writer_sample
+          });
+        }
       });
       state.users = merged;
     } else {
@@ -101,7 +114,7 @@ async function loadUsersFromCloud() {
 
     const lastKey = localStorage.getItem('loveline_current_user');
     const found = state.users.find(u => u.key === lastKey);
-    state.currentUser = found || state.users[0];
+    state._pendingUser = found || state.users[0];
     saveUsersToLocal();
   } catch (e) {
     appendLog('⚠️ 雲端使用者同步失敗，切換至離線模式');
@@ -114,7 +127,7 @@ function loadUsersFromLocal() {
     const raw = localStorage.getItem('loveline_users');
     state.users = raw ? JSON.parse(raw) : [{ key: 'user_default', name: '我', char_id: '', persona: '', extra: '', ai_model: 'gemma4', model_options: '', writer_style: '', writer_sample: '' }];
     const lastKey = localStorage.getItem('loveline_current_user');
-    state.currentUser = state.users.find(u => u.key === lastKey) || state.users[0];
+    state._pendingUser = state.users.find(u => u.key === lastKey) || state.users[0];
   } catch (e) { state.users = [{ key: 'user_default', name: '我' }]; }
 }
 
@@ -139,16 +152,17 @@ async function saveUserProfileToCloud(u) {
 function renderUserSelect() {
   const sel = qs('#user-select');
   if (!sel) return;
+  const activeKey = state.currentUser?.key || state._tempTargetUser?.key || state._pendingUser?.key;
   sel.innerHTML = state.users.map(u =>
-    `<option value="${u.key}" ${state.currentUser?.key === u.key ? 'selected' : ''}>${u.name}</option>`
+    `<option value="${u.key}" ${activeKey === u.key ? 'selected' : ''}>${u.name}</option>`
   ).join('');
-  
+
   if (state.currentUser) {
     updateUserDisplay();
   }
 }
 
-function updateUserDisplay() {
+async function updateUserDisplay() {
   const u = state.currentUser;
   if (!u) return;
   qs('#current-user-name').textContent = u.name;
@@ -165,7 +179,10 @@ function updateUserDisplay() {
   if (u.writer_style) qs('#writer-style-select').value = u.writer_style;
   if (u.writer_sample) qs('#writer-sample-select').value = u.writer_sample;
 
-  loadSessionsForUser();
+  await loadSessionsForUser();
+
+  // 需求 1: 登入後啟動主動發話序列
+  triggerRandomLoginMessage();
 }
 
 function openUserEditModal() {
@@ -196,7 +213,7 @@ async function loadCharacters() {
 function populateCharSelects() {
   const opts = state.characters.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
   if (qs('#modal-friend-char-select')) {
-      qs('#modal-friend-char-select').innerHTML = '<option value="">— 選擇角色卡 —</option>' + opts;
+    qs('#modal-friend-char-select').innerHTML = '<option value="">— 選擇角色卡 —</option>' + opts;
   }
   qs('#modal-user-char-select').innerHTML = '<option value="">— 無 —</option>' + opts;
 }
@@ -205,7 +222,11 @@ function populateCharSelects() {
 // SESSIONS (Supabase)
 // ══════════════════════════════════════════
 async function loadSessionsForUser() {
-  if (!state.currentUser) return;
+  if (!state.currentUser) {
+    state.sessions = [];
+    renderSessionLists();
+    return;
+  }
   const sb = getSB();
   if (!sb) { renderSessionLists(); return; }
   try {
@@ -216,6 +237,19 @@ async function loadSessionsForUser() {
       .eq('owner_key', state.currentUser.key)
       .order('updated_at', { ascending: false });
     state.sessions = sessions || [];
+
+    // 計算每則對話的未讀數
+    for (const s of state.sessions) {
+      const msgs = await loadMessages(s.id);
+      const lastReadId = localStorage.getItem(`loveline_last_read_${s.id}`);
+      if (!lastReadId) {
+        s.unreadCount = msgs.length;
+      } else {
+        const lastIdx = msgs.findIndex(m => String(m.id) === String(lastReadId));
+        s.unreadCount = lastIdx === -1 ? msgs.length : (msgs.length - 1 - lastIdx);
+      }
+    }
+
     renderSessionLists();
   } catch (e) { appendLog('⚠️ 讀取對話失敗: ' + e.message); }
 }
@@ -312,6 +346,7 @@ async function openSession(id) {
     const extra = localStorage.getItem(`loveline_extra_${id}`) || '';
     state.currentSession = { ...sess, messages, persona, extra };
     renderChatArea();
+    resetIdleTimer();
   } catch (e) {
     appendLog('❌ 載入對話失敗: ' + e.message);
   }
@@ -325,9 +360,9 @@ function renderSessionLists() {
   const grp = state.sessions.filter(s => s.session_type === 'group');
 
   qs('#list-1on1').innerHTML = one.length ? one.map(s => sessionItem(s)).join('') :
-    '<div style="font-size:0.75rem;color:#555;padding:6px 8px;">尚無對話</div>';
+    '<div class="form-label">尚無對話</div>';
   qs('#list-group').innerHTML = grp.length ? grp.map(s => sessionItem(s)).join('') :
-    '<div style="font-size:0.75rem;color:#555;padding:6px 8px;">尚無聊天室</div>';
+    '<div class="form-label">尚無聊天室</div>';
 
   // 使用事件委託來處理齒輪點擊，解決動態渲染失效問題
 }
@@ -338,6 +373,12 @@ function sessionItem(s) {
   const title = s.title || names || '未命名';
   const icon = s.session_type === 'group' ? '👥' : '💬';
   const isActive = state.currentSession?.id === s.id ? 'active' : '';
+
+  // 計算未讀數 (這部分在 loadSessionsForUser 時會預先算好存入 s.unreadCount)
+  const unreadCount = s.unreadCount || 0;
+  //
+  const badgeHtml = unreadCount > 0 ? `<span class="unread-badge">${unreadCount > 9 ? '9+' : unreadCount}</span>` : '';
+
   return `
     <div class="chat-item ${isActive}" data-id="${s.id}">
       <div class="chat-avatar ${s.session_type === 'group' ? 'group' : ''}">${icon}</div>
@@ -391,15 +432,16 @@ function renderMessages() {
 
   msgs.forEach(m => {
     const isUser = m.sender_type === 'user';
-    const time = new Date(m.created_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+    const dateTime = new Date(m.created_at).toLocaleTimeString('zh-TW', { year: '2-digit', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
     const div = document.createElement('div');
     div.className = 'msg-row' + (isUser ? ' user' : '');
+    const msgId = m.id && m.id !== 'tmp' && m.id !== 'tmp_ai' ? m.id : '';
     div.innerHTML = `
       <div class="msg-avatar">${isUser ? (state.currentUser?.name[0] || '我') : (m.sender_name?.[0] || '🤖')}</div>
       <div class="msg-bubble-wrap">
         <div class="msg-sender">${m.sender_name || '未知'}</div>
-        <div class="msg-bubble">${escHtml(m.content)}</div>
-        <div class="msg-time">${time}</div>
+        <div class="msg-bubble" data-msg-id="${msgId}" data-msg-content="${escHtml(m.content)}">${escHtml(m.content)}</div>
+        <div class="msg-time">${dateTime}</div>
       </div>`;
     container.appendChild(div);
   });
@@ -412,6 +454,60 @@ function renderMessages() {
 
 function escHtml(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ══════════════════════════════════════════
+// BUBBLE CONTEXT MENU
+// ══════════════════════════════════════════
+function showBubbleMenu(bubble, msgId, rawContent) {
+  hideBubbleMenu();
+  bubble.classList.add('selected');
+
+  const menu = document.createElement('div');
+  menu.className = 'bubble-menu';
+  menu.innerHTML = `
+    <button class="bubble-menu-btn">📋 複製文字</button>
+    <button class="bubble-menu-btn bubble-menu-btn-del"${!msgId ? ' disabled title="暫存訊息無法刪除"' : ''}>🗑️ 刪除此對話</button>`;
+
+  // 定位在泡泡上方
+  const rect = bubble.getBoundingClientRect();
+  menu.style.cssText = `position:fixed;top:${rect.top - 46}px;left:${Math.max(8, rect.left)}px;z-index:9999;`;
+  document.body.appendChild(menu);
+
+  const [btnCopy, btnDel] = menu.querySelectorAll('.bubble-menu-btn');
+  btnCopy.addEventListener('click', (e) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(rawContent).catch(() => { });
+    hideBubbleMenu();
+  });
+  btnDel.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    if (!msgId) return;
+    hideBubbleMenu();
+    await deleteMessage(msgId);
+  });
+}
+
+function hideBubbleMenu() {
+  document.querySelector('.bubble-menu')?.remove();
+  document.querySelectorAll('.msg-bubble.selected').forEach(b => b.classList.remove('selected'));
+}
+
+async function deleteMessage(msgId) {
+  const sb = getSB();
+  if (!sb) { alert('Supabase 未連線'); return; }
+  if (!confirm('確定刪除這則訊息？')) return;
+  try {
+    const { error } = await sb.from('chat_messages').delete().eq('id', msgId);
+    if (error) throw error;
+    if (state.currentSession?.messages) {
+      state.currentSession.messages = state.currentSession.messages.filter(m => String(m.id) !== String(msgId));
+    }
+    renderMessages();
+    appendLog('🗑️ 訊息已刪除');
+  } catch (e) {
+    appendLog('❌ 刪除訊息失敗: ' + e.message);
+  }
 }
 
 function addTypingIndicator(name) {
@@ -436,6 +532,104 @@ function removeTypingIndicator() {
 // ══════════════════════════════════════════
 // SEND MESSAGE & AI REPLY
 // ══════════════════════════════════════════
+// ══════════════════════════════════════════
+// PROACTIVE MESSAGING (主動發言系統)
+// ══════════════════════════════════════════
+let idleTimer = null;
+let isLoginSequenceRunning = false;
+
+function resetIdleTimer() {
+  if (idleTimer) clearTimeout(idleTimer);
+  if (!state.currentSession) return;
+
+  const sess = state.currentSession;
+  // 如果正在執行登入序列，或是正在等待使用者回覆，就不啟動閒置計時器
+  if (isLoginSequenceRunning) return;
+  if (sess.waitingForUserReply) return;
+
+  // 需求 2: 使用者在對話中閒置隨機秒數 (8-120秒)
+  const delay = 8000 + Math.random() * 112000;
+  idleTimer = setTimeout(async () => {
+    // 再次確認 session 沒變且依然需要發言
+    if (state.currentSession && String(state.currentSession.id) === String(sess.id) && !sess.waitingForUserReply) {
+      const count = Math.floor(Math.random() * 2) + 1; // 1-2 則留言
+      await triggerProactiveSequence(sess.id, count);
+    }
+  }, delay);
+}
+
+async function triggerRandomLoginMessage() {
+  if (isLoginSequenceRunning) return;
+  isLoginSequenceRunning = true;
+
+  appendLog("🚀 啟動登入主動發話序列...");
+  // 需求 1: 登入後先等待 5-20 秒
+  await new Promise(r => setTimeout(r, 5000 + Math.random() * 15000));
+
+  if (state.sessions.length === 0) {
+    isLoginSequenceRunning = false;
+    return;
+  }
+
+  // 隨機挑選會話順序
+  const shuffledSessions = [...state.sessions].sort(() => Math.random() - 0.5);
+
+  for (const sess of shuffledSessions) {
+    const count = Math.floor(Math.random() * 2) + 1; // 至少主動發出 1-2 則留言
+    appendLog(`[Proactive] 對會話「${sess.title || sess.id}」發送 ${count} 則登入留言`);
+    await triggerProactiveSequence(sess.id, count, true);
+  }
+
+  isLoginSequenceRunning = false;
+  appendLog("✅ 登入主動發話序列結束");
+  resetIdleTimer(); // 結束後啟動當前對話的閒置偵測
+}
+
+async function triggerProactiveSequence(sessionId, totalCount, isLoginBurst = false) {
+  const sess = state.sessions.find(s => String(s.id) === String(sessionId));
+  if (!sess || !state.serverOnline) return;
+
+  sess.inProactiveSequence = true;
+  sess.hasUserReplied = false; // 重置回話標記
+
+  for (let i = 0; i < totalCount; i++) {
+    // 如果不是登入爆發，且使用者在過程中回話了，就中斷
+    if (!isLoginBurst && sess.hasUserReplied) break;
+
+    await triggerProactiveAction(sessionId);
+
+    // 每個留言間隔 5-60 秒
+    if (i < totalCount - 1) {
+      await new Promise(r => setTimeout(r, 5000 + Math.random() * 55000));
+    }
+  }
+
+  sess.inProactiveSequence = false;
+  sess.waitingForUserReply = true; // 標記為等待使用者回覆（停止主動發言）
+}
+
+async function triggerProactiveAction(sessionId) {
+  const sess = state.sessions.find(s => String(s.id) === String(sessionId));
+  if (!sess || !state.serverOnline) return;
+
+  // 判斷未讀數 (原本 logic 保持，已在 user 上次修改中註解掉未讀限制)
+  const msgs = await loadMessages(sessionId);
+  const lastReadId = localStorage.getItem(`loveline_last_read_${sessionId}`);
+  let unread = 0;
+  if (!lastReadId) unread = msgs.length;
+  else {
+    const lastIdx = msgs.findIndex(m => String(m.id) === String(lastReadId));
+    unread = lastIdx === -1 ? msgs.length : (msgs.length - 1 - lastIdx);
+  }
+
+  const characters = sess.chat_participants.filter(p => p.participant_type === 'character');
+  if (characters.length === 0) return;
+  const participant = characters[Math.floor(Math.random() * characters.length)];
+
+  const proactivePrompt = "(提示：這是你主動發起的新話題，可以根據之前的對話內容關心對方，或是分享你現在想到的新主題、心情、或是發生的一件趣事。請讓語氣顯得自然且親切。)";
+  await getAIReply(sess, participant, proactivePrompt, true);
+}
+
 async function sendMessage() {
   const sess = state.currentSession;
   if (!sess || !state.currentUser) return;
@@ -444,14 +638,18 @@ async function sendMessage() {
   if (!content) return;
   input.value = ''; input.style.height = 'auto';
 
+  // 使用者發言，重置主動發言相關標記
+  sess.waitingForUserReply = false;
+  sess.hasUserReplied = true;
+
   const userName = state.currentUser.name;
   const now = new Date().toISOString();
-  
+
   appendLog(`🗣️ 使用者 (${userName}) 發送訊息: ${content}`);
 
   // optimistic UI
   const tempMsg = {
-    id: 'tmp', session_id: sess.id, sender_type: 'user',
+    id: Date.now(), session_id: sess.id, sender_type: 'user',
     sender_key: state.currentUser.key, sender_name: userName, content, created_at: now
   };
 
@@ -462,28 +660,31 @@ async function sendMessage() {
   // save to DB
   await saveMessage(sess.id, 'user', state.currentUser.key, null, userName, content, null);
 
-  // get AI reply for each character participant
+  // get AI reply
   const charParts = (sess.chat_participants || []).filter(p => p.participant_type === 'character');
   for (const part of charParts) {
     await getAIReply(sess, part, content);
   }
 }
 
-async function getAIReply(sess, participant, userMessage) {
+async function getAIReply(sess, participant, userMessage, isProactive = false) {
   if (!state.serverOnline) return;
   const charData = state.characters.find(c => c.id === participant.character_id);
   if (!charData) return;
 
   const charName = participant.character_name || charData.name;
-  addTypingIndicator(charName);
-  qs('#btn-send').disabled = true;
+
+  // 如果是當前對話，則顯示打字中
+  const isCurrentAtStart = state.currentSession && String(state.currentSession.id) === String(sess.id);
+  if (isCurrentAtStart) {
+    addTypingIndicator(charName);
+    qs('#btn-send').disabled = true;
+  }
 
   try {
-    // 取得當前使用者的詳細設定
     const u = state.currentUser;
     const userChar = state.characters.find(c => c.id === u.char_id);
 
-    // build history for context
     const history = (sess.messages || []).slice(-30).map(m => ({
       role: m.sender_type === 'user' ? 'user' : 'assistant',
       name: m.sender_name,
@@ -495,17 +696,12 @@ async function getAIReply(sess, participant, userMessage) {
       character: charData.card_json || {},
       character_id: charData.id,
       character_name: charName,
-
-      // 角色對話設定
       persona_override: sess.persona || '',
       session_extra: sess.extra || '',
-
-      // 使用者設定
       user_name: u.name,
       user_character: userChar?.card_json || {},
       user_persona_override: u.persona || '',
       user_extra: u.extra || '',
-
       user_message: userMessage,
       history,
       model: state.currentModel || 'gemma4',
@@ -523,19 +719,16 @@ async function getAIReply(sess, participant, userMessage) {
         })
     };
 
-    // Step 1: 取得提示詞預覽 (並顯示在 log-output 與 CMD)
-    appendLog(">> 正在彙整 AI 提示詞...");
-    const previewRes = await fetch('http://localhost:8081/api/chat_reply', {
+    // Step 1: 取得提示詞預覽 (背景執行，不阻塞)
+    fetch('http://localhost:8081/api/chat_reply', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, preview: true })
-    });
-    if (previewRes.ok) {
-      const pData = await previewRes.json();
+    }).then(res => res.json()).then(pData => {
       if (pData.debug_prompt) {
-        appendLog(`\n=== 傳遞給 AI 的提示詞 ===\n${pData.debug_prompt}\n=====================\n`);
+        appendLog(`\n=== AI 提示詞 (${charName}) ===\n${pData.debug_prompt}\n=====================\n`);
       }
-    }
+    }).catch(() => { });
 
     // Step 2: 真正生成回覆（非同步 Job 模式，Log 即時顯示）
     appendLog(`>> 正在呼叫 AI 產生「${charName}」的回覆...`);
@@ -562,10 +755,11 @@ async function getAIReply(sess, participant, userMessage) {
       } catch (e) { continue; }
 
       if (jd.logs && jd.logs !== lastLogs) {
+        const newPart = jd.logs.slice(lastLogs.length);
         lastLogs = jd.logs;
         const logBox = document.getElementById('log-output');
-        if (logBox) {
-          logBox.textContent = lastLogs.replace(/\\n/g, '\n');
+        if (logBox && newPart) {
+          logBox.value += newPart.replace(/\\n/g, '\n');
           logBox.scrollTop = logBox.scrollHeight;
         }
       }
@@ -580,26 +774,60 @@ async function getAIReply(sess, participant, userMessage) {
       }
     }
 
-    removeTypingIndicator();
+    // 重新檢查當前對話狀態
+    const nowIsCurrent = state.currentSession && String(state.currentSession.id) === String(sess.id);
+    if (nowIsCurrent) {
+      removeTypingIndicator();
+      qs('#btn-send').disabled = false;
+    }
+
     if (reply) {
       appendLog(`🤖 接收到 AI (${charName}) 的回答: ${reply}`);
       const now = new Date().toISOString();
+
+      // 先儲存到資料庫
+      await saveMessage(sess.id, 'character', null, charData.id, charName, reply, state.currentModel);
+
       const aiMsg = {
-        id: 'tmp_ai', session_id: sess.id, sender_type: 'character',
+        id: Date.now(),
+        session_id: sess.id, sender_type: 'character',
         sender_char_id: charData.id, sender_name: charName, content: reply, created_at: now
       };
+
+      // 1. 更新原始會話物件
       if (!sess.messages) sess.messages = [];
       sess.messages.push(aiMsg);
-      renderMessages();
-      await saveMessage(sess.id, 'character', null, charData.id, charName, reply, state.currentModel);
+
+      if (nowIsCurrent) {
+        // 2. 如果當前正開啟此對話，更新正在渲染的物件
+        if (state.currentSession !== sess) {
+          if (!state.currentSession.messages) state.currentSession.messages = [];
+          state.currentSession.messages.push(aiMsg);
+        }
+        renderMessages();
+        localStorage.setItem(`loveline_last_read_${sess.id}`, aiMsg.id);
+      } else {
+        // 3. 背景更新未讀數
+        const s = state.sessions.find(x => String(x.id) === String(sess.id));
+        if (s) {
+          s.unreadCount = (s.unreadCount || 0) + 1;
+          renderSessionLists();
+        }
+      }
     }
   } catch (e) {
-    removeTypingIndicator();
-    appendLog('❌ AI 回覆錯誤: ' + e.message);
+    appendLog(`❌ AI 回覆失敗: ${e.message}`);
+    if (state.currentSession && String(state.currentSession.id) === String(sess.id)) {
+      removeTypingIndicator();
+      qs('#btn-send').disabled = false;
+    }
   } finally {
+    const isNowCurrent = state.currentSession && String(state.currentSession.id) === String(sess.id);
+    if (isNowCurrent && !isProactive) resetIdleTimer();
     qs('#btn-send').disabled = false;
   }
 }
+
 
 // ══════════════════════════════════════════
 // MODALS
@@ -616,7 +844,7 @@ function openEditModal(id) {
     if (sess.session_type === 'group') {
       qs('#modal-group-title').textContent = '⚙️ 聊天室設定';
       qs('#modal-group-name').value = sess.title || '';
-      
+
       const friends = state.sessions.filter(s => s.session_type === 'one_on_one');
       const checks = friends.map(f => {
         const charPart = (f.chat_participants || []).find(p => p.participant_type === 'character');
@@ -629,14 +857,14 @@ function openEditModal(id) {
           </div>`;
       }).join('');
       qs('#modal-group-chars').innerHTML = checks || '<span style="color:#666;font-size:0.8rem;">尚無可加入的好友</span>';
-      
+
       const parts = sess.chat_participants || [];
       document.querySelectorAll('#modal-group-chars input[type=checkbox]').forEach(cb => {
-          cb.checked = parts.some(p => p.character_id === cb.value);
+        cb.checked = parts.some(p => p.character_id === cb.value);
       });
-      
+
       qs('#modal-group-bg-data').value = localStorage.getItem(`loveline_extra_${id}`) || sess.extra || '';
-      
+
       qs('#btn-modal-group-delete').style.display = 'block';
       qs('#btn-modal-group-delete').dataset.id = id;
       qs('#btn-modal-group-ok').dataset.id = id;
@@ -644,13 +872,13 @@ function openEditModal(id) {
     } else {
       qs('#modal-friend-title').textContent = '⚙️ 好友設定';
       qs('#modal-friend-name').value = sess.title || '';
-      
+
       const charPart = (sess.chat_participants || []).find(p => p.participant_type === 'character');
       qs('#modal-friend-char-select').value = charPart ? charPart.character_id : '';
-      
+
       qs('#modal-friend-persona').value = localStorage.getItem(`loveline_persona_${id}`) || sess.persona || '';
       qs('#modal-friend-extra').value = localStorage.getItem(`loveline_extra_${id}`) || sess.extra || '';
-      
+
       qs('#btn-modal-friend-delete').style.display = 'block';
       qs('#btn-modal-friend-delete').dataset.id = id;
       qs('#btn-modal-friend-ok').dataset.id = id;
@@ -786,6 +1014,30 @@ function setupEventListeners() {
     });
   }
 
+  // ── 泡泡點擊：顯示操作選單 ──
+  qs('#chat-messages').addEventListener('click', (e) => {
+    const bubble = e.target.closest('.msg-bubble');
+    if (bubble) {
+      e.stopPropagation();
+      if (bubble.classList.contains('selected')) {
+        hideBubbleMenu();
+      } else {
+        const msgId = bubble.dataset.msgId || '';
+        const rawContent = bubble.dataset.msgContent || bubble.textContent;
+        showBubbleMenu(bubble, msgId, rawContent);
+      }
+      return;
+    }
+    hideBubbleMenu();
+  });
+
+  // 點擊其他地方關閉選單
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.bubble-menu') && !e.target.closest('.msg-bubble')) {
+      hideBubbleMenu();
+    }
+  });
+
   // User select
   qs('#user-select').addEventListener('change', e => {
     const val = e.target.value;
@@ -795,10 +1047,18 @@ function setupEventListeners() {
 
     // 顯示密碼驗證彈窗
     state._tempTargetUser = targetUser;
+
+    // 清空當前畫面資料，防止切換時看到上一個人的資料
+    state.sessions = [];
+    state.currentSession = null;
+    renderSessionLists();
+    renderChatArea();
+    qs('#current-user-name').textContent = '— 驗證中 —';
+
     qs('#password-check-msg').textContent = `請輸入「${targetUser.name}」的登入密碼以載入資料：`;
     qs('#password-input-val').value = '';
     qs('#modal-password-check').classList.remove('hidden');
-    
+
     // 先還原選單顯示，等驗證通過才真正切換
     e.target.value = state.currentUser ? state.currentUser.key : '';
   });
@@ -813,7 +1073,7 @@ function setupEventListeners() {
     const u = state._tempTargetUser;
     const pwd = qs('#password-input-val').value.trim();
     if (!u) return;
-    
+
     if (pwd === u.password) {
       state.currentUser = u;
       qs('#user-select').value = u.key;
@@ -846,7 +1106,7 @@ function setupEventListeners() {
   qs('#btn-modal-user-ok').addEventListener('click', async () => {
     const isNew = qs('#modal-user-title').textContent.includes('新增');
     let u = state.currentUser;
-    
+
     if (isNew) {
       const name = qs('#modal-user-name').value.trim();
       const pwd = qs('#modal-user-password').value.trim();
@@ -899,8 +1159,8 @@ function setupEventListeners() {
     appendLog(`✨ 開啟「新增好友」彈窗`);
   });
   qs('#btn-modal-friend-cancel').addEventListener('click', () => {
-      qs('#modal-friend').classList.add('hidden');
-      appendLog(`❌ 取消「新增好友 / 好友設定」彈窗`);
+    qs('#modal-friend').classList.add('hidden');
+    appendLog(`❌ 取消「新增好友 / 好友設定」彈窗`);
   });
   qs('#btn-modal-friend-ok').addEventListener('click', async () => {
     const id = qs('#btn-modal-friend-ok').dataset.id;
@@ -910,37 +1170,37 @@ function setupEventListeners() {
     const extra = qs('#modal-friend-extra').value;
 
     if (!id) {
-        if (!name) { alert('請輸入好友名稱'); return; }
-        const exists = state.sessions.some(s => s.session_type === 'one_on_one' && s.title === name);
-        if (exists) { alert('不可與現有其他好友同名'); return; }
-        
-        qs('#modal-friend').classList.add('hidden');
-        await createSession('one_on_one', name, charId ? [charId] : [], persona);
-        
-        // Retrieve new session ID to set extra if provided
-        const newSess = state.sessions.find(s => s.session_type === 'one_on_one' && s.title === name);
-        if (newSess && extra) {
-             localStorage.setItem(`loveline_extra_${newSess.id}`, extra);
-        }
+      if (!name) { alert('請輸入好友名稱'); return; }
+      const exists = state.sessions.some(s => s.session_type === 'one_on_one' && s.title === name);
+      if (exists) { alert('不可與現有其他好友同名'); return; }
+
+      qs('#modal-friend').classList.add('hidden');
+      await createSession('one_on_one', name, charId ? [charId] : [], persona);
+
+      // Retrieve new session ID to set extra if provided
+      const newSess = state.sessions.find(s => s.session_type === 'one_on_one' && s.title === name);
+      if (newSess && extra) {
+        localStorage.setItem(`loveline_extra_${newSess.id}`, extra);
+      }
     } else {
-        if (persona) localStorage.setItem(`loveline_persona_${id}`, persona);
-        else localStorage.removeItem(`loveline_persona_${id}`);
+      if (persona) localStorage.setItem(`loveline_persona_${id}`, persona);
+      else localStorage.removeItem(`loveline_persona_${id}`);
 
-        if (extra) localStorage.setItem(`loveline_extra_${id}`, extra);
-        else localStorage.removeItem(`loveline_extra_${id}`);
+      if (extra) localStorage.setItem(`loveline_extra_${id}`, extra);
+      else localStorage.removeItem(`loveline_extra_${id}`);
 
-        const sb = getSB();
-        if (sb && name) await sb.from('chat_sessions').update({ title: name }).eq('id', id);
-        qs('#modal-friend').classList.add('hidden');
+      const sb = getSB();
+      if (sb && name) await sb.from('chat_sessions').update({ title: name }).eq('id', id);
+      qs('#modal-friend').classList.add('hidden');
 
-        if (state.currentSession?.id === id) {
-          state.currentSession.title = name;
-          state.currentSession.persona = persona;
-          state.currentSession.extra = extra;
-          renderChatArea();
-        }
-        await loadSessionsForUser();
-        appendLog(`💾 儲存好友設定完成: ${name}`);
+      if (state.currentSession?.id === id) {
+        state.currentSession.title = name;
+        state.currentSession.persona = persona;
+        state.currentSession.extra = extra;
+        renderChatArea();
+      }
+      await loadSessionsForUser();
+      appendLog(`💾 儲存好友設定完成: ${name}`);
     }
   });
   qs('#btn-modal-friend-delete').addEventListener('click', () => {
@@ -954,7 +1214,7 @@ function setupEventListeners() {
     if (!state.currentUser) { alert('請先選擇使用者'); return; }
     qs('#modal-group-title').textContent = '👥 建立聊天室';
     qs('#modal-group-name').value = '';
-    
+
     const friends = state.sessions.filter(s => s.session_type === 'one_on_one');
     const checks = friends.map(f => {
       const charPart = (f.chat_participants || []).find(p => p.participant_type === 'character');
@@ -967,7 +1227,7 @@ function setupEventListeners() {
         </div>`;
     }).join('');
     qs('#modal-group-chars').innerHTML = checks || '<span style="color:#666;font-size:0.8rem;">尚無可加入的好友</span>';
-    
+
     qs('#modal-group-bg-data').value = '';
     qs('#btn-modal-group-delete').style.display = 'none';
     qs('#btn-modal-group-ok').dataset.id = '';
@@ -975,39 +1235,39 @@ function setupEventListeners() {
     appendLog(`✨ 開啟「建立聊天室」彈窗`);
   });
   qs('#btn-modal-group-cancel').addEventListener('click', () => {
-      qs('#modal-group').classList.add('hidden');
-      appendLog(`❌ 取消「建立聊天室 / 聊天室設定」彈窗`);
+    qs('#modal-group').classList.add('hidden');
+    appendLog(`❌ 取消「建立聊天室 / 聊天室設定」彈窗`);
   });
   qs('#btn-modal-group-ok').addEventListener('click', async () => {
     const id = qs('#btn-modal-group-ok').dataset.id;
     const title = qs('#modal-group-name').value.trim() || '群組聊天';
     const checked = [...document.querySelectorAll('#modal-group-chars input:checked')].map(cb => cb.value);
     const bgData = qs('#modal-group-bg-data').value;
-    
+
     if (!id) {
-        if (checked.length === 0) { alert('請至少選擇一位角色'); return; }
-        qs('#modal-group').classList.add('hidden');
-        await createSession('group', title, checked, '');
-        
-        const newSess = state.sessions[0]; // assuming newly created session is first
-        if (newSess && bgData) {
-             localStorage.setItem(`loveline_extra_${newSess.id}`, bgData);
-        }
+      if (checked.length === 0) { alert('請至少選擇一位角色'); return; }
+      qs('#modal-group').classList.add('hidden');
+      await createSession('group', title, checked, '');
+
+      const newSess = state.sessions[0]; // assuming newly created session is first
+      if (newSess && bgData) {
+        localStorage.setItem(`loveline_extra_${newSess.id}`, bgData);
+      }
     } else {
-        if (bgData) localStorage.setItem(`loveline_extra_${id}`, bgData);
-        else localStorage.removeItem(`loveline_extra_${id}`);
+      if (bgData) localStorage.setItem(`loveline_extra_${id}`, bgData);
+      else localStorage.removeItem(`loveline_extra_${id}`);
 
-        const sb = getSB();
-        if (sb && title) await sb.from('chat_sessions').update({ title }).eq('id', id);
-        qs('#modal-group').classList.add('hidden');
+      const sb = getSB();
+      if (sb && title) await sb.from('chat_sessions').update({ title }).eq('id', id);
+      qs('#modal-group').classList.add('hidden');
 
-        if (state.currentSession?.id === id) {
-          state.currentSession.title = title;
-          state.currentSession.extra = bgData;
-          renderChatArea();
-        }
-        await loadSessionsForUser();
-        appendLog(`💾 儲存聊天室設定完成: ${title}`);
+      if (state.currentSession?.id === id) {
+        state.currentSession.title = title;
+        state.currentSession.extra = bgData;
+        renderChatArea();
+      }
+      await loadSessionsForUser();
+      appendLog(`💾 儲存聊天室設定完成: ${title}`);
     }
   });
   qs('#btn-modal-group-delete').addEventListener('click', () => {

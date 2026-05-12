@@ -69,16 +69,22 @@ let localCharacters = []; // 儲存本機角色 ID
 let serverOnline = false;
 
 // 初始化
+console.log(">> novel_generator_app.js 正在載入...");
+
 window.addEventListener('load', async () => {
+    console.log(">> [Window Load] 啟動初始化...");
+    appendLog("🚀 正在初始化應用程式...");
     initSupabase();
     await checkServerStatus();
     startServerPolling();
     await initCharacters();
     renderAll();
     setupEventListeners();
+    appendLog("✅ 系統初始化完成，隨時可以開始。");
 });
 
 function initSupabase() {
+    console.log(">> 正在初始化 Supabase...");
     if (window.SupabaseClient && window.SupabaseClient.init) {
         window.SupabaseClient.init();
     }
@@ -282,10 +288,10 @@ function renderCharacters() {
         }
 
         const div = document.createElement('div');
-        div.className = "char-card";
+        div.className = "model-container-row";
         div.innerHTML = `
-            <label>${displayName}</label>
-            <select data-idx="${idx}">
+            <label class="form-label">${displayName}</label>
+            <select  data-idx="${idx}">
                 <option value="">-- 選取角色卡 --</option>
                 ${(isLocal ? localCharacters : cloudCharacters).map(c => {
             const id = isLocal ? c : c.id;
@@ -316,14 +322,14 @@ function renderChapters() {
         div.className = "chapter-card";
         div.innerHTML = `
             <div class="chapter-title-row">
-                <span class="lock-btn btn-lock-ch" title="鎖定後將不會被 AI 生成大綱覆蓋"
-                      style="opacity: ${ch.locked ? '1' : '0.3'}" 
+                <span class="lock-btn btn-lock-ch" title="鎖定後將不會被 AI 覆蓋章標題、章描述、小節大綱"
+                      style="opacity: ${ch.locked ? '1' : '0.5'}" 
                       onclick="toggleChapterLock(${chIdx})">
                     ${ch.locked ? '🔒' : '🔓'}
                 </span>
                 <input type="text" value="${ch.title}" placeholder="章節標題" onchange="state.chapters[${chIdx}].title = this.value">
-                <button class="ai-btn" onclick="aiGenChapterOutline(${chIdx})">🤖 AI 大綱</button>
-                <button class="btn-del-sec" onclick="removeChapter(${chIdx})">🗑️</button>
+                <button class="ai-btn" onclick="aiGenChapterOutline(${chIdx})" title="AI 生成本章未鎖定的小節大綱">🤖 AI 大綱</button>
+                <button class="btn-del-sec" onclick="removeChapter(${chIdx})" title="刪除本章，包括本章的所有小節">🗑️</button>
             </div>
             <textarea class="chapter-desc" placeholder="輸入本章大綱說明（AI 將以此產生小節）..." 
                       onchange="state.chapters[${chIdx}].description = this.value">${ch.description || ""}</textarea>
@@ -341,11 +347,11 @@ function renderChapters() {
                         <span class="sec-status-icon" style="color:${sec.content ? 'var(--c-ok)' : '#666'};">${sec.content ? '✓' : '...'}</span>
                         <div class="sec-actions">
                             <span class="lock-btn sec-lock" title="鎖定後將不會被 AI 重寫"
-                                  style="opacity: ${sec.locked ? '1' : '0.3'}" 
+                                  style="opacity: ${sec.locked ? '1' : '0.5'}" 
                                   onclick="event.stopPropagation(); toggleLock(${chIdx}, ${secIdx})">
                                 ${sec.locked ? '🔒' : '🔓'}
                             </span>
-                            <button class="btn-del-sec" onclick="event.stopPropagation(); removeSection(${chIdx}, ${secIdx})">🗑️</button>
+                            <button class="btn-del-sec" title="刪除此小節" onclick="event.stopPropagation(); removeSection(${chIdx}, ${secIdx})">🗑️</button>
                         </div>
                     </div>
                 `).join('')}
@@ -435,13 +441,13 @@ function setupEventListeners() {
 
     // Save Novel Modal
     qs('#btn-save-cancel').addEventListener('click', () => {
-        qs('#modal-novel-save').style.display = 'none';
+        qs('#modal-novel-save').classList.add('hidden');
     });
     qs('#btn-save-confirm').addEventListener('click', confirmSaveProject);
 
     // Load Password Modal
     qs('#btn-password-cancel').addEventListener('click', () => {
-        qs('#modal-novel-password').style.display = 'none';
+        qs('#modal-novel-password').classList.add('hidden');
         qs('#cloud-novel-select').value = '';
     });
     qs('#btn-password-ok').addEventListener('click', confirmLoadCloudNovel);
@@ -558,21 +564,30 @@ function setAIGeneratingState(isGenerating, logMessage = "") {
         if (logBox) {
             // 處理字面上的 \n
             const formattedMsg = logMessage.replace(/\\n/g, '\n');
-            logBox.innerText += `\n[${new Date().toLocaleTimeString()}] ${formattedMsg}\n`;
+            logBox.value += `\n[${new Date().toLocaleTimeString()}] ${formattedMsg}\n`;
             logBox.scrollTop = logBox.scrollHeight;
         }
     }
 }
 
 function appendLog(text) {
-    const logBox = qs('#log-output');
-    if (logBox) {
-        // 處理字面上的 \n
-        const formattedText = text.replace(/\\n/g, '\n');
-        logBox.innerText += formattedText + "\n";
-        logBox.scrollTop = logBox.scrollHeight;
+    try {
+        const logBox = document.getElementById('log-output');
+        if (logBox) {
+            const msg = (text === undefined || text === null) ? "" : String(text);
+            const formattedText = msg.replace(/\\n/g, '\n');
+            logBox.value += formattedText + "\n";
+            logBox.scrollTop = logBox.scrollHeight;
+            // 同時輸出到 console 方便除錯
+            console.log("[NovelGen Log]", formattedText);
+        } else {
+            console.warn("找不到 #log-output 元素，無法輸出 Log:", text);
+        }
+    } catch (e) {
+        console.error("appendLog 發生錯誤:", e);
     }
 }
+window.appendLog = appendLog;
 
 async function aiGenChapterOutline(chIdx) {
     const chapter = state.chapters[chIdx];
@@ -1024,7 +1039,7 @@ async function saveProject() {
     // 開啟儲存彈窗
     qs('#save-novel-name').value = state.bookTitle || "";
     qs('#save-novel-password').value = "";
-    qs('#modal-novel-save').style.display = 'flex';
+    qs('#modal-novel-save').classList.remove('hidden');
 }
 
 async function confirmSaveProject() {
@@ -1038,7 +1053,7 @@ async function confirmSaveProject() {
 
     state.bookTitle = name;
     qs('#book-title').value = name;
-    qs('#modal-novel-save').style.display = 'none';
+    qs('#modal-novel-save').classList.add('hidden');
 
     // 同步當前選中的 AI 設定到 state
     state.aiModel = qs('#model-select').value;
@@ -1122,55 +1137,135 @@ async function loadCloudNovel(e) {
     const id = e.target.value;
     if (!id) return;
 
+    appendLog(`>> [系統] 選擇雲端專案 ID: ${id}，等待使用者確認...`);
+
     if (!confirm("載入雲端小說將會覆蓋當前編輯器中的內容，確定嗎？")) {
+        appendLog(">> [系統] 使用者已取消載入。");
         e.target.value = "";
         return;
     }
 
-    // 開啟密碼驗證彈窗
-    state._tempLoadId = id;
-    qs('#novel-password-input').value = "";
-    qs('#modal-novel-password').style.display = 'flex';
+    appendLog(">> [系統] 使用者已確認，正在準備驗證彈窗...");
+
+    try {
+        const modal = qs('#modal-novel-password');
+        if (!modal) {
+            appendLog("❌ 找不到密碼驗證彈窗 (#modal-novel-password)");
+            return;
+        }
+        // 開啟密碼驗證彈窗
+        state._tempLoadId = id;
+        qs('#novel-password-input').value = "";
+        
+        modal.classList.remove('hidden');
+
+        appendLog(">> [系統] 驗證彈窗已開啟，請在畫面中央輸入密碼並點擊「確定」。");
+    } catch (err) {
+        appendLog(`❌ 開啟驗證彈窗失敗: ${err.message}`);
+    }
 }
 
 async function confirmLoadCloudNovel() {
+    appendLog(">> [系統] 偵測到「確定」點擊，開始進行密碼驗證...");
     const id = state._tempLoadId;
     const pwd = qs('#novel-password-input').value.trim();
     if (!id || !pwd) {
+        appendLog("⚠️ 密碼或 ID 缺失，請重新輸入。");
         alert("請輸入密碼");
         return;
     }
 
-    appendLog("☁️ 正在驗證並載入雲端小說資料...");
+    appendLog("--------------------------------------------------");
+    appendLog("☁️ [雲端讀取] 啟動驗證與載入流程...");
+    appendLog(`>> 目標 ID: ${id}`);
+
     try {
         const sb = window.SupabaseClient.getClient();
+        if (!sb) throw new Error("Supabase Client 未初始化，請檢查網路或 API 設定。");
+
         const { data, error } = await sb
             .from('novel_entries')
-            .select('edit_data, password')
+            .select('edit_data, password, novel_title')
             .eq('id', id)
             .single();
 
-        if (error) throw error;
+        if (error) {
+            appendLog(`❌ Supabase 查詢失敗: ${JSON.stringify(error)}`);
+            throw error;
+        }
 
+        if (!data) {
+            throw new Error("找不到該 ID 的雲端紀錄。");
+        }
+
+        appendLog(">> 查詢成功，正在核對密碼...");
         if (data.password && data.password !== pwd) {
+            appendLog("❌ 密碼不正確。");
             alert("密碼錯誤！");
             return;
         }
 
         if (data && data.edit_data) {
-            state = data.edit_data;
-            renderAll();
-            appendLog(`✅ 已成功載入「${state.bookTitle}」`);
+            let loadedState = data.edit_data;
+            appendLog(">> 原始資料讀取成功。");
+
+            // 處理某些情況下資料庫返回字串的問題
+            if (typeof loadedState === 'string') {
+                appendLog(">> 偵測到字串格式，嘗試進行 JSON 解析...");
+                try {
+                    loadedState = JSON.parse(loadedState);
+                    appendLog(">> JSON 解析成功。");
+                } catch (pe) {
+                    appendLog(`❌ JSON 解析失敗: ${pe.message}`);
+                    appendLog(`>> 原始內容片段: ${loadedState.substring(0, 100)}...`);
+                    throw new Error("資料格式不正確 (JSON 解析失敗)");
+                }
+            }
+
+            // 確保必要的欄位存在
+            if (!loadedState || typeof loadedState !== 'object') {
+                throw new Error("載入的資料內容無效 (非物件)");
+            }
+            if (!loadedState.chapters || !Array.isArray(loadedState.chapters)) {
+                appendLog(`>> 內容欄位: ${Object.keys(loadedState).join(', ')}`);
+                throw new Error("載入的資料格式不完整 (缺少 chapters 陣列)");
+            }
+
+            appendLog(`>> 小說標題: ${loadedState.bookTitle || '未命名'}`);
+            appendLog(`>> 章節數量: ${loadedState.chapters.length}`);
+
+            // 為了確保所有引用此物件的地方都能同步更新，使用屬性覆蓋而非變數重新賦值
+            appendLog(">> 正在更新應用程式狀態並重新渲染介面...");
+            
+            // 清空舊狀態的所有屬性 (除了暫存 ID 等)
+            for (const key in state) {
+                if (state.hasOwnProperty(key)) delete state[key];
+            }
+            // 寫入新狀態
+            Object.assign(state, loadedState);
+            
+            try {
+                renderAll();
+                appendLog(`✅ [成功] 已載入「${state.bookTitle || '未命名小說'}」`);
+            } catch (renderErr) {
+                appendLog(`❌ 介面渲染失敗: ${renderErr.message}`);
+                console.error("Render error:", renderErr);
+            }
 
             // 重置 UI
             qs('#btn-load-cloud').style.display = 'inline-block';
             qs('#cloud-novel-select').style.display = 'none';
-            qs('#modal-novel-password').style.display = 'none';
+            qs('#modal-novel-password').classList.add('hidden');
             state._tempLoadId = null;
+        } else {
+            throw new Error("雲端資料欄位 (edit_data) 為空。");
         }
     } catch (e) {
-        appendLog("❌ 載入小說失敗: " + e.message);
+        appendLog(`❌ [錯誤] 載入流程中斷: ${e.message}`);
+        console.error("Cloud load error detail:", e);
+        alert(`載入失敗: ${e.message}`);
     }
+    appendLog("--------------------------------------------------");
 }
 
 async function loadProject() {

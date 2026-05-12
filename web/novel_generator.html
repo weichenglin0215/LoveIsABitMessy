@@ -25,7 +25,7 @@
       <button class="btn secondary-btn" id="btn-export">📤 匯出小說</button>
       <div class="cloud-load-wrapper">
         <button class="btn secondary-btn" id="btn-load-cloud">☁️ 讀取雲端小說</button>
-        <select id="cloud-novel-select" style="display:none;">
+        <select id="cloud-novel-select" style="display:none; height: 32px;">
           <option value="">-- 請選擇小說 --</option>
         </select>
       </div>
@@ -55,48 +55,44 @@
         </div>
       </div>
       <!--LOG狀態欄-->
-      <div class="server-status-row">
+      <div class="server-status-row server-settings-row">
         <span class="server-status-dot offline" id="server-dot"></span>
-        <button id="start-server-btn" disabled>🚀 請自行啟動伺服器</button>
         <span class="server-status-text" id="server-status-text">偵測中…</span>
-
-        <div id="model-container" class="settings-group">
-          <label class="settings-label">🤖 AI 模型：</label>
-          <select id="model-select" class="settings-select">
+        <button id="start-server-btn" disabled>🚀 請自行啟動伺服器</button>
+        <div id="model-container" class="model-container-row">
+          <label class="model-label">🤖 AI 模型：</label>
+          <select id="model-select" class="select-narrow">
             <option value="gemma4">gemma4</option>
           </select>
         </div>
-        <div id="model-options-container" class="settings-group">
-          <label class="settings-label">⚙️ 模型參數：</label>
-          <div class="settings-row-inline">
-            <select id="model-options-select" class="settings-select">
-              <option value="">預設</option>
-            </select>
-            <button id="btn-add-model-option" class="ai-btn ai-btn-sm">編輯</button>
-          </div>
+        <div class="model-container-row">
+          <label class="model-label">⚙️ 模型參數：</label>
+          <select id="model-options-select" class="select-narrow">
+            <option value="">預設</option>
+          </select>
+          <button id="btn-add-model-option" class="ai-btn btn-edit-sm">+編輯</button>
         </div>
-        <div id="writer-style-container" class="settings-group">
-          <label class="settings-label">🖋️ 寫作風格：</label>
-          <div class="settings-row-inline">
-            <select id="writer-style-select" class="ws-style-dropdown settings-select">
-              <option value="">無</option>
-            </select>
-            <button id="btn-edit-writer-style" class="ai-btn ai-btn-sm"
-              onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select').value)">編輯</button>
-          </div>
+        <div class="model-container-row">
+          <label class="model-label">🖋️ 寫作風格：</label>
+          <select id="writer-style-select" class="ws-style-dropdown">
+            <option value="">無</option>
+          </select>
+          <button id="btn-edit-writer-style" class="ai-btn btn-edit-sm"
+            onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select').value)">+編輯</button>
         </div>
-        <div id="writer-sample-container" class="settings-group">
-          <label class="settings-label">📝 寫作範本：</label>
-          <div class="settings-row-inline">
-            <select id="writer-sample-select" class="ws-sample-dropdown settings-select">
-              <option value="">無</option>
-            </select>
-            <button id="btn-edit-writer-sample" class="ai-btn ai-btn-sm"
-              onclick="WriterSettingsApp.openSampleModal(document.getElementById('writer-sample-select').value)">編輯</button>
-          </div>
+        <div class="model-container-row">
+          <label class="model-label">📝 寫作範本：</label>
+          <select id="writer-sample-select" class="ws-sample-dropdown">
+            <option value="">無</option>
+          </select>
+          <button id="btn-edit-writer-sample" class="ai-btn btn-edit-sm"
+            onclick="WriterSettingsApp.openSampleModal(document.getElementById('writer-sample-select').value)">+編輯</button>
         </div>
       </div>
-      <div id="log-output" class="log-area">等待任務...</div>
+      <!-- LOG -->
+      <div class="form-section">
+        <textarea id="log-output" class="log-area">等待任務...</textarea>
+      </div>
       <div class="log-actions">
         <button class="small-btn" onclick="clearLogOutput()">🗑️清空</button>
         <button class="small-btn" onclick="copyLogOutput()">📋複製</button>
@@ -113,9 +109,10 @@
         <button class="collapse-btn" id="toggle-premise" title="縮放">↔</button>
         <h3>📝故事粗綱</h3>
         <div class="toolbox">
-          <button class="ai-btn" id="btn-ai-gen-full-auto" title="全自動：依粗綱生成章節→節大綱→節內文（跳過已鎖定）"
-            style="background:linear-gradient(135deg,#7c3aed,#f472b6); font-weight:bold;">🚀 全自動生成</button>
-          <button class="ai-btn" id="btn-ai-gen-chapters" title="根據粗鋼生成各章節">🤖 AI各章描述</button>
+          <button class="ai-btn" id="btn-ai-gen-full-auto" title="全自動生成所有文字：依粗綱生成章節→節大綱→節內文（跳過已鎖定）"
+            style="color: #FFFFFF; background:linear-gradient(135deg,#7c3aed,#f472b6); font-weight:bold;">🚀
+            全自動</button>
+          <button class="ai-btn" id="btn-ai-gen-chapters" title="根據粗綱生成各章標題、章描述">🤖 AI各章描述</button>
         </div>
       </div>
       <div class="scroll-area">
@@ -131,7 +128,7 @@
         <h3>📖 故事大綱</h3>
         <div class="toolbox">
           <button class="ai-btn" id="btn-ai-gen-all-outlines" title="撰寫所有未鎖定的小節大綱">🤖 AI 撰寫所有大綱</button>
-          <button class="btn-circle" id="add-chapter" title="增加章節">+</button>
+          <button class="btn-circle" id="add-chapter" title="增加新章">+</button>
         </div>
       </div>
       <div class="scroll-area" id="chapter-list">
@@ -146,36 +143,37 @@
       <div class="col-header">
         <h3>🖋️ 內文編輯器</h3>
         <div class="toolbox">
-          <button class="ai-btn" id="btn-ai-gen-all-content" title="撰寫所有未鎖定的小節內容">🤖 AI全節內文</button>
-          <button class="ai-btn" id="btn-ai-gen-content">🤖 AI本節內文</button>
+          <button class="ai-btn" id="btn-ai-gen-all-content" title="撰寫所有未鎖定的小節內文">🤖 AI全節內文</button>
+          <button class="ai-btn" id="btn-ai-gen-content" title="撰寫本小節內文">🤖 AI本節內文</button>
         </div>
       </div>
-      <div class="scroll-area editor-container" id="editor-side">
+      <div class="scroll-area" id="editor-side">
         <textarea class="editor-title" id="active-section-title" placeholder="請選擇一個章節開始" readonly></textarea>
         <textarea id="main-editor" placeholder="在此編寫故事內容..."></textarea>
       </div>
     </div>
-    <!-- ── Modal: Save Novel ── -->
-    <div id="modal-novel-save" style="display:none;">
-      <div class="modal-box">
-        <h3 class="modal-title">💾 儲存小說專案</h3>
-        <div class="modal-field">
-          <label class="modal-label">小說名稱：</label>
-          <input type="text" id="save-novel-name">
-        </div>
-        <div class="modal-field-last">
-          <label class="modal-label">密碼 (雲端存取用)：</label>
-          <input type="password" id="save-novel-password">
-        </div>
-        <div class="modal-actions">
-          <button id="btn-save-cancel" class="btn-modal-cancel">取消</button>
-          <button id="btn-save-confirm" class="btn-modal-confirm">確定儲存</button>
-        </div>
+  </div>
+  <!-- ── Modal: Save Novel ── -->
+  <div id="modal-novel-save" class="modal-overlay hidden">
+    <div class="modal-box modal-box-sm">
+      <h3 class="modal-title">💾 儲存小說專案</h3>
+      <div class="modal-field">
+        <label class="modal-label">小說名稱：</label>
+        <input type="text" id="save-novel-name">
+      </div>
+      <div class="modal-field-last">
+        <label class="modal-label">密碼 (雲端存取用)：</label>
+        <input type="password" id="save-novel-password">
+      </div>
+      <div class="modal-actions">
+        <button id="btn-save-cancel" class="btn-modal-cancel">取消</button>
+        <button id="btn-save-confirm" class="btn-modal-confirm">確定儲存</button>
       </div>
     </div>
   </div>
+
   <!-- ── Modal: Novel Password Check ── -->
-  <div id="modal-novel-password" style="display:none;">
+  <div id="modal-novel-password" class="modal-overlay hidden">
     <div class="modal-box modal-box-sm">
       <h3 class="modal-title">🔐 雲端專案驗證</h3>
       <p class="modal-desc">請輸入此小說專案的讀取密碼：</p>
@@ -189,17 +187,17 @@
 
   <script>
     // Log 輔助功能
-    window.clearLogOutput = () => { document.getElementById('log-output').textContent = ''; };
+    window.clearLogOutput = () => { document.getElementById('log-output').value = ''; };
     window.copyLogOutput = () => {
-      const log = document.getElementById('log-output').textContent;
+      const log = document.getElementById('log-output').value;
       navigator.clipboard.writeText(log);
       alert('已複製到剪貼簿');
     };
     window.showLogModal = () => {
       const logBox = document.getElementById('log-output');
-      const rawText = logBox.innerText || logBox.textContent;
+      const rawText = logBox.value;
       document.getElementById('system-log-content').value = rawText.replace(/\\n/g, '\n');
-      document.getElementById('modal-system-log').style.display = 'flex';
+      document.getElementById('modal-system-log').classList.remove('hidden');
       document.getElementById('log-search-input').value = '';
       document.getElementById('log-search-count').textContent = '';
     };
@@ -211,21 +209,21 @@
 
       function goToMatch(idx) {
         if (!matches.length) return;
-        const ta    = document.getElementById('system-log-content');
+        const ta = document.getElementById('system-log-content');
         const query = document.getElementById('log-search-input').value;
         currentMatch = ((idx % matches.length) + matches.length) % matches.length;
         const start = matches[currentMatch], end = start + query.length;
         ta.focus();
         ta.setSelectionRange(start, end);
-        const lh   = parseFloat(window.getComputedStyle(ta).lineHeight) || 20;
-        const line  = ta.value.substring(0, start).split('\n').length - 1;
+        const lh = parseFloat(window.getComputedStyle(ta).lineHeight) || 20;
+        const line = ta.value.substring(0, start).split('\n').length - 1;
         ta.scrollTop = Math.max(0, (line - 3) * lh);
         document.getElementById('log-search-count').textContent = `${currentMatch + 1} / ${matches.length}`;
       }
 
       function doSearch() {
-        const query   = document.getElementById('log-search-input').value;
-        const ta      = document.getElementById('system-log-content');
+        const query = document.getElementById('log-search-input').value;
+        const ta = document.getElementById('system-log-content');
         const countEl = document.getElementById('log-search-count');
         matches = [];
         currentMatch = -1;
@@ -375,19 +373,21 @@
   </script>
   <script src="js/novel_generator_app.js" defer></script>
   <!-- ── Modal: System Message LOG ── -->
-  <div id="modal-system-log" style="display:none;">
-    <div class="modal-box modal-box-lg">
-      <div class="modal-header-bar">
+  <div id="modal-system-log" class="modal-overlay hidden">
+    <div class="modal"
+      style="background-color: var(--c-bg-card-light); width: 80%; height: 80%; display: flex; flex-direction: column; max-width: none;">
+      <div class="modal-header-bar"
+        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-shrink: 0;">
+        <h2 class="modal-title" style="margin:0;">系統訊息 LOG</h2>
         <button class="modal-close-btn"
-          onclick="document.getElementById('modal-system-log').style.display='none'">&times;</button>
-        <h3 class="modal-title">系統訊息 LOG</h3>
+          onclick="document.getElementById('modal-system-log').classList.add('hidden')">&times;</button>
       </div>
-      <div class="log-search-bar">
+      <div class="log-search-bar" style="flex-shrink: 0;">
         <span class="log-search-icon">🔍</span>
         <span id="log-search-count" class="log-search-count"></span>
-        <button class="log-search-nav-btn" id="log-search-prev" title="上一個（Shift+Enter）">▲</button>
-        <button class="log-search-nav-btn" id="log-search-next" title="下一個（Enter）">▼</button>
-        <input type="text" id="log-search-input" class="log-search-input" placeholder="搜尋 LOG 文字...">
+        <button class="log-search-nav-btn" id="log-search-prev" title="上一個">▲</button>
+        <button class="log-search-nav-btn" id="log-search-next" title="下一個">▼</button>
+        <input type="text" id="log-search-input" class="log-search-input" placeholder="搜尋 LOG 文字（Enter 執行）...">
       </div>
       <div class="modal-body-area">
         <textarea id="system-log-content" class="modal-log-textarea" readonly></textarea>

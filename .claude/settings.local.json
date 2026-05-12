@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(\\(Get-Content \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\\\\web\\\\css\\\\editer.css\"\\).Count)"
+    ]
+  }
+}

@@ -194,10 +194,10 @@ def _ollama_generate_direct(model, prompt, options=None):
     
     # 預設參數
     default_options = {
-        "temperature": 0.95,
-        "num_predict": -1,
-        "num_ctx": 65536,
-        "repeat_penalty": 1.2,
+        "temperature": 0.85,
+        "num_predict": 1024,
+        "num_ctx": 4096,
+        "repeat_penalty": 1.1,
         "top_k": 40,
         "top_p": 0.9
         #"num_gpu": 55 #搞不定這個參數，對實際狀況也沒改善。
@@ -288,15 +288,16 @@ def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_
     # 執行「生成日記」任務，發放提示詞給OLLAMA的大模型
     #####################################################################################
     try:
-        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        timeStartSec = time.time()
+        timestampStart = time.strftime("%H:%M:%S", time.localtime(timeStartSec))
         
         print("="*50 + "\n")
-        print(f"[{timestamp}] debug_server.py : === 執行「生成日記」任務，準備發送給 OLLAMA 的提示詞 ===")
+        print(f"[{timestampStart}] debug_server.py : === 執行「生成日記」任務，準備發送給 OLLAMA 的提示詞 ===")
         print("="*20 + "以下是提示詞" + "="*20 +"\n\n")
         print(diary_prompt)
         print("\n" + "="*20 + "提示詞結束" + "="*20 +"\n")
         _append_job_log(job_id,"="*50)
-        _append_job_log(job_id, f"[{timestamp}] debug_server.py : === 執行「生成日記」任務，準備發送給 OLLAMA 的提示詞 ===")
+        _append_job_log(job_id, f"[{timestampStart}] debug_server.py : === 執行「生成日記」任務，準備發送給 OLLAMA 的提示詞 ===")
         _append_job_log(job_id, "="*20 + "以下是提示詞" + "="*20 +"\n")
         _append_job_log(job_id, diary_prompt)
         _append_job_log(job_id, "\n" + "="*20 + "提示詞結束" + "="*20 +"\n")
@@ -323,33 +324,35 @@ def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_
             errors='replace',
             env=env
         )
-        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        timeEndSec = time.time()
+        timestampEnd = time.strftime("%H:%M:%S", time.localtime(timeEndSec))
+        duration = int(timeEndSec - timeStartSec)
         if res_story.stdout:
             _append_job_log(job_id, f"="*100)
-            _append_job_log(job_id, f"[{timestamp}] debug_server.py : === 處理完「生成日記」任務與準備好提示詞 ===")
+            _append_job_log(job_id, f"[{timestampEnd}] 總共花費 {duration} 秒 ，debug_server.py : === 處理完「生成日記」任務與準備好提示詞 ===")
             _append_job_log(job_id, f"debug_server.py : === 以下交給 generate_daily.py 處理 ===")
             # 顯示generate_daily.py的輸出內容
             _append_job_log(job_id, res_story.stdout)
 
             print("="*100 + "\n")
-            print(f"[{timestamp}] debug_server.py : === 處理完「生成日記」任務與準備好提示詞 ===\n")
+            print(f"[{timestampEnd}] debug_server.py : === 處理完「生成日記」任務與準備好提示詞 ===\n")
             print(f"debug_server.py : === 以下交給 generate_daily.py 處理 ===\n")
             print(res_story.stdout)
 
         if res_story.stderr:
             _append_job_log(job_id, "="*100 + "\n")
-            _append_job_log(job_id, f"[{timestamp}] debug_server.py : === 發生錯誤，無法完成「生成日記」任務 ===\n")
+            _append_job_log(job_id, f"[{timestampEnd}] debug_server.py : === 發生錯誤，無法完成「生成日記」任務 ===\n")
             _append_job_log(job_id, "Error: " + res_story.stderr)
             print("="*100 + "\n")
-            print(f"[{timestamp}] debug_server.py : === 發生錯誤，無法完成「生成日記」任務 ===\n")
+            print(f"[{timestampEnd}] debug_server.py : === 發生錯誤，無法完成「生成日記」任務 ===\n")
             print("debug_server.py : Error: " + res_story.stderr)
             print("="*100 + "\n")
 
 
-        timestamp = time.strftime("%H:%M:%S", time.localtime())
-        print(f"\n[{timestamp}] debug_server.py : === 執行「生成圖片」任務，準備發送給 ComfyUI 的提示詞 ===")
+        timestampImgStart = time.strftime("%H:%M:%S", time.localtime())
+        print(f"\n[{timestampImgStart}] debug_server.py : === 執行「生成圖片」任務，準備發送給 ComfyUI 的提示詞 ===")
         # print(image_prompt) # 避免提示詞太長洗版
-        _append_job_log(job_id, f"\n[{timestamp}] debug_server.py : === 執行「生成圖片」任務，準備發送給 ComfyUI 的提示詞 ===")
+        _append_job_log(job_id, f"\n[{timestampImgStart}] debug_server.py : === 執行「生成圖片」任務，準備發送給 ComfyUI 的提示詞 ===")
         # _append_job_log(job_id, image_prompt)
 
         res_img = subprocess.run(
@@ -360,21 +363,21 @@ def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_
             errors='replace',
             env=env
         )
-        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        timestampImgEnd = time.strftime("%H:%M:%S", time.localtime())
         if res_img.stdout:
-            _append_job_log(job_id, f"\n[{timestamp}] debug_server.py : == 完成「生成圖片」任務 ===" + res_img.stdout.strip())
-            print(f"[{timestamp}] debug_server.py : == 完成「生成圖片」任務 === [generate_image.py] stdout: {res_img.stdout.strip()}")
+            _append_job_log(job_id, f"\n[{timestampImgEnd}] debug_server.py : == 完成「生成圖片」任務 ===" + res_img.stdout.strip())
+            print(f"[{timestampImgEnd}] debug_server.py : == 完成「生成圖片」任務 === [generate_image.py] stdout: {res_img.stdout.strip()}")
         
         if res_img.stderr:
             # 只有在真的有錯誤時才輸出 stderr，且避免重複輸出
             err_msg = res_img.stderr.strip()
             if err_msg and "Error" in err_msg:
-                _append_job_log(job_id, f"[{timestamp}] debug_server.py : === 發生錯誤，無法完成「生成圖片」任務 === " + err_msg)
-                print(f"[{timestamp}] debug_server.py : === 發生錯誤，無法完成「生成圖片」任務 === stderr: {err_msg}")
+                _append_job_log(job_id, f"[{timestampImgEnd}] debug_server.py : === 發生錯誤，無法完成「生成圖片」任務 === " + err_msg)
+                print(f"[{timestampImgEnd}] debug_server.py : === 發生錯誤，無法完成「生成圖片」任務 === stderr: {err_msg}")
 
-        timestamp = time.strftime("%H:%M:%S", time.localtime())
-        _append_job_log(job_id, f"\n[{timestamp}] debug_server.py : === 正在編譯頁面 ===")
-        print(f"\n[{timestamp}] debug_server.py : === 正在編譯頁面 ===")
+        timestampBuildStart = time.strftime("%H:%M:%S", time.localtime())
+        _append_job_log(job_id, f"\n[{timestampBuildStart}] debug_server.py : === 正在編譯頁面 ===")
+        print(f"\n[{timestampBuildStart}] debug_server.py : === 正在編譯頁面 ===")
         res_build = subprocess.run(
             [sys.executable, "daily_page_build.py"],
             capture_output=True,
@@ -383,15 +386,15 @@ def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_
             errors='replace',
             env=env
         )
-        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        timestampBuildEnd = time.strftime("%H:%M:%S", time.localtime())
         if res_build.stdout:
-            _append_job_log(job_id, f"\n[{timestamp}] debug_server.py : === 完成「編譯頁面」任務 ===\n" + res_build.stdout)
-            print(f"\n[{timestamp}] debug_server.py : === 完成「編譯頁面」任務 ===\n")
+            _append_job_log(job_id, f"\n[{timestampBuildEnd}] debug_server.py : === 完成「編譯頁面」任務 ===\n" + res_build.stdout)
+            print(f"\n[{timestampBuildEnd}] debug_server.py : === 完成「編譯頁面」任務 ===\n")
             print(res_build.stdout)
         if res_build.stderr:
-            _append_job_log(job_id, f"[{timestamp}] debug_server.py : === 發生錯誤，無法完成「編譯頁面」任務 ===\n" + "Error: " + res_build.stderr)
-            print(f"\n[{timestamp}] debug_server.py : === 發生錯誤，無法完成「編譯頁面」任務 ===\n")
-            print(f"\n[{timestamp}]" + "Error: " + res_build.stderr)
+            _append_job_log(job_id, f"[{timestampBuildEnd}] debug_server.py : === 發生錯誤，無法完成「編譯頁面」任務 ===\n" + "Error: " + res_build.stderr)
+            print(f"\n[{timestampBuildEnd}] debug_server.py : === 發生錯誤，無法完成「編譯頁面」任務 ===\n")
+            print(f"\n[{timestampBuildEnd}]" + "Error: " + res_build.stderr)
 
         with JOBS_LOCK:
             if job_id in JOBS:

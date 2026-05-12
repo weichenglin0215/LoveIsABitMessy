@@ -251,8 +251,9 @@ def build_daily_prompt(char_data: dict, scenario: str, relationship_params: dict
 【禁止】
 1. 將女主塑造成完美形象。
 2. 流水帳或商業文件或教科書的文體。
-3. 禁止以"我"字開頭。
-4. 禁止使用"我"字。
+3. 禁止以"我"跟"你"字開頭。
+4. 禁止使用"我"跟"你"字。
+5. 禁止使用中文簡體字。
 
 """.strip()
 
