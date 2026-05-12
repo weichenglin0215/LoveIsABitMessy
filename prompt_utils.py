@@ -507,7 +507,84 @@ def build_novel_content_prompt(char_data: dict, current_chapter: str, chapter_ou
 
     user_input = f"請撰寫『{section_title}』的內容。"
     return f"{system_prompt}\n\n【當前任務/情境】\n{user_input}\n\n請開始執行（以繁體中文）："
-def build_chat_reply_prompt(char_data, char_name, user_name, user_message, history, 
+def build_analyze_text_character_prompt(text_content: str) -> str:
+    """建立「從文字分析角色特質並生成角色卡 JSON」的提示詞"""
+    type_options = (
+        "LPAS 愛情人格量表（四軸各選一，分別為曖昧期、熱戀期、失戀期）：\n"
+        "  軸1 主動(A) vs 被動(P)　軸2 外放(O) vs 內斂(I)\n"
+        "  軸3 乾脆(C) vs 留戀(L)　軸4 快速短暫(F) vs 緩慢持久(S)\n"
+        "16種代碼與名稱：\n"
+        "  AOCF=煙火　AOCS=太陽　AOLF=潮水　AOLS=候鳥\n"
+        "  AICF=陣雨　AICS=燈塔　AILF=星星　AILS=月亮\n"
+        "  POCF=流星　POCS=冰川　POLF=浪花　POLS=溫泉\n"
+        "  PICF=霜花　PICS=迷霧　PILF=細雨　PILS=深海\n"
+        "personality_type 格式範例：AOCF_AILF_PICS-煙火_星星_迷霧（依序：曖昧期_熱戀期_失戀期）"
+    )
+    prompt = f"""你是一位精通角色分析的暢銷愛情小說策劃專家，擅長從文字中剖析人物的性格、情感模式與性心理。
+請根據以下文字內容，深度分析其中的角色特質，並生成一份完整的角色卡 JSON。
+
+【分析方法】
+1. 星座推斷：根據性格行為推斷最符合的星座（牡羊/金牛/雙子/巨蟹/獅子/處女/天秤/天蠍/射手/摩羯/水瓶/雙魚）
+2. 血型推斷：根據性格特質推斷血型（A型/B型/AB型/O型）
+3. LPAS 分析：分別為「曖昧期」「熱戀期」「失戀期」三個階段各選一種類型代碼
+
+{type_options}
+
+【必須輸出標準 JSON，不含任何額外說明文字或 markdown 標記，直接以 {{ 開頭】
+{{
+  "name": "角色名稱，若無則設「未命名角色」",
+  "gender": "女",
+  "height": "身高(cm)字串，無法判斷設164",
+  "weight": "體重(kg)字串，無法判斷設50",
+  "bust": "罩杯字母，無法判斷設C",
+  "birthday": "YYYY-MM-DD，依推斷星座設定合理日期",
+  "zodiac": "XX座",
+  "blood_type": "X型",
+  "MBTI_type": "推斷的MBTI類型，無法判斷設未選擇",
+  "personality_type": "XXXX_XXXX_XXXX-名稱1_名稱2_名稱3",
+  "analysis_reasons": "詳細說明星座、血型、LPAS三期推斷理由，各100字以上",
+  "speech_style": "說話語氣與口吻，具體描述",
+  "occupation": "職業",
+  "appearance": "外貌描述，包含臉型、五官、髮型、身材、穿著風格",
+  "relationship": "人際關係狀態",
+  "habits": ["嗜好1", "嗜好2", "嗜好3"],
+  "image_prompt": "英文AI生圖提示詞，描述外貌特徵，適合Stable Diffusion格式",
+  "sexual_personality": {{
+    "sexual_sensory": "感官偏好描述，包含視覺、觸覺、聽覺、嗅覺等偏好",
+    "sexual_behavior": "性行為偏好，包含前戲、體位、節奏等偏好描述",
+    "sexual_motivation": "性動機描述，驅使她進入性關係的深層心理動力",
+    "sexual_psychology": "性心理描述，對性的態度、價值觀、禁忌與開放程度",
+    "sexual_acceptance_and_taboos": "接受度與禁忌，能接受的性行為範疇與底線"
+  }},
+  "sexual_analysis_reasons": "基於文字中的行為、情感反應、關係模式推斷性格的分析理由"
+}}
+
+【待分析文字】
+{text_content[:3000]}
+
+請開始分析並輸出完整 JSON（繁體中文填寫，image_prompt 使用英文）："""
+    return prompt
+
+
+def build_analyze_image_prompt_text() -> str:
+    """建立「從圖片分析外貌並生成 AI 生圖提示詞」的提示詞"""
+    return (
+        "你是一位專業的 AI 圖像生成提示詞工程師。請仔細觀察圖片中的人物，"
+        "生成一段適用於 Stable Diffusion / ComfyUI 的英文提示詞。\n\n"
+        "【分析重點】\n"
+        "1. 年齡外觀 2. 種族特徵 3. 臉型與五官 4. 髮型髮色\n"
+        "5. 身材比例 6. 服裝風格 7. 表情神態 8. 環境背景\n\n"
+        "【輸出要求】\n"
+        "- 僅輸出英文提示詞字串，不含任何說明或 JSON 標記\n"
+        "- 逗號分隔的描述詞組，從最重要特徵開始\n"
+        "- 範例：A stunning 22-year-old Japanese woman, heart-shaped face with large "
+        "expressive eyes, long black wavy hair, wearing a casual white dress, "
+        "slender figure, warm smile, soft natural lighting\n\n"
+        "請直接輸出提示詞："
+    )
+
+
+def build_chat_reply_prompt(char_data, char_name, user_name, user_message, history,
                             persona_override="", session_extra="", 
                             user_char_data=None, user_persona_override="", user_extra="",
                             session_type="one_on_one", other_participants=None, writer_settings: dict = None):

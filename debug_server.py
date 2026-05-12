@@ -17,11 +17,13 @@ except Exception:
     pass
 from urllib.parse import urlparse, parse_qs
 from prompt_utils import (
-    load_character_from_path, 
+    load_character_from_path,
     build_daily_prompt, #生成日記 prompt
     build_chapters_from_premise_prompt,#「根據故事粗綱生成各章標題與描述」的完整提示詞
     build_chapter_outline_prompt, #根據章的標題與描述來建立「各小節大綱」的完整提示詞
-    build_novel_content_prompt #建立「小說本文生成」的完整提示詞
+    build_novel_content_prompt, #建立「小說本文生成」的完整提示詞
+    build_analyze_text_character_prompt, #從文字分析角色特質
+    build_analyze_image_prompt_text      #從圖片生成 AI 生圖提示詞
 )
 
 PORT = 8081
@@ -185,7 +187,7 @@ def _append_job_log(job_id: str, text: str):
         job["logs"].append(text)
         job["updated_at"] = time.time()
 
-def _ollama_generate_direct(model, prompt, options=None):
+def _ollama_generate_direct(model, prompt, options=None, images=None):
     """直接呼叫 Ollama API 並回傳結果字串 (支援流式傳輸以免超時)"""
     #####################################################################################
     # 直接呼叫 Ollama API 並回傳結果字串 (支援流式傳輸以免超時)
@@ -218,6 +220,8 @@ def _ollama_generate_direct(model, prompt, options=None):
         "stream": stream_val,
         "options": default_options
     }
+    if images:
+        payload["images"] = images
     
     print(f">>>> 模型: {model}")
     print(f">>>> 以流式回傳結果: {stream_val}")
@@ -710,6 +714,131 @@ def _run_chat_reply_job(job_id: str, params: dict):
                 JOBS[job_id]["updated_at"] = time.time()
     except Exception as e:
         _append_job_log(job_id, f"[ERROR] _run_chat_reply_job failed: {e}")
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["status"]     = "error"
+                JOBS[job_id]["updated_at"] = time.time()
+
+
+def _run_analyze_text_char_job(job_id: str, params: dict):
+    """非同步執行「從文字分析角色特質並生成角色卡 JSON」任務"""
+    def log(text):
+        print(text)
+        _append_job_log(job_id, text)
+    try:
+        text_content = params.get('text_content', '')
+        model_name   = params.get('model', 'gemma4')
+        prompt = build_analyze_text_character_prompt(text_content)
+
+        # 分析任務需要較長輸出，覆寫 num_predict
+        opts = dict(params.get('model_options') or {})
+        opts.setdefault('num_predict', 2048)
+        opts.setdefault('temperature', 0.7)
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        log("=" * 50)
+        log(f"[{timestamp}] debug_server.py：【非同步】從文字分析角色特質")
+        log(f">> 文字長度：{len(text_content)} 字，模型：{model_name}，num_predict：{opts['num_predict']}")
+        log("=" * 20 + " 以下是送給 AI 的完整提示詞 " + "=" * 20)
+        log(prompt)
+        log("=" * 20 + " 提示詞結束 " + "=" * 20)
+        log(">> 正在呼叫 Ollama 分析中（請稍候）...")
+
+        response_text = _ollama_generate_direct(model_name, prompt, options=opts)
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        log("=" * 20 + " 以下是 AI 完整回傳內容 " + "=" * 20)
+        log(response_text if response_text.strip() else "（空字串，模型未回傳任何內容）")
+        log("=" * 20 + " AI 回傳結束 " + "=" * 20)
+        log(f"[{timestamp}] Ollama 回傳完畢，回傳長度：{len(response_text)} 字元")
+        if not response_text.strip():
+            log(">> [警告] 模型回傳空字串！可能原因：模型拒絕回應、num_ctx 不足、或模型不支援此任務。")
+            log(f">> 請確認 Ollama 中已載入模型：{model_name}")
+
+        character = {}
+        try:
+            repaired = _try_repair_json(response_text)
+            start = repaired.find('{')
+            end   = repaired.rfind('}')
+            if start != -1 and end != -1:
+                character = json.loads(repaired[start:end + 1])
+                log(f">> JSON 解析成功！角色名稱：{character.get('name', '未命名')}")
+                log(f">> 星座：{character.get('zodiac','')}　血型：{character.get('blood_type','')}　LPAS：{character.get('personality_type','')}")
+            else:
+                log(">> 找不到有效 JSON 物件（回傳內容中沒有 { } 結構）。")
+        except Exception as e:
+            log(f">> JSON 解析失敗：{e}")
+
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["result"]     = {"character": character, "debug_prompt": prompt}
+                JOBS[job_id]["status"]     = "done"
+                JOBS[job_id]["updated_at"] = time.time()
+    except Exception as e:
+        import traceback
+        _append_job_log(job_id, f"[ERROR] _run_analyze_text_char_job failed: {e}\n{traceback.format_exc()}")
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["status"]     = "error"
+                JOBS[job_id]["updated_at"] = time.time()
+
+
+def _run_analyze_image_char_job(job_id: str, params: dict):
+    """非同步執行「從圖片分析外貌並生成 AI 生圖提示詞」任務"""
+    def log(text):
+        print(text)
+        _append_job_log(job_id, text)
+    try:
+        image_base64 = params.get('image_base64', '')
+        model_name   = params.get('model', 'gemma4')
+        prompt = build_analyze_image_prompt_text()
+
+        opts = dict(params.get('model_options') or {})
+        opts.setdefault('num_predict', 512)
+        opts.setdefault('temperature', 0.5)
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        log("=" * 50)
+        log(f"[{timestamp}] debug_server.py：【非同步】從圖片分析外貌生成提示詞")
+        log(f">> 模型：{model_name}，圖片 base64 長度：{len(image_base64)} 字元")
+        if not image_base64:
+            log(">> [錯誤] 未收到圖片資料！")
+            with JOBS_LOCK:
+                if job_id in JOBS:
+                    JOBS[job_id]["status"] = "error"
+                    JOBS[job_id]["updated_at"] = time.time()
+            return
+        log("=" * 20 + " 以下是送給 AI 的完整提示詞 " + "=" * 20)
+        log(prompt)
+        log("=" * 20 + " 提示詞結束 " + "=" * 20)
+        log(">> 正在呼叫 Ollama 分析圖片中（請稍候）...")
+
+        response_text = _ollama_generate_direct(
+            model_name, prompt,
+            options=opts,
+            images=[image_base64]
+        )
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        log("=" * 20 + " 以下是 AI 完整回傳內容 " + "=" * 20)
+        log(response_text if response_text.strip() else "（空字串，模型未回傳任何內容）")
+        log("=" * 20 + " AI 回傳結束 " + "=" * 20)
+        log(f"[{timestamp}] Ollama 回傳完畢，回傳長度：{len(response_text)} 字元")
+        if not response_text.strip():
+            log(">> [警告] 模型回傳空字串！可能原因：模型不支援視覺功能。")
+            log(f">> 請確認 {model_name} 支援圖片輸入（vision model）。")
+            log(">> 支援視覺的模型範例：gemma4、llava、moondream、minicpm-v 等。")
+
+        image_prompt = response_text.strip().strip('"').strip("'")
+
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["result"]     = {"image_prompt": image_prompt, "debug_prompt": prompt}
+                JOBS[job_id]["status"]     = "done"
+                JOBS[job_id]["updated_at"] = time.time()
+    except Exception as e:
+        import traceback
+        _append_job_log(job_id, f"[ERROR] _run_analyze_image_char_job failed: {e}\n{traceback.format_exc()}")
         with JOBS_LOCK:
             if job_id in JOBS:
                 JOBS[job_id]["status"]     = "error"
@@ -1346,6 +1475,52 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                     }
                 threading.Thread(
                     target=_run_chat_reply_job,
+                    args=(job_id, params),
+                    daemon=True
+                ).start()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"job_id": job_id, "status": "running"}, ensure_ascii=False).encode('utf-8'))
+
+            elif self.path == '/api/analyze_text_character_async':
+                ############################################################################
+                # 非同步：從文字分析角色特質並生成角色卡 JSON
+                ############################################################################
+                job_id = str(uuid.uuid4())
+                with JOBS_LOCK:
+                    JOBS[job_id] = {
+                        "status": "running",
+                        "logs": [">> 任務啟動：從文字分析角色特質..."],
+                        "result": None,
+                        "created_at": time.time(),
+                        "updated_at": time.time()
+                    }
+                threading.Thread(
+                    target=_run_analyze_text_char_job,
+                    args=(job_id, params),
+                    daemon=True
+                ).start()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"job_id": job_id, "status": "running"}, ensure_ascii=False).encode('utf-8'))
+
+            elif self.path == '/api/analyze_image_character_async':
+                ############################################################################
+                # 非同步：從圖片分析外貌並生成 AI 生圖提示詞
+                ############################################################################
+                job_id = str(uuid.uuid4())
+                with JOBS_LOCK:
+                    JOBS[job_id] = {
+                        "status": "running",
+                        "logs": [">> 任務啟動：從圖片分析外貌生成提示詞..."],
+                        "result": None,
+                        "created_at": time.time(),
+                        "updated_at": time.time()
+                    }
+                threading.Thread(
+                    target=_run_analyze_image_char_job,
                     args=(job_id, params),
                     daemon=True
                 ).start()

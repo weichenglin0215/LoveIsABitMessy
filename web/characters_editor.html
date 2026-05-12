@@ -16,6 +16,8 @@
   <!-- 中央角色資料與邏輯 -->
   <script src="js/character_logic.js"></script>
   <script src="js/supabaseClient.js"></script>
+  <script src="js/model_options_app.js" defer></script>
+  <script src="js/writer_settings_app.js" defer></script>
   <script src="js/characters_editor_app.js"></script>
 </head>
 
@@ -80,7 +82,7 @@
             </div>
           </div>
 
-          <div class="sub-row-group" style="grid-template-columns: 1fr 1fr 1fr;">
+          <div class="sub-row-group" style="grid-template-columns: 1fr 1fr 1fr 1fr;">
             <div class="field-group">
               <label class="field-label" id="lbl-birthday">生日 (Birthday)</label>
               <input type="date" class="editor-input" id="char-birthday">
@@ -95,6 +97,12 @@
               <label class="field-label">血型 (Blood Type)</label>
               <select class="editor-input" id="char-blood-type">
                 <option value="">-- 選擇血型 --</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label">MBTI類型</label>
+              <select class="editor-input" id="char-mbti">
+                <option value="">-- 選擇MBTI --</option>
               </select>
             </div>
           </div>
@@ -121,8 +129,56 @@
           </div>
 
           <div class="field-group field-group-fill">
-            <label class="field-label">角色設定 JSON (Card JSON)</label>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px;">
+              <label class="field-label" style="margin:0; flex-shrink:0;">角色設定 JSON (Card JSON)</label>
+              <button class="btn secondary-btn" id="btn-analyze-text" style="white-space:nowrap;">📝 文字創造角色</button>
+              <button class="btn secondary-btn" id="btn-analyze-image" style="white-space:nowrap;">🖼️ 人像圖片生成提示詞</button>
+            </div>
             <textarea class="editor-textarea" id="char-card-json" placeholder="JSON 內容會顯示在此。"></textarea>
+          </div>
+          <!-- 伺服器狀態 + 模型設定 -->
+          <div class="server-status-row server-settings-row">
+            <span class="server-status-dot offline" id="server-dot"></span>
+            <span class="server-status-text" id="server-status-text">偵測中…</span>
+            <button id="start-server-btn" disabled>🚀 請自行啟動伺服器</button>
+            <div id="model-container" class="model-container-row">
+              <label class="model-label">🤖 AI 模型：</label>
+              <select id="model-select" class="select-narrow">
+                <option value="gemma4">gemma4</option>
+              </select>
+            </div>
+            <div class="model-container-row">
+              <label class="model-label">⚙️ 模型參數：</label>
+              <select id="model-options-select" class="select-narrow">
+                <option value="">預設</option>
+              </select>
+              <button id="btn-add-model-option" class="ai-btn btn-edit-sm">+編輯</button>
+            </div>
+            <div class="model-container-row">
+              <label class="model-label">🖋️ 寫作風格：</label>
+              <select id="writer-style-select" class="ws-style-dropdown select-narrow">
+                <option value="">無</option>
+              </select>
+              <button id="btn-edit-writer-style" class="ai-btn btn-edit-sm"
+                onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select').value)">+編輯</button>
+            </div>
+            <div class="model-container-row">
+              <label class="model-label">📝 寫作範本：</label>
+              <select id="writer-sample-select" class="ws-sample-dropdown select-narrow">
+                <option value="">無</option>
+              </select>
+              <button id="btn-edit-writer-sample" class="ai-btn btn-edit-sm"
+                onclick="WriterSettingsApp.openSampleModal(document.getElementById('writer-sample-select').value)">+編輯</button>
+            </div>
+          </div>
+          <!-- AI 分析 LOG -->
+          <div class="form-section" style="margin-top:4px;">
+            <textarea id="editor-log-output" class="log-area">等待任務...</textarea>
+          </div>
+          <div class="log-actions">
+            <button class="small-btn" onclick="clearEditorLog()">🗑️清空</button>
+            <button class="small-btn" onclick="copyEditorLog()">📋複製</button>
+            <button class="small-btn" onclick="showEditorLogModal()">🔲大型彈窗</button>
           </div>
         </div>
       </div>
@@ -137,6 +193,9 @@
         <label class="field-label">🅰🅱🆎🅾血型說明 (唯讀🔻)</label>
         <textarea class="editor-textarea" id="desc-blood" readonly placeholder="血型說明"
           style="min-height: 140px; background: var(--c-bg-card);"></textarea>
+        <label class="field-label">🔷MBTI說明 (唯讀🔻)</label>
+        <textarea class="editor-textarea" id="desc-mbti" readonly placeholder="MBTI說明"
+          style="min-height: 140px; background: var(--c-bg-card);"></textarea>
         <label class="field-label">💜曖昧期說明 (唯讀🔻)</label>
         <textarea class="editor-textarea" id="desc-type-1" readonly placeholder="曖昧期說明"
           style="min-height: 140px; background: var(--c-bg-card);"></textarea>
@@ -146,6 +205,29 @@
         <label class="field-label">💔失戀期說明 (唯讀🔻)</label>
         <textarea class="editor-textarea" id="desc-type-3" readonly placeholder="失戀期說明"
           style="min-height: 140px; background: var(--c-bg-card);"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Editor AI 分析 LOG ── -->
+  <div id="modal-editor-log" class="modal-overlay hidden">
+    <div class="modal"
+      style="background-color: var(--c-bg-card-light); width: 80%; height: 80%; display: flex; flex-direction: column; max-width: none;">
+      <div class="modal-header-bar"
+        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-shrink: 0;">
+        <h2 class="modal-title" style="margin:0;">AI 分析 LOG</h2>
+        <button class="modal-close-btn"
+          onclick="document.getElementById('modal-editor-log').classList.add('hidden')">&times;</button>
+      </div>
+      <div class="log-search-bar" style="flex-shrink: 0;">
+        <span class="log-search-icon">🔍</span>
+        <span id="editor-log-search-count" class="log-search-count"></span>
+        <button class="log-search-nav-btn" id="editor-log-search-prev" title="上一個">▲</button>
+        <button class="log-search-nav-btn" id="editor-log-search-next" title="下一個">▼</button>
+        <input type="text" id="editor-log-search-input" class="log-search-input" placeholder="搜尋 LOG 文字（Enter 執行）...">
+      </div>
+      <div class="modal-body-area">
+        <textarea id="editor-log-content" class="modal-log-textarea" readonly></textarea>
       </div>
     </div>
   </div>

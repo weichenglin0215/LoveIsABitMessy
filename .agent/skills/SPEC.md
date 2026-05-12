@@ -31,6 +31,13 @@ description: 開始任何任務前必讀，所有修改必須符合本規範
 - 圖片檔：`images/YYYY-MM-DD_角色id.png`
 - 網頁檔：`web/YYYY-MM-DD.html`
 
+## 其他注意事項
+- 所有 JavaScript、HTML、CSS、JSON、SQL 等檔案，其編碼格式均使用 UTF-8，不可使用其他編碼。
+- 所有程式碼都必須有詳細的註解。
+- 所有變數、函式、檔案的命名都必須使用英文。
+- LOG大型彈窗套用統一寫法，請參考 web/daily_run.html 的 <!-- ── Modal: System Message LOG ── --> 區塊。
+- LOG欄的寫法請參考 web/daily_run.html 的 textarea id="log-output"，LOG欄的文字只能添加，不能清空或覆蓋。
+
 ## 禁止事項
 - 禁止更改 HTML 模板的基本結構
 - 禁止新增未在此規範列出的功能

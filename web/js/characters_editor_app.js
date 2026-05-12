@@ -106,6 +106,18 @@ function initDropdownOptions() {
         });
     }
 
+    // Populate MBTI types
+    const mbtiSel = qs('#char-mbti');
+    if (mbtiSel && window.MBTI_TYPES) {
+        mbtiSel.innerHTML = '<option value="">-- 選擇MBTI --</option>';
+        window.MBTI_TYPES.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.textContent = m;
+            mbtiSel.appendChild(opt);
+        });
+    }
+
     // Populate Phase types from TYPE_MAPPING (來源: character_logic.js)
     const mapping = window.TYPE_MAPPING;
     if (mapping) {
@@ -181,6 +193,10 @@ function updateExplanations() {
     const bd = window.BLOOD_TYPE_DESCRIPTIONS;
     if (qs('#desc-blood')) qs('#desc-blood').value = (bd && bVal) ? bd[bVal] || "" : "";
 
+    const mVal = qs('#char-mbti').value;
+    const md = window.MBTI_DESCRIPTIONS;
+    if (qs('#desc-mbti')) qs('#desc-mbti').value = (md && mVal) ? md[mVal] || "" : "";
+
     const mapping = window.TYPE_MAPPING;
     if (mapping) {
         [1, 2, 3].forEach(p => {
@@ -238,6 +254,7 @@ async function loadCharacter(charId) {
     qs('#char-gender').value = cardJson.gender || '女';
     qs('#char-zodiac').value = cardJson.zodiac || '';
     qs('#char-blood-type').value = cardJson.blood_type || '';
+    qs('#char-mbti').value = cardJson.MBTI_type || '';
     qs('#char-height').value = cardJson.height || '165';
     qs('#char-weight').value = cardJson.weight || '55';
     qs('#char-bust').value = cardJson.bust || 'C';
@@ -304,11 +321,12 @@ async function saveCharacter() {
     cardJson.gender = qs('#char-gender').value || "女";
     cardJson.zodiac = qs('#char-zodiac').value || "";
     cardJson.blood_type = qs('#char-blood-type').value || "";
+    cardJson.MBTI_type = qs('#char-mbti').value || "";
     cardJson.birthday = qs('#char-birthday').value || "1999-01-01";
     cardJson.height = qs('#char-height').value || "165";
     cardJson.weight = qs('#char-weight').value || "55";
     cardJson.bust = qs('#char-bust').value || "C";
-    
+
     // 組合 Personality Type: A_B_C-名稱1_名稱2_名稱3
     const t1 = qs('#char-type-1').value;
     const t2 = qs('#char-type-2').value;
@@ -379,6 +397,7 @@ async function saveAsNewCharacter() {
     cardJson.gender = qs('#char-gender').value || "女";
     cardJson.zodiac = qs('#char-zodiac').value;
     cardJson.blood_type = qs('#char-blood-type').value;
+    cardJson.MBTI_type = qs('#char-mbti').value || "";
     cardJson.birthday = qs('#char-birthday').value;
     cardJson.height = qs('#char-height').value || "165";
     cardJson.weight = qs('#char-weight').value || "55";
@@ -434,6 +453,7 @@ function cancelCharacterEdit() {
     qs('#char-gender').value = '女';
     qs('#char-zodiac').value = '';
     qs('#char-blood-type').value = '';
+    qs('#char-mbti').value = '';
     qs('#char-type-1').value = '';
     qs('#char-type-2').value = '';
     qs('#char-type-3').value = '';
@@ -460,6 +480,7 @@ function updateJsonFromDropdowns() {
         cardJson.gender = qs('#char-gender').value;
         cardJson.zodiac = qs('#char-zodiac').value;
         cardJson.blood_type = qs('#char-blood-type').value;
+        cardJson.MBTI_type = qs('#char-mbti').value || "";
         cardJson.birthday = qs('#char-birthday').value;
         cardJson.name = qs('#char-name').value;
         cardJson.height = qs('#char-height').value || "165";
@@ -486,6 +507,325 @@ function updateJsonFromDropdowns() {
         qs('#char-card-json').value = prettyJson(cardJson);
         updateButtonStates();
     } catch(e) {}
+}
+
+// ====== 伺服器狀態偵測 ======
+
+let serverOnline = false;
+let lastModelFetchTime = 0;
+let pollInterval = null;
+
+async function fetchOllamaModels() {
+    try {
+        const res = await fetch('http://localhost:8081/api/models');
+        const container = document.getElementById('model-container');
+        if (res.ok) {
+            const models = await res.json();
+            const select = document.getElementById('model-select');
+            const current = select.value;
+            select.innerHTML = '';
+            models.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m; opt.textContent = m;
+                if (m === current || m === 'gemma4') opt.selected = true;
+                select.appendChild(opt);
+            });
+            if (container) { container.style.opacity = '1'; container.style.pointerEvents = 'auto'; }
+        } else {
+            if (container) { container.style.opacity = '0.5'; container.style.pointerEvents = 'none'; }
+        }
+    } catch (e) { console.error('Failed to fetch models', e); }
+}
+
+async function checkServerStatus() {
+    const serverDot       = document.getElementById('server-dot');
+    const serverStatusText = document.getElementById('server-status-text');
+    const startServerBtn  = document.getElementById('start-server-btn');
+    const modelContainer  = document.getElementById('model-container');
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 2000);
+        const res = await fetch('http://localhost:8081/api/status', { signal: controller.signal });
+        clearTimeout(timeout);
+        if (res.ok) {
+            const now = Date.now();
+            if (!serverOnline) {
+                fetchOllamaModels();
+                lastModelFetchTime = now;
+            } else {
+                const modelSelect = document.getElementById('model-select');
+                const isInactive = modelContainer && modelContainer.style.opacity === '0.5';
+                const hasNoModels = modelSelect && modelSelect.options.length <= 1;
+                if ((isInactive || hasNoModels) && (now - lastModelFetchTime > 30000)) {
+                    fetchOllamaModels();
+                    lastModelFetchTime = now;
+                }
+            }
+            serverOnline = true;
+            serverDot.className = 'server-status-dot online';
+            serverDot.classList.add('flash');
+            setTimeout(() => serverDot.classList.remove('flash'), 500);
+            serverStatusText.textContent = '✅ debug_server.py 運行中';
+            startServerBtn.disabled = true;
+            return true;
+        }
+    } catch (e) { /* offline */ }
+    serverOnline = false;
+    serverDot.className = 'server-status-dot offline';
+    serverStatusText.textContent = '❌ debug_server.py 未啟動';
+    startServerBtn.disabled = false;
+    if (modelContainer) { modelContainer.style.opacity = '0.5'; modelContainer.style.pointerEvents = 'none'; }
+    return false;
+}
+
+function startServerPolling() {
+    if (pollInterval) return;
+    pollInterval = setInterval(checkServerStatus, 5000);
+    checkServerStatus();
+}
+
+// ====== Editor LOG 功能 ======
+
+function appendEditorLog(text) {
+    const logBox = document.getElementById('editor-log-output');
+    if (!logBox) return;
+    logBox.value += text + '\n';
+    logBox.scrollTop = logBox.scrollHeight;
+}
+
+window.clearEditorLog = () => {
+    const el = document.getElementById('editor-log-output');
+    if (el) el.value = '';
+};
+
+window.copyEditorLog = () => {
+    const el = document.getElementById('editor-log-output');
+    if (!el) return;
+    navigator.clipboard.writeText(el.value);
+    alert('已複製到剪貼簿');
+};
+
+window.showEditorLogModal = () => {
+    const el = document.getElementById('editor-log-output');
+    if (!el) return;
+    document.getElementById('editor-log-content').value = el.value.replace(/\\n/g, '\n');
+    document.getElementById('modal-editor-log').classList.remove('hidden');
+    document.getElementById('editor-log-search-input').value = '';
+    document.getElementById('editor-log-search-count').textContent = '';
+};
+
+(function initEditorLogSearch() {
+    let matches = [], currentMatch = -1;
+
+    function goToMatch(idx) {
+        if (!matches.length) return;
+        const ta = document.getElementById('editor-log-content');
+        const query = document.getElementById('editor-log-search-input').value;
+        currentMatch = ((idx % matches.length) + matches.length) % matches.length;
+        const start = matches[currentMatch], end = start + query.length;
+        ta.focus();
+        ta.setSelectionRange(start, end);
+        const lh = parseFloat(window.getComputedStyle(ta).lineHeight) || 20;
+        ta.scrollTop = Math.max(0, (ta.value.substring(0, start).split('\n').length - 4) * lh);
+        document.getElementById('editor-log-search-count').textContent = `${currentMatch + 1} / ${matches.length}`;
+    }
+
+    function doSearch() {
+        const query = document.getElementById('editor-log-search-input').value;
+        const ta = document.getElementById('editor-log-content');
+        const countEl = document.getElementById('editor-log-search-count');
+        matches = []; currentMatch = -1;
+        if (!query) { countEl.textContent = ''; ta.focus(); return; }
+        const lo = ta.value.toLowerCase(), lq = query.toLowerCase();
+        let i = 0;
+        while ((i = lo.indexOf(lq, i)) !== -1) { matches.push(i); i += lq.length; }
+        matches.length ? goToMatch(0) : (countEl.textContent = '找不到', ta.focus());
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const si = document.getElementById('editor-log-search-input');
+        if (si) si.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSearch(); } });
+        const pb = document.getElementById('editor-log-search-prev');
+        if (pb) pb.addEventListener('click', () => goToMatch(currentMatch - 1));
+        const nb = document.getElementById('editor-log-search-next');
+        if (nb) nb.addEventListener('click', () => goToMatch(currentMatch + 1));
+    });
+})();
+
+// ====== AI 分析：輔助函式 ======
+
+async function _apiPost(url, body) {
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+        const txt = await res.text().catch(() => '');
+        throw new Error(`伺服器回傳 ${res.status} (${res.statusText})。\n請確認已重新啟動 debug_server.py 後再試。\n${txt.substring(0, 120)}`);
+    }
+    return res.json();
+}
+
+async function _pollAnalysisJob(jobId, onDone, onError) {
+    let lastText = '';
+    for (let i = 0; i < 300; i++) {
+        await new Promise(r => setTimeout(r, 1000));
+        try {
+            const jr = await fetch(`http://localhost:8081/api/job?id=${encodeURIComponent(jobId)}`);
+            if (!jr.ok) { onError(`輪詢回傳 ${jr.status}，請確認 debug_server.py 仍在運行。`); return; }
+            const jd = await jr.json();
+            if (jd.logs && jd.logs !== lastText) {
+                const newPart = jd.logs.slice(lastText.length);
+                lastText = jd.logs;
+                if (newPart.trim()) appendEditorLog(newPart.replace(/\\n/g, '\n').trimEnd());
+            }
+            if (jd.status === 'done') { onDone(jd.result); return; }
+            if (jd.status === 'error') { onError('AI 任務失敗，請查看上方錯誤訊息。'); return; }
+        } catch (e) {
+            onError(`輪詢錯誤：${e.message}`);
+            return;
+        }
+    }
+    onError('等待逾時（300秒）。');
+}
+
+function populateFormFromCharData(charData) {
+    if (!charData) return;
+    qs('#char-card-json').value = prettyJson(charData);
+    if (charData.name)       qs('#char-name').value       = charData.name;
+    if (charData.gender)     qs('#char-gender').value     = charData.gender;
+    if (charData.birthday)   qs('#char-birthday').value   = charData.birthday;
+    if (charData.height)     qs('#char-height').value     = charData.height;
+    if (charData.weight)     qs('#char-weight').value     = charData.weight;
+    if (charData.bust)       qs('#char-bust').value       = charData.bust;
+    if (charData.zodiac)     qs('#char-zodiac').value     = charData.zodiac;
+    if (charData.blood_type) qs('#char-blood-type').value = charData.blood_type;
+    if (charData.MBTI_type)  qs('#char-mbti').value       = charData.MBTI_type;
+
+    if (charData.personality_type) {
+        const rawCodes = charData.personality_type.split('-')[0];
+        let t1 = '', t2 = '', t3 = '';
+        if (rawCodes.includes('_')) {
+            const parts = rawCodes.split('_');
+            if (parts.length >= 3 && parts[0].length === 4) { t1 = parts[0]; t2 = parts[1]; t3 = parts[2]; }
+        } else if (rawCodes.length === 4) { t1 = rawCodes; t2 = rawCodes; t3 = rawCodes; }
+        if (t1) qs('#char-type-1').value = t1;
+        if (t2) qs('#char-type-2').value = t2;
+        if (t3) qs('#char-type-3').value = t3;
+    }
+    updateExplanations();
+    updateAgeDisplay();
+    updateButtonStates();
+}
+
+function updateImagePromptInJson(imagePrompt) {
+    const textarea = qs('#char-card-json');
+    let cardJson = {};
+    try { cardJson = JSON.parse(textarea.value); } catch { /* 若 JSON 無效就建新物件 */ }
+    cardJson.image_prompt = imagePrompt;
+    textarea.value = prettyJson(cardJson);
+}
+
+// ====== AI 分析：文字創造角色 ======
+
+async function analyzeTextCharacter() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.txt,.md,.csv,.json';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        appendEditorLog(`>> 讀取檔案：${file.name}`);
+        let text;
+        try { text = await file.text(); } catch (err) { appendEditorLog(`❌ 讀取檔案失敗：${err.message}`); return; }
+        appendEditorLog(`>> 檔案讀取完畢（${text.length} 字），正在呼叫 AI 分析角色...`);
+
+        const btn = qs('#btn-analyze-text');
+        if (btn) btn.disabled = true;
+        try {
+            const model = document.getElementById('model-select')?.value || 'gemma4';
+            const modelOptions = (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null;
+            appendEditorLog(`>> 連線至 http://localhost:8081，模型：${model} ...`);
+            const { job_id: jobId } = await _apiPost(
+                'http://localhost:8081/api/analyze_text_character_async',
+                { text_content: text, model, model_options: modelOptions }
+            );
+            if (!jobId) { appendEditorLog('❌ 啟動分析任務失敗：未取得 job_id'); return; }
+            appendEditorLog(`>> 任務 ID：${jobId}，AI 分析中...`);
+
+            await _pollAnalysisJob(jobId,
+                (result) => {
+                    if (result && result.character && Object.keys(result.character).length > 0) {
+                        populateFormFromCharData(result.character);
+                        appendEditorLog('✅ 角色資料已分析完成並填入表單！');
+                    } else {
+                        appendEditorLog('⚠️ AI 分析完畢，但未取得有效角色資料。');
+                    }
+                },
+                (err) => appendEditorLog(`❌ ${err}`)
+            );
+        } catch (err) {
+            appendEditorLog(`❌ 連線錯誤（請確認 debug_server.py 已啟動）：${err.message}`);
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    };
+    input.click();
+}
+
+// ====== AI 分析：人像圖片生成提示詞 ======
+
+async function analyzeImageCharacter() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        appendEditorLog(`>> 讀取圖片：${file.name}`);
+        let base64Image;
+        try {
+            base64Image = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        } catch (err) { appendEditorLog(`❌ 讀取圖片失敗：${err.message}`); return; }
+        appendEditorLog('>> 圖片讀取完畢，正在呼叫 AI 分析圖片並生成提示詞...');
+
+        const btn = qs('#btn-analyze-image');
+        if (btn) btn.disabled = true;
+        try {
+            const model = document.getElementById('model-select')?.value || 'gemma4';
+            const modelOptions = (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null;
+            appendEditorLog(`>> 連線至 http://localhost:8081，模型：${model} ...`);
+            const { job_id: jobId } = await _apiPost(
+                'http://localhost:8081/api/analyze_image_character_async',
+                { image_base64: base64Image, model, model_options: modelOptions }
+            );
+            if (!jobId) { appendEditorLog('❌ 啟動分析任務失敗：未取得 job_id'); return; }
+            appendEditorLog(`>> 任務 ID：${jobId}，AI 分析圖片中...`);
+
+            await _pollAnalysisJob(jobId,
+                (result) => {
+                    if (result && result.image_prompt) {
+                        updateImagePromptInJson(result.image_prompt);
+                        appendEditorLog('✅ image_prompt 已更新至角色設定 JSON！');
+                    } else {
+                        appendEditorLog('⚠️ AI 分析完畢，但未取得有效的 image_prompt。');
+                    }
+                },
+                (err) => appendEditorLog(`❌ ${err}`)
+            );
+        } catch (err) {
+            appendEditorLog(`❌ 連線錯誤（請確認 debug_server.py 已啟動）：${err.message}`);
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    };
+    input.click();
 }
 
 // ====== 事件掛載 ======
@@ -531,6 +871,11 @@ window.addEventListener('load', async () => {
         updateJsonFromDropdowns();
     });
 
+    qs('#char-mbti').addEventListener('change', () => {
+        updateExplanations();
+        updateJsonFromDropdowns();
+    });
+
     ['#char-gender', '#char-height', '#char-weight', '#char-bust'].forEach(sel => {
         qs(sel).addEventListener('input', updateJsonFromDropdowns);
         qs(sel).addEventListener('change', updateJsonFromDropdowns);
@@ -547,7 +892,10 @@ window.addEventListener('load', async () => {
     qs('#btn-char-refresh').addEventListener('click', refreshCharacterList);
     qs('#btn-char-save').addEventListener('click', saveCharacter);
     qs('#btn-char-save-new').addEventListener('click', saveAsNewCharacter);
+    qs('#btn-analyze-text').addEventListener('click', analyzeTextCharacter);
+    qs('#btn-analyze-image').addEventListener('click', analyzeImageCharacter);
 
+    startServerPolling();
     await initSupabase();
     updateButtonStates();
 });
