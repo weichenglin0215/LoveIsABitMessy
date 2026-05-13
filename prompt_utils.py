@@ -507,8 +507,12 @@ def build_novel_content_prompt(char_data: dict, current_chapter: str, chapter_ou
 
     user_input = f"請撰寫『{section_title}』的內容。"
     return f"{system_prompt}\n\n【當前任務/情境】\n{user_input}\n\n請開始執行（以繁體中文）："
+
 def build_analyze_text_character_prompt(text_content: str) -> str:
     """建立「從文字分析角色特質並生成角色卡 JSON」的提示詞"""
+    #####################################################################################
+    #建立「從文字分析角色特質並生成角色卡 JSON」的提示詞
+    #####################################################################################
     type_options = (
         "LPAS 愛情人格量表（四軸各選一，分別為曖昧期、熱戀期、失戀期）：\n"
         "  軸1 主動(A) vs 被動(P)　軸2 外放(O) vs 內斂(I)\n"
@@ -526,7 +530,8 @@ def build_analyze_text_character_prompt(text_content: str) -> str:
 【分析方法】
 1. 星座推斷：根據性格行為推斷最符合的星座（牡羊/金牛/雙子/巨蟹/獅子/處女/天秤/天蠍/射手/摩羯/水瓶/雙魚）
 2. 血型推斷：根據性格特質推斷血型（A型/B型/AB型/O型）
-3. LPAS 分析：分別為「曖昧期」「熱戀期」「失戀期」三個階段各選一種類型代碼
+3. MBTI 推斷：根據性格特質推斷MBTI類型（選擇其中最符合的類型，如INFP、ENFJ等）
+4. LPAS 分析：分別為「曖昧期」「熱戀期」「失戀期」三個階段各選一種類型代碼
 
 {type_options}
 
@@ -542,13 +547,12 @@ def build_analyze_text_character_prompt(text_content: str) -> str:
   "blood_type": "X型",
   "MBTI_type": "推斷的MBTI類型，無法判斷設未選擇",
   "personality_type": "XXXX_XXXX_XXXX-名稱1_名稱2_名稱3",
-  "analysis_reasons": "詳細說明星座、血型、LPAS三期推斷理由，各100字以上",
+  "analysis_reasons": "詳細說明星座、血型、MBTI、LPAS四期推斷理由，各100字以上",
   "speech_style": "說話語氣與口吻，具體描述",
   "occupation": "職業",
   "appearance": "外貌描述，包含臉型、五官、髮型、身材、穿著風格",
   "relationship": "人際關係狀態",
   "habits": ["嗜好1", "嗜好2", "嗜好3"],
-  "image_prompt": "英文AI生圖提示詞，描述外貌特徵，適合Stable Diffusion格式",
   "sexual_personality": {{
     "sexual_sensory": "感官偏好描述，包含視覺、觸覺、聽覺、嗅覺等偏好",
     "sexual_behavior": "性行為偏好，包含前戲、體位、節奏等偏好描述",
@@ -556,28 +560,33 @@ def build_analyze_text_character_prompt(text_content: str) -> str:
     "sexual_psychology": "性心理描述，對性的態度、價值觀、禁忌與開放程度",
     "sexual_acceptance_and_taboos": "接受度與禁忌，能接受的性行為範疇與底線"
   }},
-  "sexual_analysis_reasons": "基於文字中的行為、情感反應、關係模式推斷性格的分析理由"
+  "sexual_analysis_reasons": "基於文字中的感官偏好、性行為模式、性動機、性心理、性接受度與禁忌的分析理由，各100字以上",
+  "image_prompt": "中文+英文AI生圖提示詞，描述外貌特徵，適合Stable Diffusion格式"
 }}
 
 【待分析文字】
-{text_content[:3000]}
+{text_content[:15000]}
 
-請開始分析並輸出完整 JSON（繁體中文填寫，image_prompt 使用英文）："""
+請開始分析並輸出完整 JSON（繁體中文填寫，image_prompt 使用中文+英文）："""
     return prompt
 
 
 def build_analyze_image_prompt_text() -> str:
     """建立「從圖片分析外貌並生成 AI 生圖提示詞」的提示詞"""
+    #####################################################################################
+    #建立「從圖片分析外貌並生成 AI 生圖提示詞」的提示詞
+    #####################################################################################
     return (
         "你是一位專業的 AI 圖像生成提示詞工程師。請仔細觀察圖片中的人物，"
-        "生成一段適用於 Stable Diffusion / ComfyUI 的英文提示詞。\n\n"
+        "生成一段適用於 Stable Diffusion / ComfyUI 的中文+英文提示詞。\n\n"
         "【分析重點】\n"
         "1. 年齡外觀 2. 種族特徵 3. 臉型與五官 4. 髮型髮色\n"
         "5. 身材比例 6. 服裝風格 7. 表情神態 8. 環境背景\n\n"
         "【輸出要求】\n"
-        "- 僅輸出英文提示詞字串，不含任何說明或 JSON 標記\n"
+        "- 僅輸出中文+英文提示詞字串，不含任何說明或 JSON 標記\n"
         "- 逗號分隔的描述詞組，從最重要特徵開始\n"
-        "- 範例：A stunning 22-year-old Japanese woman, heart-shaped face with large "
+        "- 範例：一位令人驚豔的22歲日本女性，心形臉，炯炯有神的眼睛，烏黑的長捲髮，休閒的白色連身裙，身材纖細，笑容溫暖，柔和的自然光線。"
+        "A stunning 22-year-old Japanese woman, heart-shaped face with large "
         "expressive eyes, long black wavy hair, wearing a casual white dress, "
         "slender figure, warm smile, soft natural lighting\n\n"
         "請直接輸出提示詞："
@@ -653,14 +662,14 @@ def build_chat_reply_prompt(char_data, char_name, user_name, user_message, histo
         content = h.get('content', '')
         history_text += f"{name}: {content}\n"
 
-    prompt = f"""你現在要扮演「{char_name}」這個角色，在通訊軟體 LoveLine 上與使用者進行即時對話。
+    prompt = f"""你現在要扮演「{char_name}」這個角色，在通訊軟體 LoveLine 上與 {user_name} 進行即時對話。
 
 【你的角色設定】
 {char_desc}
 {group_context}
 {writer_context}
 
-【關於對話對象 (使用者) 的資訊】
+【關於 {user_name} 的資訊】
 {user_context}
 
 【之前的對話紀錄】
@@ -682,7 +691,7 @@ def build_chat_reply_prompt(char_data, char_name, user_name, user_message, histo
 1. 絕對禁止重複你自己的上一次回覆。
 2. 禁止重複回答相同的意見。
 3. 禁止迴避使用者的提問，必須針對提問回答。
-4. 禁止以上次的格式來回覆。
+4. 禁止換行與空白行。
 5. 禁止用**簡體中文**回覆。
 
 """

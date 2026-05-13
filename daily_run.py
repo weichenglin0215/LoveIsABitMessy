@@ -43,12 +43,9 @@ def main():
     # 2. 執行生成圖片
     rc_img, t_img = run_script("generate_image.py", [latest_story])
 
-    # 3. 執行網頁編譯
-    rc_build, t_build = run_script("daily_page_build.py")
-
     print("\n" + "=" * 50)
     print("✅ 全部流程執行完畢！")
-    print(f"[SUMMARY] story={t_story:.1f}s, image={t_img:.1f}s, build={t_build:.1f}s, total={(t_story+t_img+t_build):.1f}s")
+    print(f"[SUMMARY] story={t_story:.1f}s, image={t_img:.1f}s, total={(t_story+t_img):.1f}s")
     print("=" * 50)
 
 if __name__ == "__main__":

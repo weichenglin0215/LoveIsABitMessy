@@ -38,9 +38,9 @@
             <select id="char-dropdown">
               <option value="">-- 選擇角色卡 --</option>
             </select>
-            <button class="btn-icon" id="btn-char-refresh" title="重新整理">🔄</button>
-            <button class="btn primary-btn" id="btn-char-save-new">🆕 儲存新角色(新增)...</button>
-            <button class="btn primary-btn" id="btn-char-save">💾 儲存角色(覆蓋)</button>
+            <button class="btn-icon" id="btn-char-refresh" title="從雲端重新下載角色卡資料">🔄</button>
+            <button class="btn primary-btn" id="btn-char-save-new" title="新增儲存角色卡資料到雲端">🆕 儲存新角色(新增)...</button>
+            <button class="btn primary-btn" id="btn-char-save" title="注意：覆蓋雲端角色卡資料">💾 儲存角色(覆蓋)</button>
           </div>
 
           <div class="field-group">
@@ -131,10 +131,17 @@
           <div class="field-group field-group-fill">
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px;">
               <label class="field-label" style="margin:0; flex-shrink:0;">角色設定 JSON (Card JSON)</label>
-              <button class="btn secondary-btn" id="btn-analyze-text" style="white-space:nowrap;">📝 文字創造角色</button>
-              <button class="btn secondary-btn" id="btn-analyze-image" style="white-space:nowrap;">🖼️ 人像圖片生成提示詞</button>
+              <button class="btn secondary-btn" id="btn-analyze-clipboard" style="white-space:nowrap;"
+                title="從剪貼簿讀取文字，由AI分析並創造角色卡資料">📋 剪貼簿創造角色</button>
+              <button class="btn secondary-btn" id="btn-analyze-text" style="white-space:nowrap;"
+                title="讀取文字檔案由AI分析並創造角色卡資料">📝
+                文字創造角色</button>
+              <button class="btn secondary-btn" id="btn-analyze-image" style="white-space:nowrap;"
+                title="讀取人像圖片由AI分析並寫出生圖提示詞">🖼️
+                人像圖片生成提示詞</button>
             </div>
-            <textarea class="editor-textarea" id="char-card-json" placeholder="JSON 內容會顯示在此。"></textarea>
+            <textarea class="editor-textarea" style="height: 40px;" id="char-card-json"
+              placeholder="JSON 內容會顯示在此。"></textarea>
           </div>
           <!-- 伺服器狀態 + 模型設定 -->
           <div class="server-status-row server-settings-row">
@@ -173,38 +180,32 @@
           </div>
           <!-- AI 分析 LOG -->
           <div class="form-section" style="margin-top:4px;">
-            <textarea id="editor-log-output" class="log-area">等待任務...</textarea>
+            <textarea id="editor-log-output" class="log-area" style="resize: none;">等待任務...</textarea>
           </div>
           <div class="log-actions">
-            <button class="small-btn" onclick="clearEditorLog()">🗑️清空</button>
-            <button class="small-btn" onclick="copyEditorLog()">📋複製</button>
-            <button class="small-btn" onclick="showEditorLogModal()">🔲大型彈窗</button>
+            <button class="small-btn" onclick="clearEditorLog()" title="清空LOG欄的所有文字">🗑️清空</button>
+            <button class="small-btn" onclick="copyEditorLog()" title="複製LOG欄的所有文字到剪貼簿">📋複製</button>
+            <button class="small-btn" onclick="showEditorLogModal()" title="將LOG欄的所有文字顯示在大型LOG彈窗">🔲大型彈窗</button>
           </div>
+          <div class="hint">💡 儲存角色時會自動同步更新 Supabase 中的 characters 資料表。</div>
         </div>
       </div>
-      <div class="hint">💡 儲存角色時會自動同步更新 Supabase 中的 characters 資料表。</div>
     </div>
     <div class="col-right">
       <label class="field-label">人格特質與類型說明 (唯讀)</label>
       <div style="display: flex; flex-direction: column; gap: 8px;">
         <label class="field-label">♈♉♊♋♌♍♎♏♐♑♒♓星座說明 (唯讀🔻)</label>
-        <textarea class="editor-textarea" id="desc-zodiac" readonly placeholder="星座說明"
-          style="min-height: 140px; background: var(--c-bg-card);"></textarea>
+        <textarea class="editor-textarea desc-textarea" id="desc-zodiac" readonly placeholder="星座說明"></textarea>
         <label class="field-label">🅰🅱🆎🅾血型說明 (唯讀🔻)</label>
-        <textarea class="editor-textarea" id="desc-blood" readonly placeholder="血型說明"
-          style="min-height: 140px; background: var(--c-bg-card);"></textarea>
+        <textarea class="editor-textarea desc-textarea" id="desc-blood" readonly placeholder="血型說明"></textarea>
         <label class="field-label">🔷MBTI說明 (唯讀🔻)</label>
-        <textarea class="editor-textarea" id="desc-mbti" readonly placeholder="MBTI說明"
-          style="min-height: 140px; background: var(--c-bg-card);"></textarea>
+        <textarea class="editor-textarea desc-textarea" id="desc-mbti" readonly placeholder="MBTI說明"></textarea>
         <label class="field-label">💜曖昧期說明 (唯讀🔻)</label>
-        <textarea class="editor-textarea" id="desc-type-1" readonly placeholder="曖昧期說明"
-          style="min-height: 140px; background: var(--c-bg-card);"></textarea>
+        <textarea class="editor-textarea desc-textarea" id="desc-type-1" readonly placeholder="曖昧期說明"></textarea>
         <label class="field-label">🧡熱戀期說明 (唯讀🔻)</label>
-        <textarea class="editor-textarea" id="desc-type-2" readonly placeholder="熱戀期說明"
-          style="min-height: 140px; background: var(--c-bg-card);"></textarea>
+        <textarea class="editor-textarea desc-textarea" id="desc-type-2" readonly placeholder="熱戀期說明"></textarea>
         <label class="field-label">💔失戀期說明 (唯讀🔻)</label>
-        <textarea class="editor-textarea" id="desc-type-3" readonly placeholder="失戀期說明"
-          style="min-height: 140px; background: var(--c-bg-card);"></textarea>
+        <textarea class="editor-textarea desc-textarea" id="desc-type-3" readonly placeholder="失戀期說明"></textarea>
       </div>
     </div>
   </div>

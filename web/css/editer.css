@@ -124,7 +124,12 @@
 
   /* ── 字體 ── */
   --font-ui: 'Inter', 'Noto Sans TC', sans-serif;
+  /*非襯線體*/
   --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Monaco, 'Courier New', monospace;
+  /*等寬字體*/
+  /* 標楷體：Windows=標楷體/DFKai-SB，macOS=BiauKai，最終 fallback 用 serif */
+  --font-kai: '標楷體', 'DFKai-SB', 'BiauKai', 'Noto Serif TC', serif;
+  /*襯線體*/
 
   /* ── 字體尺寸 ── */
   --font-size-xs: 0.6rem;
@@ -655,7 +660,7 @@ textarea#main-editor {
   font-size: var(--font-size-xl);
   line-height: 1.4;
   resize: vertical;
-  font-family: var(--font-mono);
+  font-family: var(--font-kai);
   transition: border-color 0.2s;
 }
 
@@ -674,6 +679,25 @@ textarea#main-editor:focus {
   border-color: var(--c-border-focus);
 }
 
+.editor-textarea[readonly] {
+  background-color: var(--c-bg-card);
+}
+
+/* characters_editor 右欄說明 textarea：固定起始高度，可手動拖動縮放 */
+.desc-textarea {
+  flex: none !important;
+  height: 160px;
+  min-height: 60px;
+  resize: vertical;
+}
+
+/* characters_editor 角色 JSON textarea：左欄固定起始高度，可手動拖動縮放 */
+#char-card-json {
+  flex: none !important;
+  height: 340px;
+  min-height: 100px;
+  resize: vertical;
+}
 
 
 /* .story-premise-textarea：故事粗綱，撐滿 */
@@ -721,7 +745,7 @@ body.daily-page textarea {
   border-color: var(--c-border-dark);
   color: #fff;
   font-size: var(--font-size-xl);
-  font-family: var(--font-mono);
+  font-family: var(--font-kai);
   line-height: 1.6;
   padding: var(--pad-both-md);
 }
@@ -1683,10 +1707,6 @@ body.layout-scroll {
   flex-wrap: wrap;
   color: var(--c-text-sec);
   border-radius: var(--radius-xs);
-}
-
-.editor-textarea[readonly] {
-  background-color: var(--c-bg-card);
 }
 
 .desc-textarea {

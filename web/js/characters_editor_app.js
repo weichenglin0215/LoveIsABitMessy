@@ -774,6 +774,67 @@ async function analyzeTextCharacter() {
     input.click();
 }
 
+// ====== AI 分析：剪貼簿創造角色 ======
+
+async function analyzeClipboardCharacter() {
+    const btn = qs('#btn-analyze-clipboard');
+
+    let text;
+    try {
+        // 要求剪貼簿讀取權限並取得內容
+        text = await navigator.clipboard.readText();
+    } catch (err) {
+        appendEditorLog(`❌ 無法讀取剪貼簿（請確認瀏覽器權限已允許）：${err.message}`);
+        alert('無法讀取剪貼簿，請確認瀏覽器已允許此頁面存取剪貼簿。');
+        return;
+    }
+
+    // 驗證：空白
+    if (!text || text.trim().length === 0) {
+        appendEditorLog('❌ 剪貼簿是空的，請先複製角色相關文字再試一次。');
+        alert('⚠️ 剪貼簿是空的，請先複製角色相關文字再試一次。');
+        return;
+    }
+
+    // 驗證：過短（可能是圖片路徑、單一數字等非角色描述內容）
+    if (text.trim().length < 10) {
+        appendEditorLog(`❌ 剪貼簿內容太短（${text.trim().length} 字），無法判斷為角色描述文字。`);
+        alert(`⚠️ 剪貼簿內容太短（${text.trim().length} 字），請確認已複製足夠的角色描述文字。`);
+        return;
+    }
+
+    appendEditorLog(`>> 讀取剪貼簿完畢（${text.length} 字），正在呼叫 AI 分析角色...`);
+
+    if (btn) btn.disabled = true;
+    try {
+        const model = document.getElementById('model-select')?.value || 'gemma4';
+        const modelOptions = (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null;
+        appendEditorLog(`>> 連線至 http://localhost:8081，模型：${model} ...`);
+        const { job_id: jobId } = await _apiPost(
+            'http://localhost:8081/api/analyze_text_character_async',
+            { text_content: text, model, model_options: modelOptions }
+        );
+        if (!jobId) { appendEditorLog('❌ 啟動分析任務失敗：未取得 job_id'); return; }
+        appendEditorLog(`>> 任務 ID：${jobId}，AI 分析中...`);
+
+        await _pollAnalysisJob(jobId,
+            (result) => {
+                if (result && result.character && Object.keys(result.character).length > 0) {
+                    populateFormFromCharData(result.character);
+                    appendEditorLog('✅ 角色資料已分析完成並填入表單！');
+                } else {
+                    appendEditorLog('⚠️ AI 分析完畢，但未取得有效角色資料。');
+                }
+            },
+            (err) => appendEditorLog(`❌ ${err}`)
+        );
+    } catch (err) {
+        appendEditorLog(`❌ 連線錯誤（請確認 debug_server.py 已啟動）：${err.message}`);
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
 // ====== AI 分析：人像圖片生成提示詞 ======
 
 async function analyzeImageCharacter() {
@@ -893,6 +954,7 @@ window.addEventListener('load', async () => {
     qs('#btn-char-save').addEventListener('click', saveCharacter);
     qs('#btn-char-save-new').addEventListener('click', saveAsNewCharacter);
     qs('#btn-analyze-text').addEventListener('click', analyzeTextCharacter);
+    qs('#btn-analyze-clipboard').addEventListener('click', analyzeClipboardCharacter);
     qs('#btn-analyze-image').addEventListener('click', analyzeImageCharacter);
 
     startServerPolling();

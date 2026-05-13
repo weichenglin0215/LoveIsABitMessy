@@ -197,8 +197,8 @@ def _ollama_generate_direct(model, prompt, options=None, images=None):
     # 預設參數
     default_options = {
         "temperature": 0.85,
-        "num_predict": 1024,
-        "num_ctx": 4096,
+        "num_predict": 2048,
+        "num_ctx": 8192,
         "repeat_penalty": 1.1,
         "top_k": 40,
         "top_p": 0.9
@@ -379,27 +379,6 @@ def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_
                 _append_job_log(job_id, f"[{timestampImgEnd}] debug_server.py : === 發生錯誤，無法完成「生成圖片」任務 === " + err_msg)
                 print(f"[{timestampImgEnd}] debug_server.py : === 發生錯誤，無法完成「生成圖片」任務 === stderr: {err_msg}")
 
-        timestampBuildStart = time.strftime("%H:%M:%S", time.localtime())
-        _append_job_log(job_id, f"\n[{timestampBuildStart}] debug_server.py : === 正在編譯頁面 ===")
-        print(f"\n[{timestampBuildStart}] debug_server.py : === 正在編譯頁面 ===")
-        res_build = subprocess.run(
-            [sys.executable, "daily_page_build.py"],
-            capture_output=True,
-            text=True,
-            encoding='utf-8',
-            errors='replace',
-            env=env
-        )
-        timestampBuildEnd = time.strftime("%H:%M:%S", time.localtime())
-        if res_build.stdout:
-            _append_job_log(job_id, f"\n[{timestampBuildEnd}] debug_server.py : === 完成「編譯頁面」任務 ===\n" + res_build.stdout)
-            print(f"\n[{timestampBuildEnd}] debug_server.py : === 完成「編譯頁面」任務 ===\n")
-            print(res_build.stdout)
-        if res_build.stderr:
-            _append_job_log(job_id, f"[{timestampBuildEnd}] debug_server.py : === 發生錯誤，無法完成「編譯頁面」任務 ===\n" + "Error: " + res_build.stderr)
-            print(f"\n[{timestampBuildEnd}] debug_server.py : === 發生錯誤，無法完成「編譯頁面」任務 ===\n")
-            print(f"\n[{timestampBuildEnd}]" + "Error: " + res_build.stderr)
-
         with JOBS_LOCK:
             if job_id in JOBS:
                 JOBS[job_id]["status"] = "done"
@@ -451,13 +430,14 @@ def _run_novel_chapters_job(job_id: str, params: dict):
         log(f"[{timestamp}] debug_server.py：【非同步】根據粗綱生成各章標題與描述")
         log(f">> 正在呼叫 Ollama 產生「各章標題與描述」(請稍候)...")
 
+        timeStartSec = time.time()
         response_text = _ollama_generate_direct(
             params.get('model', 'gemma4'), prompt,
             options=params.get('model_options')
         )
-
+        duration = int(time.time() - timeStartSec)
         timestamp = time.strftime("%H:%M:%S", time.localtime())
-        log(f"[{timestamp}] debug_server.py：「各章標題與描述」產生完畢！")
+        log(f"[{timestamp}] 總共花費 {duration} 秒，「各章標題與描述」產生完畢！")
 
         chapters = []
         try:
@@ -529,13 +509,14 @@ def _run_novel_outline_job(job_id: str, params: dict):
         log(f"[{timestamp}] debug_server.py：【非同步】建立各小節大綱")
         log(f">> 正在呼叫 Ollama 產生「各小節大綱」(請稍候)...")
 
+        timeStartSec = time.time()
         response_text = _ollama_generate_direct(
             params.get('model', 'gemma4'), prompt,
             options=params.get('model_options')
         )
-
+        duration = int(time.time() - timeStartSec)
         timestamp = time.strftime("%H:%M:%S", time.localtime())
-        log(f"[{timestamp}] debug_server.py：「各小節大綱」產生完畢！")
+        log(f"[{timestamp}] 總共花費 {duration} 秒，「各小節大綱」產生完畢！")
 
         sections = []
         try:
@@ -634,13 +615,14 @@ def _run_novel_content_job(job_id: str, params: dict):
         log(f"[{timestamp}] debug_server.py：【非同步】小說本文生成 - {section_title}")
         log(f">> 正在呼叫 Ollama 產生「小說本文生成」(這會花費較長時間，請稍候)...")
 
+        timeStartSec = time.time()
         content = _ollama_generate_direct(
             params.get('model', 'gemma4'), prompt,
             options=params.get('model_options')
         )
-
+        duration = int(time.time() - timeStartSec)
         timestamp = time.strftime("%H:%M:%S", time.localtime())
-        log(f"[{timestamp}] debug_server.py：「小說本文生成」完畢！ - {section_title}")
+        log(f"[{timestamp}] 總共花費 {duration} 秒，「小說本文生成」完畢！ - {section_title}")
 
         with JOBS_LOCK:
             if job_id in JOBS:
@@ -696,11 +678,12 @@ def _run_chat_reply_job(job_id: str, params: dict):
 
         opts = params.get('model_options') or {}
         if 'temperature' not in opts:
-            opts['temperature'] = 0.80
+            opts['temperature'] = 0.95
+        timeStartSec = time.time()
         reply_text = _ollama_generate_direct(model_name, prompt, options=opts)
-
+        duration = int(time.time() - timeStartSec)
         timestamp = time.strftime("%H:%M:%S", time.localtime())
-        log(f"[{timestamp}] debug_server.py：「{character_name}」的回覆產生完畢！")
+        log(f"[{timestamp}] 總共花費 {duration} 秒，「{character_name}」的回覆產生完畢！")
 
         # 清理回覆內容（與同步版保持一致）
         reply_text = reply_text.strip()
@@ -733,7 +716,7 @@ def _run_analyze_text_char_job(job_id: str, params: dict):
         # 分析任務需要較長輸出，覆寫 num_predict
         opts = dict(params.get('model_options') or {})
         opts.setdefault('num_predict', 2048)
-        opts.setdefault('temperature', 0.7)
+        opts.setdefault('temperature', 0.95)
 
         timestamp = time.strftime("%H:%M:%S", time.localtime())
         log("=" * 50)
@@ -744,13 +727,14 @@ def _run_analyze_text_char_job(job_id: str, params: dict):
         log("=" * 20 + " 提示詞結束 " + "=" * 20)
         log(">> 正在呼叫 Ollama 分析中（請稍候）...")
 
+        timeStartSec = time.time()
         response_text = _ollama_generate_direct(model_name, prompt, options=opts)
-
+        duration = int(time.time() - timeStartSec)
         timestamp = time.strftime("%H:%M:%S", time.localtime())
         log("=" * 20 + " 以下是 AI 完整回傳內容 " + "=" * 20)
         log(response_text if response_text.strip() else "（空字串，模型未回傳任何內容）")
         log("=" * 20 + " AI 回傳結束 " + "=" * 20)
-        log(f"[{timestamp}] Ollama 回傳完畢，回傳長度：{len(response_text)} 字元")
+        log(f"[{timestamp}] 總共花費 {duration} 秒，Ollama 回傳完畢，回傳長度：{len(response_text)} 字元")
         if not response_text.strip():
             log(">> [警告] 模型回傳空字串！可能原因：模型拒絕回應、num_ctx 不足、或模型不支援此任務。")
             log(f">> 請確認 Ollama 中已載入模型：{model_name}")
@@ -794,8 +778,8 @@ def _run_analyze_image_char_job(job_id: str, params: dict):
         prompt = build_analyze_image_prompt_text()
 
         opts = dict(params.get('model_options') or {})
-        opts.setdefault('num_predict', 512)
-        opts.setdefault('temperature', 0.5)
+        opts.setdefault('num_predict', 2048)
+        opts.setdefault('temperature', 0.95)
 
         timestamp = time.strftime("%H:%M:%S", time.localtime())
         log("=" * 50)
@@ -813,17 +797,18 @@ def _run_analyze_image_char_job(job_id: str, params: dict):
         log("=" * 20 + " 提示詞結束 " + "=" * 20)
         log(">> 正在呼叫 Ollama 分析圖片中（請稍候）...")
 
+        timeStartSec = time.time()
         response_text = _ollama_generate_direct(
             model_name, prompt,
             options=opts,
             images=[image_base64]
         )
-
+        duration = int(time.time() - timeStartSec)
         timestamp = time.strftime("%H:%M:%S", time.localtime())
         log("=" * 20 + " 以下是 AI 完整回傳內容 " + "=" * 20)
         log(response_text if response_text.strip() else "（空字串，模型未回傳任何內容）")
         log("=" * 20 + " AI 回傳結束 " + "=" * 20)
-        log(f"[{timestamp}] Ollama 回傳完畢，回傳長度：{len(response_text)} 字元")
+        log(f"[{timestamp}] 總共花費 {duration} 秒，Ollama 回傳完畢，回傳長度：{len(response_text)} 字元")
         if not response_text.strip():
             log(">> [警告] 模型回傳空字串！可能原因：模型不支援視覺功能。")
             log(f">> 請確認 {model_name} 支援圖片輸入（vision model）。")
@@ -1101,15 +1086,17 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 print(prompt)
                 print("\n" + "="*50)
                 print(">> debug_server.py：正在呼叫 Ollama 產生「各章標題與描述」 (請稍候)...")
+                timeStartSec = time.time()
                 timestamp = time.strftime("%H:%M:%S", time.localtime())
                 print("起始時間:", timestamp)
-                
+
                 response_text = _ollama_generate_direct(params.get('model', 'gemma4'), prompt, options=params.get('model_options'))
 
-                print(">> debug_server.py：「各章標題與描述」產生完畢！\n")
+                duration = int(time.time() - timeStartSec)
+                timestamp = time.strftime("%H:%M:%S", time.localtime())
+                print(f">> debug_server.py：「各章標題與描述」產生完畢！總共花費 {duration} 秒\n")
                 # 已經顯示過成果，不再顯示一次
                 #print(response_text)
-                timestamp = time.strftime("%H:%M:%S", time.localtime())
                 print("結束時間:", timestamp)
                 print("="*50)
 
@@ -1184,13 +1171,16 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 print("【DEBUG: AI 產生「各小節大綱」的 PROMPT】")
                 print(prompt)
                 print(">> 正在呼叫 Ollama 產生「各小節大綱」 (請稍候)...")
+                timeStartSec = time.time()
                 timestamp = time.strftime("%H:%M:%S", time.localtime())
                 print("起始時間：", timestamp)
-                
+
                 response_text = _ollama_generate_direct(params.get('model', 'gemma4'), prompt, options=params.get('model_options'))
-                print(">> 「各小節大綱」產生完畢！\n")
-                print(response_text)
+
+                duration = int(time.time() - timeStartSec)
                 timestamp = time.strftime("%H:%M:%S", time.localtime())
+                print(f">> 「各小節大綱」產生完畢！總共花費 {duration} 秒\n")
+                print(response_text)
                 print("結束時間：", timestamp)
                 print("="*50)
                 
@@ -1300,13 +1290,16 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 print(f"【DEBUG: AI 「小說本文生成」 PROMPT - {ctx.get('section_title', '')}】")
                 print(prompt)
                 print(">> 正在呼叫 Ollama 產生「小說本文生成」 (這會花費較長的時間，請稍候)...")
+                timeStartSec = time.time()
                 timestamp = time.strftime("%H:%M:%S", time.localtime())
                 print("起始時間：", timestamp)
-                
+
                 content = _ollama_generate_direct(params.get('model', 'gemma4'), prompt, options=params.get('model_options'))
-                print(f"【DEBUG: AI 「小說本文生成」產生完畢！ - {ctx.get('section_title', '')}】")
-                print(content)
+
+                duration = int(time.time() - timeStartSec)
                 timestamp = time.strftime("%H:%M:%S", time.localtime())
+                print(f"【DEBUG: AI 「小說本文生成」產生完畢！總共花費 {duration} 秒 - {ctx.get('section_title', '')}】")
+                print(content)
                 print("結束時間：", timestamp)
                 print("="*50)
 
@@ -1366,17 +1359,19 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 print(f"【DEBUG: AI 「LoveLine 角色回覆」 PROMPT - {character_name}】")
                 print(prompt)
                 print(f">> 正在呼叫 Ollama 產生「LoveLine 角色回覆」 ({model_name})...")
+                timeStartSec = time.time()
                 timestamp = time.strftime("%H:%M:%S", time.localtime())
                 print("起始時間：", timestamp)
 
                 opts = params.get('model_options') or {}
                 if 'temperature' not in opts:
-                    opts['temperature'] = 0.80
+                    opts['temperature'] = 0.95
                 reply_text = _ollama_generate_direct(model_name, prompt, options=opts)
-                
-                print(f"\n【DEBUG: AI 「LoveLine 角色回覆」產生完畢！ - {character_name}】")
-                print(reply_text)
+
+                duration = int(time.time() - timeStartSec)
                 timestamp = time.strftime("%H:%M:%S", time.localtime())
+                print(f"\n【DEBUG: AI 「LoveLine 角色回覆」產生完畢！總共花費 {duration} 秒 - {character_name}】")
+                print(reply_text)
                 print("結束時間：", timestamp)
                 print("="*50)
                 
