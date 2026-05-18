@@ -94,6 +94,9 @@ def _format_char_context(c_raw, is_main=False, prefix_override=None):
     """
     將角色 JSON 格式化為提示詞用的文字區塊。
     """
+    #####################################################################################
+    #將角色 JSON 格式化為提示詞用的文字區塊。
+    #####################################################################################    
     c = _enrich_char_data(c_raw)
     prefix = prefix_override if prefix_override else ("女主角" if is_main else "")
     
@@ -121,6 +124,9 @@ def _format_writer_context(writer_settings: dict) -> str:
     """
     將知名作家寫作風格與範本格式化為提示詞用的文字區塊。
     """
+    #####################################################################################
+    #將知名作家寫作風格與範本格式化為提示詞用的文字區塊。
+    #####################################################################################
     if not writer_settings:
         return ""
     
@@ -256,8 +262,6 @@ def build_daily_prompt(char_data: dict, scenario: str, relationship_params: dict
 5. 禁止使用中文簡體字。
 
 """.strip()
-
-
 
     return f"{system_prompt}\n\n請開始執行（以繁體中文撰寫）："
 
@@ -429,6 +433,9 @@ def build_chapter_outline_prompt(char_data: dict, book_title: str, outline_desc:
 {other_context}
 {_format_writer_context(writer_settings)}
 
+【禁止】
+1. 禁止使用中文簡體字。
+
 """.strip()
 
     user_input = f"請為第{current_ch_num}章『{outline_desc}』撰寫本章的各小節大綱。"
@@ -503,12 +510,16 @@ def build_novel_content_prompt(char_data: dict, current_chapter: str, chapter_ou
 【當前章節】：第 {chapter_index} 章 {current_chapter}
 【章節大綱/目標】：{chapter_outline}
 {prev_context}{next_context}
+
+【禁止】
+1. 禁止使用中文簡體字。
+
 """.strip()
 
     user_input = f"請撰寫『{section_title}』的內容。"
     return f"{system_prompt}\n\n【當前任務/情境】\n{user_input}\n\n請開始執行（以繁體中文）："
 
-def build_analyze_text_character_prompt(text_content: str) -> str:
+def build_analyze_text_character_prompt(text_content: str, target_name: str = "") -> str:
     """建立「從文字分析角色特質並生成角色卡 JSON」的提示詞"""
     #####################################################################################
     #建立「從文字分析角色特質並生成角色卡 JSON」的提示詞
@@ -524,9 +535,22 @@ def build_analyze_text_character_prompt(text_content: str) -> str:
         "  PICF=霜花　PICS=迷霧　PILF=細雨　PILS=深海\n"
         "personality_type 格式範例：AOCF_AILF_PICS-煙火_星星_迷霧（依序：曖昧期_熱戀期_失戀期）"
     )
+    # 組合目標角色指定說明
+    target_instruction = ""
+    if target_name:
+        target_instruction = f"""
+【重要指定】
+本次只分析「{target_name}」這一個角色。
+- 請在文字中找出所有關於「{target_name}」的描述、行為、對話、心理活動。
+- 忽略其他角色的資料，所有分析結果必須僅反映「{target_name}」的特質。
+- 若文字中未明確提及「{target_name}」的某些特質（如身高），請根據其他資訊合理推估。
+"""
+    else:
+        target_instruction = "\n【注意】文字中若有多位角色，請分析最主要的那一位角色（通常是視角角色或女主角）。\n"
+
     prompt = f"""你是一位精通角色分析的暢銷愛情小說策劃專家，擅長從文字中剖析人物的性格、情感模式與性心理。
 請根據以下文字內容，深度分析其中的角色特質，並生成一份完整的角色卡 JSON。
-
+{target_instruction}
 【分析方法】
 1. 星座推斷：根據性格行為推斷最符合的星座（牡羊/金牛/雙子/巨蟹/獅子/處女/天秤/天蠍/射手/摩羯/水瓶/雙魚）
 2. 血型推斷：根據性格特質推斷血型（A型/B型/AB型/O型）
@@ -539,13 +563,13 @@ def build_analyze_text_character_prompt(text_content: str) -> str:
 {{
   "name": "角色名稱，若無則設「未命名角色」",
   "gender": "女",
-  "height": "身高(cm)字串，無法判斷設164",
-  "weight": "體重(kg)字串，無法判斷設50",
-  "bust": "罩杯字母，無法判斷設C",
+  "height": "身高(cm)字串，根據身材描述來判斷，若無則設164",
+  "weight": "體重(kg)字串，根據身材描述來判斷，若無則設50",
+  "bust": "罩杯字母，根據身材描述來判斷，若無則設C",
   "birthday": "YYYY-MM-DD，依推斷星座設定合理日期",
   "zodiac": "XX座",
   "blood_type": "X型",
-  "MBTI_type": "推斷的MBTI類型，無法判斷設未選擇",
+  "MBTI_type": "推斷的MBTI類型",
   "personality_type": "XXXX_XXXX_XXXX-名稱1_名稱2_名稱3",
   "analysis_reasons": "詳細說明星座、血型、MBTI、LPAS四期推斷理由，各100字以上",
   "speech_style": "說話語氣與口吻，具體描述",
@@ -566,6 +590,9 @@ def build_analyze_text_character_prompt(text_content: str) -> str:
 
 【待分析文字】
 {text_content[:15000]}
+
+【禁止】
+1. 禁止使用中文簡體字。
 
 請開始分析並輸出完整 JSON（繁體中文填寫，image_prompt 使用中文+英文）："""
     return prompt
@@ -591,6 +618,57 @@ def build_analyze_image_prompt_text() -> str:
         "slender figure, warm smile, soft natural lighting\n\n"
         "請直接輸出提示詞："
     )
+
+
+def build_story_to_premise_prompt(text_content: str) -> str:
+    """建立「將故事原文濃縮成故事粗綱」的提示詞"""
+    #####################################################################################
+    # 建立「將故事原文濃縮成故事粗綱」的提示詞
+    #####################################################################################
+    prompt = f"""你是一位頂尖的台灣愛情小說策劃編輯，擅長解析故事結構並濃縮成精煉的故事粗綱。
+請閱讀以下故事原文，將整個故事濃縮成 1000～2000 字的故事粗綱，讓讀者在短時間內能掌握完整故事的架構與關鍵劇情。
+
+【輸出格式規定】
+請嚴格依照以下格式輸出，所有內容使用繁體中文：
+
+女主角：姓名、樣貌、穿著、個性、動機、目標、行為。
+男主角：姓名、樣貌、穿著、個性、動機、目標、行為。
+女配角：姓名（若有）、樣貌、個性、在故事中的角色。
+男配角：姓名（若有）、樣貌、個性、在故事中的角色。
+反派女角色：姓名（若有）、樣貌、動機、行為（若無反派女角色則略去此行）。
+反派男角色：姓名（若有）、樣貌、動機、行為（若無反派男角色則略去此行）。
+其他角色：其餘重要角色簡短描述（若無則略去此段）。
+
+故事背景：故事發生的年代、地點、社會背景說明（約100字）。
+
+【故事粗綱】
+依照「起、承、轉、合」四大結構，根據原故事的長度與複雜度將故事分成 4～16 章。
+每章格式如下（每章粗綱約 100 字，著重本章主旨與關鍵劇情）：
+
+第一章：（章節標題）
+（本章粗綱，約100字）
+
+第二章：（章節標題）
+（本章粗綱，約100字）
+
+…（依此類推，直到故事結尾）
+
+【注意事項】
+- 起（約佔章節數的 25%）：故事開端，人物登場，背景鋪墊，衝突萌生。
+- 承（約佔章節數的 30%）：事件發展，人物關係深化，矛盾逐步升溫。
+- 轉（約佔章節數的 30%）：關鍵轉折，最大衝突爆發，情緒最高點。
+- 合（約佔章節數的 15%）：問題解決，人物成長，故事收尾。
+- 保持原著的核心情感與關鍵劇情，不添加原著沒有的內容。
+- 若原著有特殊結局（如悲劇、開放式結局），請如實保留。
+
+【故事原文】
+{text_content[:30000]}
+
+【禁止】
+1. 禁止使用中文簡體字。
+
+請開始輸出故事粗綱："""
+    return prompt
 
 
 def build_chat_reply_prompt(char_data, char_name, user_name, user_message, history,

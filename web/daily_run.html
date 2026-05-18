@@ -269,10 +269,16 @@
                 const query = document.getElementById('log-search-input').value;
                 currentMatch = ((idx % matches.length) + matches.length) % matches.length;
                 const start = matches[currentMatch], end = start + query.length;
+                // 精確捲動：截斷至比對位置量測 scrollHeight（自動考慮 word-wrap），再還原並置中顯示
+                const fullText = ta.value;
+                ta.value = fullText.substring(0, start);
+                const pixelPos = ta.scrollHeight;
+                ta.value = fullText;
                 ta.focus();
                 ta.setSelectionRange(start, end);
-                const lh = parseFloat(window.getComputedStyle(ta).lineHeight) || 20;
-                ta.scrollTop = Math.max(0, (ta.value.substring(0, start).split('\n').length - 4) * lh);
+                requestAnimationFrame(() => {
+                    ta.scrollTop = Math.max(0, pixelPos - ta.clientHeight / 2);
+                });
                 document.getElementById('log-search-count').textContent = `${currentMatch + 1} / ${matches.length}`;
             }
 

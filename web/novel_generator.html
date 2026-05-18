@@ -107,12 +107,15 @@
     <div class="col" id="story-premise-container">
       <div class="col-header">
         <button class="collapse-btn" id="toggle-premise" title="縮放">↔</button>
-        <h3>📝故事粗綱</h3>
+        <h3>📝粗綱</h3>
         <div class="toolbox">
-          <button class="ai-btn" id="btn-ai-gen-full-auto" title="全自動生成所有文字：依粗綱生成章節→節大綱→節內文（跳過已鎖定）"
+          <button class="btn secondary-btn" id="btn-story-to-premise" title="讀取本地端故事文字檔，由AI依起承轉合濃縮成故事粗綱">📄
+            文檔轉粗綱</button>
+          <input type="file" id="story-file-input" accept=".txt,.md" style="display:none;">
+          <button class="ai-btn" id="btn-ai-gen-full-auto" title=" AI全自動生成所有文字：依粗綱生成章節→節大綱→節內文（跳過已鎖定）"
             style="color: #FFFFFF; background:linear-gradient(135deg,#7c3aed,#f472b6); font-weight:bold;">🚀
             全自動</button>
-          <button class="ai-btn" id="btn-ai-gen-chapters" title="根據粗綱生成各章標題、章描述">🤖 AI各章描述</button>
+          <button class="ai-btn" id="btn-ai-gen-chapters" title=" AI根據粗綱生成各章標題、章描述">🤖 章描述</button>
         </div>
       </div>
       <div class="scroll-area">
@@ -213,11 +216,16 @@
         const query = document.getElementById('log-search-input').value;
         currentMatch = ((idx % matches.length) + matches.length) % matches.length;
         const start = matches[currentMatch], end = start + query.length;
+        // 精確捲動：截斷至比對位置量測 scrollHeight（自動考慮 word-wrap），再還原並置中顯示
+        const fullText = ta.value;
+        ta.value = fullText.substring(0, start);
+        const pixelPos = ta.scrollHeight;
+        ta.value = fullText;
         ta.focus();
         ta.setSelectionRange(start, end);
-        const lh = parseFloat(window.getComputedStyle(ta).lineHeight) || 20;
-        const line = ta.value.substring(0, start).split('\n').length - 1;
-        ta.scrollTop = Math.max(0, (line - 3) * lh);
+        requestAnimationFrame(() => {
+          ta.scrollTop = Math.max(0, pixelPos - ta.clientHeight / 2);
+        });
         document.getElementById('log-search-count').textContent = `${currentMatch + 1} / ${matches.length}`;
       }
 

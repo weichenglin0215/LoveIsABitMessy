@@ -23,7 +23,8 @@ from prompt_utils import (
     build_chapter_outline_prompt, #根據章的標題與描述來建立「各小節大綱」的完整提示詞
     build_novel_content_prompt, #建立「小說本文生成」的完整提示詞
     build_analyze_text_character_prompt, #從文字分析角色特質
-    build_analyze_image_prompt_text      #從圖片生成 AI 生圖提示詞
+    build_analyze_image_prompt_text,     #從圖片生成 AI 生圖提示詞
+    build_story_to_premise_prompt        #將故事原文濃縮成故事粗綱
 )
 
 PORT = 8081
@@ -201,25 +202,31 @@ def _ollama_generate_direct(model, prompt, options=None, images=None):
         "num_ctx": 8192,
         "repeat_penalty": 1.1,
         "top_k": 40,
-        "top_p": 0.9
-        #"num_gpu": 55 #搞不定這個參數，對實際狀況也沒改善。
+        "top_p": 0.9,
+        "num_gpu": 999 #強制所有資料放入GPU跟VRAM。
     }
     
-    # 合併外部傳入的 options
+    # 合併外部傳入的 options（不修改原始 dict）
     if options:
-        # 特別處理 stream (它是和 options 同層的屬性)
-        stream_val = options.pop('stream', True)
-        default_options.update(options)
+        # stream 是 payload 同層的屬性，不屬於 options，需要單獨取出
+        stream_val = options.get('stream', True)
+        merged_options = {k: v for k, v in options.items() if k != 'stream'}
+        default_options.update(merged_options)
     else:
         stream_val = True
 
     payload = {
-        "model": model,
-        "prompt": prompt,
-        "keep_alive": -1,  # 關鍵參數：設定為 -1 讓模型留在顯存不消失，避免休息超過五分鐘都重新讀取。
-        "stream": stream_val,
-        "options": default_options
+    "model": model,
+    "prompt": prompt,
+    # keep_alive 選項：
+    # -1  → 永久保留在 VRAM（適合連續批次生成）
+    # "5m" → 閒置 5 分鐘後自動卸載（節省 VRAM，偶發使用時適合）
+    # 0   → 生成完立刻卸載
+    "keep_alive": -1,
+    "stream": stream_val,
+    "options": default_options
     }
+
     if images:
         payload["images"] = images
     
@@ -710,8 +717,9 @@ def _run_analyze_text_char_job(job_id: str, params: dict):
         _append_job_log(job_id, text)
     try:
         text_content = params.get('text_content', '')
+        target_name  = params.get('target_name', '').strip()
         model_name   = params.get('model', 'gemma4')
-        prompt = build_analyze_text_character_prompt(text_content)
+        prompt = build_analyze_text_character_prompt(text_content, target_name=target_name)
 
         # 分析任務需要較長輸出，覆寫 num_predict
         opts = dict(params.get('model_options') or {})
@@ -721,6 +729,8 @@ def _run_analyze_text_char_job(job_id: str, params: dict):
         timestamp = time.strftime("%H:%M:%S", time.localtime())
         log("=" * 50)
         log(f"[{timestamp}] debug_server.py：【非同步】從文字分析角色特質")
+        if target_name:
+            log(f">> 目標角色：「{target_name}」")
         log(f">> 文字長度：{len(text_content)} 字，模型：{model_name}，num_predict：{opts['num_predict']}")
         log("=" * 20 + " 以下是送給 AI 的完整提示詞 " + "=" * 20)
         log(prompt)
@@ -824,6 +834,54 @@ def _run_analyze_image_char_job(job_id: str, params: dict):
     except Exception as e:
         import traceback
         _append_job_log(job_id, f"[ERROR] _run_analyze_image_char_job failed: {e}\n{traceback.format_exc()}")
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["status"]     = "error"
+                JOBS[job_id]["updated_at"] = time.time()
+
+
+def _run_story_to_premise_job(job_id: str, params: dict):
+    """非同步執行「將故事原文濃縮成故事粗綱」任務"""
+    def log(text):
+        print(text)
+        _append_job_log(job_id, text)
+    try:
+        text_content = params.get('text_content', '')
+        model_name   = params.get('model', 'gemma4')
+        prompt = build_story_to_premise_prompt(text_content)
+
+        opts = dict(params.get('model_options') or {})
+        opts.setdefault('num_predict', 4096)
+        opts.setdefault('temperature', 0.75)
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        log("=" * 50)
+        log(f"[{timestamp}] debug_server.py：【非同步】將故事原文濃縮成故事粗綱")
+        log(f">> 原文長度：{len(text_content)} 字，模型：{model_name}，num_predict：{opts['num_predict']}")
+        log("=" * 20 + " 以下是送給 AI 的完整提示詞 " + "=" * 20)
+        log(prompt)
+        log("=" * 20 + " 提示詞結束 " + "=" * 20)
+        log(">> 正在呼叫 Ollama 產生故事粗綱中（請稍候）...")
+
+        timeStartSec = time.time()
+        response_text = _ollama_generate_direct(model_name, prompt, options=opts)
+        duration = int(time.time() - timeStartSec)
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        log("=" * 20 + " 以下是 AI 完整回傳內容 " + "=" * 20)
+        log(response_text if response_text.strip() else "（空字串，模型未回傳任何內容）")
+        log("=" * 20 + " AI 回傳結束 " + "=" * 20)
+        log(f"[{timestamp}] 總共花費 {duration} 秒，故事粗綱產生完畢，回傳長度：{len(response_text)} 字元")
+        if not response_text.strip():
+            log(">> [警告] 模型回傳空字串！可能原因：模型拒絕回應、num_ctx 不足、或模型不支援此任務。")
+
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["result"]     = {"premise": response_text.strip(), "debug_prompt": prompt}
+                JOBS[job_id]["status"]     = "done"
+                JOBS[job_id]["updated_at"] = time.time()
+    except Exception as e:
+        import traceback
+        _append_job_log(job_id, f"[ERROR] _run_story_to_premise_job failed: {e}\n{traceback.format_exc()}")
         with JOBS_LOCK:
             if job_id in JOBS:
                 JOBS[job_id]["status"]     = "error"
@@ -1516,6 +1574,29 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                     }
                 threading.Thread(
                     target=_run_analyze_image_char_job,
+                    args=(job_id, params),
+                    daemon=True
+                ).start()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"job_id": job_id, "status": "running"}, ensure_ascii=False).encode('utf-8'))
+
+            elif self.path == '/api/story_to_premise_async':
+                ############################################################################
+                # 非同步：將故事原文濃縮成故事粗綱（前端可透過 /api/job 輪詢 Log）
+                ############################################################################
+                job_id = str(uuid.uuid4())
+                with JOBS_LOCK:
+                    JOBS[job_id] = {
+                        "status": "running",
+                        "logs": [">> 任務啟動：正在將故事原文濃縮成故事粗綱..."],
+                        "result": None,
+                        "created_at": time.time(),
+                        "updated_at": time.time()
+                    }
+                threading.Thread(
+                    target=_run_story_to_premise_job,
                     args=(job_id, params),
                     daemon=True
                 ).start()

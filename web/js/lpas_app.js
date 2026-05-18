@@ -580,17 +580,6 @@ let app = {
 
         // ======= 雲端同步 =======
         this.saveToCloud(profileObj, recordObj, resultData);
-
-        // 綁定按鈕事件 (使用新的 DOM 節點)
-        document.getElementById('download-json-btn').onclick = () => {
-            downloadJSON(profileObj, `${profileObj.id}.json`);
-        };
-        document.getElementById('download-record-btn').onclick = () => {
-            downloadJSON(recordObj, `${profileObj.id}_lpas_record.json`);
-        };
-        document.getElementById('download-md-btn').onclick = () => {
-            downloadMarkdown(profileObj);
-        };
     }
 };
 

@@ -250,11 +250,23 @@ async function loadCharacter(charId) {
     const cardJson = data.card_json || {};
     qs('#char-card-json').value = prettyJson(cardJson);
     
-    qs('#char-birthday').value = cardJson.birthday || '1999-01-01';
+    qs('#char-birthday').value = normalizeBirthday(cardJson.birthday) || '1999-01-01';
     qs('#char-gender').value = cardJson.gender || '女';
     qs('#char-zodiac').value = cardJson.zodiac || '';
     qs('#char-blood-type').value = cardJson.blood_type || '';
-    qs('#char-mbti').value = cardJson.MBTI_type || '';
+    // 只比對前 4 個字元，避免欄位有附加描述文字時匹配失敗
+    {
+        const mbtiRaw = cardJson.MBTI_type || '';
+        const mbtiCode = mbtiRaw.trim().substring(0, 4).toUpperCase();
+        const mbtiSel = qs('#char-mbti');
+        if (mbtiSel && mbtiCode) {
+            const matched = Array.from(mbtiSel.options)
+                .find(o => o.value.trim().substring(0, 4).toUpperCase() === mbtiCode);
+            mbtiSel.value = matched ? matched.value : '';
+        } else if (mbtiSel) {
+            mbtiSel.value = '';
+        }
+    }
     qs('#char-height').value = cardJson.height || '165';
     qs('#char-weight').value = cardJson.weight || '55';
     qs('#char-bust').value = cardJson.bust || 'C';
@@ -481,7 +493,7 @@ function updateJsonFromDropdowns() {
         cardJson.zodiac = qs('#char-zodiac').value;
         cardJson.blood_type = qs('#char-blood-type').value;
         cardJson.MBTI_type = qs('#char-mbti').value || "";
-        cardJson.birthday = qs('#char-birthday').value;
+        cardJson.birthday = normalizeBirthday(qs('#char-birthday').value) || qs('#char-birthday').value;
         cardJson.name = qs('#char-name').value;
         cardJson.height = qs('#char-height').value || "165";
         cardJson.weight = qs('#char-weight').value || "55";
@@ -623,10 +635,16 @@ window.showEditorLogModal = () => {
         const query = document.getElementById('editor-log-search-input').value;
         currentMatch = ((idx % matches.length) + matches.length) % matches.length;
         const start = matches[currentMatch], end = start + query.length;
+        // 精確捲動：截斷至比對位置量測 scrollHeight（自動考慮 word-wrap），再還原並置中顯示
+        const fullText = ta.value;
+        ta.value = fullText.substring(0, start);
+        const pixelPos = ta.scrollHeight;
+        ta.value = fullText;
         ta.focus();
         ta.setSelectionRange(start, end);
-        const lh = parseFloat(window.getComputedStyle(ta).lineHeight) || 20;
-        ta.scrollTop = Math.max(0, (ta.value.substring(0, start).split('\n').length - 4) * lh);
+        requestAnimationFrame(() => {
+            ta.scrollTop = Math.max(0, pixelPos - ta.clientHeight / 2);
+        });
         document.getElementById('editor-log-search-count').textContent = `${currentMatch + 1} / ${matches.length}`;
     }
 
@@ -695,13 +713,26 @@ function populateFormFromCharData(charData) {
     qs('#char-card-json').value = prettyJson(charData);
     if (charData.name)       qs('#char-name').value       = charData.name;
     if (charData.gender)     qs('#char-gender').value     = charData.gender;
-    if (charData.birthday)   qs('#char-birthday').value   = charData.birthday;
+    if (charData.birthday) {
+        const bd = normalizeBirthday(charData.birthday);
+        if (bd) qs('#char-birthday').value = bd;
+    }
     if (charData.height)     qs('#char-height').value     = charData.height;
     if (charData.weight)     qs('#char-weight').value     = charData.weight;
     if (charData.bust)       qs('#char-bust').value       = charData.bust;
     if (charData.zodiac)     qs('#char-zodiac').value     = charData.zodiac;
     if (charData.blood_type) qs('#char-blood-type').value = charData.blood_type;
-    if (charData.MBTI_type)  qs('#char-mbti').value       = charData.MBTI_type;
+    if (charData.MBTI_type) {
+        // AI 可能回傳附加文字（如 "INFP型"、"INFP (內向直覺情感知覺型)"），
+        // 只取前 4 個字元做不分大小寫比對，找到最接近的選項再套用。
+        const mbtiCode = charData.MBTI_type.trim().substring(0, 4).toUpperCase();
+        const mbtiSel = qs('#char-mbti');
+        if (mbtiSel) {
+            const matched = Array.from(mbtiSel.options)
+                .find(o => o.value.trim().substring(0, 4).toUpperCase() === mbtiCode);
+            if (matched) mbtiSel.value = matched.value;
+        }
+    }
 
     if (charData.personality_type) {
         const rawCodes = charData.personality_type.split('-')[0];
@@ -727,16 +758,89 @@ function updateImagePromptInJson(imagePrompt) {
     textarea.value = prettyJson(cardJson);
 }
 
+// ====== 格式正規化輔助函式 ======
+
+/**
+ * 將各種生日格式統一為 input[type="date"] 需要的 YYYY-MM-DD（月日補零）。
+ * 支援：'1990-3-20'、'1990/3/20'、'1990-03-20'、'1990/03/20' 等。
+ * 無法解析時回傳空字串。
+ */
+function normalizeBirthday(raw) {
+    if (!raw) return '';
+    // 統一分隔符號為 '-'，再拆解
+    const parts = String(raw).trim().replace(/\//g, '-').split('-');
+    if (parts.length !== 3) return '';
+    const y = parts[0].padStart(4, '0');
+    const m = parts[1].padStart(2, '0');
+    const d = parts[2].padStart(2, '0');
+    // 基本合法性檢查
+    if (isNaN(Number(y)) || isNaN(Number(m)) || isNaN(Number(d))) return '';
+    if (Number(m) < 1 || Number(m) > 12) return '';
+    if (Number(d) < 1 || Number(d) > 31) return '';
+    return `${y}-${m}-${d}`;
+}
+
+// ====== AI 分析：共用輔助函式 ======
+
+/**
+ * 彈出「請輸入要分析的角色名稱」Modal，返回 Promise<string|null>。
+ * 使用者確認 → resolve(name)；取消或關閉 → resolve(null)。
+ */
+function _askCharacterName() {
+    return new Promise((resolve) => {
+        const modal   = document.getElementById('modal-target-char-name');
+        const input   = document.getElementById('target-char-name-input');
+        const btnOk   = document.getElementById('btn-target-char-confirm');
+        const btnCancel = document.getElementById('btn-target-char-cancel');
+
+        // 預填「姓名」欄位的現有值，方便快速帶入
+        const existingName = qs('#char-name').value.trim();
+        input.value = existingName;
+        modal.classList.remove('hidden');
+        input.focus();
+        input.select();
+
+        function cleanup() {
+            modal.classList.add('hidden');
+            btnOk.removeEventListener('click', onOk);
+            btnCancel.removeEventListener('click', onCancel);
+            input.removeEventListener('keydown', onKeydown);
+        }
+        function onOk() {
+            const name = input.value.trim();
+            cleanup();
+            resolve(name || '');
+        }
+        function onCancel() {
+            cleanup();
+            resolve(null);
+        }
+        function onKeydown(e) {
+            if (e.key === 'Enter') { e.preventDefault(); onOk(); }
+            if (e.key === 'Escape') { onCancel(); }
+        }
+
+        btnOk.addEventListener('click', onOk);
+        btnCancel.addEventListener('click', onCancel);
+        input.addEventListener('keydown', onKeydown);
+    });
+}
+
 // ====== AI 分析：文字創造角色 ======
 
 async function analyzeTextCharacter() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.txt,.md,.csv,.json';
-    input.onchange = async (e) => {
+    // 先詢問要分析的角色名稱
+    const targetName = await _askCharacterName();
+    if (targetName === null) return; // 使用者取消
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.txt,.md,.csv,.json';
+    fileInput.onchange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
         appendEditorLog(`>> 讀取檔案：${file.name}`);
+        if (targetName) appendEditorLog(`>> 目標角色：${targetName}`);
         let text;
         try { text = await file.text(); } catch (err) { appendEditorLog(`❌ 讀取檔案失敗：${err.message}`); return; }
         appendEditorLog(`>> 檔案讀取完畢（${text.length} 字），正在呼叫 AI 分析角色...`);
@@ -749,7 +853,7 @@ async function analyzeTextCharacter() {
             appendEditorLog(`>> 連線至 http://localhost:8081，模型：${model} ...`);
             const { job_id: jobId } = await _apiPost(
                 'http://localhost:8081/api/analyze_text_character_async',
-                { text_content: text, model, model_options: modelOptions }
+                { text_content: text, target_name: targetName, model, model_options: modelOptions }
             );
             if (!jobId) { appendEditorLog('❌ 啟動分析任務失敗：未取得 job_id'); return; }
             appendEditorLog(`>> 任務 ID：${jobId}，AI 分析中...`);
@@ -771,12 +875,16 @@ async function analyzeTextCharacter() {
             if (btn) btn.disabled = false;
         }
     };
-    input.click();
+    fileInput.click();
 }
 
 // ====== AI 分析：剪貼簿創造角色 ======
 
 async function analyzeClipboardCharacter() {
+    // 先詢問要分析的角色名稱
+    const targetName = await _askCharacterName();
+    if (targetName === null) return; // 使用者取消
+
     const btn = qs('#btn-analyze-clipboard');
 
     let text;
@@ -803,7 +911,9 @@ async function analyzeClipboardCharacter() {
         return;
     }
 
-    appendEditorLog(`>> 讀取剪貼簿完畢（${text.length} 字），正在呼叫 AI 分析角色...`);
+    appendEditorLog(`>> 讀取剪貼簿完畢（${text.length} 字）`);
+    if (targetName) appendEditorLog(`>> 目標角色：${targetName}`);
+    appendEditorLog('>> 正在呼叫 AI 分析角色...');
 
     if (btn) btn.disabled = true;
     try {
@@ -812,7 +922,7 @@ async function analyzeClipboardCharacter() {
         appendEditorLog(`>> 連線至 http://localhost:8081，模型：${model} ...`);
         const { job_id: jobId } = await _apiPost(
             'http://localhost:8081/api/analyze_text_character_async',
-            { text_content: text, model, model_options: modelOptions }
+            { text_content: text, target_name: targetName, model, model_options: modelOptions }
         );
         if (!jobId) { appendEditorLog('❌ 啟動分析任務失敗：未取得 job_id'); return; }
         appendEditorLog(`>> 任務 ID：${jobId}，AI 分析中...`);
