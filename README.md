@@ -78,7 +78,10 @@
 
 | 版本 | 日期 | 更新亮點 |
 | :--- | :--- | :--- |
-| **V0.8.2.0** | 2026-05-18 | 新增novel_generator.html"文字檔轉粗綱"功能，LOG顯示AI運算總時長。修正 LPAS 移除儲存功能(造成page無法正常更新)，自動化雲端儲存功能。characters_editor.htmlAI分析字串格式不符。移除docs目錄的任何讀寫功能。|
+| **V0.8.5.0** | 2026-05-18 | 移除docs目錄的任何讀寫功能(修正無法發布的錯誤)。全自動生成小說提供章節區分，新增novel_generator.html"比對多本小說"功能，新增LoveLine聊天室自動聊天與優化介面。|
+| **V0.8.4.0** | 2026-05-18 | Add custom GitHub Actions workflow for Pages deployment。|
+| **V0.8.3.0** | 2026-05-18 | Add .nojekyll to disable Jekyll build for GitHub Pages。|
+| **V0.8.2.0** | 2026-05-18 | 新增novel_generator.html"文字檔轉粗綱"功能，LOG顯示AI運算總時長。修正 LPAS 移除儲存功能(造成page無法正常更新)，自動化雲端儲存功能。characters_editor.htmlAI分析字串格式不符。|
 | **V0.8.1.0** | 2026-05-13 | 新增 characters_editor.html 剪貼簿文字分析成角色卡功能。|
 | **V0.8.0.0** | 2026-05-13 | 新增 character_card_analyser.py與 characters_editor.html，支援文字與圖片輸入自動生成角色卡。|
 | **V0.7.5.0** | 2026-05-12 | 修正與整併editer.css與其他.html共用CSS樣式檔案，統一LOG顯示。|

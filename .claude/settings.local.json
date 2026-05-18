@@ -1,7 +1,29 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(\\(Get-Content \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\\\\web\\\\css\\\\editer.css\"\\).Count)"
+      "PowerShell(\\(Get-Content \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\\\\web\\\\css\\\\editer.css\"\\).Count)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(dir \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\\\\docs\")",
+      "Bash(dir \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\\\\docs\" /B /S)",
+      "Bash(git -C \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\" log --oneline -10)",
+      "Bash(Get-ChildItem \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\\\\docs\" -Recurse)",
+      "Bash(Select-Object FullName)",
+      "Bash(git -C \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\" status --short)",
+      "Bash(git -C \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\" ls-files docs/)",
+      "WebFetch(domain:weichenglin0215.github.io)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(git -C \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\" log --oneline --all -- docs/)",
+      "Bash(git -C \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\" show d7213db --stat -- docs/)",
+      "Bash(git -C \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\" show d112132 --stat -- docs/)",
+      "Bash(xargs -I{} du -k \"{}\")",
+      "Bash(python fix_lpas_script.py)",
+      "Bash(del \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\\\\fix_lpas_script.py\")",
+      "Bash(python -c ' *)",
+      "Bash(python \"C:\\\\verify_lpas.py\")",
+      "Bash(python3 -c ' *)",
+      "Bash(python \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\\\\verify_check.py\")",
+      "Bash(Remove-Item \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\\\\fix_lpas_script.py\" -ErrorAction SilentlyContinue)"
     ]
   }
 }

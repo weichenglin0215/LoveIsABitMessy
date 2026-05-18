@@ -5,6 +5,64 @@
 
 const qs = (s) => document.querySelector(s);
 
+// ── 頭像顏色色盤（24色）──
+const AVATAR_COLORS = [
+  // 彩虹色（7）
+  { label: '紅',   value: '#e74c3c' },
+  { label: '橙',   value: '#e67e22' },
+  { label: '黃',   value: '#d4ac0d' },
+  { label: '綠',   value: '#27ae60' },
+  { label: '藍',   value: '#2980b9' },
+  { label: '靛',   value: '#5b5bd6' },
+  { label: '紫',   value: '#8e44ad' },
+  // 粉彩虹（7）
+  { label: '粉紅', value: '#ffb3b3' },
+  { label: '粉橙', value: '#ffd4a3' },
+  { label: '粉黃', value: '#fff0a3' },
+  { label: '粉綠', value: '#a3ffbe' },
+  { label: '粉藍', value: '#a3d4ff' },
+  { label: '粉靛', value: '#b3b3ff' },
+  { label: '粉紫', value: '#e0a3ff' },
+  // 深色彩虹（7）
+  { label: '深紅', value: '#7b0000' },
+  { label: '深橙', value: '#7b3500' },
+  { label: '深黃', value: '#7b6b00' },
+  { label: '深綠', value: '#005700' },
+  { label: '深藍', value: '#00007b' },
+  { label: '深靛', value: '#1e1e7b' },
+  { label: '深紫', value: '#3d0066' },
+  // 基本色（3）
+  { label: '白',   value: '#e8e8e8' },
+  { label: '黑',   value: '#1a1a1a' },
+  { label: '灰',   value: '#777777' },
+];
+
+function getAvatarTextColor(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.5 ? '#333' : '#fff';
+}
+
+function getSessionColor(sessionId) {
+  return localStorage.getItem(`loveline_avatar_color_${sessionId}`) || '#5b5bd6';
+}
+
+// 根據 character_id 找到對應的一對一 session，取其顏色
+function getCharColor(charId) {
+  const sess = state.sessions.find(s =>
+    s.session_type === 'one_on_one' &&
+    (s.chat_participants || []).some(p => p.participant_type === 'character' && String(p.character_id) === String(charId))
+  );
+  return sess ? getSessionColor(sess.id) : '#5b5bd6';
+}
+
+function updateColorSwatch(swatchId, selectId) {
+  const swatch = qs('#' + swatchId);
+  const sel = qs('#' + selectId);
+  if (swatch && sel) swatch.style.background = sel.value || '#5b5bd6';
+}
+
 // ── State ──
 const state = {
   currentUser: null,       // { key, name }
@@ -69,47 +127,25 @@ async function loadUsersFromCloud() {
   if (!sb) { loadUsersFromLocal(); return; }
 
   try {
-    const rawLocal = localStorage.getItem('loveline_users');
-    let localUsers = rawLocal ? JSON.parse(rawLocal) : [];
-    if (localUsers.length === 0) localUsers = [{ key: 'user_default', name: '我' }];
-
-    // 從雲端抓取所有使用者資料
+    // 一律從雲端取得使用者清單，不合併 localStorage 的舊資料
     const { data: cloudData, error } = await sb.from('love_line_users').select('*');
     if (error) throw error;
 
     if (cloudData && cloudData.length > 0) {
-      // 將雲端的 users 合併進來
-      const merged = [...localUsers];
-      cloudData.forEach(cloud => {
-        const existing = merged.find(u => u.key === cloud.user_key);
-        if (existing) {
-          existing.name = cloud.nickname;
-          existing.char_id = cloud.char_id;
-          existing.persona = cloud.persona;
-          existing.extra = cloud.extra_info;
-          existing.password = cloud.password;
-          existing.ai_model = cloud.ai_model;
-          existing.model_options = cloud.model_options;
-          existing.writer_style = cloud.writer_style;
-          existing.writer_sample = cloud.writer_sample;
-        } else {
-          merged.push({
-            key: cloud.user_key,
-            name: cloud.nickname,
-            char_id: cloud.char_id,
-            persona: cloud.persona,
-            extra: cloud.extra_info,
-            password: cloud.password,
-            ai_model: cloud.ai_model,
-            model_options: cloud.model_options,
-            writer_style: cloud.writer_style,
-            writer_sample: cloud.writer_sample
-          });
-        }
-      });
-      state.users = merged;
+      state.users = cloudData.map(cloud => ({
+        key: cloud.user_key,
+        name: cloud.nickname,
+        char_id: cloud.char_id,
+        persona: cloud.persona,
+        extra: cloud.extra_info,
+        password: cloud.password,
+        ai_model: cloud.ai_model,
+        model_options: cloud.model_options,
+        writer_style: cloud.writer_style,
+        writer_sample: cloud.writer_sample
+      }));
     } else {
-      state.users = localUsers;
+      state.users = [{ key: 'user_default', name: '我', char_id: '', persona: '', extra: '', ai_model: 'gemma4', model_options: '', writer_style: '', writer_sample: '' }];
     }
 
     const lastKey = localStorage.getItem('loveline_current_user');
@@ -173,15 +209,15 @@ async function updateUserDisplay() {
   state.currentSession = null;
   renderChatArea();
 
-  // 恢復選中的模型與寫作風格
-  if (u.ai_model) qs('#model-select').value = u.ai_model;
+  // 恢復選中的模型與寫作風格（必須在 triggerRandomLoginMessage 之前完成）
+  if (u.ai_model) { qs('#model-select').value = u.ai_model; state.currentModel = u.ai_model; }
   if (u.model_options) qs('#model-options-select').value = u.model_options;
   if (u.writer_style) qs('#writer-style-select').value = u.writer_style;
   if (u.writer_sample) qs('#writer-sample-select').value = u.writer_sample;
 
   await loadSessionsForUser();
 
-  // 需求 1: 登入後啟動主動發話序列
+  // 需求 1: 登入後啟動主動發話序列（AI 設定已套用完畢再觸發）
   triggerRandomLoginMessage();
 }
 
@@ -216,6 +252,12 @@ function populateCharSelects() {
     qs('#modal-friend-char-select').innerHTML = '<option value="">— 選擇角色卡 —</option>' + opts;
   }
   qs('#modal-user-char-select').innerHTML = '<option value="">— 無 —</option>' + opts;
+
+  const colorOpts = AVATAR_COLORS.map(c => `<option value="${c.value}">${c.label}</option>`).join('');
+  if (qs('#modal-friend-color-select')) qs('#modal-friend-color-select').innerHTML = colorOpts;
+  if (qs('#modal-group-color-select')) qs('#modal-group-color-select').innerHTML = colorOpts;
+  updateColorSwatch('modal-friend-color-swatch', 'modal-friend-color-select');
+  updateColorSwatch('modal-group-color-swatch', 'modal-group-color-select');
 }
 
 // ══════════════════════════════════════════
@@ -345,6 +387,13 @@ async function openSession(id) {
     const persona = localStorage.getItem(`loveline_persona_${id}`) || '';
     const extra = localStorage.getItem(`loveline_extra_${id}`) || '';
     state.currentSession = { ...sess, messages, persona, extra };
+
+    // 切換 session 時停止自動聊天，並載入本 session 的主題
+    stopAutoChat();
+    const savedTopic = localStorage.getItem(`loveline_auto_topic_${id}`) || '';
+    const topicEl = qs('#auto-chat-topic');
+    if (topicEl) topicEl.value = savedTopic;
+
     renderChatArea();
     resetIdleTimer();
   } catch (e) {
@@ -371,17 +420,16 @@ function sessionItem(s) {
   const parts = s.chat_participants || [];
   const names = parts.filter(p => p.participant_type === 'character').map(p => p.character_name).join('、');
   const title = s.title || names || '未命名';
-  const icon = s.session_type === 'group' ? '👥' : '💬';
   const isActive = state.currentSession?.id === s.id ? 'active' : '';
+  const isGroup = s.session_type === 'group';
 
-  // 計算未讀數 (這部分在 loadSessionsForUser 時會預先算好存入 s.unreadCount)
-  const unreadCount = s.unreadCount || 0;
-  //
-  const badgeHtml = unreadCount > 0 ? `<span class="unread-badge">${unreadCount > 9 ? '9+' : unreadCount}</span>` : '';
+  const color = getSessionColor(s.id);
+  const textColor = getAvatarTextColor(color);
+  const avatarText = isGroup ? '👥' : ([...title][0] || '?');
 
   return `
     <div class="chat-item ${isActive}" data-id="${s.id}">
-      <div class="chat-avatar ${s.session_type === 'group' ? 'group' : ''}">${icon}</div>
+      <div class="chat-avatar ${isGroup ? 'group' : ''}" style="background:${color};color:${textColor};font-size:1rem;">${avatarText}</div>
       <div class="chat-info">
         <div class="chat-name">${title}</div>
         <div class="chat-preview">${names || '點擊開始聊天'}</div>
@@ -404,6 +452,8 @@ function renderChatArea() {
     if (empty) empty.style.display = 'flex';
     qs('#chat-messages').innerHTML = '';
     input.disabled = true; btnSend.disabled = true; btnClear.disabled = true;
+    const _aBtn = qs('#btn-auto-chat'); if (_aBtn) _aBtn.disabled = true;
+    const _aIn = qs('#auto-chat-topic'); if (_aIn) _aIn.disabled = true;
     qs('#chat-title').textContent = '請選擇一個對話';
     qs('#chat-subtitle').textContent = '';
     return;
@@ -417,6 +467,10 @@ function renderChatArea() {
   qs('#chat-header-avatar').textContent = sess.session_type === 'group' ? '👥' : '💬';
 
   input.disabled = false; btnSend.disabled = false; btnClear.disabled = false;
+  const autoChatBtn = qs('#btn-auto-chat');
+  const autoChatInput = qs('#auto-chat-topic');
+  if (autoChatBtn) autoChatBtn.disabled = false;
+  if (autoChatInput) autoChatInput.disabled = false;
   empty.style.display = 'none';
 
   renderMessages();
@@ -436,11 +490,33 @@ function renderMessages() {
     const div = document.createElement('div');
     div.className = 'msg-row' + (isUser ? ' user' : '');
     const msgId = m.id && m.id !== 'tmp' && m.id !== 'tmp_ai' ? m.id : '';
+    const avatarText = isUser
+      ? ([...(state.currentUser?.name || '我')][0])
+      : (() => {
+          const friendSess = state.sessions.find(s =>
+            s.session_type === 'one_on_one' &&
+            (s.chat_participants || []).some(p =>
+              p.participant_type === 'character' && String(p.character_id) === String(m.sender_char_id))
+          );
+          return [...(friendSess?.title || m.sender_name || '?')][0];
+        })();
+    const avatarStyle = isUser
+      ? ''
+      : (() => {
+          const bg = getCharColor(m.sender_char_id || '');
+          const fg = getAvatarTextColor(bg);
+          return ` style="background:${bg};color:${fg};"`;
+        })();
     div.innerHTML = `
-      <div class="msg-avatar">${isUser ? (state.currentUser?.name[0] || '我') : (m.sender_name?.[0] || '🤖')}</div>
+      <div class="msg-avatar"${avatarStyle}>${avatarText}</div>
       <div class="msg-bubble-wrap">
         <div class="msg-sender">${m.sender_name || '未知'}</div>
-        <div class="msg-bubble" data-msg-id="${msgId}" data-msg-content="${escHtml(m.content)}">${escHtml(m.content)}</div>
+        <div class="msg-bubble"
+          data-msg-id="${msgId}"
+          data-msg-content="${escHtml(m.content)}"
+          data-sender-key="${escHtml(m.sender_key || '')}"
+          data-sender-char-id="${escHtml(m.sender_char_id || '')}"
+        >${escHtml(m.content)}</div>
         <div class="msg-time">${dateTime}</div>
       </div>`;
     container.appendChild(div);
@@ -459,22 +535,25 @@ function escHtml(s) {
 // ══════════════════════════════════════════
 // BUBBLE CONTEXT MENU
 // ══════════════════════════════════════════
-function showBubbleMenu(bubble, msgId, rawContent) {
+function showBubbleMenu(bubble, msgId, rawContent, senderKey, senderCharId) {
   hideBubbleMenu();
   bubble.classList.add('selected');
 
+  const canDel = !!msgId;
   const menu = document.createElement('div');
   menu.className = 'bubble-menu';
   menu.innerHTML = `
     <button class="bubble-menu-btn">📋 複製文字</button>
-    <button class="bubble-menu-btn bubble-menu-btn-del"${!msgId ? ' disabled title="暫存訊息無法刪除"' : ''}>🗑️ 刪除此對話</button>`;
+    <button class="bubble-menu-btn bubble-menu-btn-del"${!canDel ? ' disabled title="暫存訊息無法刪除"' : ''}>🗑️ 刪除此對話</button>
+    <button class="bubble-menu-btn bubble-menu-btn-del"${!canDel ? ' disabled' : ''}>⬆️ 刪除此則之前所有對話</button>
+    <button class="bubble-menu-btn bubble-menu-btn-del"${!canDel ? ' disabled' : ''}>⬇️ 刪除此則後續所有對話</button>`;
 
   // 定位在泡泡上方
   const rect = bubble.getBoundingClientRect();
-  menu.style.cssText = `position:fixed;top:${rect.top - 46}px;left:${Math.max(8, rect.left)}px;z-index:9999;`;
+  menu.style.cssText = `position:fixed;top:${rect.top - 90}px;left:${Math.max(8, rect.left)}px;z-index:9999;`;
   document.body.appendChild(menu);
 
-  const [btnCopy, btnDel] = menu.querySelectorAll('.bubble-menu-btn');
+  const [btnCopy, btnDel, btnBefore, btnAfter] = menu.querySelectorAll('.bubble-menu-btn');
   btnCopy.addEventListener('click', (e) => {
     e.stopPropagation();
     navigator.clipboard.writeText(rawContent).catch(() => { });
@@ -482,9 +561,21 @@ function showBubbleMenu(bubble, msgId, rawContent) {
   });
   btnDel.addEventListener('click', async (e) => {
     e.stopPropagation();
-    if (!msgId) return;
+    if (!canDel) return;
     hideBubbleMenu();
     await deleteMessage(msgId);
+  });
+  btnBefore.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    if (!canDel) return;
+    hideBubbleMenu();
+    await deleteMessagesBySender('before', msgId, senderKey, senderCharId);
+  });
+  btnAfter.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    if (!canDel) return;
+    hideBubbleMenu();
+    await deleteMessagesBySender('after', msgId, senderKey, senderCharId);
   });
 }
 
@@ -507,6 +598,50 @@ async function deleteMessage(msgId) {
     appendLog('🗑️ 訊息已刪除');
   } catch (e) {
     appendLog('❌ 刪除訊息失敗: ' + e.message);
+  }
+}
+
+/**
+ * 刪除「此則之前」或「此則之後」的特定發話者訊息
+ * direction: 'before' | 'after'
+ * senderKey / senderCharId 用來過濾只刪同一發話者的訊息
+ */
+async function deleteMessagesBySender(direction, msgId, senderKey, senderCharId) {
+  const sb = getSB();
+  if (!sb) { alert('Supabase 未連線'); return; }
+
+  const msgs = state.currentSession?.messages || [];
+  const idx = msgs.findIndex(m => String(m.id) === String(msgId));
+  if (idx === -1) return;
+
+  const pool = direction === 'before' ? msgs.slice(0, idx) : msgs.slice(idx + 1);
+
+  // 只篩選同一發話者的訊息（user 用 sender_key，character 用 sender_char_id）
+  const isSameSender = (m) => {
+    if (senderKey) return m.sender_key === senderKey;
+    if (senderCharId) return m.sender_char_id === senderCharId;
+    return false;
+  };
+  const toDelete = pool.filter(m => m.id && isSameSender(m));
+
+  if (toDelete.length === 0) {
+    alert('此方向沒有屬於同一發話者的訊息可刪除。');
+    return;
+  }
+  const dirLabel = direction === 'before' ? '之前' : '後續';
+  if (!confirm(`確定刪除此則${dirLabel}，同一發話者的 ${toDelete.length} 則訊息？`)) return;
+
+  try {
+    for (const m of toDelete) {
+      const { error } = await sb.from('chat_messages').delete().eq('id', m.id);
+      if (error) throw error;
+    }
+    const deleteIds = new Set(toDelete.map(m => String(m.id)));
+    state.currentSession.messages = msgs.filter(m => !deleteIds.has(String(m.id)));
+    renderMessages();
+    appendLog(`🗑️ 已刪除 ${toDelete.length} 則訊息`);
+  } catch (e) {
+    appendLog('❌ 批次刪除失敗: ' + e.message);
   }
 }
 
@@ -846,24 +981,25 @@ function openEditModal(id) {
       qs('#modal-group-name').value = sess.title || '';
 
       const friends = state.sessions.filter(s => s.session_type === 'one_on_one');
+      const parts = sess.chat_participants || [];
       const checks = friends.map(f => {
         const charPart = (f.chat_participants || []).find(p => p.participant_type === 'character');
         const cid = charPart ? charPart.character_id : '';
         if (!cid) return '';
+        const isChecked = parts.some(p => p.character_id === cid);
         return `
           <div class="char-check-item">
-            <input type="checkbox" id="gf_${f.id}" value="${cid}">
+            <input type="checkbox" id="gf_${f.id}" value="${cid}"${isChecked ? ' checked' : ''}>
             <label for="gf_${f.id}">${f.title || '未命名好友'}</label>
           </div>`;
       }).join('');
-      qs('#modal-group-chars').innerHTML = checks || '<span style="color:#666;font-size:0.8rem;">尚無可加入的好友</span>';
-
-      const parts = sess.chat_participants || [];
-      document.querySelectorAll('#modal-group-chars input[type=checkbox]').forEach(cb => {
-        cb.checked = parts.some(p => p.character_id === cb.value);
-      });
+      qs('#modal-group-chars').innerHTML = checks || '<span class="char-check-empty">尚無可加入的好友</span>';
 
       qs('#modal-group-bg-data').value = localStorage.getItem(`loveline_extra_${id}`) || sess.extra || '';
+      qs('#modal-group-auto-topic').value = localStorage.getItem(`loveline_auto_topic_${id}`) || '';
+
+      qs('#modal-group-color-select').value = getSessionColor(id);
+      updateColorSwatch('modal-group-color-swatch', 'modal-group-color-select');
 
       qs('#btn-modal-group-delete').style.display = 'block';
       qs('#btn-modal-group-delete').dataset.id = id;
@@ -878,6 +1014,9 @@ function openEditModal(id) {
 
       qs('#modal-friend-persona').value = localStorage.getItem(`loveline_persona_${id}`) || sess.persona || '';
       qs('#modal-friend-extra').value = localStorage.getItem(`loveline_extra_${id}`) || sess.extra || '';
+
+      qs('#modal-friend-color-select').value = getSessionColor(id);
+      updateColorSwatch('modal-friend-color-swatch', 'modal-friend-color-select');
 
       qs('#btn-modal-friend-delete').style.display = 'block';
       qs('#btn-modal-friend-delete').dataset.id = id;
@@ -988,6 +1127,69 @@ function appendLog(text) {
 }
 
 // ══════════════════════════════════════════
+// AUTO-CHAT (自動聊天)
+// ══════════════════════════════════════════
+const autoChatState = { running: false, timer: null };
+
+function stopAutoChat() {
+  if (!autoChatState.running) return;
+  autoChatState.running = false;
+  clearTimeout(autoChatState.timer);
+  autoChatState.timer = null;
+  const btn = qs('#btn-auto-chat');
+  if (btn) { btn.textContent = '▶'; btn.title = '自動聊天'; }
+  appendLog('⏹️ 自動聊天已暫停');
+}
+
+function toggleAutoChat() {
+  if (autoChatState.running) { stopAutoChat(); return; }
+
+  const sess = state.currentSession;
+  if (!sess) { alert('請先選擇一個對話'); return; }
+  const charParts = (sess.chat_participants || []).filter(p => p.participant_type === 'character');
+  if (charParts.length === 0) { alert('此對話沒有角色，無法自動聊天'); return; }
+  if (!state.serverOnline) { alert('伺服器未連線，無法自動聊天'); return; }
+
+  autoChatState.running = true;
+  const btn = qs('#btn-auto-chat');
+  if (btn) { btn.textContent = 'II'; btn.title = '暫停自動聊天'; }
+  appendLog('▶ 自動聊天已開始');
+  runAutoChatLoop(sess.id);
+}
+
+async function runAutoChatLoop(sessionId) {
+  if (!autoChatState.running) return;
+
+  const sess = state.sessions.find(s => String(s.id) === String(sessionId));
+  if (!sess || !state.serverOnline) { stopAutoChat(); return; }
+
+  const charParts = (sess.chat_participants || []).filter(p => p.participant_type === 'character');
+  if (charParts.length === 0) { stopAutoChat(); return; }
+
+  // 輪流選角色（round-robin，以 Math.random 打亂順序）
+  if (!autoChatState._roundQueue || autoChatState._roundQueue.length === 0) {
+    autoChatState._roundQueue = [...charParts].sort(() => Math.random() - 0.5);
+  }
+  const participant = autoChatState._roundQueue.shift();
+
+  // 組建提示詞：優先讀 header 輸入框，其次讀存檔主題
+  const headerTopic = qs('#auto-chat-topic')?.value?.trim() || '';
+  const savedTopic = localStorage.getItem(`loveline_auto_topic_${sessionId}`) || '';
+  const topic = headerTopic || savedTopic;
+  const topicPrompt = topic
+    ? `（自動聊天模式：請針對主題「${topic}」自然地發表你的想法、延續討論或分享新觀點。語氣要自然親切。）`
+    : '（自動聊天模式：請根據之前的對話內容，自然地分享新的想法或話題。）';
+
+  await getAIReply(sess, participant, topicPrompt, true);
+
+  if (autoChatState.running) {
+    // 下一則間隔 10-25 秒
+    const delay = 10000 + Math.random() * 15000;
+    autoChatState.timer = setTimeout(() => runAutoChatLoop(sessionId), delay);
+  }
+}
+
+// ══════════════════════════════════════════
 // EVENT LISTENERS
 // ══════════════════════════════════════════
 function setupEventListeners() {
@@ -1024,7 +1226,9 @@ function setupEventListeners() {
       } else {
         const msgId = bubble.dataset.msgId || '';
         const rawContent = bubble.dataset.msgContent || bubble.textContent;
-        showBubbleMenu(bubble, msgId, rawContent);
+        const senderKey = bubble.dataset.senderKey || '';
+        const senderCharId = bubble.dataset.senderCharId || '';
+        showBubbleMenu(bubble, msgId, rawContent, senderKey, senderCharId);
       }
       return;
     }
@@ -1145,6 +1349,12 @@ function setupEventListeners() {
     qs('#collapsed-icon').style.display = collapsed ? 'flex' : 'none';
   });
 
+  // 顏色選單即時更新色塊
+  qs('#modal-friend-color-select').addEventListener('change', () =>
+    updateColorSwatch('modal-friend-color-swatch', 'modal-friend-color-select'));
+  qs('#modal-group-color-select').addEventListener('change', () =>
+    updateColorSwatch('modal-group-color-swatch', 'modal-group-color-select'));
+
   // New 1-on-1 (Friend)
   qs('#btn-new-1on1').addEventListener('click', () => {
     if (!state.currentUser) { alert('請先選擇使用者'); return; }
@@ -1153,6 +1363,8 @@ function setupEventListeners() {
     qs('#modal-friend-char-select').value = '';
     qs('#modal-friend-persona').value = '';
     qs('#modal-friend-extra').value = '';
+    qs('#modal-friend-color-select').value = AVATAR_COLORS[0].value;
+    updateColorSwatch('modal-friend-color-swatch', 'modal-friend-color-select');
     qs('#btn-modal-friend-delete').style.display = 'none';
     qs('#btn-modal-friend-ok').dataset.id = '';
     qs('#modal-friend').classList.remove('hidden');
@@ -1168,6 +1380,7 @@ function setupEventListeners() {
     const charId = qs('#modal-friend-char-select').value;
     const persona = qs('#modal-friend-persona').value;
     const extra = qs('#modal-friend-extra').value;
+    const color = qs('#modal-friend-color-select').value;
 
     if (!id) {
       if (!name) { alert('請輸入好友名稱'); return; }
@@ -1177,10 +1390,10 @@ function setupEventListeners() {
       qs('#modal-friend').classList.add('hidden');
       await createSession('one_on_one', name, charId ? [charId] : [], persona);
 
-      // Retrieve new session ID to set extra if provided
       const newSess = state.sessions.find(s => s.session_type === 'one_on_one' && s.title === name);
-      if (newSess && extra) {
-        localStorage.setItem(`loveline_extra_${newSess.id}`, extra);
+      if (newSess) {
+        if (extra) localStorage.setItem(`loveline_extra_${newSess.id}`, extra);
+        if (color) localStorage.setItem(`loveline_avatar_color_${newSess.id}`, color);
       }
     } else {
       if (persona) localStorage.setItem(`loveline_persona_${id}`, persona);
@@ -1188,6 +1401,8 @@ function setupEventListeners() {
 
       if (extra) localStorage.setItem(`loveline_extra_${id}`, extra);
       else localStorage.removeItem(`loveline_extra_${id}`);
+
+      if (color) localStorage.setItem(`loveline_avatar_color_${id}`, color);
 
       const sb = getSB();
       if (sb && name) await sb.from('chat_sessions').update({ title: name }).eq('id', id);
@@ -1226,9 +1441,12 @@ function setupEventListeners() {
           <label for="gf_${f.id}">${f.title || '未命名好友'}</label>
         </div>`;
     }).join('');
-    qs('#modal-group-chars').innerHTML = checks || '<span style="color:#666;font-size:0.8rem;">尚無可加入的好友</span>';
+    qs('#modal-group-chars').innerHTML = checks || '<span class="char-check-empty">尚無可加入的好友</span>';
 
     qs('#modal-group-bg-data').value = '';
+    qs('#modal-group-auto-topic').value = '';
+    qs('#modal-group-color-select').value = AVATAR_COLORS[0].value;
+    updateColorSwatch('modal-group-color-swatch', 'modal-group-color-select');
     qs('#btn-modal-group-delete').style.display = 'none';
     qs('#btn-modal-group-ok').dataset.id = '';
     qs('#modal-group').classList.remove('hidden');
@@ -1243,6 +1461,8 @@ function setupEventListeners() {
     const title = qs('#modal-group-name').value.trim() || '群組聊天';
     const checked = [...document.querySelectorAll('#modal-group-chars input:checked')].map(cb => cb.value);
     const bgData = qs('#modal-group-bg-data').value;
+    const autoTopic = qs('#modal-group-auto-topic').value;
+    const color = qs('#modal-group-color-select').value;
 
     if (!id) {
       if (checked.length === 0) { alert('請至少選擇一位角色'); return; }
@@ -1250,15 +1470,36 @@ function setupEventListeners() {
       await createSession('group', title, checked, '');
 
       const newSess = state.sessions[0]; // assuming newly created session is first
-      if (newSess && bgData) {
-        localStorage.setItem(`loveline_extra_${newSess.id}`, bgData);
+      if (newSess) {
+        if (bgData) localStorage.setItem(`loveline_extra_${newSess.id}`, bgData);
+        if (color) localStorage.setItem(`loveline_avatar_color_${newSess.id}`, color);
+        if (autoTopic) localStorage.setItem(`loveline_auto_topic_${newSess.id}`, autoTopic);
+        else localStorage.removeItem(`loveline_auto_topic_${newSess.id}`);
       }
     } else {
       if (bgData) localStorage.setItem(`loveline_extra_${id}`, bgData);
       else localStorage.removeItem(`loveline_extra_${id}`);
 
+      if (autoTopic) localStorage.setItem(`loveline_auto_topic_${id}`, autoTopic);
+      else localStorage.removeItem(`loveline_auto_topic_${id}`);
+
+      if (color) localStorage.setItem(`loveline_avatar_color_${id}`, color);
+
       const sb = getSB();
-      if (sb && title) await sb.from('chat_sessions').update({ title }).eq('id', id);
+      if (sb) {
+        if (title) await sb.from('chat_sessions').update({ title }).eq('id', id);
+
+        // 更新參與角色（刪除舊的角色參與者，重新插入勾選的）
+        await sb.from('chat_participants')
+          .delete().eq('session_id', id).eq('participant_type', 'character');
+        if (checked.length > 0) {
+          const parts = checked.map(cid => {
+            const c = state.characters.find(x => x.id === cid);
+            return { session_id: id, participant_type: 'character', character_id: cid, character_name: c?.name || cid };
+          });
+          await sb.from('chat_participants').insert(parts);
+        }
+      }
       qs('#modal-group').classList.add('hidden');
 
       if (state.currentSession?.id === id) {
@@ -1286,6 +1527,9 @@ function setupEventListeners() {
     this.style.height = Math.min(this.scrollHeight, 120) + 'px';
   });
 
+  // Auto-chat toggle
+  qs('#btn-auto-chat').addEventListener('click', toggleAutoChat);
+
   // Clear chat (local display only)
   qs('#btn-clear-chat').addEventListener('click', () => {
     if (!state.currentSession) return;
@@ -1297,6 +1541,16 @@ function setupEventListeners() {
 
   // Model select
   qs('#model-select').addEventListener('change', e => { state.currentModel = e.target.value; });
+
+  // 新增好友彈窗：選角色卡後若名稱欄位空白，自動填入角色名稱
+  qs('#modal-friend-char-select').addEventListener('change', e => {
+    const nameInput = qs('#modal-friend-name');
+    if (nameInput.value.trim()) return;
+    const charId = e.target.value;
+    if (!charId) return;
+    const char = state.characters.find(c => String(c.id) === String(charId));
+    if (char) nameInput.value = char.name;
+  });
 
   // Close modals clicking overlay
   ['modal-friend', 'modal-group', 'modal-user-edit'].forEach(id => {

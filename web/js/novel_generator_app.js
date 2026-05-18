@@ -423,8 +423,33 @@ function setupEventListeners() {
     qs('#btn-story-to-premise').addEventListener('click', () => qs('#story-file-input').click());
     qs('#story-file-input').addEventListener('change', storyFileToPremise);
 
+    qs('#btn-compare-novels').addEventListener('click', openCompareModal);
+    qs('#compare-mode-select').addEventListener('change', updateAllCompareContent);
+    document.querySelectorAll('.compare-novel-select').forEach(sel => {
+        sel.addEventListener('change', (e) => {
+            onCompareNovelSelect(parseInt(sel.getAttribute('data-col')), e.target.value);
+        });
+    });
+    qs('#compare-search-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); doCompareSearch(); }
+    });
+    qs('#compare-search-prev').addEventListener('click', () => goToCompareMatch(compareCurrentMatch - 1));
+    qs('#compare-search-next').addEventListener('click', () => goToCompareMatch(compareCurrentMatch + 1));
+
     qs('#btn-load-cloud').addEventListener('click', listCloudNovels);
     qs('#cloud-novel-select').addEventListener('change', loadCloudNovel);
+    // 只要下拉選單失去焦點（關閉），不論是否已選取，一律還原成按鈕
+    qs('#cloud-novel-select').addEventListener('blur', () => {
+        setTimeout(() => {
+            const select = qs('#cloud-novel-select');
+            const btn = qs('#btn-load-cloud');
+            if (select.style.display !== 'none') {
+                select.style.display = 'none';
+                select.value = '';
+                btn.style.display = 'inline-block';
+            }
+        }, 250);
+    });
 
     // #toggle-premise 縮放按鈕監聽已移動至 novel_generator.html 中的 initResizableColumns 統一處理
 
@@ -439,6 +464,24 @@ function setupEventListeners() {
 
     qs('#book-title').addEventListener('input', (e) => {
         state.bookTitle = e.target.value;
+    });
+
+    // Multi-Book Modal
+    qs('#btn-multibook-cancel').addEventListener('click', () => {
+        qs('#modal-multibook').classList.add('hidden');
+    });
+    qs('#btn-multibook-confirm').addEventListener('click', () => {
+        const count = Math.max(1, parseInt(qs('#multibook-count').value) || 1);
+        const doPhase1 = qs('#mb-phase1').checked;
+        const doPhase2 = qs('#mb-phase2').checked;
+        const doPhase3 = qs('#mb-phase3').checked;
+        const password = qs('#multibook-password').value.trim();
+        if (!doPhase1 && !doPhase2 && !doPhase3) {
+            alert('請至少勾選一個生成階段。');
+            return;
+        }
+        qs('#modal-multibook').classList.add('hidden');
+        aiGenMultiBook(count, { doPhase1, doPhase2, doPhase3, password });
     });
 
     // Save Novel Modal
@@ -714,42 +757,176 @@ async function aiGenFullAuto() {
         alert("請至少選擇一位登場角色（生成內文需要角色資料）。");
         return;
     }
-    if (!confirm("⚠️ 全自動生成將依序執行：\n1. 根據粗綱生成各章標題與描述（跳過已鎖定）\n2. 為每章生成各節大綱（跳過已鎖定）\n3. 為每節生成內文（跳過已鎖定）\n\n這可能需要非常長的時間，確定開始？")) return;
+    // 開啟數量選擇彈窗（接續由 btn-multibook-confirm 呼叫 aiGenMultiBook）
+    qs('#multibook-count').value = 1;
+    qs('#modal-multibook').classList.remove('hidden');
+}
 
-    appendLog("\n==============================\n🚀 全自動生成模式已啟動\n==============================");
-
-    // Phase 1: 生成章節
-    appendLog("\n--- Phase 1: 根據故事粗綱生成各章節 ---");
-    await aiGenChaptersFromPremise(true); // true = skip confirm
-
-    // Phase 2: 為每個未鎖定章節生成節大綱
-    appendLog("\n--- Phase 2: 為各章節生成節大綱 ---");
-    for (let i = 0; i < state.chapters.length; i++) {
-        if (!state.chapters[i].locked) {
-            appendLog(`\n>> 正在為第 ${i + 1} 章生成節大綱...`);
-            await aiGenChapterOutline(i);
-        } else {
-            appendLog(`\n>> 第 ${i + 1} 章已鎖定，跳過。`);
+/**
+ * 清除所有未上鎖的章節標題、章描述、小節標題與小節內文。
+ * 不刪除章節或小節本身，以保留章節順序（使用者可上鎖來固定內容）。
+ */
+function clearUnlockedContent() {
+    state.chapters.forEach(ch => {
+        if (!ch.locked) {
+            ch.title = "";
+            ch.description = "";
         }
-    }
-
-    // Phase 3: 為每個未鎖定節生成內文
-    appendLog("\n--- Phase 3: 為各節生成內文 ---");
-    for (let i = 0; i < state.chapters.length; i++) {
-        const ch = state.chapters[i];
-        for (let j = 0; j < ch.sections.length; j++) {
-            if (!ch.locked && !ch.sections[j].locked) {
-                appendLog(`\n>> 正在為第 ${i + 1} 章第 ${j + 1} 節生成內文...`);
-                state.activeIndex = { chapter: i, section: j };
-                renderAll();
-                await aiGenSectionContent();
-            } else {
-                appendLog(`\n>> 第 ${i + 1} 章第 ${j + 1} 節已鎖定，跳過。`);
+        ch.sections.forEach(sec => {
+            if (!sec.locked) {
+                sec.title = "";
+                sec.content = "";
             }
+        });
+    });
+}
+
+async function aiGenMultiBook(totalCount, opts = {}) {
+    const { doPhase1 = true, doPhase2 = true, doPhase3 = true, password = '' } = opts;
+    const originalTitle = (state.bookTitle || '未命名小說').trim();
+
+    // 在迴圈前儲存當前專案的完整快照，每本生成前都會還原，避免殘留
+    const originalStateSnapshot = JSON.parse(JSON.stringify(state));
+
+    const phaseLabels = [
+        doPhase1 ? '章節' : null,
+        doPhase2 ? '節大綱' : null,
+        doPhase3 ? '內文' : null
+    ].filter(Boolean).join(' → ');
+    appendLog(`\n==============================\n🚀 全自動多本生成模式啟動（共 ${totalCount} 本，執行：${phaseLabels}）\n==============================`);
+    appendLog(`📌 已儲存原始專案快照（${state.chapters.length} 章），每本生成前都會還原。`);
+
+    for (let bookNum = 1; bookNum <= totalCount; bookNum++) {
+        const paddedNum = String(bookNum).padStart(3, '0');
+        const bookTitle = `${originalTitle}-${paddedNum}`;
+
+        appendLog(`\n========== 📖 第 ${bookNum}/${totalCount} 本：${bookTitle} ==========`);
+
+        // 還原原始專案狀態，避免上一本殘留的章節/內容影響本次生成
+        appendLog(`🔄 正在還原原始專案狀態...`);
+        for (const key in state) {
+            if (Object.prototype.hasOwnProperty.call(state, key)) delete state[key];
+        }
+        Object.assign(state, JSON.parse(JSON.stringify(originalStateSnapshot)));
+
+        // 清除未上鎖的章節描述與小節內容，讓 AI 從空白狀態開始生成
+        clearUnlockedContent();
+        state.bookTitle = bookTitle;
+        qs('#book-title').value = bookTitle;
+        renderAll();
+        appendLog(`✅ 原始狀態已還原（${state.chapters.length} 章），未上鎖的內容已清空。`);
+
+        // Phase 1: 根據粗綱生成章標題與章描述（跳過已鎖定）
+        if (doPhase1) {
+            appendLog("\n--- Phase 1: 根據故事粗綱生成各章節 ---");
+            await aiGenChaptersFromPremise(true); // true = skip confirm
+        } else {
+            appendLog("\n--- Phase 1: 已略過（使用現有章節）---");
+        }
+
+        // Phase 2: 生成小節標題與小節描述
+        if (doPhase2) {
+            appendLog("\n--- Phase 2: 為各章節生成節大綱 ---");
+            for (let i = 0; i < state.chapters.length; i++) {
+                if (!state.chapters[i].locked) {
+                    appendLog(`\n>> 正在為第 ${i + 1} 章生成節大綱...`);
+                    await aiGenChapterOutline(i);
+                } else {
+                    appendLog(`\n>> 第 ${i + 1} 章已鎖定，跳過。`);
+                }
+            }
+        } else {
+            appendLog("\n--- Phase 2: 已略過（使用現有節大綱）---");
+        }
+
+        // Phase 3: 生成內文
+        if (doPhase3) {
+            appendLog("\n--- Phase 3: 為各節生成內文 ---");
+            for (let i = 0; i < state.chapters.length; i++) {
+                const ch = state.chapters[i];
+                for (let j = 0; j < ch.sections.length; j++) {
+                    if (!ch.locked && !ch.sections[j].locked) {
+                        appendLog(`\n>> 正在為第 ${i + 1} 章第 ${j + 1} 節生成內文...`);
+                        state.activeIndex = { chapter: i, section: j };
+                        renderAll();
+                        await aiGenSectionContent();
+                    } else {
+                        appendLog(`\n>> 第 ${i + 1} 章第 ${j + 1} 節已鎖定，跳過。`);
+                    }
+                }
+            }
+        } else {
+            appendLog("\n--- Phase 3: 已略過（不生成內文）---");
+        }
+
+        // 自動儲存（雲端 + 本機下載）
+        appendLog(`\n>> 📥 正在自動儲存《${bookTitle}》...`);
+        await autoSaveBook(bookTitle, password);
+        appendLog(`\n✅ 第 ${bookNum}/${totalCount} 本《${bookTitle}》已完成！`);
+    }
+
+    // 還原書名顯示
+    state.bookTitle = originalTitle;
+    qs('#book-title').value = originalTitle;
+
+    appendLog(`\n==============================\n🎉 全部 ${totalCount} 本小說生成完畢！\n==============================`);
+}
+
+async function autoSaveBook(bookTitle, password) {
+    const savedTitle = state.bookTitle;
+    state.bookTitle = bookTitle; // 暫時換成本書標題，供後續函式讀取
+
+    // ── 1. 雲端儲存（有密碼才執行）
+    if (password) {
+        try {
+            const sb = window.SupabaseClient && window.SupabaseClient.getClient();
+            if (sb) {
+                appendLog(`☁️ 正在將《${bookTitle}》儲存至雲端...`);
+                const fullText = getNovelMarkdown();
+                const { error } = await sb.from('novel_entries').insert({
+                    novel_title: bookTitle,
+                    edit_data: JSON.parse(JSON.stringify(state)),
+                    novel_full_text: fullText,
+                    password: password,
+                    updated_at: new Date()
+                });
+                if (error) {
+                    appendLog(`❌ 雲端儲存失敗: ${error.message}`);
+                } else {
+                    appendLog(`✅ 《${bookTitle}》已儲存至雲端`);
+                }
+            } else {
+                appendLog(`⚠️ Supabase 未初始化，略過雲端儲存`);
+            }
+        } catch (e) {
+            appendLog(`⚠️ 雲端儲存異常: ${e.message}`);
         }
     }
 
-    appendLog("\n==============================\n✅ 全自動生成完畢！\n==============================");
+    // ── 2. 本機 JSON 下載
+    const localState = JSON.parse(JSON.stringify(state));
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(localState));
+    const jsonAnchor = document.createElement('a');
+    jsonAnchor.setAttribute("href", dataStr);
+    jsonAnchor.setAttribute("download", bookTitle + ".json");
+    document.body.appendChild(jsonAnchor);
+    jsonAnchor.click();
+    jsonAnchor.remove();
+
+    // ── 3. 本機 Markdown 下載
+    const md = getNovelMarkdown();
+    const blob = new Blob([md], { type: 'text/markdown' });
+    const mdUrl = URL.createObjectURL(blob);
+    const mdAnchor = document.createElement('a');
+    mdAnchor.href = mdUrl;
+    mdAnchor.download = bookTitle + ".md";
+    document.body.appendChild(mdAnchor);
+    mdAnchor.click();
+    mdAnchor.remove();
+    URL.revokeObjectURL(mdUrl);
+
+    state.bookTitle = savedTitle; // 還原
+    appendLog(`>> 📁 已下載：${bookTitle}.json  &  ${bookTitle}.md`);
 }
 
 async function aiGenChaptersFromPremise(skipConfirm = false) {
@@ -1068,6 +1245,304 @@ async function callDebugServerAsync(asyncEndpoint, payload) {
     }
     appendLog("⏰ 等待超時（600 秒），請確認後端是否正常運作。");
     return null;
+}
+
+// ====== 比對多本小說 ======
+
+let compareNovelList = [];
+let compareLoadedNovels = [null, null, null, null];
+let compareSearchMatches = [];
+let compareCurrentMatch = -1;
+let compareLastPassword = '';
+
+async function openCompareModal() {
+    qs('#modal-compare').classList.remove('hidden');
+    qs('#compare-search-input').value = '';
+    qs('#compare-search-count').textContent = '';
+    compareSearchMatches = [];
+    compareCurrentMatch = -1;
+    await loadCompareNovelList();
+}
+
+async function loadCompareNovelList() {
+    try {
+        const sb = window.SupabaseClient && window.SupabaseClient.getClient();
+        if (!sb) { appendLog('⚠️ Supabase 未初始化，無法讀取雲端小說清單'); return; }
+
+        appendLog('☁️ [比對] 正在讀取雲端小說清單...');
+        const { data, error } = await sb
+            .from('novel_entries')
+            .select('id, novel_title, updated_at, password')
+            .order('updated_at', { ascending: false })
+            .limit(50);
+
+        if (error) throw error;
+        compareNovelList = data || [];
+
+        const optionsHtml = '<option value="">-- 請選擇小說 --</option>' +
+            compareNovelList.map(d => {
+                const date = new Date(d.updated_at).toLocaleString('zh-TW', { hour12: false });
+                return `<option value="${d.id}">${d.novel_title} (${date})</option>`;
+            }).join('');
+
+        document.querySelectorAll('.compare-novel-select').forEach(sel => {
+            const cur = sel.value;
+            sel.innerHTML = optionsHtml;
+            if (cur) sel.value = cur;
+        });
+        appendLog(`✅ [比對] 已載入 ${compareNovelList.length} 筆雲端紀錄`);
+    } catch (e) {
+        appendLog('❌ [比對] 讀取清單失敗: ' + e.message);
+    }
+}
+
+async function onCompareNovelSelect(colIdx, novelId) {
+    if (!novelId) {
+        compareLoadedNovels[colIdx] = null;
+        updateCompareColContent(colIdx);
+        return;
+    }
+
+    const meta = compareNovelList.find(n => n.id === novelId);
+
+    // 先用記住的密碼（或空字串）嘗試載入；若失敗才顯示密碼彈窗
+    // 不依賴 meta.password，因為 Supabase RLS 可能遮蔽該欄位
+    const ok = await tryLoadCompareNovel(colIdx, novelId, meta, compareLastPassword);
+    if (!ok) {
+        await showComparePasswordModal(colIdx, novelId, meta);
+    }
+}
+
+async function tryLoadCompareNovel(colIdx, novelId, meta, pwd) {
+    const sb = window.SupabaseClient && window.SupabaseClient.getClient();
+    if (!sb) return false;
+
+    try {
+        const { data, error } = await sb
+            .from('novel_entries')
+            .select('edit_data, password, novel_title')
+            .eq('id', novelId)
+            .single();
+
+        if (error) throw error;
+        if (data.password && data.password !== pwd) return false;
+
+        let loadedState = data.edit_data;
+        if (typeof loadedState === 'string') loadedState = JSON.parse(loadedState);
+        compareLoadedNovels[colIdx] = loadedState;
+        updateCompareColContent(colIdx);
+        if (pwd) compareLastPassword = pwd;
+        appendLog(`✅ [比對欄${colIdx + 1}] 已載入「${data.novel_title}」`);
+        return true;
+    } catch (e) {
+        appendLog('❌ [比對] 載入失敗: ' + e.message);
+        return false;
+    }
+}
+
+function showComparePasswordModal(colIdx, novelId, meta) {
+    return new Promise((resolve) => {
+        const modal = qs('#modal-compare-password');
+        const desc = qs('#compare-pwd-desc');
+        const input = qs('#compare-pwd-input');
+        const okBtn = qs('#btn-compare-pwd-ok');
+        const cancelBtn = qs('#btn-compare-pwd-cancel');
+
+        desc.textContent = meta ? `請輸入「${meta.novel_title}」的讀取密碼：` : '請輸入此小說的讀取密碼：';
+        input.value = '';
+        modal.classList.remove('hidden');
+        setTimeout(() => input.focus(), 50);
+
+        const cleanup = () => {
+            modal.classList.add('hidden');
+            okBtn.removeEventListener('click', onOk);
+            cancelBtn.removeEventListener('click', onCancel);
+            input.removeEventListener('keydown', onKeydown);
+        };
+
+        const onOk = async () => {
+            const pwd = input.value;
+            cleanup();
+            if (!pwd) {
+                document.querySelectorAll('.compare-novel-select')[colIdx].value = '';
+                resolve();
+                return;
+            }
+            const ok = await tryLoadCompareNovel(colIdx, novelId, meta, pwd);
+            if (!ok) {
+                alert('密碼錯誤！');
+                document.querySelectorAll('.compare-novel-select')[colIdx].value = '';
+            }
+            resolve();
+        };
+
+        const onCancel = () => {
+            cleanup();
+            document.querySelectorAll('.compare-novel-select')[colIdx].value = '';
+            resolve();
+        };
+
+        const onKeydown = (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); onOk(); }
+            if (e.key === 'Escape') { onCancel(); }
+        };
+
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+        input.addEventListener('keydown', onKeydown);
+    });
+}
+
+function getCompareText(novelState, mode) {
+    if (!novelState) return '';
+    const chapters = novelState.chapters || [];
+
+    switch (mode) {
+        case 'premise':
+            return novelState.storyPremise || '（無粗綱）';
+
+        case 'chapters':
+            return chapters.map((ch, i) =>
+                `【第${i + 1}章】${ch.title || '（未命名）'}\n${ch.description || '（無章描述）'}`
+            ).join('\n\n──────────\n\n');
+
+        case 'sections':
+            return chapters.map((ch, i) => {
+                const secList = ch.sections.map((sec, j) =>
+                    `  第${j + 1}節：${sec.title || '（未命名）'}`
+                ).join('\n');
+                return `【第${i + 1}章】${ch.title || '（未命名）'}\n${secList}`;
+            }).join('\n\n──────────\n\n');
+
+        case 'all_outlines':
+            return chapters.map((ch, i) => {
+                const secList = ch.sections.map((sec, j) =>
+                    `  第${j + 1}節：${sec.title || '（未命名）'}`
+                ).join('\n');
+                return `【第${i + 1}章】${ch.title || '（未命名）'}\n${ch.description || ''}\n\n${secList}`;
+            }).join('\n\n══════════\n\n');
+
+        case 'content':
+            return chapters.map((ch, i) => {
+                const secContent = ch.sections.map((sec, j) =>
+                    `【第${j + 1}節】${sec.title || '（未命名）'}\n${sec.content || '（無內文）'}`
+                ).join('\n\n');
+                return `═══ 第${i + 1}章：${ch.title || ''} ═══\n\n${secContent}`;
+            }).join('\n\n━━━━━━━━━━━━━━━━━\n\n');
+
+        case 'all':
+            return chapters.map((ch, i) => {
+                const secs = ch.sections.map((sec, j) =>
+                    `【第${j + 1}節】${sec.title || '（未命名）'}\n${sec.content || '（無內文）'}`
+                ).join('\n\n');
+                return `═══ 第${i + 1}章：${ch.title || ''} ═══\n${ch.description || ''}\n\n${secs}`;
+            }).join('\n\n━━━━━━━━━━━━━━━━━\n\n');
+
+        default:
+            return '';
+    }
+}
+
+async function deleteCompareNovel(colIdx) {
+    const sel = document.querySelectorAll('.compare-novel-select')[colIdx];
+    const novelId = sel.value;
+    if (!novelId) {
+        alert('請先在此欄選取一本雲端小說。');
+        return;
+    }
+
+    const selectedOpt = sel.options[sel.selectedIndex];
+    const novelTitle = selectedOpt ? selectedOpt.textContent : novelId;
+
+    if (!confirm(`確定要從雲端永久刪除以下小說專案嗎？\n\n《${novelTitle}》\n\n此操作無法復原！`)) return;
+
+    try {
+        const sb = window.SupabaseClient && window.SupabaseClient.getClient();
+        if (!sb) throw new Error('Supabase 未初始化');
+
+        const { error } = await sb
+            .from('novel_entries')
+            .delete()
+            .eq('id', novelId);
+
+        if (error) throw error;
+
+        appendLog(`🗑️ [比對] 已刪除雲端小說：${novelTitle}`);
+
+        // 清空該欄顯示並重新整理下拉選單
+        compareLoadedNovels[colIdx] = null;
+        updateCompareColContent(colIdx);
+        await loadCompareNovelList();
+    } catch (e) {
+        appendLog('❌ [比對] 刪除失敗: ' + e.message);
+        alert('刪除失敗：' + e.message);
+    }
+}
+
+function updateCompareColContent(colIdx) {
+    const ta = document.querySelectorAll('.compare-content')[colIdx];
+    if (!ta) return;
+    ta.value = getCompareText(compareLoadedNovels[colIdx], qs('#compare-mode-select').value);
+    compareSearchMatches = [];
+    compareCurrentMatch = -1;
+    qs('#compare-search-count').textContent = '';
+}
+
+function updateAllCompareContent() {
+    compareLoadedNovels.forEach((_, i) => {
+        const ta = document.querySelectorAll('.compare-content')[i];
+        if (ta) ta.value = getCompareText(compareLoadedNovels[i], qs('#compare-mode-select').value);
+    });
+    compareSearchMatches = [];
+    compareCurrentMatch = -1;
+    qs('#compare-search-count').textContent = '';
+}
+
+function doCompareSearch() {
+    const query = qs('#compare-search-input').value;
+    const textareas = document.querySelectorAll('.compare-content');
+    const countEl = qs('#compare-search-count');
+    compareSearchMatches = [];
+    compareCurrentMatch = -1;
+
+    if (!query) { countEl.textContent = ''; return; }
+
+    const lq = query.toLowerCase();
+    textareas.forEach((ta, colIdx) => {
+        const lo = ta.value.toLowerCase();
+        let i = 0;
+        while ((i = lo.indexOf(lq, i)) !== -1) {
+            compareSearchMatches.push({ colIdx, start: i });
+            i += lq.length;
+        }
+    });
+
+    if (compareSearchMatches.length > 0) {
+        goToCompareMatch(0);
+    } else {
+        countEl.textContent = '找不到';
+    }
+}
+
+function goToCompareMatch(idx) {
+    if (!compareSearchMatches.length) return;
+    const textareas = document.querySelectorAll('.compare-content');
+    const query = qs('#compare-search-input').value;
+    compareCurrentMatch = ((idx % compareSearchMatches.length) + compareSearchMatches.length) % compareSearchMatches.length;
+    const { colIdx, start } = compareSearchMatches[compareCurrentMatch];
+    const end = start + query.length;
+    const ta = textareas[colIdx];
+
+    const fullText = ta.value;
+    ta.value = fullText.substring(0, start);
+    const pixelPos = ta.scrollHeight;
+    ta.value = fullText;
+    ta.focus();
+    ta.setSelectionRange(start, end);
+    requestAnimationFrame(() => {
+        ta.scrollTop = Math.max(0, pixelPos - ta.clientHeight / 2);
+    });
+    qs('#compare-search-count').textContent = `${compareCurrentMatch + 1} / ${compareSearchMatches.length}`;
 }
 
 // ====== 儲存與讀取 ======

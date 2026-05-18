@@ -20,6 +20,8 @@
         rel="stylesheet">
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <!-- QRCode.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="stylesheet" href="css/lpas_styles.css">
     <!-- 中央角色資料與邏輯 -->
     <script src="js/character_logic.js" defer></script>
@@ -48,6 +50,14 @@
         <div id="debug-frame" class="debug-frame"></div>
         <!-- 1. 首頁 (Landing Page) -->
         <section id="screen-landing" class="screen active">
+            <!-- 漢堡選單（只在首頁顯示） -->
+            <button class="hamburger-btn" id="hamburger-btn" aria-label="選單">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="hamburger-dropdown hd-hidden" id="hamburger-menu">
+                <button class="hd-item" id="menu-qrcode">📱 顯示QR Code</button>
+                <button class="hd-item" id="menu-result-viewer">📊 觀看評量結果</button>
+            </div>
             <h1 class="main-title">你在感情裡是哪一種人？</h1>
             <h2 class="sub-title">關於你在愛情裡真實樣子的測驗</h2>
             <div class="desc-text">60題 / 三個情境 / 約8分鐘</div>
@@ -187,7 +197,240 @@
 
             </div>
         </section>
+        <!-- ── QR Code Modal ── -->
+        <div class="stage-modal sm-hidden" id="modal-qrcode">
+            <div class="qr-box">
+                <h3>📱 掃描進入測驗</h3>
+                <div id="qrcode-container"></div>
+                <div class="qr-url-label">https://weichenglin0215.github.io/<br>LoveIsABitMessy/web/lpas.html</div>
+                <button class="btn secondary-btn" id="btn-close-qr" style="font-size:16px;padding:6px 28px;">關閉</button>
+            </div>
+        </div>
+
+        <!-- ── Result Viewer Modal（觀看評量結果） ── -->
+        <div class="stage-modal sm-hidden" id="modal-result-viewer">
+            <div class="rv-box">
+                <!-- 頂部標題列 -->
+                <div class="rv-topbar">
+                    <div class="rv-title">你在愛情裡的真實樣貌</div>
+                    <button class="rv-close" id="rv-close-btn">✕</button>
+                </div>
+                <!-- 時期標籤 + 類型下拉 -->
+                <div class="rv-select-row">
+                    <span class="rv-period-lbl" id="rv-period-lbl">曖昧期</span>
+                    <select class="rv-select" id="rv-type-select">
+                        <option value="">-- 選擇曖昧期的類型 --</option>
+                    </select>
+                </div>
+                <!-- 類型名稱與特質（選擇後才顯示） -->
+                <div class="rv-type-header" id="rv-type-header" style="display:none;">
+                    <div class="rv-type-code-name" id="rv-type-code-name"></div>
+                    <div class="rv-type-traits" id="rv-type-traits"></div>
+                </div>
+                <!-- 說明文字框（唯讀，可捲動） -->
+                <textarea class="rv-desc" id="rv-desc" readonly></textarea>
+                <!-- 底部導覽列 -->
+                <div class="rv-navbar">
+                    <button class="rv-nav-btn" id="rv-prev-btn">← 曖昧期</button>
+                    <button class="rv-copy-btn" id="rv-copy-btn">複製評量文字</button>
+                    <button class="rv-nav-btn" id="rv-next-btn">熱戀期 →</button>
+                </div>
+            </div>
+        </div>
     </main>
+
+    <script>
+        /* ════════════════════════════════════════════════════════
+           漢堡選單 + QR Code + 觀看評量結果 邂輯
+           ════════════════════════════════════════════════════════ */
+        document.addEventListener('DOMContentLoaded', function () {
+
+            const PERIODS = [
+                { key: 'ambiguity', label: '曖昧期' },
+                { key: 'love',      label: '熱戀期' },
+                { key: 'breakup',   label: '失戀期' },
+                { key: 'roleplay',  label: '角色扮演' }
+            ];
+
+            const TYPE_CODES = [
+                'A-O-C-F','A-O-C-S','A-O-L-F','A-O-L-S',
+                'A-I-C-F','A-I-C-S','A-I-L-F','A-I-L-S',
+                'P-O-C-F','P-O-C-S','P-O-L-F','P-O-L-S',
+                'P-I-C-F','P-I-C-S','P-I-L-F','P-I-L-S'
+            ];
+
+            // 各期間獨立記住的下拉選擇
+            const rvSelections = ['', '', '', ''];
+
+            // 漢堡選單
+            const hamburgerBtn  = document.getElementById('hamburger-btn');
+            const hamburgerMenu = document.getElementById('hamburger-menu');
+            hamburgerBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                hamburgerMenu.classList.toggle('hd-hidden');
+            });
+            document.getElementById('stage').addEventListener('click', function () {
+                hamburgerMenu.classList.add('hd-hidden');
+            });
+
+            // QR Code
+            const modalQR = document.getElementById('modal-qrcode');
+            let   qrDone  = false;
+            const QR_URL  = 'https://weichenglin0215.github.io/LoveIsABitMessy/web/lpas.html';
+            document.getElementById('menu-qrcode').addEventListener('click', function () {
+                hamburgerMenu.classList.add('hd-hidden');
+                modalQR.classList.remove('sm-hidden');
+                if (!qrDone) {
+                    qrDone = true;
+                    new QRCode(document.getElementById('qrcode-container'), {
+                        text: QR_URL, width: 200, height: 200,
+                        colorDark: '#000000', colorLight: '#ffffff',
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                }
+            });
+            document.getElementById('btn-close-qr').addEventListener('click', function () {
+                modalQR.classList.add('sm-hidden');
+            });
+
+            // 觀看評量結果
+            const modalRV      = document.getElementById('modal-result-viewer');
+            const rvBox        = modalRV.querySelector('.rv-box');
+            const rvSelect     = document.getElementById('rv-type-select');
+            const rvPeriodLbl  = document.getElementById('rv-period-lbl');
+            const rvTypeHeader = document.getElementById('rv-type-header');
+            const rvCodeName   = document.getElementById('rv-type-code-name');
+            const rvTraits     = document.getElementById('rv-type-traits');
+            const rvDesc       = document.getElementById('rv-desc');
+            const rvPrevBtn    = document.getElementById('rv-prev-btn');
+            const rvNextBtn    = document.getElementById('rv-next-btn');
+            let rvPeriodIdx = 0;
+
+            // 說明文字格式化：每行加全形縮排，行間多一空白行
+            function formatRvDesc(text) {
+                if (!text) return '';
+                return text.split('\n').map(function (line) {
+                    return line.trim() === '' ? '' : '　　' + line;
+                }).join('\n\n');
+            }
+
+            // 填入下拉選單，還原該期間上次的選擇
+            function rvPopulateOptions() {
+                const period = PERIODS[rvPeriodIdx];
+                rvSelect.innerHTML = '<option value="">' + '-- 選擇' + period.label + '的類型 --</option>';
+                TYPE_CODES.forEach(function (code) {
+                    const sd   = window.TYPE_MAPPING_SHORT && window.TYPE_MAPPING_SHORT[code];
+                    const name = sd ? sd.name : code;
+                    const opt  = document.createElement('option');
+                    opt.value       = code;
+                    opt.textContent = code + '　' + name;
+                    rvSelect.appendChild(opt);
+                });
+                if (rvSelections[rvPeriodIdx]) {
+                    rvSelect.value = rvSelections[rvPeriodIdx];
+                }
+            }
+
+            // 更新背景顏色
+            function rvUpdateBg() {
+                rvBox.setAttribute('data-period-idx', rvPeriodIdx);
+            }
+
+            // 更新導覽按鈕
+            function rvUpdateNav() {
+                if (rvPeriodIdx === 0) {
+                    rvPrevBtn.textContent = '← ' + PERIODS[0].label;
+                    rvPrevBtn.disabled = true;
+                } else {
+                    rvPrevBtn.textContent = '← ' + PERIODS[rvPeriodIdx - 1].label;
+                    rvPrevBtn.disabled = false;
+                }
+                if (rvPeriodIdx === PERIODS.length - 1) {
+                    rvNextBtn.textContent = PERIODS[PERIODS.length - 1].label + ' →';
+                    rvNextBtn.disabled = true;
+                } else {
+                    rvNextBtn.textContent = PERIODS[rvPeriodIdx + 1].label + ' →';
+                    rvNextBtn.disabled = false;
+                }
+            }
+
+            // 更新主內容（文字 + 標題 + 捲頂）
+            function rvUpdateContent() {
+                const period   = PERIODS[rvPeriodIdx];
+                const typeCode = rvSelect.value;
+                rvPeriodLbl.textContent = period.label;
+                rvUpdateNav();
+                rvUpdateBg();
+                if (typeCode && window.TYPE_MAPPING_LongVersion) {
+                    const td = window.TYPE_MAPPING_LongVersion[typeCode];
+                    const sd = window.TYPE_MAPPING_SHORT && window.TYPE_MAPPING_SHORT[typeCode];
+                    if (td) {
+                        const pd = td[period.key];
+                        rvTypeHeader.style.display = '';
+                        rvCodeName.textContent     = period.label + '　' + typeCode + '　' + td.name;
+                        rvTraits.textContent       = sd ? sd.desc : '';
+                        rvDesc.value               = formatRvDesc(pd ? pd.desc : '（此時期暫無資料）');
+                        rvDesc.scrollTop           = 0;
+                        return;
+                    }
+                }
+                rvTypeHeader.style.display = 'none';
+                rvDesc.value               = '';
+                rvDesc.scrollTop           = 0;
+            }
+
+            // 開啟結果瀏覽器
+            document.getElementById('menu-result-viewer').addEventListener('click', function () {
+                hamburgerMenu.classList.add('hd-hidden');
+                rvPeriodIdx = 0;
+                rvPopulateOptions();
+                rvUpdateContent();
+                modalRV.classList.remove('sm-hidden');
+            });
+            document.getElementById('rv-close-btn').addEventListener('click', function () {
+                modalRV.classList.add('sm-hidden');
+            });
+
+            // 下拉選單變更 → 記住該期間的選擇
+            rvSelect.addEventListener('change', function () {
+                rvSelections[rvPeriodIdx] = rvSelect.value;
+                rvUpdateContent();
+            });
+
+            rvPrevBtn.addEventListener('click', function () {
+                if (rvPeriodIdx > 0) { rvPeriodIdx--; rvPopulateOptions(); rvUpdateContent(); }
+            });
+            rvNextBtn.addEventListener('click', function () {
+                if (rvPeriodIdx < PERIODS.length - 1) { rvPeriodIdx++; rvPopulateOptions(); rvUpdateContent(); }
+            });
+
+            // 複製評量文字
+            document.getElementById('rv-copy-btn').addEventListener('click', async function () {
+                const typeCode = rvSelect.value;
+                const period   = PERIODS[rvPeriodIdx];
+                let   text     = '';
+                if (typeCode && window.TYPE_MAPPING_LongVersion) {
+                    const td = window.TYPE_MAPPING_LongVersion[typeCode];
+                    const sd = window.TYPE_MAPPING_SHORT && window.TYPE_MAPPING_SHORT[typeCode];
+                    if (td) {
+                        const pd = td[period.key];
+                        text = period.label + ' ' + typeCode + ' ' + td.name + '\n'
+                             + (sd ? sd.desc : '') + '\n\n'
+                             + (pd ? pd.desc : '');
+                    }
+                }
+                if (!text) text = rvDesc.value;
+                if (!text) return;
+                try {
+                    await navigator.clipboard.writeText(text);
+                    const btn  = document.getElementById('rv-copy-btn');
+                    const orig = btn.textContent;
+                    btn.textContent = '✓ 已複製！';
+                    setTimeout(function () { btn.textContent = orig; }, 1600);
+                } catch (e) {}
+            });
+        });
+    </script>
 </body>
 
 </html>

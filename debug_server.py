@@ -8,6 +8,7 @@ import threading
 import time
 import uuid
 import re
+import random
 
 try:
     # 盡量讓 Windows console 不因 cp950 造成亂碼/炸掉
@@ -215,6 +216,11 @@ def _ollama_generate_direct(model, prompt, options=None, images=None):
     else:
         stream_val = True
 
+    # 每次呼叫自動產生隨機 seed，確保 AI 輸出每次都有足夠變化
+    # （外部若傳入 seed 則以外部為準，已在上方 update 合併進來）
+    if 'seed' not in default_options:
+        default_options['seed'] = random.randint(1, 2_147_483_647)
+
     payload = {
     "model": model,
     "prompt": prompt,
@@ -239,6 +245,7 @@ def _ollama_generate_direct(model, prompt, options=None, images=None):
     print(f">>>> 重複懲罰(repeat_penalty): {default_options['repeat_penalty']}")
     print(f">>>> Top-K: {default_options['top_k']}")
     print(f">>>> Top-P: {default_options['top_p']}")
+    print(f">>>> 隨機種子(seed): {default_options['seed']}")
     # print(f">>>> 使用GPU層數(num_gpu): {default_options['num_gpu']}")
     print(f">>>> 提示詞字數(Prompt Length): {len(prompt)} characters")
     

@@ -2702,13 +2702,12 @@ body.daily-page {
   display: flex;
   flex-direction: column;
   gap: var(--gap-xs);
-  margin-top: var(--gap-xs);
 }
 
 .char-check-item {
-  gap: var(--gap-md);
-  margin-top: var(--gap-sm);
-  padding: var(--gap-sm);
+  display: flex;
+  align-items: center;
+  padding: var(--gap-xs);
   border-radius: var(--radius-xs);
   cursor: pointer;
 }
