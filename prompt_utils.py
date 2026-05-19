@@ -589,7 +589,7 @@ def build_analyze_text_character_prompt(text_content: str, target_name: str = ""
 }}
 
 【待分析文字】
-{text_content[:15000]}
+{text_content[:50000]}
 
 【禁止】
 1. 禁止使用中文簡體字。
@@ -662,7 +662,7 @@ def build_story_to_premise_prompt(text_content: str) -> str:
 - 若原著有特殊結局（如悲劇、開放式結局），請如實保留。
 
 【故事原文】
-{text_content[:30000]}
+{text_content[:50000]}
 
 【禁止】
 1. 禁止使用中文簡體字。

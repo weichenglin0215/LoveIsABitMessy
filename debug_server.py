@@ -189,12 +189,96 @@ def _append_job_log(job_id: str, text: str):
         job["logs"].append(text)
         job["updated_at"] = time.time()
 
-def _ollama_generate_direct(model, prompt, options=None, images=None):
+def _make_stream_callback(job_id: str, time_start: float):
+    """
+    建立串流 callback。
+    - 每個 token 都更新 last_activity（keep-alive 核心）
+    - 每 5 秒將累積的生成文字一次性寫入 job LOG（直接看到輸出比看字數更直覺）
+    - 附帶 .flush() 方法，供串流結束時強制輸出緩衝區剩餘文字
+    支援有「thinking」欄位的推理型模型（如 qwen3、deepseek-r1）。
+    """
+    buffer   = ['']   # 累積尚未輸出的生成文字
+    last_hb  = [time_start]
+
+    def _do_flush():
+        chunk = buffer[0]
+        buffer[0] = ''
+        if chunk.strip():
+            _append_job_log(job_id, chunk)
+
+    def cb(response: str = '', thinking: str = ''):
+        if response:
+            buffer[0] += response
+        now = time.time()
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["last_activity"] = now
+        if now - last_hb[0] >= 5:
+            last_hb[0] = now
+            _do_flush()
+
+    cb.flush = _do_flush   # 供外部在串流結束後強制清空緩衝區
+    return cb
+
+
+def _ollama_with_heartbeat(job_id: str, model: str, prompt: str,
+                           options=None, images=None, time_start: float = None):
+    """
+    呼叫 Ollama 並確保整個過程（含 prefill 長時間零輸出期間）都有心跳更新，
+    防止前端輪詢因無活動超時而提前結束。
+
+    機制：
+    - 背景執行緒：每 10 秒更新 job["last_activity"]（無 LOG 不洗版）；
+                  每 60 秒再額外追加一行等待 LOG，讓使用者看到系統還活著。
+    - on_chunk callback（來自 _make_stream_callback）：
+                  每個 token 更新 last_activity；每 5 秒追加進度 LOG。
+    """
+    t0 = time_start or time.time()
+    stop = threading.Event()
+
+    def _hb():
+        last_log_time = [t0]
+        while not stop.wait(10):          # 每 10 秒靜默更新 last_activity
+            now = time.time()
+            with JOBS_LOCK:
+                if job_id in JOBS:
+                    JOBS[job_id]["last_activity"] = now
+            if now - last_log_time[0] >= 60:  # 每 60 秒補一行 LOG
+                last_log_time[0] = now
+                elapsed = int(now - t0)
+                _append_job_log(
+                    job_id,
+                    f">> [等待中] Ollama 仍在運算（prefill/大型模型），已用 {elapsed} 秒..."
+                )
+
+    threading.Thread(target=_hb, daemon=True).start()
+    on_chunk = _make_stream_callback(job_id, t0)
+    try:
+        result = _ollama_generate_direct(
+            model, prompt,
+            options=options,
+            images=images,
+            on_chunk=on_chunk,
+            job_id=job_id          # 讓 generate 函式的參數 LOG 也同步到瀏覽器
+        )
+        on_chunk.flush()           # 強制輸出串流結束時緩衝區殘餘的文字
+        return result
+    finally:
+        stop.set()  # 確保 Ollama 結束後背景執行緒立即停止
+
+
+def _ollama_generate_direct(model, prompt, options=None, images=None, on_chunk=None, job_id=None):
     """直接呼叫 Ollama API 並回傳結果字串 (支援流式傳輸以免超時)"""
     #####################################################################################
     # 直接呼叫 Ollama API 並回傳結果字串 (支援流式傳輸以免超時)
     #####################################################################################
     url = "http://127.0.0.1:11434/api/generate"
+
+    def _log(msg: str):
+        """同時輸出到 CMD 與瀏覽器 LOG（當 job_id 已提供時）"""
+        print(msg)
+        if job_id:
+            _append_job_log(job_id, msg)
     
     # 預設參數
     default_options = {
@@ -236,18 +320,17 @@ def _ollama_generate_direct(model, prompt, options=None, images=None):
     if images:
         payload["images"] = images
     
-    print(f">>>> 模型: {model}")
-    print(f">>>> 以流式回傳結果: {stream_val}")
-    print(f">>>> VRAM保有大模型(keep_alive -1 等於長久保留): {payload['keep_alive']}")
-    print(f">>>> 溫度(Temperature): {default_options['temperature']}")
-    print(f">>>> 預測長度(num_predict): {default_options['num_predict']}")
-    print(f">>>> 上下文視窗(num_ctx): {default_options['num_ctx']}")
-    print(f">>>> 重複懲罰(repeat_penalty): {default_options['repeat_penalty']}")
-    print(f">>>> Top-K: {default_options['top_k']}")
-    print(f">>>> Top-P: {default_options['top_p']}")
-    print(f">>>> 隨機種子(seed): {default_options['seed']}")
-    # print(f">>>> 使用GPU層數(num_gpu): {default_options['num_gpu']}")
-    print(f">>>> 提示詞字數(Prompt Length): {len(prompt)} characters")
+    _log(f">>>> 模型: {model}")
+    _log(f">>>> 以流式回傳結果: {stream_val}")
+    _log(f">>>> VRAM保有大模型(keep_alive -1 等於長久保留): {payload['keep_alive']}")
+    _log(f">>>> 溫度(Temperature): {default_options['temperature']}")
+    _log(f">>>> 預測長度(num_predict): {default_options['num_predict']}")
+    _log(f">>>> 上下文視窗(num_ctx): {default_options['num_ctx']}")
+    _log(f">>>> 重複懲罰(repeat_penalty): {default_options['repeat_penalty']}")
+    _log(f">>>> Top-K: {default_options['top_k']}")
+    _log(f">>>> Top-P: {default_options['top_p']}")
+    _log(f">>>> 隨機種子(seed): {default_options['seed']}")
+    _log(f">>>> 提示詞字數(Prompt Length): {len(prompt)} characters")
     
     full_response = []
     try:
@@ -262,15 +345,15 @@ def _ollama_generate_direct(model, prompt, options=None, images=None):
             headers={'Content-Type': 'application/json'}
         )
 
-        print(">>>> 正在發送 POST 請求至 Ollama...")
+        _log(">>>> 正在發送 POST 請求至 Ollama...")
         try:
             with urllib.request.urlopen(req, timeout=3000) as resp:
-                print(f">>>> 伺服器回應碼: {resp.status}")
-                print("(O)"*15 + "流式生成文字開始" + "(O)"*15)
+                _log(f">>>> 伺服器回應碼: {resp.status}")
+                _log("(O)"*15 + "流式生成文字開始" + "(O)"*15)
                 if resp.status != 200:
                     err_body = resp.read().decode('utf-8', errors='replace')
-                    print(f"\n>>>> [OLLAMA API ERROR] Status: {resp.status}")
-                    print(f">>>> [OLLAMA API ERROR] Body: {err_body}")
+                    _log(f"\n>>>> [OLLAMA API ERROR] Status: {resp.status}")
+                    _log(f">>>> [OLLAMA API ERROR] Body: {err_body}")
                     return f">>>> Error {resp.status}: {err_body}"
 
                 # 逐行讀取串流回應
@@ -278,33 +361,192 @@ def _ollama_generate_direct(model, prompt, options=None, images=None):
                     line = raw_line.strip()
                     if line:
                         chunk = json.loads(line)
-                        content = chunk.get('response', '')
+                        content  = chunk.get('response', '')
+                        thinking = chunk.get('thinking', '')
                         print(content, end='', flush=True)
                         full_response.append(content)
+                        # 每個 chunk 都通知心跳（含思考型模型的 thinking 階段）
+                        if on_chunk:
+                            on_chunk(content, thinking)
                         if chunk.get('done'):
                             break
         except Exception as e:
-            print(f"\n>>>> [EXCEPTION] Ollama 呼叫失敗: {str(e)}")
+            _log(f"\n>>>> [EXCEPTION] Ollama 呼叫失敗: {str(e)}")
             import traceback
             traceback.print_exc()
             return f"（連線錯誤：{str(e)}）"
-        print("\n" + "(O)"*15 + "流式生成文字結束" + "(O)"*15)
+        _log("\n" + "(O)"*15 + "流式生成文字結束" + "(O)"*15)
         return "".join(full_response).strip()
     except urllib.error.HTTPError as e:
         err_body = e.read().decode('utf-8', errors='replace')
-        print(f"\n>>>> [OLLAMA API ERROR] Status: {e.code}")
-        print(f">>>> [OLLAMA API ERROR] Body: {err_body}")
+        _log(f"\n>>>> [OLLAMA API ERROR] Status: {e.code}")
+        _log(f">>>> [OLLAMA API ERROR] Body: {err_body}")
         return f">>>> Error {e.code}: {err_body}"
     except Exception as e:
-        print(f"\n>>>> [EXCEPTION] Ollama 呼叫失敗: {type(e).__name__}: {e}")
+        _log(f"\n>>>> [EXCEPTION] Ollama 呼叫失敗: {type(e).__name__}: {e}")
         import traceback
         traceback.print_exc()
         return f">>>> Error: {e}"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 非同步 Job 函式（小說產生器 / LoveLine 聊天）
+# 前端透過 /api/job?id=... 輪詢 logs，即時顯示後端 print 訊息
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _run_analyze_text_char_job(job_id: str, params: dict):
+    """非同步執行「從文字分析角色特質並生成角色卡 JSON」任務"""
+    #####################################################################################
+    # 非同步執行「從文字分析角色特質並生成角色卡 JSON」任務。
+    #####################################################################################
+    def log(text):
+        print(text)
+        _append_job_log(job_id, text)
+    try:
+        text_content = params.get('text_content', '')
+        target_name  = params.get('target_name', '').strip()
+        model_name   = params.get('model', 'gemma4')
+        prompt = build_analyze_text_character_prompt(text_content, target_name=target_name)
+
+        # 分析任務需要較長輸出，覆寫 num_predict
+        opts = dict(params.get('model_options') or {})
+        opts.setdefault('num_predict', 2048)
+        opts.setdefault('temperature', 0.95)
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        log("=" * 50)
+        log(f"[{timestamp}] debug_server.py：【非同步】從文字分析角色特質")
+        if target_name:
+            log(f">> 目標角色：「{target_name}」")
+        log(f">> 文字長度：{len(text_content)} 字，模型：{model_name}，num_predict：{opts['num_predict']}")
+        log("=" * 20 + " 以下是送給 AI 的完整提示詞 " + "=" * 20)
+        log(prompt)
+        log("=" * 20 + " 提示詞結束 " + "=" * 20)
+        log(">> 正在呼叫 Ollama 分析中（請稍候）...")
+
+        timeStartSec = time.time()
+        response_text = _ollama_with_heartbeat(
+            job_id, model_name, prompt, options=opts, time_start=timeStartSec
+        )
+        duration = int(time.time() - timeStartSec)
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        log("=" * 20 + " 以下是 AI 完整回傳內容 " + "=" * 20)
+        log(response_text if response_text.strip() else "（空字串，模型未回傳任何內容）")
+        log("=" * 20 + " AI 回傳結束 " + "=" * 20)
+        log(f"[{timestamp}] 總共花費 {duration} 秒，Ollama 回傳完畢，回傳長度：{len(response_text)} 字元")
+        if not response_text.strip():
+            log(">> [警告] 模型回傳空字串！可能原因：模型拒絕回應、num_ctx 不足、或模型不支援此任務。")
+            log(f">> 請確認 Ollama 中已載入模型：{model_name}")
+
+        character = {}
+        try:
+            repaired = _try_repair_json(response_text)
+            start = repaired.find('{')
+            end   = repaired.rfind('}')
+            if start != -1 and end != -1:
+                character = json.loads(repaired[start:end + 1])
+                log(f">> JSON 解析成功！角色名稱：{character.get('name', '未命名')}")
+                log(f">> 星座：{character.get('zodiac','')}　血型：{character.get('blood_type','')}　LPAS：{character.get('personality_type','')}")
+            else:
+                log(">> 找不到有效 JSON 物件（回傳內容中沒有 { } 結構）。")
+        except Exception as e:
+            log(f">> JSON 解析失敗：{e}")
+
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["result"]     = {"character": character, "debug_prompt": prompt}
+                JOBS[job_id]["status"]     = "done"
+                JOBS[job_id]["updated_at"] = time.time()
+    except Exception as e:
+        import traceback
+        _append_job_log(job_id, f"[ERROR] _run_analyze_text_char_job failed: {e}\n{traceback.format_exc()}")
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["status"]     = "error"
+                JOBS[job_id]["updated_at"] = time.time()
+
+
+def _run_analyze_image_char_job(job_id: str, params: dict):
+    """非同步執行「從圖片分析外貌並生成 AI 生圖提示詞」任務"""
+    #####################################################################################
+    # 非同步執行「從圖片分析外貌並生成 AI 生圖提示詞」任務。
+    #####################################################################################
+    def log(text):
+        print(text)
+        _append_job_log(job_id, text)
+    try:
+        image_base64 = params.get('image_base64', '')
+        model_name   = params.get('model', 'gemma4')
+        prompt = build_analyze_image_prompt_text()
+
+        opts = dict(params.get('model_options') or {})
+        opts.setdefault('num_predict', 2048)
+        opts.setdefault('temperature', 0.95)
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        log("=" * 50)
+        log(f"[{timestamp}] debug_server.py：【非同步】從圖片分析外貌生成提示詞")
+        log(f">> 模型：{model_name}，圖片 base64 長度：{len(image_base64)} 字元")
+        if not image_base64:
+            log(">> [錯誤] 未收到圖片資料！")
+            with JOBS_LOCK:
+                if job_id in JOBS:
+                    JOBS[job_id]["status"] = "error"
+                    JOBS[job_id]["updated_at"] = time.time()
+            return
+        log("=" * 20 + " 以下是送給 AI 的完整提示詞 " + "=" * 20)
+        log(prompt)
+        log("=" * 20 + " 提示詞結束 " + "=" * 20)
+        log(">> 正在呼叫 Ollama 分析圖片中（請稍候）...")
+
+        timeStartSec = time.time()
+        response_text = _ollama_with_heartbeat(
+            job_id, model_name, prompt,
+            options=opts, images=[image_base64], time_start=timeStartSec
+        )
+        duration = int(time.time() - timeStartSec)
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        log("=" * 20 + " 以下是 AI 完整回傳內容 " + "=" * 20)
+        log(response_text if response_text.strip() else "（空字串，模型未回傳任何內容）")
+        log("=" * 20 + " AI 回傳結束 " + "=" * 20)
+        log(f"[{timestamp}] 總共花費 {duration} 秒，Ollama 回傳完畢，回傳長度：{len(response_text)} 字元")
+        if not response_text.strip():
+            log(">> [警告] 模型回傳空字串！可能原因：模型不支援視覺功能。")
+            log(f">> 請確認 {model_name} 支援圖片輸入（vision model）。")
+            log(">> 支援視覺的模型範例：gemma4、llava、moondream、minicpm-v 等。")
+
+        image_prompt = response_text.strip().strip('"').strip("'")
+
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["result"]     = {"image_prompt": image_prompt, "debug_prompt": prompt}
+                JOBS[job_id]["status"]     = "done"
+                JOBS[job_id]["updated_at"] = time.time()
+    except Exception as e:
+        import traceback
+        _append_job_log(job_id, f"[ERROR] _run_analyze_image_char_job failed: {e}\n{traceback.format_exc()}")
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["status"]     = "error"
+                JOBS[job_id]["updated_at"] = time.time()
+
+
 
 def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_prompt: str, model: str = "gemma4", params: dict = None):
     #####################################################################################
     # 執行「生成日記」任務，發放提示詞給OLLAMA的大模型
     #####################################################################################
+    # 子行程無法透過 on_chunk 取得 token，改用心跳執行緒每 30 秒更新 last_activity
+    # 並追加一行 LOG，防止前端因無回應而提早判定超時
+    _stop_hb = threading.Event()
+    def _heartbeat():
+        elapsed = [0]
+        while not _stop_hb.wait(30):
+            elapsed[0] += 30
+            with JOBS_LOCK:
+                if job_id in JOBS:
+                    JOBS[job_id]["last_activity"] = time.time()
+            _append_job_log(job_id, f">> [等待中] 後端仍在處理，已用 {elapsed[0]} 秒...")
+    threading.Thread(target=_heartbeat, daemon=True).start()
     try:
         timeStartSec = time.time()
         timestampStart = time.strftime("%H:%M:%S", time.localtime(timeStartSec))
@@ -403,14 +645,68 @@ def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_
             if job_id in JOBS:
                 JOBS[job_id]["status"] = "error"
                 JOBS[job_id]["updated_at"] = time.time()
+    finally:
+        _stop_hb.set()  # 停止心跳執行緒
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# 非同步 Job 函式（小說產生器 / LoveLine 聊天）
-# 前端透過 /api/job?id=... 輪詢 logs，即時顯示後端 print 訊息
-# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _run_story_to_premise_job(job_id: str, params: dict):
+    """非同步執行「將故事原文濃縮成故事粗綱」任務"""
+    #####################################################################################
+    # 非同步執行「將故事原文濃縮成故事粗綱」任務。
+    #####################################################################################
+    def log(text):
+        print(text)
+        _append_job_log(job_id, text)
+    try:
+        text_content = params.get('text_content', '')
+        model_name   = params.get('model', 'gemma4')
+        prompt = build_story_to_premise_prompt(text_content)
+
+        opts = dict(params.get('model_options') or {})
+        opts.setdefault('num_predict', 4096)
+        opts.setdefault('temperature', 0.75)
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        log("=" * 50)
+        log(f"[{timestamp}] debug_server.py：【非同步】將故事原文濃縮成故事粗綱")
+        log(f">> 原文長度：{len(text_content)} 字，模型：{model_name}，num_predict：{opts['num_predict']}")
+        log("=" * 20 + " 以下是送給 AI 的完整提示詞 " + "=" * 20)
+        log(prompt)
+        log("=" * 20 + " 提示詞結束 " + "=" * 20)
+        log(">> 正在呼叫 Ollama 產生故事粗綱中（請稍候）...")
+
+        timeStartSec = time.time()
+        response_text = _ollama_with_heartbeat(
+            job_id, model_name, prompt, options=opts, time_start=timeStartSec
+        )
+        duration = int(time.time() - timeStartSec)
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        log("=" * 20 + " 以下是 AI 完整回傳內容 " + "=" * 20)
+        log(response_text if response_text.strip() else "（空字串，模型未回傳任何內容）")
+        log("=" * 20 + " AI 回傳結束 " + "=" * 20)
+        log(f"[{timestamp}] 總共花費 {duration} 秒，故事粗綱產生完畢，回傳長度：{len(response_text)} 字元")
+        if not response_text.strip():
+            log(">> [警告] 模型回傳空字串！可能原因：模型拒絕回應、num_ctx 不足、或模型不支援此任務。")
+
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["result"]     = {"premise": response_text.strip(), "debug_prompt": prompt}
+                JOBS[job_id]["status"]     = "done"
+                JOBS[job_id]["updated_at"] = time.time()
+    except Exception as e:
+        import traceback
+        _append_job_log(job_id, f"[ERROR] _run_story_to_premise_job failed: {e}\n{traceback.format_exc()}")
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["status"]     = "error"
+                JOBS[job_id]["updated_at"] = time.time()
 
 def _run_novel_chapters_job(job_id: str, params: dict):
     """非同步執行「根據粗綱生成各章標題與描述」任務"""
+    #####################################################################################
+    # 非同步執行「根據粗綱生成各章標題與描述」任務。
+    #####################################################################################
     def log(text):
         print(text)
         _append_job_log(job_id, text)
@@ -445,9 +741,9 @@ def _run_novel_chapters_job(job_id: str, params: dict):
         log(f">> 正在呼叫 Ollama 產生「各章標題與描述」(請稍候)...")
 
         timeStartSec = time.time()
-        response_text = _ollama_generate_direct(
-            params.get('model', 'gemma4'), prompt,
-            options=params.get('model_options')
+        response_text = _ollama_with_heartbeat(
+            job_id, params.get('model', 'gemma4'), prompt,
+            options=params.get('model_options'), time_start=timeStartSec
         )
         duration = int(time.time() - timeStartSec)
         timestamp = time.strftime("%H:%M:%S", time.localtime())
@@ -466,7 +762,7 @@ def _run_novel_chapters_job(job_id: str, params: dict):
                 log(f">> JSON 修復後找不到有效陣列範圍")
         except Exception as e:
             log(f">> JSON 解析失敗 (嘗試修復後): {e}")
-            log(f">> 原始回傳（前500字）: {response_text[:500]}")
+            log(f">> 原始回傳（前1000字）: {response_text[:1000]}")
 
         with JOBS_LOCK:
             if job_id in JOBS:
@@ -483,6 +779,9 @@ def _run_novel_chapters_job(job_id: str, params: dict):
 
 def _run_novel_outline_job(job_id: str, params: dict):
     """非同步執行「建立各小節大綱」任務"""
+    #####################################################################################
+    # 非同步執行「建立各小節大綱」任務。
+    #####################################################################################
     def log(text):
         print(text)
         _append_job_log(job_id, text)
@@ -524,9 +823,9 @@ def _run_novel_outline_job(job_id: str, params: dict):
         log(f">> 正在呼叫 Ollama 產生「各小節大綱」(請稍候)...")
 
         timeStartSec = time.time()
-        response_text = _ollama_generate_direct(
-            params.get('model', 'gemma4'), prompt,
-            options=params.get('model_options')
+        response_text = _ollama_with_heartbeat(
+            job_id, params.get('model', 'gemma4'), prompt,
+            options=params.get('model_options'), time_start=timeStartSec
         )
         duration = int(time.time() - timeStartSec)
         timestamp = time.strftime("%H:%M:%S", time.localtime())
@@ -554,13 +853,13 @@ def _run_novel_outline_job(job_id: str, params: dict):
                                 sections.append(combined)
                 except Exception as inner_e:
                     log(f">> JSON 解析失敗，嘗試 regex 提取: {inner_e}")
-                    log(f">> 修復後文字（前500字）: {json_str[:500]}")
+                    log(f">> 修復後文字（前1000字）: {json_str[:1000]}")
                     raw_titles = re.findall(r'"([^"]+)"', json_str)
                     if raw_titles:
                         sections = [t.strip() for t in raw_titles if t.strip()]
         except Exception as e:
             log(f">> JSON 解析失敗 (大綱): {e}")
-            log(f">> 原始回傳（前500字）: {response_text[:500]}")
+            log(f">> 原始回傳（前1000字）: {response_text[:1000]}")
             sections = [s.strip() for s in response_text.split('\n')
                         if s.strip() and not s.startswith('[') and not s.startswith('`')]
 
@@ -585,6 +884,9 @@ def _run_novel_outline_job(job_id: str, params: dict):
 
 def _run_novel_content_job(job_id: str, params: dict):
     """非同步執行「小說本文生成」任務"""
+    #####################################################################################
+    # 非同步執行「小說本文生成」任務。
+    #####################################################################################
     def log(text):
         print(text)
         _append_job_log(job_id, text)
@@ -630,9 +932,9 @@ def _run_novel_content_job(job_id: str, params: dict):
         log(f">> 正在呼叫 Ollama 產生「小說本文生成」(這會花費較長時間，請稍候)...")
 
         timeStartSec = time.time()
-        content = _ollama_generate_direct(
-            params.get('model', 'gemma4'), prompt,
-            options=params.get('model_options')
+        content = _ollama_with_heartbeat(
+            job_id, params.get('model', 'gemma4'), prompt,
+            options=params.get('model_options'), time_start=timeStartSec
         )
         duration = int(time.time() - timeStartSec)
         timestamp = time.strftime("%H:%M:%S", time.localtime())
@@ -653,6 +955,9 @@ def _run_novel_content_job(job_id: str, params: dict):
 
 def _run_chat_reply_job(job_id: str, params: dict):
     """非同步執行「LoveLine 角色回覆」任務"""
+    #####################################################################################
+    # 非同步執行「LoveLine 角色回覆」任務。
+    #####################################################################################
     from prompt_utils import build_chat_reply_prompt
     def log(text):
         print(text)
@@ -694,7 +999,9 @@ def _run_chat_reply_job(job_id: str, params: dict):
         if 'temperature' not in opts:
             opts['temperature'] = 0.95
         timeStartSec = time.time()
-        reply_text = _ollama_generate_direct(model_name, prompt, options=opts)
+        reply_text = _ollama_with_heartbeat(
+            job_id, model_name, prompt, options=opts, time_start=timeStartSec
+        )
         duration = int(time.time() - timeStartSec)
         timestamp = time.strftime("%H:%M:%S", time.localtime())
         log(f"[{timestamp}] 總共花費 {duration} 秒，「{character_name}」的回覆產生完畢！")
@@ -717,182 +1024,7 @@ def _run_chat_reply_job(job_id: str, params: dict):
                 JOBS[job_id]["updated_at"] = time.time()
 
 
-def _run_analyze_text_char_job(job_id: str, params: dict):
-    """非同步執行「從文字分析角色特質並生成角色卡 JSON」任務"""
-    def log(text):
-        print(text)
-        _append_job_log(job_id, text)
-    try:
-        text_content = params.get('text_content', '')
-        target_name  = params.get('target_name', '').strip()
-        model_name   = params.get('model', 'gemma4')
-        prompt = build_analyze_text_character_prompt(text_content, target_name=target_name)
 
-        # 分析任務需要較長輸出，覆寫 num_predict
-        opts = dict(params.get('model_options') or {})
-        opts.setdefault('num_predict', 2048)
-        opts.setdefault('temperature', 0.95)
-
-        timestamp = time.strftime("%H:%M:%S", time.localtime())
-        log("=" * 50)
-        log(f"[{timestamp}] debug_server.py：【非同步】從文字分析角色特質")
-        if target_name:
-            log(f">> 目標角色：「{target_name}」")
-        log(f">> 文字長度：{len(text_content)} 字，模型：{model_name}，num_predict：{opts['num_predict']}")
-        log("=" * 20 + " 以下是送給 AI 的完整提示詞 " + "=" * 20)
-        log(prompt)
-        log("=" * 20 + " 提示詞結束 " + "=" * 20)
-        log(">> 正在呼叫 Ollama 分析中（請稍候）...")
-
-        timeStartSec = time.time()
-        response_text = _ollama_generate_direct(model_name, prompt, options=opts)
-        duration = int(time.time() - timeStartSec)
-        timestamp = time.strftime("%H:%M:%S", time.localtime())
-        log("=" * 20 + " 以下是 AI 完整回傳內容 " + "=" * 20)
-        log(response_text if response_text.strip() else "（空字串，模型未回傳任何內容）")
-        log("=" * 20 + " AI 回傳結束 " + "=" * 20)
-        log(f"[{timestamp}] 總共花費 {duration} 秒，Ollama 回傳完畢，回傳長度：{len(response_text)} 字元")
-        if not response_text.strip():
-            log(">> [警告] 模型回傳空字串！可能原因：模型拒絕回應、num_ctx 不足、或模型不支援此任務。")
-            log(f">> 請確認 Ollama 中已載入模型：{model_name}")
-
-        character = {}
-        try:
-            repaired = _try_repair_json(response_text)
-            start = repaired.find('{')
-            end   = repaired.rfind('}')
-            if start != -1 and end != -1:
-                character = json.loads(repaired[start:end + 1])
-                log(f">> JSON 解析成功！角色名稱：{character.get('name', '未命名')}")
-                log(f">> 星座：{character.get('zodiac','')}　血型：{character.get('blood_type','')}　LPAS：{character.get('personality_type','')}")
-            else:
-                log(">> 找不到有效 JSON 物件（回傳內容中沒有 { } 結構）。")
-        except Exception as e:
-            log(f">> JSON 解析失敗：{e}")
-
-        with JOBS_LOCK:
-            if job_id in JOBS:
-                JOBS[job_id]["result"]     = {"character": character, "debug_prompt": prompt}
-                JOBS[job_id]["status"]     = "done"
-                JOBS[job_id]["updated_at"] = time.time()
-    except Exception as e:
-        import traceback
-        _append_job_log(job_id, f"[ERROR] _run_analyze_text_char_job failed: {e}\n{traceback.format_exc()}")
-        with JOBS_LOCK:
-            if job_id in JOBS:
-                JOBS[job_id]["status"]     = "error"
-                JOBS[job_id]["updated_at"] = time.time()
-
-
-def _run_analyze_image_char_job(job_id: str, params: dict):
-    """非同步執行「從圖片分析外貌並生成 AI 生圖提示詞」任務"""
-    def log(text):
-        print(text)
-        _append_job_log(job_id, text)
-    try:
-        image_base64 = params.get('image_base64', '')
-        model_name   = params.get('model', 'gemma4')
-        prompt = build_analyze_image_prompt_text()
-
-        opts = dict(params.get('model_options') or {})
-        opts.setdefault('num_predict', 2048)
-        opts.setdefault('temperature', 0.95)
-
-        timestamp = time.strftime("%H:%M:%S", time.localtime())
-        log("=" * 50)
-        log(f"[{timestamp}] debug_server.py：【非同步】從圖片分析外貌生成提示詞")
-        log(f">> 模型：{model_name}，圖片 base64 長度：{len(image_base64)} 字元")
-        if not image_base64:
-            log(">> [錯誤] 未收到圖片資料！")
-            with JOBS_LOCK:
-                if job_id in JOBS:
-                    JOBS[job_id]["status"] = "error"
-                    JOBS[job_id]["updated_at"] = time.time()
-            return
-        log("=" * 20 + " 以下是送給 AI 的完整提示詞 " + "=" * 20)
-        log(prompt)
-        log("=" * 20 + " 提示詞結束 " + "=" * 20)
-        log(">> 正在呼叫 Ollama 分析圖片中（請稍候）...")
-
-        timeStartSec = time.time()
-        response_text = _ollama_generate_direct(
-            model_name, prompt,
-            options=opts,
-            images=[image_base64]
-        )
-        duration = int(time.time() - timeStartSec)
-        timestamp = time.strftime("%H:%M:%S", time.localtime())
-        log("=" * 20 + " 以下是 AI 完整回傳內容 " + "=" * 20)
-        log(response_text if response_text.strip() else "（空字串，模型未回傳任何內容）")
-        log("=" * 20 + " AI 回傳結束 " + "=" * 20)
-        log(f"[{timestamp}] 總共花費 {duration} 秒，Ollama 回傳完畢，回傳長度：{len(response_text)} 字元")
-        if not response_text.strip():
-            log(">> [警告] 模型回傳空字串！可能原因：模型不支援視覺功能。")
-            log(f">> 請確認 {model_name} 支援圖片輸入（vision model）。")
-            log(">> 支援視覺的模型範例：gemma4、llava、moondream、minicpm-v 等。")
-
-        image_prompt = response_text.strip().strip('"').strip("'")
-
-        with JOBS_LOCK:
-            if job_id in JOBS:
-                JOBS[job_id]["result"]     = {"image_prompt": image_prompt, "debug_prompt": prompt}
-                JOBS[job_id]["status"]     = "done"
-                JOBS[job_id]["updated_at"] = time.time()
-    except Exception as e:
-        import traceback
-        _append_job_log(job_id, f"[ERROR] _run_analyze_image_char_job failed: {e}\n{traceback.format_exc()}")
-        with JOBS_LOCK:
-            if job_id in JOBS:
-                JOBS[job_id]["status"]     = "error"
-                JOBS[job_id]["updated_at"] = time.time()
-
-
-def _run_story_to_premise_job(job_id: str, params: dict):
-    """非同步執行「將故事原文濃縮成故事粗綱」任務"""
-    def log(text):
-        print(text)
-        _append_job_log(job_id, text)
-    try:
-        text_content = params.get('text_content', '')
-        model_name   = params.get('model', 'gemma4')
-        prompt = build_story_to_premise_prompt(text_content)
-
-        opts = dict(params.get('model_options') or {})
-        opts.setdefault('num_predict', 4096)
-        opts.setdefault('temperature', 0.75)
-
-        timestamp = time.strftime("%H:%M:%S", time.localtime())
-        log("=" * 50)
-        log(f"[{timestamp}] debug_server.py：【非同步】將故事原文濃縮成故事粗綱")
-        log(f">> 原文長度：{len(text_content)} 字，模型：{model_name}，num_predict：{opts['num_predict']}")
-        log("=" * 20 + " 以下是送給 AI 的完整提示詞 " + "=" * 20)
-        log(prompt)
-        log("=" * 20 + " 提示詞結束 " + "=" * 20)
-        log(">> 正在呼叫 Ollama 產生故事粗綱中（請稍候）...")
-
-        timeStartSec = time.time()
-        response_text = _ollama_generate_direct(model_name, prompt, options=opts)
-        duration = int(time.time() - timeStartSec)
-        timestamp = time.strftime("%H:%M:%S", time.localtime())
-        log("=" * 20 + " 以下是 AI 完整回傳內容 " + "=" * 20)
-        log(response_text if response_text.strip() else "（空字串，模型未回傳任何內容）")
-        log("=" * 20 + " AI 回傳結束 " + "=" * 20)
-        log(f"[{timestamp}] 總共花費 {duration} 秒，故事粗綱產生完畢，回傳長度：{len(response_text)} 字元")
-        if not response_text.strip():
-            log(">> [警告] 模型回傳空字串！可能原因：模型拒絕回應、num_ctx 不足、或模型不支援此任務。")
-
-        with JOBS_LOCK:
-            if job_id in JOBS:
-                JOBS[job_id]["result"]     = {"premise": response_text.strip(), "debug_prompt": prompt}
-                JOBS[job_id]["status"]     = "done"
-                JOBS[job_id]["updated_at"] = time.time()
-    except Exception as e:
-        import traceback
-        _append_job_log(job_id, f"[ERROR] _run_story_to_premise_job failed: {e}\n{traceback.format_exc()}")
-        with JOBS_LOCK:
-            if job_id in JOBS:
-                JOBS[job_id]["status"]     = "error"
-                JOBS[job_id]["updated_at"] = time.time()
 
 
 class DebugHandler(http.server.SimpleHTTPRequestHandler):
@@ -965,7 +1097,9 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                         "logs": "\n".join(job["logs"]),
                         "diary_prompt": job.get("diary_prompt", ""),
                         "image_prompt": job.get("image_prompt", ""),
-                        "result": job.get("result")   # 新增：供非同步 Job 回傳 AI 結果
+                        "result": job.get("result"),
+                        # 供前端「無活動超時」判斷使用（Unix 時間戳，單位：秒）
+                        "last_activity": job.get("last_activity", job.get("updated_at", 0))
                     }
             self.send_response(200)
             self.send_header('Content-type', 'application/json; charset=utf-8')
@@ -1099,6 +1233,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                         "diary_prompt": diary_prompt,
                         "image_prompt": image_prompt,
                         "created_at": time.time(),
+                        "last_activity": time.time(),
                         "updated_at": time.time()
                     }
                 threading.Thread(target=_run_job, args=(job_id, char_id, scenario, diary_prompt, image_prompt, model_name, params), daemon=True).start()
@@ -1175,7 +1310,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                         chapters = json.loads(repaired_text[start:end+1])
                 except Exception as e:
                     print(f">> JSON 解析失敗 (嘗試修復後): {e}")
-                    print(f">> 嘗試修復後的內容: {repaired_text[:200]}...")
+                    print(f">> 嘗試修復後的內容: {repaired_text[:1000]}...")
 
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json; charset=utf-8')
@@ -1461,6 +1596,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                         "logs": [">> 任務啟動：根據粗綱生成各章標題與描述..."],
                         "result": None,
                         "created_at": time.time(),
+                        "last_activity": time.time(),
                         "updated_at": time.time()
                     }
                 threading.Thread(
@@ -1484,6 +1620,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                         "logs": [">> 任務啟動：建立各小節大綱..."],
                         "result": None,
                         "created_at": time.time(),
+                        "last_activity": time.time(),
                         "updated_at": time.time()
                     }
                 threading.Thread(
@@ -1507,6 +1644,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                         "logs": [f">> 任務啟動：小說本文生成 - {params.get('context', {}).get('section_title', '')}..."],
                         "result": None,
                         "created_at": time.time(),
+                        "last_activity": time.time(),
                         "updated_at": time.time()
                     }
                 threading.Thread(
@@ -1531,6 +1669,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                         "logs": [f">> 任務啟動：等待「{char_name}」回覆中..."],
                         "result": None,
                         "created_at": time.time(),
+                        "last_activity": time.time(),
                         "updated_at": time.time()
                     }
                 threading.Thread(
@@ -1554,6 +1693,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                         "logs": [">> 任務啟動：從文字分析角色特質..."],
                         "result": None,
                         "created_at": time.time(),
+                        "last_activity": time.time(),
                         "updated_at": time.time()
                     }
                 threading.Thread(
@@ -1577,6 +1717,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                         "logs": [">> 任務啟動：從圖片分析外貌生成提示詞..."],
                         "result": None,
                         "created_at": time.time(),
+                        "last_activity": time.time(),
                         "updated_at": time.time()
                     }
                 threading.Thread(
@@ -1600,6 +1741,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                         "logs": [">> 任務啟動：正在將故事原文濃縮成故事粗綱..."],
                         "result": None,
                         "created_at": time.time(),
+                        "last_activity": time.time(),
                         "updated_at": time.time()
                     }
                 threading.Thread(

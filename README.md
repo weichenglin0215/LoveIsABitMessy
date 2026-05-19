@@ -78,6 +78,7 @@
 
 | 版本 | 日期 | 更新亮點 |
 | :--- | :--- | :--- |
+| **V0.8.6.0** | 2026-05-20 | 新增debug_server心跳功能，避免OLLAMA長時間思考而timeout，LOG欄顯示OLLAMA參數。|
 | **V0.8.5.0** | 2026-05-18 | 移除docs目錄的任何讀寫功能(修正無法發布的錯誤)。全自動生成小說提供章節區分，新增novel_generator.html"比對多本小說"功能，新增LoveLine聊天室自動聊天與優化介面。|
 | **V0.8.4.0** | 2026-05-18 | Add custom GitHub Actions workflow for Pages deployment。|
 | **V0.8.3.0** | 2026-05-18 | Add .nojekyll to disable Jekyll build for GitHub Pages。|

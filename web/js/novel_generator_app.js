@@ -1215,10 +1215,21 @@ async function callDebugServerAsync(asyncEndpoint, payload) {
 
     appendLog(`>> Job 已啟動 (id: ${job_id.slice(0, 8)}...)`);
 
-    // Step 2: 輪詢 /api/job 直到 done 或 error（最多等 600 秒）
-    let lastLogs = "";
-    for (let i = 0; i < 600; i++) {
+    // Step 2: 輪詢 /api/job — 使用「無活動超時」取代固定次數，支援大型模型長時間生成
+    // 後端每 5 秒會追加心跳 LOG，只要持續有新 LOG 就繼續等待
+    const INACTIVITY_MS = 300_000; // 300 秒無新 LOG → 超時
+    let lastLogs     = "";
+    let lastActivity = Date.now();
+
+    while (true) {
         await new Promise(r => setTimeout(r, 1000));
+
+        // 無活動超時
+        if (Date.now() - lastActivity > INACTIVITY_MS) {
+            appendLog("⏰ 等待逾時（300 秒無後端回應）。大模型可能仍在運算，請查看 CMD 視窗。");
+            return null;
+        }
+
         let jd;
         try {
             const jr = await fetch(`http://localhost:8081/api/job?id=${encodeURIComponent(job_id)}`);
@@ -1233,6 +1244,11 @@ async function callDebugServerAsync(asyncEndpoint, payload) {
             const newPart = jd.logs.slice(lastLogs.length);
             lastLogs = jd.logs;
             if (newPart) appendLog(newPart);
+            lastActivity = Date.now();
+        }
+        // 同步伺服器端 last_activity
+        if (jd.last_activity && jd.last_activity * 1000 > lastActivity) {
+            lastActivity = jd.last_activity * 1000;
         }
 
         if (jd.status === 'done') {
@@ -1243,8 +1259,6 @@ async function callDebugServerAsync(asyncEndpoint, payload) {
             return null;
         }
     }
-    appendLog("⏰ 等待超時（600 秒），請確認後端是否正常運作。");
-    return null;
 }
 
 // ====== 比對多本小說 ======

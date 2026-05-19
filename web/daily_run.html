@@ -860,10 +860,20 @@
                 }
 
                 logBox.value += `\nJob: ${jobId}\n`;
-                let lastText = "";
+                // 使用「無活動超時」取代固定次數，支援大型模型長時間生成
+                // 後端每 5~30 秒會追加心跳 LOG；超過 300 秒無任何新 LOG 才判定超時
+                const INACTIVITY_MS = 300_000;
+                let lastText     = "";
+                let lastActivity = Date.now();
                 let finalJobResult = null;
-                for (let i = 0; i < 600; i++) {
+                while (true) {
                     await new Promise(r => setTimeout(r, 1000));
+
+                    if (Date.now() - lastActivity > INACTIVITY_MS) {
+                        logBox.value += "\n\n⏰ 等待逾時（300 秒無後端回應）。大模型可能仍在運算，請查看 CMD 視窗。";
+                        break;
+                    }
+
                     const jr = await fetch(`http://localhost:8081/api/job?id=${encodeURIComponent(jobId)}`);
                     const jd = await jr.json();
                     if (jd.logs && jd.logs !== lastText) {
@@ -873,6 +883,11 @@
                             logBox.value += newPart.replace(/\\n/g, '\n');
                             logBox.scrollTop = logBox.scrollHeight;
                         }
+                        lastActivity = Date.now();
+                    }
+                    // 同步伺服器端 last_activity
+                    if (jd.last_activity && jd.last_activity * 1000 > lastActivity) {
+                        lastActivity = jd.last_activity * 1000;
                     }
                     if (jd.status === 'done') {
                         logBox.value += "\n\n[OK] 流程完畢。您可以到首頁查看結果。";

@@ -65,7 +65,7 @@ async function refreshCharacterList() {
         const opt = document.createElement('option');
         opt.value = row.id;
         const dateStr = row.updated_at ? row.updated_at.split('T')[0].replace(/-/g, '') : '';
-        
+
         let lpasStr = row.lpas;
         if (!lpasStr && row.card_json) {
             const card = (typeof row.card_json === 'string') ? JSON.parse(row.card_json) : row.card_json;
@@ -126,7 +126,7 @@ function initDropdownOptions() {
         [1, 2, 3].forEach(p => {
             const sel = qs(`#char-type-${p}`);
             if (sel) {
-                sel.innerHTML = `<option value="">-- 選擇${labels[p-1]}類型 --</option>`;
+                sel.innerHTML = `<option value="">-- 選擇${labels[p - 1]}類型 --</option>`;
                 typeKeys.forEach(k => {
                     const opt = document.createElement('option');
                     const code = k.replace(/-/g, '');
@@ -154,12 +154,12 @@ function updateAgeDisplay() {
 
 function updateIdPreview() {
     if (currentCharacterId) return; // 編輯現有角色不改 ID
-    
+
     const name = qs('#char-name').value.trim() || "未命名";
     const c1 = qs('#char-type-1').value || "???";
     const c2 = qs('#char-type-2').value || "???";
     const c3 = qs('#char-type-3').value || "???";
-    
+
     let n1 = "???", n2 = "???", n3 = "???";
     const mapping = window.TYPE_MAPPING;
     if (mapping) {
@@ -176,7 +176,7 @@ function updateIdPreview() {
     const ptCode = `${c1}_${c2}_${c3}`;
     const ptNames = `${n1}_${n2}_${n3}`;
     const lpas = `${ptCode}-${ptNames}`;
-    
+
     if (currentCharacterId) {
         qs('#char-id').value = currentCharacterId;
     } else {
@@ -211,7 +211,7 @@ function updateExplanations() {
                         if (p === 1) subInfo = info.ambiguity;
                         else if (p === 2) subInfo = info.love;
                         else if (p === 3) subInfo = info.breakup;
-                        
+
                         if (subInfo && subInfo.desc) {
                             descEl.value = `${subInfo.name || info.name}\n${subInfo.desc}`;
                         } else {
@@ -245,11 +245,11 @@ async function loadCharacter(charId) {
     currentCharacterId = charId;
     qs('#char-id').value = data.id || '';
     qs('#char-name').value = data.name || '';
-    
+
     currentCharacterId = data.id;
     const cardJson = data.card_json || {};
     qs('#char-card-json').value = prettyJson(cardJson);
-    
+
     qs('#char-birthday').value = normalizeBirthday(cardJson.birthday) || '1999-01-01';
     qs('#char-gender').value = cardJson.gender || '女';
     qs('#char-zodiac').value = cardJson.zodiac || '';
@@ -271,14 +271,14 @@ async function loadCharacter(charId) {
     qs('#char-weight').value = cardJson.weight || '55';
     qs('#char-bust').value = cardJson.bust || 'C';
 
-    const pt = cardJson.personality_type || ""; 
-    
+    const pt = cardJson.personality_type || "";
+
     // 解析性格類型 (相容多種舊格式與新格式 AOCF_AOCF_AOCF-太陽_太陽_太陽)
     let t1 = "", t2 = "", t3 = "";
     if (pt) {
         // 先拔除後面的 "- 名稱"
-        let rawCodes = pt.split('-')[0]; 
-        
+        let rawCodes = pt.split('-')[0];
+
         if (rawCodes.length === 4 && !rawCodes.includes('_') && !rawCodes.includes('-')) {
             // 例: "AOCF" (全部一樣)
             t1 = rawCodes; t2 = rawCodes; t3 = rawCodes;
@@ -298,11 +298,11 @@ async function loadCharacter(charId) {
             t1 = c; t2 = c; t3 = c;
         }
     }
-    
+
     qs('#char-type-1').value = t1;
     qs('#char-type-2').value = t2;
     qs('#char-type-3').value = t3;
-    
+
     updateExplanations();
     updateAgeDisplay();
     updateButtonStates();
@@ -343,7 +343,7 @@ async function saveCharacter() {
     const t1 = qs('#char-type-1').value;
     const t2 = qs('#char-type-2').value;
     const t3 = qs('#char-type-3').value;
-    
+
     // 清除舊有的不必要欄位以精簡結構
     delete cardJson.age;
     delete cardJson.zodiac_description;
@@ -498,7 +498,7 @@ function updateJsonFromDropdowns() {
         cardJson.height = qs('#char-height').value || "165";
         cardJson.weight = qs('#char-weight').value || "55";
         cardJson.bust = qs('#char-bust').value || "C";
-        
+
         const t1 = qs('#char-type-1').value;
         const t2 = qs('#char-type-2').value;
         const t3 = qs('#char-type-3').value;
@@ -514,11 +514,11 @@ function updateJsonFromDropdowns() {
             const n3 = getShortName(t3);
             cardJson.personality_type = `${t1}_${t2}_${t3}-${n1}_${n2}_${n3}`;
         }
-        
+
         // 更新顯示
         qs('#char-card-json').value = prettyJson(cardJson);
         updateButtonStates();
-    } catch(e) {}
+    } catch (e) { }
 }
 
 // ====== 伺服器狀態偵測 ======
@@ -550,10 +550,10 @@ async function fetchOllamaModels() {
 }
 
 async function checkServerStatus() {
-    const serverDot       = document.getElementById('server-dot');
+    const serverDot = document.getElementById('server-dot');
     const serverStatusText = document.getElementById('server-status-text');
-    const startServerBtn  = document.getElementById('start-server-btn');
-    const modelContainer  = document.getElementById('model-container');
+    const startServerBtn = document.getElementById('start-server-btn');
+    const modelContainer = document.getElementById('model-container');
     try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 2000);
@@ -686,41 +686,62 @@ async function _apiPost(url, body) {
 }
 
 async function _pollAnalysisJob(jobId, onDone, onError) {
-    let lastText = '';
-    for (let i = 0; i < 300; i++) {
+    // 使用「無活動超時」機制：只要後端 LOG 持續更新（後端每 5 秒會追加心跳訊息）
+    // 就繼續等待；真正超過 300 秒無任何回應時才判定超時。
+    // 這可支援 gemma4:31b / qwen3:27b 等需要 600~1000 秒的大型模型。
+    const INACTIVITY_MS = 300_000; // 300 秒無新 LOG → 超時
+    let lastText        = '';
+    let lastActivity    = Date.now();
+
+    while (true) {
         await new Promise(r => setTimeout(r, 1000));
+
+        // 無活動超時檢查
+        if (Date.now() - lastActivity > INACTIVITY_MS) {
+            onError('等待逾時（300 秒無後端回應）。大模型可能已崩潰，請查看 CMD 視窗。');
+            return;
+        }
+
+        let jd;
         try {
             const jr = await fetch(`http://localhost:8081/api/job?id=${encodeURIComponent(jobId)}`);
             if (!jr.ok) { onError(`輪詢回傳 ${jr.status}，請確認 debug_server.py 仍在運行。`); return; }
-            const jd = await jr.json();
-            if (jd.logs && jd.logs !== lastText) {
-                const newPart = jd.logs.slice(lastText.length);
-                lastText = jd.logs;
-                if (newPart.trim()) appendEditorLog(newPart.replace(/\\n/g, '\n').trimEnd());
-            }
-            if (jd.status === 'done') { onDone(jd.result); return; }
-            if (jd.status === 'error') { onError('AI 任務失敗，請查看上方錯誤訊息。'); return; }
+            jd = await jr.json();
         } catch (e) {
             onError(`輪詢錯誤：${e.message}`);
             return;
         }
+
+        // LOG 有新增內容 → 重置計時器
+        if (jd.logs && jd.logs !== lastText) {
+            const newPart = jd.logs.slice(lastText.length);
+            lastText = jd.logs;
+            if (newPart.trim()) appendEditorLog(newPart.replace(/\\n/g, '\n').trimEnd());
+            lastActivity = Date.now();
+        }
+        // 同步伺服器端 last_activity（token 剛送到但尚未滿 5 秒心跳閾值時也能重置）
+        if (jd.last_activity && jd.last_activity * 1000 > lastActivity) {
+            lastActivity = jd.last_activity * 1000;
+        }
+
+        if (jd.status === 'done')  { onDone(jd.result); return; }
+        if (jd.status === 'error') { onError('AI 任務失敗，請查看上方錯誤訊息。'); return; }
     }
-    onError('等待逾時（300秒）。');
 }
 
 function populateFormFromCharData(charData) {
     if (!charData) return;
     qs('#char-card-json').value = prettyJson(charData);
-    if (charData.name)       qs('#char-name').value       = charData.name;
-    if (charData.gender)     qs('#char-gender').value     = charData.gender;
+    if (charData.name) qs('#char-name').value = charData.name;
+    if (charData.gender) qs('#char-gender').value = charData.gender;
     if (charData.birthday) {
         const bd = normalizeBirthday(charData.birthday);
         if (bd) qs('#char-birthday').value = bd;
     }
-    if (charData.height)     qs('#char-height').value     = charData.height;
-    if (charData.weight)     qs('#char-weight').value     = charData.weight;
-    if (charData.bust)       qs('#char-bust').value       = charData.bust;
-    if (charData.zodiac)     qs('#char-zodiac').value     = charData.zodiac;
+    if (charData.height) qs('#char-height').value = charData.height;
+    if (charData.weight) qs('#char-weight').value = charData.weight;
+    if (charData.bust) qs('#char-bust').value = charData.bust;
+    if (charData.zodiac) qs('#char-zodiac').value = charData.zodiac;
     if (charData.blood_type) qs('#char-blood-type').value = charData.blood_type;
     if (charData.MBTI_type) {
         // AI 可能回傳附加文字（如 "INFP型"、"INFP (內向直覺情感知覺型)"），
@@ -788,9 +809,9 @@ function normalizeBirthday(raw) {
  */
 function _askCharacterName() {
     return new Promise((resolve) => {
-        const modal   = document.getElementById('modal-target-char-name');
-        const input   = document.getElementById('target-char-name-input');
-        const btnOk   = document.getElementById('btn-target-char-confirm');
+        const modal = document.getElementById('modal-target-char-name');
+        const input = document.getElementById('target-char-name-input');
+        const btnOk = document.getElementById('btn-target-char-confirm');
         const btnCancel = document.getElementById('btn-target-char-cancel');
 
         // 預填「姓名」欄位的現有值，方便快速帶入
@@ -1012,7 +1033,7 @@ window.addEventListener('load', async () => {
         updateIdPreview();
         updateJsonFromDropdowns();
     });
-    
+
     qs('#char-birthday').addEventListener('change', () => {
         const bDay = qs('#char-birthday').value;
         if (bDay) {
@@ -1051,7 +1072,7 @@ window.addEventListener('load', async () => {
         qs(sel).addEventListener('input', updateJsonFromDropdowns);
         qs(sel).addEventListener('change', updateJsonFromDropdowns);
     });
-    
+
     [1, 2, 3].forEach(p => {
         qs(`#char-type-${p}`).addEventListener('change', () => {
             updateIdPreview();
