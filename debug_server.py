@@ -659,9 +659,11 @@ def _run_story_to_premise_job(job_id: str, params: dict):
         print(text)
         _append_job_log(job_id, text)
     try:
-        text_content = params.get('text_content', '')
-        model_name   = params.get('model', 'gemma4')
-        prompt = build_story_to_premise_prompt(text_content)
+        text_content      = params.get('text_content', '')
+        model_name        = params.get('model', 'gemma4')
+        chapter_count     = int(params.get('chapter_count', 8))
+        words_per_chapter = int(params.get('words_per_chapter', 200))
+        prompt = build_story_to_premise_prompt(text_content, chapter_count=chapter_count, words_per_chapter=words_per_chapter)
 
         opts = dict(params.get('model_options') or {})
         opts.setdefault('num_predict', 4096)
@@ -727,12 +729,14 @@ def _run_novel_chapters_job(job_id: str, params: dict):
                             c = json.load(f)
                     except: pass
             chars.append(c)
-        main_char       = chars[0] if chars else {}
-        locked_chapters = params.get('locked_chapters', [])
-        writer_settings = params.get('writer_settings', {})
+        main_char         = chars[0] if chars else {}
+        locked_chapters   = params.get('locked_chapters', [])
+        writer_settings   = params.get('writer_settings', {})
+        chapter_count     = int(params.get('chapter_count', 16))
+        words_per_chapter = int(params.get('words_per_chapter', 400))
         prompt = build_chapters_from_premise_prompt(
             main_char, book_title, premise, chars[1:], locked_chapters,
-            writer_settings=writer_settings
+            writer_settings=writer_settings, chapter_count=chapter_count, words_per_chapter=words_per_chapter
         )
 
         timestamp = time.strftime("%H:%M:%S", time.localtime())
@@ -802,19 +806,23 @@ def _run_novel_outline_job(job_id: str, params: dict):
                             c = json.load(f)
                     except: pass
             chars.append(c)
-        main_char       = chars[0] if chars else {}
-        story_premise   = params.get('story_premise', '')
-        all_chapters    = params.get('all_chapters', [])
-        chapter_index   = params.get('chapter_index', 0)
-        locked_sections = params.get('locked_sections', [])
-        writer_settings = params.get('writer_settings', {})
+        main_char         = chars[0] if chars else {}
+        story_premise     = params.get('story_premise', '')
+        all_chapters      = params.get('all_chapters', [])
+        chapter_index     = params.get('chapter_index', 0)
+        locked_sections   = params.get('locked_sections', [])
+        writer_settings   = params.get('writer_settings', {})
+        section_count     = int(params.get('section_count', 4))
+        words_per_section = int(params.get('words_per_section', 500))
         prompt = build_chapter_outline_prompt(
             main_char, book_title, desc, chars[1:],
             story_premise=story_premise,
             all_chapters=all_chapters,
             chapter_index=chapter_index,
             locked_sections=locked_sections,
-            writer_settings=writer_settings
+            writer_settings=writer_settings,
+            section_count=section_count,
+            words_per_section=words_per_section
         )
 
         timestamp = time.strftime("%H:%M:%S", time.localtime())
@@ -906,10 +914,11 @@ def _run_novel_content_job(job_id: str, params: dict):
                             c = json.load(f)
                     except: pass
             chars.append(c)
-        main_char       = chars[0] if chars else {}
-        writer_settings = params.get('writer_settings', {})
-        story_premise   = params.get('story_premise', '')
-        section_title   = ctx.get('section_title', '')
+        main_char         = chars[0] if chars else {}
+        writer_settings   = params.get('writer_settings', {})
+        story_premise     = params.get('story_premise', '')
+        section_title     = ctx.get('section_title', '')
+        words_per_section = int(params.get('words_per_section', 3000))
         prompt = build_novel_content_prompt(
             main_char,
             ctx.get('chapter_title', ''),
@@ -923,7 +932,8 @@ def _run_novel_content_job(job_id: str, params: dict):
             prev_section_content=ctx.get('prev_section_content') or '',
             next_section_title=ctx.get('next_section_title') or '',
             next_section_locked=bool(ctx.get('next_section_locked', False)),
-            story_premise=story_premise
+            story_premise=story_premise,
+            words_per_section=words_per_section
         )
 
         timestamp = time.strftime("%H:%M:%S", time.localtime())
@@ -1266,9 +1276,11 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                     chars.append(c)
                     
                 main_char = chars[0] if chars else {}
-                locked_chapters = params.get('locked_chapters', [])  # [{"index":1,"title":"","description":""},...]
-                writer_settings = params.get('writer_settings', {})
-                prompt = build_chapters_from_premise_prompt(main_char, book_title, premise, chars[1:], locked_chapters, writer_settings=writer_settings)
+                locked_chapters   = params.get('locked_chapters', [])  # [{"index":1,"title":"","description":""},...]
+                writer_settings   = params.get('writer_settings', {})
+                chapter_count     = int(params.get('chapter_count', 16))
+                words_per_chapter = int(params.get('words_per_chapter', 400))
+                prompt = build_chapters_from_premise_prompt(main_char, book_title, premise, chars[1:], locked_chapters, writer_settings=writer_settings, chapter_count=chapter_count, words_per_chapter=words_per_chapter)
                 
                 if params.get('preview'):
                     print("="*50)
@@ -1345,15 +1357,19 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 story_premise  = params.get('story_premise', '')
                 all_chapters   = params.get('all_chapters', [])   # [{"title":"","description":"","locked":bool},...]
                 chapter_index  = params.get('chapter_index', 0)   # 0-based
-                locked_sections = params.get('locked_sections', [])  # [{"index":int, "title":str},...]
-                writer_settings = params.get('writer_settings', {})
+                locked_sections   = params.get('locked_sections', [])  # [{"index":int, "title":str},...]
+                writer_settings   = params.get('writer_settings', {})
+                section_count     = int(params.get('section_count', 4))
+                words_per_section = int(params.get('words_per_section', 500))
                 prompt = build_chapter_outline_prompt(
                     main_char, book_title, desc, chars[1:],
                     story_premise=story_premise,
                     all_chapters=all_chapters,
                     chapter_index=chapter_index,
                     locked_sections=locked_sections,
-                    writer_settings=writer_settings
+                    writer_settings=writer_settings,
+                    section_count=section_count,
+                    words_per_section=words_per_section
                 )
                 
                 if params.get('preview'):
@@ -1456,9 +1472,10 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                             except: pass
                     chars.append(c)
                     
-                main_char = chars[0] if chars else {}
-                writer_settings = params.get('writer_settings', {})
-                story_premise = params.get('story_premise', '')
+                main_char         = chars[0] if chars else {}
+                writer_settings   = params.get('writer_settings', {})
+                story_premise     = params.get('story_premise', '')
+                words_per_section = int(params.get('words_per_section', 3000))
                 prompt = build_novel_content_prompt(
                     main_char,
                     ctx.get('chapter_title', ''),
@@ -1472,7 +1489,8 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                     prev_section_content=ctx.get('prev_section_content') or '',
                     next_section_title=ctx.get('next_section_title') or '',
                     next_section_locked=bool(ctx.get('next_section_locked', False)),
-                    story_premise=story_premise
+                    story_premise=story_premise,
+                    words_per_section=words_per_section
                 )
                 
                 if params.get('preview'):

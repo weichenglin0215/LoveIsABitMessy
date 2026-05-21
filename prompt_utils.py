@@ -266,11 +266,14 @@ def build_daily_prompt(char_data: dict, scenario: str, relationship_params: dict
     return f"{system_prompt}\n\n請開始執行（以繁體中文撰寫）："
 
 def build_chapters_from_premise_prompt(char_data: dict, book_title: str, story_premise: str, other_chars: list = None,
-                                       locked_chapters: list = None, writer_settings: dict = None) -> str:
+                                       locked_chapters: list = None, writer_settings: dict = None,
+                                       chapter_count: int = 16, words_per_chapter: int = 400) -> str:
     """建立「根據故事粗綱生成各章標題與描述」的提示詞
 
     Args:
         locked_chapters: 已上鎖的章節清單，每個元素為 {"index": int(1-based), "title": str, "description": str}
+        chapter_count: 建議生成的章節數量
+        words_per_chapter: 每章描述的建議字數
     """
     #####################################################################################
     #建立「根據粗綱生成各章標題與描述」的提示詞
@@ -302,8 +305,8 @@ def build_chapters_from_premise_prompt(char_data: dict, book_title: str, story_p
 你是一位金牌小說策劃與總編。請根據以下【主角設定】與【故事粗綱】，為這部名為《{book_title}》的小說規劃出各章節的標題與章節大綱。
 
 【指令】
-1. 根據粗綱描述，請規劃適當的章節數量。
-2. 每個章節需要有「章節標題」與「章節描述（約300字，交代本章重點）」。
+1. 根據粗綱描述，請規劃 {chapter_count} 章。
+2. 每個章節需要有「章節標題」與「章節描述（約{words_per_chapter}字，交代本章重點）」。
 3. 每個項目是一個包含 "title" 與 "description" 的物件。
 4. **必須**回傳標準的 JSON 格式列表，不可遺漏任何標示符號。
 5. 不要有任何額外前言、後記或 Markdown 區塊。
@@ -343,13 +346,16 @@ def build_chapters_from_premise_prompt(char_data: dict, book_title: str, story_p
 
 def build_chapter_outline_prompt(char_data: dict, book_title: str, outline_desc: str, other_chars: list = None,
                                   story_premise: str = "", all_chapters: list = None, chapter_index: int = 0,
-                                  locked_sections: list = None, writer_settings: dict = None) -> str:
+                                  locked_sections: list = None, writer_settings: dict = None,
+                                  section_count: int = 4, words_per_section: int = 500) -> str:
     """根據章的標題與描述來建立「各小節大綱」的完整提示詞
 
     Args:
-        story_premise  : 完整故事粗綱
-        all_chapters   : 全部章節清單，每個元素為 {"title": str, "description": str}
-        chapter_index  : 目前章節的 0-based 索引
+        story_premise     : 完整故事粗綱
+        all_chapters      : 全部章節清單，每個元素為 {"title": str, "description": str}
+        chapter_index     : 目前章節的 0-based 索引
+        section_count     : 建議生成的小節數量
+        words_per_section : 每小節描述的建議字數
     """
     #####################################################################################
     # 根據章的標題與描述來建立「各小節大綱」的完整提示詞
@@ -403,11 +409,11 @@ def build_chapter_outline_prompt(char_data: dict, book_title: str, outline_desc:
             position_hint = "\n⚠️ 本章是全書的【最後一章・結局】，請安排合適的收尾與情感昇華，給讀者滿足感或深刻的餘韻。"
 
     system_prompt = f"""
-你是一位金牌小說作者與專業編輯。請根據以下資訊，為《{book_title}》第{current_ch_num}章規劃出 3~5 個小節。
+你是一位金牌小說作者與專業編輯。請根據以下資訊，為《{book_title}》第{current_ch_num}章規劃出 {section_count} 個小節。
 {position_hint}
 
 【指令】
-1. 請規劃 3~5 個小節，並為每個小節提供標題與簡短大綱，字數約300字。
+1. 請規劃 {section_count} 個小節，並為每個小節提供小節描述(大綱)，字數約{words_per_section}字。
 2. 風格應對位當下流行的都會愛情長篇小說。
 3. 必須與前後章節的劇情銜接，保持故事連貫性。
 4. **必須**回傳標準的 JSON 格式列表，每個項目包含標題與大綱，合併成單一字串。
@@ -446,7 +452,7 @@ def build_novel_content_prompt(char_data: dict, current_chapter: str, chapter_ou
                                 chapter_index: int = 0, section_index: int = 0,
                                 prev_section_title: str = "", prev_section_content: str = "",
                                 next_section_title: str = "", next_section_locked: bool = False,
-                                story_premise: str = "") -> str:
+                                story_premise: str = "", words_per_section: int = 3000) -> str:
     """建立「小說本文生成」的完整提示詞"""
     #####################################################################################
     #建立「小說本文生成」的完整提示詞
@@ -485,7 +491,7 @@ def build_novel_content_prompt(char_data: dict, current_chapter: str, chapter_ou
 
 【寫作指令】
 1. 使用「第三人稱」視角，文字需優美且細膩，注重心理描寫、肢體動作與對話。
-2. 字數約 1200~1500 字，使用「繁體中文」。
+2. 字數約 {words_per_section} 字，使用「繁體中文」。
 3. 對話必須完全符合角色的「說話口吻」。
 4. 請直接開始撰寫故事，不要輸出標題或任何前言。
 5. 本節為【第 {chapter_index} 章 第 {section_index} 節】，請確保與上下節情節連貫。
@@ -620,7 +626,7 @@ def build_analyze_image_prompt_text() -> str:
     )
 
 
-def build_story_to_premise_prompt(text_content: str) -> str:
+def build_story_to_premise_prompt(text_content: str, chapter_count: int = 8, words_per_chapter: int = 200) -> str:
     """建立「將故事原文濃縮成故事粗綱」的提示詞"""
     #####################################################################################
     # 建立「將故事原文濃縮成故事粗綱」的提示詞
@@ -642,8 +648,8 @@ def build_story_to_premise_prompt(text_content: str) -> str:
 故事背景：故事發生的年代、地點、社會背景說明（約100字）。
 
 【故事粗綱】
-依照「起、承、轉、合」四大結構，根據原故事的長度與複雜度將故事分成 4～16 章。
-每章格式如下（每章粗綱約 100 字，著重本章主旨與關鍵劇情）：
+依照「起、承、轉、合」四大結構，根據原故事的長度與複雜度將故事分成 {chapter_count} 章。
+每章格式如下（每章粗綱約 {words_per_chapter} 字，著重本章主旨與關鍵劇情）：
 
 第一章：（章節標題）
 （本章粗綱，約100字）

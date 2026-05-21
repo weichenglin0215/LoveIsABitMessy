@@ -179,48 +179,160 @@
 
   <!-- ── Modal: Multi-Book Count ── -->
   <div id="modal-multibook" class="modal-overlay hidden">
-    <div class="modal-box modal-box-sm">
+    <div class="modal-box" style="width:min(94vw,820px); max-width:none; padding: 24px;">
       <h3 class="modal-title">🚀 全自動產生多本小說</h3>
-
-      <!-- 數量 -->
-      <div class="modal-field">
-        <label class="modal-label">產生數量：</label>
-        <input type="number" id="multibook-count" min="1" max="99" value="1"
-          style="width:72px; font-size:16px; text-align:center; padding:4px 8px;">
-      </div>
-
-      <!-- 生成階段勾選 -->
-      <div class="modal-field">
-        <label class="modal-label">生成階段：</label>
-        <div style="display:flex; flex-direction:column; gap:8px; padding-left:4px;">
-          <label class="checkbox-label">
-            <input type="checkbox" id="mb-phase1" checked>
-            <span>生成章標題與章描述</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" id="mb-phase2" checked>
-            <span>生成小節標題與小節描述</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" id="mb-phase3" checked>
-            <span>生成內文</span>
-          </label>
+      <div style="display:flex; gap:24px; align-items:flex-start;">
+        <!-- 左側：原有設定 -->
+        <div style="flex:1; min-width:0;">
+          <div class="modal-field">
+            <label class="modal-label">產生數量：</label>
+            <input type="number" id="multibook-count" min="1" max="99" value="1"
+              style="width:72px; font-size:16px; text-align:center; padding:4px 8px;">
+          </div>
+          <div class="modal-field">
+            <label class="modal-label">生成階段：</label>
+            <div style="display:flex; flex-direction:column; gap:8px; padding-left:4px;">
+              <label class="checkbox-label">
+                <input type="checkbox" id="mb-phase1" checked>
+                <span>生成章標題與章描述</span>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="mb-phase2" checked>
+                <span>生成小節標題與小節描述</span>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="mb-phase3" checked>
+                <span>生成內文</span>
+              </label>
+            </div>
+          </div>
+          <div class="modal-field-last">
+            <label class="modal-label">雲端儲存密碼：</label>
+            <input type="password" id="multibook-password" placeholder="留空則跳過雲端儲存"
+              style="width:100%; box-sizing:border-box;">
+          </div>
+        </div>
+        <!-- 右側：AI 生成參數 -->
+        <div style="flex:1; min-width:0; border-left:1px solid var(--c-border); padding-left:20px;">
+          <label class="modal-label">⚙️ AI 生成參數</label>
+          <!-- Phase 1 params -->
+          <label class="modal-label">📝 章描述（Phase 1）</label>
+          <div class="modal-field" style="gap:6px;">
+            <label class="checkbox-label">建議章數：</label>
+            <input type="number" id="mb-cfp-chapter-count" min="1" max="99" value="16"
+              style="width:60px; font-size:14px; text-align:center; padding:2px 6px;">
+          </div>
+          <div class="modal-field" style="gap:6px; margin-bottom:10px;">
+            <label class="checkbox-label">每章描述字數：</label>
+            <input type="number" id="mb-cfp-words" min="50" max="2000" value="400"
+              style="width:70px; font-size:14px; text-align:center; padding:2px 6px;">
+          </div>
+          <!-- Phase 2 params -->
+          <label class="modal-label">📖 小節大綱（Phase 2）</label>
+          <div class="modal-field" style="gap:6px;">
+            <label class="checkbox-label">建議小節數：</label>
+            <input type="number" id="mb-co-section-count" min="1" max="20" value="4"
+              style="width:60px; font-size:14px; text-align:center; padding:2px 6px;">
+          </div>
+          <div class="modal-field" style="gap:6px; margin-bottom:10px;">
+            <label class="checkbox-label">每節描述字數：</label>
+            <input type="number" id="mb-co-words" min="50" max="2000" value="500"
+              style="width:70px; font-size:14px; text-align:center; padding:2px 6px;">
+          </div>
+          <!-- Phase 3 params -->
+          <label class="modal-label">🖋️📙 內文（Phase 3）</label>
+          <div class="modal-field-last" style="gap:6px;">
+            <label class="checkbox-label">每節內文字數：</label>
+            <input type="number" id="mb-sc-words" min="500" max="10000" value="3000"
+              style="width:70px; font-size:14px; text-align:center; padding:2px 6px;">
+          </div>
         </div>
       </div>
-
-      <!-- 雲端儲存密碼 -->
-      <div class="modal-field-last">
-        <label class="modal-label">雲端儲存密碼：</label>
-        <input type="password" id="multibook-password" placeholder="留空則跳過雲端儲存"
-          style="width:100%; box-sizing:border-box;">
-      </div>
-
-      <p class="modal-desc" style="font-size:12px; color:#888; margin-top:10px; margin-bottom:16px;">
+      <p class="modal-desc" style="font-size:16px; color:#888; margin-top:10px; margin-bottom:16px;">
         檔名格式：小說名稱-001、小說名稱-002 …　已鎖定章節 / 節不會被更動。
       </p>
       <div class="modal-actions">
         <button id="btn-multibook-cancel" class="btn-modal-cancel">取消</button>
         <button id="btn-multibook-confirm" class="btn-modal-confirm">開始生成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Story-To-Premise Params ── -->
+  <div id="modal-params-stp" class="modal-overlay hidden">
+    <div class="modal-box modal-box-sm">
+      <h3 class="modal-title">📄 文檔轉粗綱 — 生成參數</h3>
+      <div class="modal-field">
+        <label class="modal-label">建議章數：</label>
+        <input type="number" id="stp-chapter-count" min="1" max="99" value="8"
+          style="width:72px; font-size:16px; text-align:center; padding:4px 8px;">
+      </div>
+      <div class="modal-field-last">
+        <label class="modal-label">每章粗綱建議字數：</label>
+        <input type="number" id="stp-words-per-chapter" min="50" max="2000" value="200"
+          style="width:80px; font-size:16px; text-align:center; padding:4px 8px;">
+      </div>
+      <div class="modal-actions">
+        <button id="btn-stp-params-cancel" class="btn-modal-cancel">取消</button>
+        <button id="btn-stp-params-confirm" class="btn-modal-confirm">確定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Chapters-From-Premise Params ── -->
+  <div id="modal-params-cfp" class="modal-overlay hidden">
+    <div class="modal-box modal-box-sm">
+      <h3 class="modal-title">🤖 章描述 — 生成參數</h3>
+      <div class="modal-field">
+        <label class="modal-label">建議章數：</label>
+        <input type="number" id="cfp-chapter-count" min="1" max="99" value="16"
+          style="width:72px; font-size:16px; text-align:center; padding:4px 8px;">
+      </div>
+      <div class="modal-field-last">
+        <label class="modal-label">每章描述建議字數：</label>
+        <input type="number" id="cfp-words-per-chapter" min="50" max="2000" value="400"
+          style="width:80px; font-size:16px; text-align:center; padding:4px 8px;">
+      </div>
+      <div class="modal-actions">
+        <button id="btn-cfp-params-cancel" class="btn-modal-cancel">取消</button>
+        <button id="btn-cfp-params-confirm" class="btn-modal-confirm">確定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Chapter-Outline Params ── -->
+  <div id="modal-params-co" class="modal-overlay hidden">
+    <div class="modal-box modal-box-sm">
+      <h3 class="modal-title">🤖 AI 大綱 — 生成參數</h3>
+      <div class="modal-field">
+        <label class="modal-label">建議小節數量：</label>
+        <input type="number" id="co-section-count" min="1" max="20" value="4"
+          style="width:72px; font-size:16px; text-align:center; padding:4px 8px;">
+      </div>
+      <div class="modal-field-last">
+        <label class="modal-label">每小節描述建議字數：</label>
+        <input type="number" id="co-words-per-section" min="50" max="2000" value="500"
+          style="width:80px; font-size:16px; text-align:center; padding:4px 8px;">
+      </div>
+      <div class="modal-actions">
+        <button id="btn-co-params-cancel" class="btn-modal-cancel">取消</button>
+        <button id="btn-co-params-confirm" class="btn-modal-confirm">確定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Section-Content Params ── -->
+  <div id="modal-params-sc" class="modal-overlay hidden">
+    <div class="modal-box modal-box-sm">
+      <h3 class="modal-title">🤖 AI 內文 — 生成參數</h3>
+      <div class="modal-field-last">
+        <label class="modal-label">每小節內文建議字數：</label>
+        <input type="number" id="sc-words" min="500" max="10000" value="3000"
+          style="width:80px; font-size:16px; text-align:center; padding:4px 8px;">
+      </div>
+      <div class="modal-actions">
+        <button id="btn-sc-params-cancel" class="btn-modal-cancel">取消</button>
+        <button id="btn-sc-params-confirm" class="btn-modal-confirm">確定</button>
       </div>
     </div>
   </div>

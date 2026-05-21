@@ -61,8 +61,85 @@ let state = {
         }
     ],
     activeIndex: { chapter: 0, section: 0 },
-    currentModel: "gemma4"
+    currentModel: "gemma4",
+    genParams: {
+        storyToPremiseChapters: 8,
+        storyToPremiseWordsPerChapter: 200,
+        chaptersFromPremiseCount: 16,
+        chaptersFromPremiseWordsPerChapter: 400,
+        chapterOutlineSectionCount: 4,
+        chapterOutlineWordsPerSection: 500,
+        sectionContentWords: 3000
+    }
 };
+
+// ====== genParams 輔助 ======
+
+const GEN_PARAMS_DEFAULTS = {
+    storyToPremiseChapters: 8,
+    storyToPremiseWordsPerChapter: 200,
+    chaptersFromPremiseCount: 16,
+    chaptersFromPremiseWordsPerChapter: 400,
+    chapterOutlineSectionCount: 4,
+    chapterOutlineWordsPerSection: 500,
+    sectionContentWords: 3000
+};
+
+function ensureGenParams() {
+    if (!state.genParams || typeof state.genParams !== 'object') state.genParams = {};
+    for (const [k, v] of Object.entries(GEN_PARAMS_DEFAULTS)) {
+        if (state.genParams[k] === undefined || state.genParams[k] === null) state.genParams[k] = v;
+    }
+}
+
+/**
+ * 顯示 AI 參數彈窗，從 state.genParams 填入當前值，確認後回寫並 resolve(true)，取消 resolve(false)。
+ * config.fields: [{ inputId, paramKey, defaultValue }]
+ */
+function openParamsModal(config) {
+    return new Promise(resolve => {
+        ensureGenParams();
+        const modal = qs(`#${config.modalId}`);
+        config.fields.forEach(f => {
+            const el = qs(`#${f.inputId}`);
+            if (el) el.value = state.genParams[f.paramKey] ?? f.defaultValue;
+        });
+        modal.classList.remove('hidden');
+
+        const confirmBtn = qs(`#${config.confirmBtnId}`);
+        const cancelBtn  = qs(`#${config.cancelBtnId}`);
+
+        const cleanup = () => {
+            modal.classList.add('hidden');
+            confirmBtn.removeEventListener('click', onConfirm);
+            cancelBtn.removeEventListener('click', onCancel);
+        };
+        const onConfirm = () => {
+            config.fields.forEach(f => {
+                const el = qs(`#${f.inputId}`);
+                if (el) state.genParams[f.paramKey] = Math.max(1, parseInt(el.value) || f.defaultValue);
+            });
+            cleanup();
+            resolve(true);
+        };
+        const onCancel = () => { cleanup(); resolve(false); };
+
+        confirmBtn.addEventListener('click', onConfirm);
+        cancelBtn.addEventListener('click',  onCancel);
+    });
+}
+
+async function promptAndGenChapterOutline(chIdx) {
+    const confirmed = await openParamsModal({
+        modalId: 'modal-params-co', confirmBtnId: 'btn-co-params-confirm', cancelBtnId: 'btn-co-params-cancel',
+        fields: [
+            { inputId: 'co-section-count',     paramKey: 'chapterOutlineSectionCount',   defaultValue: 4 },
+            { inputId: 'co-words-per-section',  paramKey: 'chapterOutlineWordsPerSection', defaultValue: 500 }
+        ]
+    });
+    if (confirmed) await aiGenChapterOutline(chIdx);
+}
+window.promptAndGenChapterOutline = promptAndGenChapterOutline;
 
 let cloudCharacters = []; // 儲存雲端角色卡完整資料
 let localCharacters = []; // 儲存本機角色 ID
@@ -252,6 +329,7 @@ async function initCharacters() {
 // ====== 介面繪製 ======
 
 function renderAll() {
+    ensureGenParams();
     qs('#book-title').value = state.bookTitle || "";
     qs('#story-premise').value = state.storyPremise || "";
 
@@ -328,7 +406,7 @@ function renderChapters() {
                     ${ch.locked ? '🔒' : '🔓'}
                 </span>
                 <input type="text" value="${ch.title}" placeholder="章節標題" onchange="state.chapters[${chIdx}].title = this.value">
-                <button class="ai-btn" onclick="aiGenChapterOutline(${chIdx})" title="AI 生成本章未鎖定的小節大綱">🤖 AI 大綱</button>
+                <button class="ai-btn" onclick="promptAndGenChapterOutline(${chIdx})" title="AI 生成本章未鎖定的小節大綱">🤖 AI 大綱</button>
                 <button class="btn-del-sec" onclick="removeChapter(${chIdx})" title="刪除本章，包括本章的所有小節">🗑️</button>
             </div>
             <textarea class="chapter-desc" placeholder="輸入本章大綱說明（AI 將以此產生小節）..." 
@@ -415,12 +493,68 @@ function setupEventListeners() {
     qs('#btn-save').addEventListener('click', saveProject);
     qs('#btn-load').addEventListener('click', loadProject);
     qs('#btn-export').addEventListener('click', exportNovelToMarkdown);
-    qs('#btn-ai-gen-content').addEventListener('click', aiGenSectionContent);
-    qs('#btn-ai-gen-all-outlines').addEventListener('click', aiGenAllOutlines);
-    qs('#btn-ai-gen-all-content').addEventListener('click', aiGenAllContent);
-    qs('#btn-ai-gen-chapters').addEventListener('click', aiGenChaptersFromPremise);
+    qs('#btn-ai-gen-content').addEventListener('click', async () => {
+        const ok = await openParamsModal({
+            modalId: 'modal-params-sc', confirmBtnId: 'btn-sc-params-confirm', cancelBtnId: 'btn-sc-params-cancel',
+            fields: [{ inputId: 'sc-words', paramKey: 'sectionContentWords', defaultValue: 3000 }]
+        });
+        if (ok) aiGenSectionContent();
+    });
+    qs('#btn-ai-gen-all-outlines').addEventListener('click', async () => {
+        if (!confirm("確定要讓 AI 撰寫所有未鎖定章節的大綱嗎？")) return;
+        const ok = await openParamsModal({
+            modalId: 'modal-params-co', confirmBtnId: 'btn-co-params-confirm', cancelBtnId: 'btn-co-params-cancel',
+            fields: [
+                { inputId: 'co-section-count',    paramKey: 'chapterOutlineSectionCount',   defaultValue: 4 },
+                { inputId: 'co-words-per-section', paramKey: 'chapterOutlineWordsPerSection', defaultValue: 500 }
+            ]
+        });
+        if (!ok) return;
+        for (let i = 0; i < state.chapters.length; i++) {
+            if (!state.chapters[i].locked) await aiGenChapterOutline(i);
+        }
+        appendLog(">> 所有未鎖定章節的大綱已生成完畢。");
+    });
+    qs('#btn-ai-gen-all-content').addEventListener('click', async () => {
+        if (!confirm("確定要讓 AI 撰寫所有未鎖定小節的內文嗎？這可能需要非常長的時間。")) return;
+        const ok = await openParamsModal({
+            modalId: 'modal-params-sc', confirmBtnId: 'btn-sc-params-confirm', cancelBtnId: 'btn-sc-params-cancel',
+            fields: [{ inputId: 'sc-words', paramKey: 'sectionContentWords', defaultValue: 3000 }]
+        });
+        if (!ok) return;
+        for (let i = 0; i < state.chapters.length; i++) {
+            const ch = state.chapters[i];
+            for (let j = 0; j < ch.sections.length; j++) {
+                if (!ch.locked && !ch.sections[j].locked) {
+                    state.activeIndex = { chapter: i, section: j };
+                    renderAll();
+                    await aiGenSectionContent();
+                }
+            }
+        }
+        appendLog(">> 所有未鎖定小節的內容已生成完畢。");
+    });
+    qs('#btn-ai-gen-chapters').addEventListener('click', async () => {
+        const ok = await openParamsModal({
+            modalId: 'modal-params-cfp', confirmBtnId: 'btn-cfp-params-confirm', cancelBtnId: 'btn-cfp-params-cancel',
+            fields: [
+                { inputId: 'cfp-chapter-count',     paramKey: 'chaptersFromPremiseCount',              defaultValue: 16 },
+                { inputId: 'cfp-words-per-chapter',  paramKey: 'chaptersFromPremiseWordsPerChapter',    defaultValue: 400 }
+            ]
+        });
+        if (ok) aiGenChaptersFromPremise();
+    });
     qs('#btn-ai-gen-full-auto').addEventListener('click', aiGenFullAuto);
-    qs('#btn-story-to-premise').addEventListener('click', () => qs('#story-file-input').click());
+    qs('#btn-story-to-premise').addEventListener('click', async () => {
+        const ok = await openParamsModal({
+            modalId: 'modal-params-stp', confirmBtnId: 'btn-stp-params-confirm', cancelBtnId: 'btn-stp-params-cancel',
+            fields: [
+                { inputId: 'stp-chapter-count',      paramKey: 'storyToPremiseChapters',          defaultValue: 8 },
+                { inputId: 'stp-words-per-chapter',   paramKey: 'storyToPremiseWordsPerChapter',   defaultValue: 200 }
+            ]
+        });
+        if (ok) qs('#story-file-input').click();
+    });
     qs('#story-file-input').addEventListener('change', storyFileToPremise);
 
     qs('#btn-compare-novels').addEventListener('click', openCompareModal);
@@ -480,6 +614,13 @@ function setupEventListeners() {
             alert('請至少勾選一個生成階段。');
             return;
         }
+        // 從右側讀取 AI 生成參數並存入 state.genParams
+        ensureGenParams();
+        state.genParams.chaptersFromPremiseCount           = Math.max(1, parseInt(qs('#mb-cfp-chapter-count').value) || 16);
+        state.genParams.chaptersFromPremiseWordsPerChapter = Math.max(50, parseInt(qs('#mb-cfp-words').value) || 400);
+        state.genParams.chapterOutlineSectionCount         = Math.max(1, parseInt(qs('#mb-co-section-count').value) || 4);
+        state.genParams.chapterOutlineWordsPerSection      = Math.max(50, parseInt(qs('#mb-co-words').value) || 500);
+        state.genParams.sectionContentWords                = Math.max(100, parseInt(qs('#mb-sc-words').value) || 3000);
         qs('#modal-multibook').classList.add('hidden');
         aiGenMultiBook(count, { doPhase1, doPhase2, doPhase3, password });
     });
@@ -672,7 +813,9 @@ async function aiGenChapterOutline(chIdx) {
             character_ids: state.characters.filter(Boolean),
             model: state.currentModel || 'gemma4',
             model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
-            writer_settings: (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || null
+            writer_settings: (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || null,
+            section_count: state.genParams.chapterOutlineSectionCount,
+            words_per_section: state.genParams.chapterOutlineWordsPerSection
         };
 
         // Step 1: 取得提示詞預覽
@@ -757,6 +900,14 @@ async function aiGenFullAuto() {
         alert("請至少選擇一位登場角色（生成內文需要角色資料）。");
         return;
     }
+    // 將 genParams 同步至多本小說彈窗右側輸入欄
+    ensureGenParams();
+    const gp = state.genParams;
+    qs('#mb-cfp-chapter-count').value  = gp.chaptersFromPremiseCount;
+    qs('#mb-cfp-words').value          = gp.chaptersFromPremiseWordsPerChapter;
+    qs('#mb-co-section-count').value   = gp.chapterOutlineSectionCount;
+    qs('#mb-co-words').value           = gp.chapterOutlineWordsPerSection;
+    qs('#mb-sc-words').value           = gp.sectionContentWords;
     // 開啟數量選擇彈窗（接續由 btn-multibook-confirm 呼叫 aiGenMultiBook）
     qs('#multibook-count').value = 1;
     qs('#modal-multibook').classList.remove('hidden');
@@ -956,7 +1107,9 @@ async function aiGenChaptersFromPremise(skipConfirm = false) {
             locked_chapters,
             model: state.currentModel || 'gemma4',
             model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
-            writer_settings: (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || null
+            writer_settings: (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || null,
+            chapter_count: state.genParams.chaptersFromPremiseCount,
+            words_per_chapter: state.genParams.chaptersFromPremiseWordsPerChapter
         };
 
         // Step 1: 取得提示詞預覽
@@ -1072,6 +1225,7 @@ async function aiGenSectionContent() {
             model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
             writer_settings: (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || null,
             story_premise: state.storyPremise,
+            words_per_section: state.genParams.sectionContentWords,
             context: {
                 chapter_index: chNum,     // 1-based
                 section_index: secNum,    // 1-based
@@ -1173,7 +1327,9 @@ async function storyFileToPremise(event) {
         const payload = {
             text_content: textContent,
             model: state.currentModel || 'gemma4',
-            model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null
+            model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
+            chapter_count: state.genParams.storyToPremiseChapters,
+            words_per_chapter: state.genParams.storyToPremiseWordsPerChapter
         };
         const result = await callDebugServerAsync('/api/story_to_premise_async', payload);
         if (result && result.premise) {
