@@ -16,7 +16,9 @@ let state = {
     characters: ["", "", "", ""], // 儲存角色 ID
     aiModel: "gemma4",
     modelOptions: "",
-    writerStyle: "",
+    writerStyle1: "",
+    writerStyle2: "",
+    writerStyle3: "",
     writerSample: "",
     chapters: [
         {
@@ -336,7 +338,11 @@ function renderAll() {
     // 恢復 AI 設定 (如果存在)
     if (state.aiModel) qs('#model-select').value = state.aiModel;
     if (state.modelOptions) qs('#model-options-select').value = state.modelOptions;
-    if (state.writerStyle) qs('#writer-style-select').value = state.writerStyle;
+    // 支援舊格式 writerStyle → 還原至風格一
+    if (!state.writerStyle1 && state.writerStyle) state.writerStyle1 = state.writerStyle;
+    if (state.writerStyle1) qs('#writer-style-select-1').value = state.writerStyle1;
+    if (state.writerStyle2) qs('#writer-style-select-2').value = state.writerStyle2;
+    if (state.writerStyle3) qs('#writer-style-select-3').value = state.writerStyle3;
     if (state.writerSample) qs('#writer-sample-select').value = state.writerSample;
 
     renderCharacters();
@@ -1769,7 +1775,9 @@ async function confirmSaveProject() {
     // 同步當前選中的 AI 設定到 state
     state.aiModel = qs('#model-select').value;
     state.modelOptions = qs('#model-options-select').value;
-    state.writerStyle = qs('#writer-style-select').value;
+    state.writerStyle1 = qs('#writer-style-select-1')?.value || '';
+    state.writerStyle2 = qs('#writer-style-select-2')?.value || '';
+    state.writerStyle3 = qs('#writer-style-select-3')?.value || '';
     state.writerSample = qs('#writer-sample-select').value;
 
     // 1. 同步儲存至 Supabase 雲端 (novel_entries 表)

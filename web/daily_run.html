@@ -178,12 +178,20 @@
                     <button id="btn-add-model-option" class="ai-btn btn-edit-sm">+編輯</button>
                 </div>
                 <div class="model-container-row">
-                    <label class="model-label">🖋️ 寫作風格：</label>
-                    <select id="writer-style-select" class="ws-style-dropdown select-narrow">
+                    <label class="model-label">🖋️ 寫作風格一：</label>
+                    <select id="writer-style-select-1" class="ws-style-dropdown select-narrow">
                         <option value="">無</option>
                     </select>
                     <button id="btn-edit-writer-style" class="ai-btn btn-edit-sm"
-                        onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select').value)">+編輯</button>
+                        onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select-1').value)">+編輯</button>
+                </div>
+                <div class="model-container-row">
+                    <label class="model-label">🖋️ 寫作風格二：</label>
+                    <select id="writer-style-select-2" class="ws-style-dropdown select-narrow">
+                        <option value="">無</option>
+                    </select>
+                    <button class="ai-btn btn-edit-sm"
+                        onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select-2').value)">+編輯</button>
                 </div>
                 <div class="model-container-row">
                     <label class="model-label">📝 寫作範本：</label>
@@ -488,7 +496,8 @@
                 diary_time: document.getElementById('diary-time').value,
                 ai_model: document.getElementById('model-select').value,
                 model_options: document.getElementById('model-options-select').value,
-                writer_style: document.getElementById('writer-style-select').value,
+                writer_style_1: document.getElementById('writer-style-select-1').value,
+                writer_style_2: document.getElementById('writer-style-select-2').value,
                 writer_sample: document.getElementById('writer-sample-select').value
             };
 
@@ -543,7 +552,9 @@
             document.getElementById('diary-time').value = pd.diary_time || "00";
             document.getElementById('model-select').value = pd.ai_model || "gemma4";
             document.getElementById('model-options-select').value = pd.model_options || "";
-            document.getElementById('writer-style-select').value = pd.writer_style || "";
+            // 支援舊格式 writer_style → 還原至風格一
+            document.getElementById('writer-style-select-1').value = pd.writer_style_1 || pd.writer_style || "";
+            document.getElementById('writer-style-select-2').value = pd.writer_style_2 || "";
             document.getElementById('writer-sample-select').value = pd.writer_sample || "";
         });
 

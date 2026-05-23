@@ -212,7 +212,15 @@ async function updateUserDisplay() {
   // 恢復選中的模型與寫作風格（必須在 triggerRandomLoginMessage 之前完成）
   if (u.ai_model) { qs('#model-select').value = u.ai_model; state.currentModel = u.ai_model; }
   if (u.model_options) qs('#model-options-select').value = u.model_options;
-  if (u.writer_style) qs('#writer-style-select').value = u.writer_style;
+  // writer_style 儲存格式：JSON 陣列 ["風格一名稱","風格二名稱"] 或舊版純字串
+  if (u.writer_style) {
+    let styles = [];
+    try { styles = JSON.parse(u.writer_style); if (!Array.isArray(styles)) styles = [String(styles)]; }
+    catch { styles = [u.writer_style]; }
+    const s1 = qs('#writer-style-select-1'), s2 = qs('#writer-style-select-2');
+    if (s1) s1.value = styles[0] || '';
+    if (s2) s2.value = styles[1] || '';
+  }
   if (u.writer_sample) qs('#writer-sample-select').value = u.writer_sample;
 
   await loadSessionsForUser();
@@ -841,7 +849,21 @@ async function getAIReply(sess, participant, userMessage, isProactive = false) {
       history,
       model: state.currentModel || 'gemma4',
       model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
-      writer_settings: (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || null,
+      writer_settings: (() => {
+        const globalCtx = (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || {};
+        // 如果此好友有個人寫作風格設定，將其「添加並融合」於全域風格之後
+        const friendStyleName = localStorage.getItem(`loveline_writer_style_${sess.id}`) || '';
+        if (friendStyleName && window.WriterSettingsApp) {
+          const styleItem = window.WriterSettingsApp.styleList.find(i => i.name === friendStyleName);
+          if (styleItem && styleItem.content) {
+            const combined = globalCtx.style
+              ? globalCtx.style + '\n\n' + styleItem.content
+              : styleItem.content;
+            return { style: combined, sample: globalCtx.sample || null };
+          }
+        }
+        return (globalCtx.style || globalCtx.sample) ? globalCtx : null;
+      })(),
       session_type: sess.session_type,
       participants: (sess.chat_participants || [])
         .filter(p => p.character_id !== participant.character_id)
@@ -1029,6 +1051,9 @@ function openEditModal(id) {
 
       qs('#modal-friend-persona').value = localStorage.getItem(`loveline_persona_${id}`) || sess.persona || '';
       qs('#modal-friend-extra').value = localStorage.getItem(`loveline_extra_${id}`) || sess.extra || '';
+
+      const writerStyleEl = qs('#modal-friend-writer-style');
+      if (writerStyleEl) writerStyleEl.value = localStorage.getItem(`loveline_writer_style_${id}`) || '';
 
       qs('#modal-friend-color-select').value = getSessionColor(id);
       updateColorSwatch('modal-friend-color-swatch', 'modal-friend-color-select');
@@ -1346,7 +1371,11 @@ function setupEventListeners() {
     // 同步當前選中的 AI 設定到使用者資料中
     u.ai_model = qs('#model-select').value;
     u.model_options = qs('#model-options-select').value;
-    u.writer_style = qs('#writer-style-select').value;
+    // 將兩個寫作風格序列化為 JSON 陣列存入 writer_style 欄位
+    u.writer_style = JSON.stringify([
+      qs('#writer-style-select-1')?.value || '',
+      qs('#writer-style-select-2')?.value || ''
+    ]);
     u.writer_sample = qs('#writer-sample-select').value;
 
     saveUsersToLocal();
@@ -1376,6 +1405,8 @@ function setupEventListeners() {
     qs('#modal-friend-title').textContent = '💬 新增好友';
     qs('#modal-friend-name').value = '';
     qs('#modal-friend-char-select').value = '';
+    const _wsEl = qs('#modal-friend-writer-style');
+    if (_wsEl) _wsEl.value = '';
     qs('#modal-friend-persona').value = '';
     qs('#modal-friend-extra').value = '';
     qs('#modal-friend-color-select').value = AVATAR_COLORS[0].value;
@@ -1396,6 +1427,7 @@ function setupEventListeners() {
     const persona = qs('#modal-friend-persona').value;
     const extra = qs('#modal-friend-extra').value;
     const color = qs('#modal-friend-color-select').value;
+    const writerStyle = qs('#modal-friend-writer-style')?.value || '';
 
     if (!id) {
       if (!name) { alert('請輸入好友名稱'); return; }
@@ -1409,6 +1441,8 @@ function setupEventListeners() {
       if (newSess) {
         if (extra) localStorage.setItem(`loveline_extra_${newSess.id}`, extra);
         if (color) localStorage.setItem(`loveline_avatar_color_${newSess.id}`, color);
+        if (writerStyle) localStorage.setItem(`loveline_writer_style_${newSess.id}`, writerStyle);
+        else localStorage.removeItem(`loveline_writer_style_${newSess.id}`);
       }
     } else {
       if (persona) localStorage.setItem(`loveline_persona_${id}`, persona);
@@ -1416,6 +1450,9 @@ function setupEventListeners() {
 
       if (extra) localStorage.setItem(`loveline_extra_${id}`, extra);
       else localStorage.removeItem(`loveline_extra_${id}`);
+
+      if (writerStyle) localStorage.setItem(`loveline_writer_style_${id}`, writerStyle);
+      else localStorage.removeItem(`loveline_writer_style_${id}`);
 
       if (color) localStorage.setItem(`loveline_avatar_color_${id}`, color);
 

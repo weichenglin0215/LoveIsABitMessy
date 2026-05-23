@@ -83,13 +83,23 @@
             </div>
           </div>
           <div class="model-container-row">
-            <label class="model-label">🖋️ 寫作風格</label>
+            <label class="model-label">🖋️ 寫作風格一</label>
             <div class="model-wrap-row">
-              <select id="writer-style-select" class="ws-style-dropdown">
+              <select id="writer-style-select-1" class="ws-style-dropdown">
                 <option value="">無</option>
               </select>
               <button id="btn-edit-writer-style" class="ai-btn btn-edit-sm"
-                onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select').value)">編輯</button>
+                onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select-1').value)">編輯</button>
+            </div>
+          </div>
+          <div class="model-container-row">
+            <label class="model-label">🖋️ 寫作風格二</label>
+            <div class="model-wrap-row">
+              <select id="writer-style-select-2" class="ws-style-dropdown">
+                <option value="">無</option>
+              </select>
+              <button class="ai-btn btn-edit-sm"
+                onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select-2').value)">編輯</button>
             </div>
           </div>
           <div class="model-container-row">
@@ -219,6 +229,11 @@
       <label>關聯角色卡 (選填)</label>
       <select id="modal-friend-char-select">
         <option value="">— 讀取中 —</option>
+      </select>
+
+      <label>🖋️ 寫作風格 (選填，添加並融合於全域設定)</label>
+      <select id="modal-friend-writer-style" class="ws-style-friend-dropdown">
+        <option value="">— 無（使用全域設定）—</option>
       </select>
 
       <label>覆蓋好友角色資料 (關鍵字覆蓋，如：生日: 01-01, 血型: O...)</label>

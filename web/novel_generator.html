@@ -77,12 +77,28 @@
           <button id="btn-add-model-option" class="ai-btn btn-edit-sm">+編輯</button>
         </div>
         <div class="model-container-row">
-          <label class="model-label">🖋️ 寫作風格：</label>
-          <select id="writer-style-select" class="ws-style-dropdown">
+          <label class="model-label">🖋️ 寫作風格一：</label>
+          <select id="writer-style-select-1" class="ws-style-dropdown">
             <option value="">無</option>
           </select>
           <button id="btn-edit-writer-style" class="ai-btn btn-edit-sm"
-            onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select').value)">+編輯</button>
+            onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select-1').value)">+編輯</button>
+        </div>
+        <div class="model-container-row">
+          <label class="model-label">🖋️ 寫作風格二：</label>
+          <select id="writer-style-select-2" class="ws-style-dropdown">
+            <option value="">無</option>
+          </select>
+          <button class="ai-btn btn-edit-sm"
+            onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select-2').value)">+編輯</button>
+        </div>
+        <div class="model-container-row">
+          <label class="model-label">🖋️ 寫作風格三：</label>
+          <select id="writer-style-select-3" class="ws-style-dropdown">
+            <option value="">無</option>
+          </select>
+          <button class="ai-btn btn-edit-sm"
+            onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select-3').value)">+編輯</button>
         </div>
         <div class="model-container-row">
           <label class="model-label">📝 寫作範本：</label>

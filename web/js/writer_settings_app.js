@@ -112,7 +112,8 @@
             // Styles
             const { data: styles } = await sb.from('writer_styles').select('*').order('name');
             this.styleList = styles || [];
-            this.updateDropdowns('ws-style-select', this.styleList, 'ws-style-dropdown');
+            // 同時更新主頁多欄 (ws-style-dropdown) 與好友彈窗 (ws-style-friend-dropdown)
+            this.updateDropdowns('ws-style-select', this.styleList, 'ws-style-dropdown', 'ws-style-friend-dropdown');
 
             // Samples
             const { data: samples } = await sb.from('writer_samples').select('*').order('name');
@@ -120,15 +121,18 @@
             this.updateDropdowns('ws-sample-select', this.sampleList, 'ws-sample-dropdown');
         },
 
-        updateDropdowns(modalSelectId, list, pageSelectClass) {
+        // 支援傳入多個頁面 CSS class，每個 class 下的 select 都會同步更新
+        updateDropdowns(modalSelectId, list, ...pageSelectClasses) {
             const options = ['<option value="">無</option>', ...list.map(i => `<option value="${i.name}">${i.name}</option>`)].join('');
             document.getElementById(modalSelectId).innerHTML = options;
-            
+
             // 更新頁面上的下拉選單
-            document.querySelectorAll('.' + pageSelectClass).forEach(sel => {
-                const currentVal = sel.value;
-                sel.innerHTML = options;
-                sel.value = currentVal;
+            pageSelectClasses.forEach(cls => {
+                document.querySelectorAll('.' + cls).forEach(sel => {
+                    const currentVal = sel.value;
+                    sel.innerHTML = options;
+                    sel.value = currentVal;
+                });
             });
         },
 
@@ -184,19 +188,26 @@
             }
         },
 
-        // 取得當前選中的內容
+        // 取得當前選中的內容（支援多個 ws-style-dropdown，自動合併不重複的風格內容）
         getSelectedContext() {
-            const styleSel = document.querySelector('.ws-style-dropdown');
+            // 收集所有 ws-style-dropdown 選單中非空的風格，合併去重
+            const styleSelects = document.querySelectorAll('.ws-style-dropdown');
             const sampleSel = document.querySelector('.ws-sample-dropdown');
-            
-            const styleName = styleSel ? styleSel.value : '';
+
+            const styleParts = [];
+            styleSelects.forEach(sel => {
+                if (!sel.value) return;
+                const item = this.styleList.find(i => i.name === sel.value);
+                if (item && item.content && !styleParts.includes(item.content)) {
+                    styleParts.push(item.content);
+                }
+            });
+
             const sampleName = sampleSel ? sampleSel.value : '';
-            
-            const style = this.styleList.find(i => i.name === styleName);
             const sample = this.sampleList.find(i => i.name === sampleName);
-            
+
             return {
-                style: style ? style.content : null,
+                style: styleParts.length > 0 ? styleParts.join('\n\n') : null,
                 sample: sample ? sample.content : null
             };
         }
