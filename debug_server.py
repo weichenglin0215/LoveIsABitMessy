@@ -52,9 +52,21 @@ def _resolve_character_json_path(char_id: str) -> str:
 def _try_repair_json(s: str) -> str:
     """
     嘗試修復 AI 回傳的殘缺 JSON 格式。
-    處理：缺少結尾引號、多餘逗號、未閉合括號、字串內實際換行字元、markdown 圍欄。
+    依序處理：
+      0. 剝除推理型模型（qwen3、deepseek-r1 等）的 <think>...</think> 思考區塊
+      1. 移除 Markdown 程式碼圍欄
+      2. 跳過前綴說明文字，從第一個 [ 或 { 開始
+      3. 直接解析（零開銷快速路徑）
+      修復1. 移除多餘結尾逗號（, 緊接 } 或 ]）
+      修復2. 補充缺漏的逗號（相鄰物件／陣列之間缺少分隔符）
+      修復3. 逐字元掃描（字串內換行/tab 轉義、補閉合引號與括號）
     """
     s = s.strip()
+    if not s:
+        return s
+
+    # 步驟 0：移除推理型模型輸出的 <think>...</think> 思考區塊
+    s = re.sub(r'<think>[\s\S]*?</think>', '', s).strip()
     if not s:
         return s
 
@@ -88,7 +100,22 @@ def _try_repair_json(s: str) -> str:
     except Exception:
         pass
 
-    # 修復2：逐字元掃描
+    # 修復2：補充缺漏的逗號
+    # AI 有時在陣列元素之間省略逗號，例如：
+    #   } {  →  }, {
+    #   }{   →  },{
+    #   ] [  →  ], [
+    # 作法：在 } 或 ] 緊接（含任意空白後） { 或 [ 時插入逗號；
+    # 已有逗號的情況（}, { 中間有 ,）因逗號不屬於 \s* 故不會重複插入。
+    s = re.sub(r'([}\]])(\s*)([{\[])', r'\1,\2\3', s)
+    s = re.sub(r',(\s*[}\]])', r'\1', s)   # 清除修復後可能衍生的多餘逗號
+    try:
+        json.loads(s)
+        return s
+    except Exception:
+        pass
+
+    # 修復3：逐字元掃描
     # ・字串內實際換行：往後看第一個非空白字元，
     #   若為 }、]、, 代表字串值已結束但缺少結尾引號 → 補上 "
     #   否則視為字串內換行 → 轉義為 \n
@@ -162,10 +189,48 @@ def _try_repair_json(s: str) -> str:
 
     fixed = ''.join(result)
 
-    # 修復後再次移除可能產生的多餘結尾逗號
+    # 修復後再次移除可能產生的多餘結尾逗號，並再補一次缺漏逗號
+    fixed = re.sub(r',(\s*[}\]])', r'\1', fixed)
+    fixed = re.sub(r'([}\]])(\s*)([{\[])', r'\1,\2\3', fixed)
     fixed = re.sub(r',(\s*[}\]])', r'\1', fixed)
 
     return fixed
+
+
+def _json_bracket_end(s: str, start: int) -> int:
+    """
+    從 s[start] 的開括號（'[' 或 '{'）出發，
+    用括號計數（忽略字串內的括號）找到對應的閉合括號並回傳其索引。
+    找不到時回傳 -1。
+    比 rfind(']') 更精確，不會被 JSON 結尾之後的雜文所誤導。
+    """
+    if start < 0 or start >= len(s) or s[start] not in '[{':
+        return -1
+    opener  = s[start]
+    closer  = ']' if opener == '[' else '}'
+    depth   = 0
+    in_str  = False
+    escape  = False
+    for i in range(start, len(s)):
+        c = s[i]
+        if escape:
+            escape = False
+            continue
+        if c == '\\' and in_str:
+            escape = True
+            continue
+        if c == '"':
+            in_str = not in_str
+            continue
+        if in_str:
+            continue
+        if c == opener:
+            depth += 1
+        elif c == closer:
+            depth -= 1
+            if depth == 0:
+                return i
+    return -1  # 未找到對應閉合括號（JSON 不完整）
 
 def _build_diary_prompt(char_path, scenario, char_data_override=None, relationship_params=None, other_chars=None, writer_settings=None, time_context="", past_diaries_context=""):
     #####################################################################################
@@ -441,7 +506,7 @@ def _run_analyze_text_char_job(job_id: str, params: dict):
         try:
             repaired = _try_repair_json(response_text)
             start = repaired.find('{')
-            end   = repaired.rfind('}')
+            end   = _json_bracket_end(repaired, start) if start != -1 else -1
             if start != -1 and end != -1:
                 character = json.loads(repaired[start:end + 1])
                 log(f">> JSON 解析成功！角色名稱：{character.get('name', '未命名')}")
@@ -757,7 +822,7 @@ def _run_novel_chapters_job(job_id: str, params: dict):
         try:
             repaired_text = _try_repair_json(response_text)
             start = repaired_text.find('[')
-            end   = repaired_text.rfind(']')
+            end   = _json_bracket_end(repaired_text, start) if start != -1 else -1
             if start != -1 and end != -1:
                 json_str = repaired_text[start:end + 1].replace('\n', ' ').strip()
                 chapters = json.loads(json_str)
@@ -843,7 +908,7 @@ def _run_novel_outline_job(job_id: str, params: dict):
         try:
             repaired_text = _try_repair_json(response_text)
             start = repaired_text.find('[')
-            end   = repaired_text.rfind(']')
+            end   = _json_bracket_end(repaired_text, start) if start != -1 else -1
             if start != -1 and end != -1:
                 json_str = repaired_text[start:end + 1].replace('\n', ' ').strip()
                 try:
@@ -1317,7 +1382,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 try:
                     repaired_text = _try_repair_json(response_text)
                     start = repaired_text.find('[')
-                    end = repaired_text.rfind(']')
+                    end = _json_bracket_end(repaired_text, start) if start != -1 else -1
                     if start != -1 and end != -1:
                         chapters = json.loads(repaired_text[start:end+1])
                 except Exception as e:
@@ -1404,7 +1469,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 try:
                     repaired_text = _try_repair_json(response_text)
                     start = repaired_text.find('[')
-                    end = repaired_text.rfind(']')
+                    end = _json_bracket_end(repaired_text, start) if start != -1 else -1
                     if start != -1 and end != -1:
                         json_str = repaired_text[start:end+1]
                         json_str = json_str.replace('\n', ' ').strip()
