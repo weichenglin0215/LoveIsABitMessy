@@ -184,7 +184,7 @@
       </div>
       <div class="modal-field-last">
         <label class="modal-label">密碼 (雲端存取用)：</label>
-        <input type="password" id="save-novel-password">
+        <input type="password" id="save-novel-password" style="color:red;">
       </div>
       <div class="modal-actions">
         <button id="btn-save-cancel" class="btn-modal-cancel">取消</button>
@@ -224,8 +224,8 @@
           </div>
           <div class="modal-field-last">
             <label class="modal-label">雲端儲存密碼：</label>
-            <input type="password" id="multibook-password" placeholder="留空則跳過雲端儲存"
-              style="width:100%; box-sizing:border-box;">
+            <input type="password" id="multibook-password" placeholder="一定要輸入，留空則跳過雲端儲存"
+              style="width:100%; box-sizing:border-box; color:red; border: 2px solid red;">
           </div>
         </div>
         <!-- 右側：AI 生成參數 -->
@@ -358,7 +358,7 @@
     <div class="modal-box modal-box-sm">
       <h3 class="modal-title">🔐 雲端專案驗證</h3>
       <p class="modal-desc">請輸入此小說專案的讀取密碼：</p>
-      <input type="password" id="novel-password-input" placeholder="輸入密碼..." style="margin-bottom:20px;">
+      <input type="password" id="novel-password-input" placeholder="輸入密碼..." style="margin-bottom:20px; color:red;">
       <div class="modal-actions">
         <button id="btn-password-cancel" class="btn-modal-cancel">取消</button>
         <button id="btn-password-ok" class="btn-modal-confirm">確定</button>
@@ -576,11 +576,13 @@
           <option value="all_outlines">章標題+章描述+節標題+節描述</option>
           <option value="content">內文</option>
           <option value="all">全部</option>
-        </select><span style="opacity:0.7; font-size:22px; flex-shrink:0;">🔍</span><span id="compare-search-count"
-          class="log-search-count" style="min-width:70px; flex-shrink:0;"></span><button class="log-search-nav-btn"
-          id="compare-search-prev" title="上一個">▲</button><button class="log-search-nav-btn" id="compare-search-next"
-          title="下一個">▼</button><input type="text" id="compare-search-input" class="log-search-input"
-          style="font-size: 20px; width:50%; min-width:160px; max-width:900px;"
+        </select><button onclick="loadCompareNovelList()" class="btn secondary-btn"
+          style="flex-shrink:0; height:32px; padding:0 10px; font-size:18px;" title="重新從雲端載入小說列表">🔄
+          更新雲端列表</button><span style="opacity:0.7; font-size:22px; flex-shrink:0;">🔍</span><span
+          id="compare-search-count" class="log-search-count" style="min-width:70px; flex-shrink:0;"></span><button
+          class="log-search-nav-btn" id="compare-search-prev" title="上一個">▲</button><button class="log-search-nav-btn"
+          id="compare-search-next" title="下一個">▼</button><input type="text" id="compare-search-input"
+          class="log-search-input" style="font-size: 20px; width:50%; min-width:160px; max-width:900px;"
           placeholder="搜尋四欄文字（Enter 執行）..."><button class="modal-close-btn"
           onclick="document.getElementById('modal-compare').classList.add('hidden')"
           style="flex-shrink:0; margin-left:auto;">&times;</button>
@@ -651,7 +653,7 @@
     <div class="modal-box modal-box-sm">
       <h3 class="modal-title">🔐 小說密碼驗證</h3>
       <p class="modal-desc" id="compare-pwd-desc">請輸入此小說的讀取密碼：</p>
-      <input type="password" id="compare-pwd-input" placeholder="輸入密碼..." style="margin-bottom:20px;">
+      <input type="password" id="compare-pwd-input" placeholder="輸入密碼..." style="margin-bottom:20px; color:red;">
       <div class="modal-actions">
         <button id="btn-compare-pwd-cancel" class="btn-modal-cancel">取消</button>
         <button id="btn-compare-pwd-ok" class="btn-modal-confirm">確定</button>

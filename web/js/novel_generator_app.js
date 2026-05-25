@@ -953,11 +953,38 @@ async function aiGenMultiBook(totalCount, opts = {}) {
     appendLog(`\n==============================\n🚀 全自動多本生成模式啟動（共 ${totalCount} 本，執行：${phaseLabels}）\n==============================`);
     appendLog(`📌 已儲存原始專案快照（${state.chapters.length} 章），每本生成前都會還原。`);
 
-    for (let bookNum = 1; bookNum <= totalCount; bookNum++) {
+    // 若有密碼（會儲存雲端），先查詢已存在的序號，從最大序號+1開始，避免同名衝突
+    let startNum = 1;
+    if (password) {
+        try {
+            const sb = window.SupabaseClient && window.SupabaseClient.getClient();
+            if (sb) {
+                const { data: existingNovels } = await sb
+                    .from('novel_entries')
+                    .select('novel_title')
+                    .like('novel_title', `${originalTitle}-%`);
+                if (existingNovels && existingNovels.length > 0) {
+                    const existingNums = existingNovels
+                        .map(r => { const m = r.novel_title.match(/-(\d+)$/); return m ? parseInt(m[1], 10) : 0; })
+                        .filter(n => n > 0);
+                    if (existingNums.length > 0) {
+                        const maxNum = Math.max(...existingNums);
+                        startNum = maxNum + 1;
+                        appendLog(`☁️ 雲端已有同名小說（最大序號：${String(maxNum).padStart(3,'0')}），本次從 ${String(startNum).padStart(3,'0')} 開始。`);
+                    }
+                }
+            }
+        } catch (e) {
+            appendLog(`⚠️ 查詢雲端序號失敗，從 001 開始: ${e.message}`);
+        }
+    }
+
+    for (let bookNum = startNum; bookNum < startNum + totalCount; bookNum++) {
+        const relNum = bookNum - startNum + 1;   // 本次批次中第幾本（1, 2, 3…）
         const paddedNum = String(bookNum).padStart(3, '0');
         const bookTitle = `${originalTitle}-${paddedNum}`;
 
-        appendLog(`\n========== 📖 第 ${bookNum}/${totalCount} 本：${bookTitle} ==========`);
+        appendLog(`\n========== 📖 第 ${relNum}/${totalCount} 本：${bookTitle} ==========`);
 
         // 還原原始專案狀態，避免上一本殘留的章節/內容影響本次生成
         appendLog(`🔄 正在還原原始專案狀態...`);

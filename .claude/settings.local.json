@@ -23,7 +23,18 @@
       "Bash(python \"C:\\\\verify_lpas.py\")",
       "Bash(python3 -c ' *)",
       "Bash(python \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\\\\verify_check.py\")",
-      "Bash(Remove-Item \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\\\\fix_lpas_script.py\" -ErrorAction SilentlyContinue)"
+      "Bash(Remove-Item \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\\\\fix_lpas_script.py\" -ErrorAction SilentlyContinue)",
+      "Bash(python -c \"import ast, sys; ast.parse\\(open\\('debug_server.py', encoding='utf-8'\\).read\\(\\)\\); print\\('✅ 語法正確'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('debug_server.py', encoding='utf-8'\\).read\\(\\)\\); print\\('syntax ok'\\)\")",
+      "Bash(python -c \"import re; src=open\\('debug_server.py',encoding='utf-8'\\).read\\(\\); closures=re.findall\\(r'def \\(?:_log|log\\)\\\\\\(\\(?:msg|text\\)', src\\); print\\('remaining closures:', closures\\)\")",
+      "Bash(python -c \"import re; src=open\\(r'C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\\\\debug_server.py',encoding='utf-8'\\).read\\(\\); closures=re.findall\\(r'def \\(?:_log|log\\)\\\\\\(\\(?:msg|text\\)', src\\); print\\('remaining closures:', closures\\)\")",
+      "Bash(cd /d \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('debug_server.py','r',encoding='utf-8'\\).read\\(\\)\\); print\\('debug_server.py: OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('prompt_utils.py','r',encoding='utf-8'\\).read\\(\\)\\); print\\('prompt_utils.py: OK'\\)\")",
+      "Bash(git -C \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\" worktree unlock \".claude/worktrees/agent-a182f28b2d437c59b\")",
+      "Bash(git -C \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\" worktree remove \".claude/worktrees/agent-a182f28b2d437c59b\" --force)",
+      "Bash(git -C \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\" branch -d worktree-agent-a182f28b2d437c59b)",
+      "Bash(git -C \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\" worktree list)"
     ]
   }
 }
