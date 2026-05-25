@@ -109,7 +109,7 @@ function openParamsModal(config) {
         modal.classList.remove('hidden');
 
         const confirmBtn = qs(`#${config.confirmBtnId}`);
-        const cancelBtn  = qs(`#${config.cancelBtnId}`);
+        const cancelBtn = qs(`#${config.cancelBtnId}`);
 
         const cleanup = () => {
             modal.classList.add('hidden');
@@ -127,7 +127,7 @@ function openParamsModal(config) {
         const onCancel = () => { cleanup(); resolve(false); };
 
         confirmBtn.addEventListener('click', onConfirm);
-        cancelBtn.addEventListener('click',  onCancel);
+        cancelBtn.addEventListener('click', onCancel);
     });
 }
 
@@ -135,8 +135,8 @@ async function promptAndGenChapterOutline(chIdx) {
     const confirmed = await openParamsModal({
         modalId: 'modal-params-co', confirmBtnId: 'btn-co-params-confirm', cancelBtnId: 'btn-co-params-cancel',
         fields: [
-            { inputId: 'co-section-count',     paramKey: 'chapterOutlineSectionCount',   defaultValue: 4 },
-            { inputId: 'co-words-per-section',  paramKey: 'chapterOutlineWordsPerSection', defaultValue: 500 }
+            { inputId: 'co-section-count', paramKey: 'chapterOutlineSectionCount', defaultValue: 4 },
+            { inputId: 'co-words-per-section', paramKey: 'chapterOutlineWordsPerSection', defaultValue: 500 }
         ]
     });
     if (confirmed) await aiGenChapterOutline(chIdx);
@@ -511,7 +511,7 @@ function setupEventListeners() {
         const ok = await openParamsModal({
             modalId: 'modal-params-co', confirmBtnId: 'btn-co-params-confirm', cancelBtnId: 'btn-co-params-cancel',
             fields: [
-                { inputId: 'co-section-count',    paramKey: 'chapterOutlineSectionCount',   defaultValue: 4 },
+                { inputId: 'co-section-count', paramKey: 'chapterOutlineSectionCount', defaultValue: 4 },
                 { inputId: 'co-words-per-section', paramKey: 'chapterOutlineWordsPerSection', defaultValue: 500 }
             ]
         });
@@ -544,8 +544,8 @@ function setupEventListeners() {
         const ok = await openParamsModal({
             modalId: 'modal-params-cfp', confirmBtnId: 'btn-cfp-params-confirm', cancelBtnId: 'btn-cfp-params-cancel',
             fields: [
-                { inputId: 'cfp-chapter-count',     paramKey: 'chaptersFromPremiseCount',              defaultValue: 16 },
-                { inputId: 'cfp-words-per-chapter',  paramKey: 'chaptersFromPremiseWordsPerChapter',    defaultValue: 400 }
+                { inputId: 'cfp-chapter-count', paramKey: 'chaptersFromPremiseCount', defaultValue: 16 },
+                { inputId: 'cfp-words-per-chapter', paramKey: 'chaptersFromPremiseWordsPerChapter', defaultValue: 400 }
             ]
         });
         if (ok) aiGenChaptersFromPremise();
@@ -555,8 +555,8 @@ function setupEventListeners() {
         const ok = await openParamsModal({
             modalId: 'modal-params-stp', confirmBtnId: 'btn-stp-params-confirm', cancelBtnId: 'btn-stp-params-cancel',
             fields: [
-                { inputId: 'stp-chapter-count',      paramKey: 'storyToPremiseChapters',          defaultValue: 8 },
-                { inputId: 'stp-words-per-chapter',   paramKey: 'storyToPremiseWordsPerChapter',   defaultValue: 200 }
+                { inputId: 'stp-chapter-count', paramKey: 'storyToPremiseChapters', defaultValue: 8 },
+                { inputId: 'stp-words-per-chapter', paramKey: 'storyToPremiseWordsPerChapter', defaultValue: 200 }
             ]
         });
         if (ok) qs('#story-file-input').click();
@@ -622,11 +622,11 @@ function setupEventListeners() {
         }
         // 從右側讀取 AI 生成參數並存入 state.genParams
         ensureGenParams();
-        state.genParams.chaptersFromPremiseCount           = Math.max(1, parseInt(qs('#mb-cfp-chapter-count').value) || 16);
+        state.genParams.chaptersFromPremiseCount = Math.max(1, parseInt(qs('#mb-cfp-chapter-count').value) || 16);
         state.genParams.chaptersFromPremiseWordsPerChapter = Math.max(50, parseInt(qs('#mb-cfp-words').value) || 400);
-        state.genParams.chapterOutlineSectionCount         = Math.max(1, parseInt(qs('#mb-co-section-count').value) || 4);
-        state.genParams.chapterOutlineWordsPerSection      = Math.max(50, parseInt(qs('#mb-co-words').value) || 500);
-        state.genParams.sectionContentWords                = Math.max(100, parseInt(qs('#mb-sc-words').value) || 3000);
+        state.genParams.chapterOutlineSectionCount = Math.max(1, parseInt(qs('#mb-co-section-count').value) || 4);
+        state.genParams.chapterOutlineWordsPerSection = Math.max(50, parseInt(qs('#mb-co-words').value) || 500);
+        state.genParams.sectionContentWords = Math.max(100, parseInt(qs('#mb-sc-words').value) || 3000);
         qs('#modal-multibook').classList.add('hidden');
         aiGenMultiBook(count, { doPhase1, doPhase2, doPhase3, password });
     });
@@ -909,11 +909,11 @@ async function aiGenFullAuto() {
     // 將 genParams 同步至多本小說彈窗右側輸入欄
     ensureGenParams();
     const gp = state.genParams;
-    qs('#mb-cfp-chapter-count').value  = gp.chaptersFromPremiseCount;
-    qs('#mb-cfp-words').value          = gp.chaptersFromPremiseWordsPerChapter;
-    qs('#mb-co-section-count').value   = gp.chapterOutlineSectionCount;
-    qs('#mb-co-words').value           = gp.chapterOutlineWordsPerSection;
-    qs('#mb-sc-words').value           = gp.sectionContentWords;
+    qs('#mb-cfp-chapter-count').value = gp.chaptersFromPremiseCount;
+    qs('#mb-cfp-words').value = gp.chaptersFromPremiseWordsPerChapter;
+    qs('#mb-co-section-count').value = gp.chapterOutlineSectionCount;
+    qs('#mb-co-words').value = gp.chapterOutlineWordsPerSection;
+    qs('#mb-sc-words').value = gp.sectionContentWords;
     // 開啟數量選擇彈窗（接續由 btn-multibook-confirm 呼叫 aiGenMultiBook）
     qs('#multibook-count').value = 1;
     qs('#modal-multibook').classList.remove('hidden');
@@ -1380,7 +1380,7 @@ async function callDebugServerAsync(asyncEndpoint, payload) {
     // Step 2: 輪詢 /api/job — 使用「無活動超時」取代固定次數，支援大型模型長時間生成
     // 後端每 5 秒會追加心跳 LOG，只要持續有新 LOG 就繼續等待
     const INACTIVITY_MS = 300_000; // 300 秒無新 LOG → 超時
-    let lastLogs     = "";
+    let lastLogs = "";
     let lastActivity = Date.now();
 
     while (true) {
@@ -1875,7 +1875,7 @@ async function loadCloudNovel(e) {
         // 開啟密碼驗證彈窗
         state._tempLoadId = id;
         qs('#novel-password-input').value = "";
-        
+
         modal.classList.remove('hidden');
 
         appendLog(">> [系統] 驗證彈窗已開啟，請在畫面中央輸入密碼並點擊「確定」。");
@@ -1936,7 +1936,7 @@ async function confirmLoadCloudNovel() {
                     appendLog(">> JSON 解析成功。");
                 } catch (pe) {
                     appendLog(`❌ JSON 解析失敗: ${pe.message}`);
-                    appendLog(`>> 原始內容片段: ${loadedState.substring(0, 100)}...`);
+                    appendLog(`>> 原始內容: ${loadedState}`);
                     throw new Error("資料格式不正確 (JSON 解析失敗)");
                 }
             }
@@ -1955,14 +1955,14 @@ async function confirmLoadCloudNovel() {
 
             // 為了確保所有引用此物件的地方都能同步更新，使用屬性覆蓋而非變數重新賦值
             appendLog(">> 正在更新應用程式狀態並重新渲染介面...");
-            
+
             // 清空舊狀態的所有屬性 (除了暫存 ID 等)
             for (const key in state) {
                 if (state.hasOwnProperty(key)) delete state[key];
             }
             // 寫入新狀態
             Object.assign(state, loadedState);
-            
+
             try {
                 renderAll();
                 appendLog(`✅ [成功] 已載入「${state.bookTitle || '未命名小說'}」`);

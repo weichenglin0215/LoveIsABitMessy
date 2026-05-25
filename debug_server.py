@@ -504,17 +504,19 @@ def _run_analyze_text_char_job(job_id: str, params: dict):
 
         character = {}
         try:
-            repaired = _try_repair_json(response_text)
-            start = repaired.find('{')
-            end   = _json_bracket_end(repaired, start) if start != -1 else -1
+            repaired_text = _try_repair_json(response_text)
+            start = repaired_text.find('{')
+            end   = _json_bracket_end(repaired_text, start) if start != -1 else -1
             if start != -1 and end != -1:
-                character = json.loads(repaired[start:end + 1])
+                character = json.loads(repaired_text[start:end + 1])
                 log(f">> JSON 解析成功！角色名稱：{character.get('name', '未命名')}")
                 log(f">> 星座：{character.get('zodiac','')}　血型：{character.get('blood_type','')}　LPAS：{character.get('personality_type','')}")
             else:
                 log(">> 找不到有效 JSON 物件（回傳內容中沒有 { } 結構）。")
         except Exception as e:
             log(f">> JSON 解析失敗：{e}")
+            log(f">> 顯示原始回傳文字：{response_text}")
+            log(f">> 顯示JSON修正後文字：{repaired_text}")
 
         with JOBS_LOCK:
             if job_id in JOBS:
@@ -831,7 +833,8 @@ def _run_novel_chapters_job(job_id: str, params: dict):
                 log(f">> JSON 修復後找不到有效陣列範圍")
         except Exception as e:
             log(f">> JSON 解析失敗 (嘗試修復後): {e}")
-            log(f">> 原始回傳（前1000字）: {response_text[:1000]}")
+            log(f">> 顯示原始回傳文字：{response_text}")
+            log(f">> 顯示JSON修正後文字：{repaired_text}")
 
         with JOBS_LOCK:
             if job_id in JOBS:
@@ -926,13 +929,14 @@ def _run_novel_outline_job(job_id: str, params: dict):
                                 sections.append(combined)
                 except Exception as inner_e:
                     log(f">> JSON 解析失敗，嘗試 regex 提取: {inner_e}")
-                    log(f">> 修復後文字（前1000字）: {json_str[:1000]}")
+                    log(f">> 修復後文字: {json_str}")
                     raw_titles = re.findall(r'"([^"]+)"', json_str)
                     if raw_titles:
                         sections = [t.strip() for t in raw_titles if t.strip()]
         except Exception as e:
             log(f">> JSON 解析失敗 (大綱): {e}")
-            log(f">> 原始回傳（前1000字）: {response_text[:1000]}")
+            log(f">> 顯示原始回傳文字：{response_text}")
+            log(f">> 顯示JSON修正後文字：{repaired_text}")
             sections = [s.strip() for s in response_text.split('\n')
                         if s.strip() and not s.startswith('[') and not s.startswith('`')]
 
@@ -1387,7 +1391,8 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                         chapters = json.loads(repaired_text[start:end+1])
                 except Exception as e:
                     print(f">> JSON 解析失敗 (嘗試修復後): {e}")
-                    print(f">> 嘗試修復後的內容: {repaired_text[:1000]}...")
+                    print(f">> 顯示原始回傳文字：{response_text}")
+                    print(f">> 顯示JSON修正後文字：{repaired_text}")
 
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json; charset=utf-8')
@@ -1500,6 +1505,8 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                                 sections = [t.strip() for t in raw_titles if t.strip()]
                 except Exception as e:
                     print(f">> JSON 解析失敗 (大綱): {e}")
+                    print(f">> 顯示原始回傳文字：{response_text}")
+                    print(f">> 顯示JSON修正後文字：{repaired_text}")
                     # Fallback
                     sections = [s.strip() for s in response_text.split('\n') if s.strip() and not s.startswith('[') and not s.startswith('`')]
                 
