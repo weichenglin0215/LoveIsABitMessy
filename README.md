@@ -78,6 +78,7 @@
 
 | 版本 | 日期 | 更新亮點 |
 | :--- | :--- | :--- |
+| **V0.8.11.1** | 2026-05-26 | 新增 Ollama大模型的效率品質比拚.md|
 | **V0.8.11.0** | 2026-05-25 | 將debug_server.py中_run_job()內生成日記的 subprocess.run 統一改為直接呼叫 _ollama_with_heartbeat()，與小说、Loveline 共用相同的非同步執行與心跳機制，並保留原本的 subprocess 生圖流程。小說的全自動功能加入自動往後添加序號機制。|
 | **V0.8.10.0** | 2026-05-25 | 修正debug_server.py的_parse_response()與_try_repair_json()多處JSON解析錯誤，尚未完全解決。|
 | **V0.8.9.0** | 2026-05-25 | 修正debug_server.py的_try_repair_json()多處JSON解析錯誤。|
