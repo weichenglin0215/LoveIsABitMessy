@@ -227,6 +227,8 @@
                     <div class="load-buttons-row">
                         <button class="btn secondary-btn flex-1" id="load-cloud-diaries-btn">☁️ 從雲端讀取(更新)清單</button>
                         <button class="btn secondary-btn flex-1" id="load-local-diaries-btn">📁 從本機讀取(更新)清單</button>
+                        <button class="btn secondary-btn flex-1" id="btn-compare-diaries" title="並排比對四篇雲端日記的內容">📚
+                            比對多本日記</button>
                     </div>
                     <select id="diary-select" disabled style="opacity:0.5;">
                         <option value="">-- 請先點選讀取按鈕 --</option>
@@ -717,6 +719,7 @@
                     story: cleanData.story || "",
                     full_prompt: cleanData.full_prompt || "",
                     image_prompt: cleanData.image_prompt || "",
+                    ai_setup: cleanData.ai_setup || null,   // AI 參數設定（模型、風格、範本等）
                     story_filename: storyFilename
                 };
 
@@ -737,7 +740,84 @@
         }
 
         // ====== 執行生成 ======
-        document.getElementById('run-btn').addEventListener('click', async () => {
+        document.getElementById('run-btn').addEventListener('click', () => {
+            // 設定預設日期為當前 input 的日期
+            const curDate = document.getElementById('diary-date').value;
+            if (curDate) {
+                document.getElementById('modal-start-date').value = curDate;
+                document.getElementById('modal-end-date').value = curDate;
+            }
+            document.getElementById('modal-daily-count').value = 1;
+            document.getElementById('modal-batch-gen').classList.remove('hidden');
+        });
+
+        // modal-batch-gen 的按鈕位於 script 標籤之後，需等 DOM 完成才能綁定
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('btn-batch-gen-cancel').addEventListener('click', () => {
+                document.getElementById('modal-batch-gen').classList.add('hidden');
+            });
+
+            document.getElementById('btn-batch-gen-confirm').addEventListener('click', async () => {
+                document.getElementById('modal-batch-gen').classList.add('hidden');
+                const startDateStr = document.getElementById('modal-start-date').value;
+                const endDateStr = document.getElementById('modal-end-date').value;
+                const dailyCount = parseInt(document.getElementById('modal-daily-count').value, 10) || 1;
+
+                if (!startDateStr || !endDateStr) {
+                    alert("請設定起始與結束日期！");
+                    return;
+                }
+
+                const startDate = new Date(startDateStr);
+                const endDate = new Date(endDateStr);
+
+                if (startDate > endDate) {
+                    alert("起始日期不能晚於結束日期！");
+                    return;
+                }
+
+                for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                    // Ensure correct local time string for YYYY-MM-DD
+                    const currentDateStr = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+                    for (let i = 0; i < dailyCount; i++) {
+                        // Update main UI date so logic can just read it (and user sees progress)
+                        document.getElementById('diary-date').value = currentDateStr;
+                        logBox.value += `\n\n========================================\n`;
+                        logBox.value += `=== 開始生成日期: ${currentDateStr} (第 ${i + 1} / ${dailyCount} 篇) ===\n`;
+                        logBox.value += `========================================\n`;
+                        logBox.scrollTop = logBox.scrollHeight;
+
+                        await runSingleGeneration();
+                    }
+                }
+                logBox.value += `\n\n✅ 所有批量生成任務已完成！\n`;
+                logBox.scrollTop = logBox.scrollHeight;
+            });  // end btn-batch-gen-confirm
+        });  // end DOMContentLoaded
+
+        /**
+         * 過濾情境文字：移除以日期格式（YYYY-MM-DD 或 YYYY/MM/DD）開頭，
+         * 且日期「嚴格晚於」日記當天的行，避免 AI 讀到未來事件。
+         * 無日期前綴的行一律保留。
+         * @param {string} scenarioText - 原始情境文字
+         * @param {string} diaryDateStr - 日記日期，格式 YYYY-MM-DD
+         * @returns {string} 過濾後的情境文字
+         */
+        function filterScenarioByDate(scenarioText, diaryDateStr) {
+            if (!diaryDateStr || !scenarioText) return scenarioText;
+            const datePattern = /^(\d{4})[-\/](\d{2})[-\/](\d{2})/;
+            // 用整數 YYYYMMDD 比較，完全不受時區影響
+            const [dy, dm, dd] = diaryDateStr.split('-').map(Number);
+            const diaryTs = dy * 10000 + dm * 100 + dd;
+            return scenarioText.split('\n').filter(line => {
+                const match = line.match(datePattern);
+                if (!match) return true; // 無日期前綴，保留
+                const lineTs = parseInt(match[1]) * 10000 + parseInt(match[2]) * 100 + parseInt(match[3]);
+                return lineTs <= diaryTs; // 等於或早於日記當天才保留
+            }).join('\n');
+        }
+
+        async function runSingleGeneration() {
             // 先確認伺服器在線
             if (!serverOnline) {
                 const online = await checkServerStatus();
@@ -748,7 +828,13 @@
             }
 
             const charId = charSelect.value;
-            const scenario = document.getElementById('input-scenario').value;
+            // 過濾情境：自動移除日期晚於日記當天的行（日記無法預知未來）
+            const rawScenario = document.getElementById('input-scenario').value;
+            const diaryDateForFilter = document.getElementById('diary-date').value;
+            const scenario = filterScenarioByDate(rawScenario, diaryDateForFilter);
+            if (scenario !== rawScenario) {
+                logBox.value += `>> ⚠️ 情境文字已自動過濾：移除了日期晚於 ${diaryDateForFilter} 的行。\n`;
+            }
 
             // 關係參數
             const relationship = {
@@ -787,24 +873,39 @@
                 const dTime = document.getElementById('diary-time').value;
                 const timeContext = `日期：${dDate}，大約晚上 ${dTime} 點左右`;
 
-                // 讀取前三篇日記作為參考，根據entry_date日記中設定的日期，created_at 是 AI 產生這一篇的日期。
+                // 讀取前三篇日記作為參考：以日期為單位，找最靠近且不同日期的三天，每天各取一篇。
                 let pastDiariesContext = "";
                 try {
                     if (charId && window.SupabaseClient && window.SupabaseClient.init()) {
                         const sb_client = window.SupabaseClient.getClient();
-                        const { data: pastData } = await sb_client.from('diary_entries')
-                            .select('entry_date, story')
+                        const targetDate = document.getElementById('diary-date').value; // YYYY-MM-DD
+                        // 撈出比目標日期早的所有日記 (entry_date < targetDate)，依 entry_date 倒序
+                        const { data: allPast } = await sb_client.from('diary_entries')
+                            .select('entry_date, story, created_at')
                             .eq('character_id', charId)
+                            .lt('entry_date', targetDate || new Date().toISOString().split('T')[0])
                             .order('entry_date', { ascending: false })
                             .order('created_at', { ascending: false })
-                            .limit(3);
+                            .limit(50); // 撈多一點以便找到 3 個不同日期
 
-                        if (pastData && pastData.length > 0) {
-                            pastData.reverse(); // 由舊到新
-                            pastDiariesContext = "\n\n【參考資料：女主角的前幾篇日記，供延續生活體驗與人際關係參考】\n";
-                            pastData.forEach((d, idx) => {
-                                pastDiariesContext += `--- 日記 ${idx + 1} ---\n${d.story}\n\n`;
-                            });
+                        if (allPast && allPast.length > 0) {
+                            // 從最新往舊找，每個不同日期取第一筆（created_at 最新的那篇）
+                            const seenDates = new Set();
+                            const picked = [];
+                            for (const d of allPast) {
+                                if (!seenDates.has(d.entry_date)) {
+                                    seenDates.add(d.entry_date);
+                                    picked.push(d);
+                                    if (picked.length >= 3) break;
+                                }
+                            }
+                            if (picked.length > 0) {
+                                picked.reverse(); // 由舊到新
+                                pastDiariesContext = "\n\n【參考資料：女主角的前幾篇日記，供延續生活體驗與人際關係參考】\n";
+                                picked.forEach((d, idx) => {
+                                    pastDiariesContext += `--- 日記 ${idx + 1}（${d.entry_date}）---\n${d.story}\n\n`;
+                                });
+                            }
                         }
                     }
                 } catch (e) {
@@ -848,11 +949,24 @@
 
                 // --- 步驟 2: 執行生成 ---
                 logBox.value += ">> 正在呼叫 AI 執行生成任務...\n";
+
+                // 收集 AI 參數設定（模型、模型選項名稱、完整參數、寫作風格、寫作範本）
+                const modelOptPayload = (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null;
+                const aiSetup = {
+                    model: document.getElementById('model-select').value,
+                    model_options_name: document.getElementById('model-options-select').value || '',
+                    model_options: modelOptPayload,
+                    writer_style_1: document.getElementById('writer-style-select-1').value || '',
+                    writer_style_2: document.getElementById('writer-style-select-2').value || '',
+                    writer_sample: document.getElementById('writer-sample-select').value || ''
+                };
+
                 const postBody = {
                     ...promptParams,
                     diary_prompt: finalDiaryPrompt, // 傳遞預覽好的提示詞
                     model: document.getElementById('model-select').value,
-                    model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null
+                    model_options: modelOptPayload,
+                    ai_setup: aiSetup           // 完整 AI 參數設定，存入日記
                 };
 
                 const res = await fetch('http://localhost:8081/api/run_async', {
@@ -862,7 +976,7 @@
                 });
                 const result = await res.json();
                 if (result.diary_prompt) diaryPromptBox.value = result.diary_prompt;
-                if (result.image_prompt) imagePromptBox.value = result.image_prompt;
+                // 生圖提示詞由 AI 動態生成，待任務完成後才顯示（見 jd.status === 'done' 的處理）
 
                 const jobId = result.job_id;
                 if (!jobId) {
@@ -874,7 +988,7 @@
                 // 使用「無活動超時」取代固定次數，支援大型模型長時間生成
                 // 後端每 5~30 秒會追加心跳 LOG；超過 300 秒無任何新 LOG 才判定超時
                 const INACTIVITY_MS = 300_000;
-                let lastText     = "";
+                let lastText = "";
                 let lastActivity = Date.now();
                 let finalJobResult = null;
                 while (true) {
@@ -901,6 +1015,10 @@
                         lastActivity = jd.last_activity * 1000;
                     }
                     if (jd.status === 'done') {
+                        // 任務完成後，將後端生成的動態生圖提示詞顯示在 image-prompt-box
+                        if (jd.result && jd.result.image_prompt) {
+                            imagePromptBox.value = jd.result.image_prompt;
+                        }
                         logBox.value += "\n\n[OK] 流程完畢。您可以到首頁查看結果。";
                         finalJobResult = { jobId, logs: lastText };
                         break;
@@ -920,38 +1038,40 @@
             } finally {
                 document.getElementById('run-btn').disabled = false;
             }
-            // 監聽選單切換，即時更新個性類型顯示
-            charSelect.addEventListener('change', async () => {
-                const charId = charSelect.value;
-                const pTypeDisplay = document.getElementById('char-personality-type-display');
-                if (!charId) {
-                    pTypeDisplay.style.display = 'none';
-                    return;
-                }
 
-                let charData = null;
-                if (useLocalCheckbox.checked) {
-                    // 本機模式：從伺服器 API 抓取
-                    try {
-                        const res = await fetch(`http://localhost:8081/characters/${charId}.json`);
-                        charData = await res.json();
-                    } catch (e) {
-                        console.error('Failed to load local char data');
-                    }
-                } else {
-                    // 雲端模式：從快照中找
-                    const found = cloudCharacters.find(c => c.id === charId);
-                    if (found) charData = found.card_json;
-                }
 
-                if (charData && charData.personality_type) {
-                    pTypeDisplay.textContent = `🧬 性格：${charData.personality_type}`;
-                    pTypeDisplay.style.display = 'inline-block';
-                } else {
-                    pTypeDisplay.style.display = 'none';
-                }
-            });
+        }
 
+        // 監聽選單切換，即時更新個性類型顯示
+        charSelect.addEventListener('change', async () => {
+            const charId = charSelect.value;
+            const pTypeDisplay = document.getElementById('char-personality-type-display');
+            if (!charId) {
+                pTypeDisplay.style.display = 'none';
+                return;
+            }
+
+            let charData = null;
+            if (useLocalCheckbox.checked) {
+                // 本機模式：從伺服器 API 抓取
+                try {
+                    const res = await fetch(`http://localhost:8081/characters/${charId}.json`);
+                    charData = await res.json();
+                } catch (e) {
+                    console.error('Failed to load local char data');
+                }
+            } else {
+                // 雲端模式：從快照中找
+                const found = cloudCharacters.find(c => c.id === charId);
+                if (found) charData = found.card_json;
+            }
+
+            if (charData && charData.personality_type) {
+                pTypeDisplay.textContent = `🧬 性格：${charData.personality_type}`;
+                pTypeDisplay.style.display = 'inline-block';
+            } else {
+                pTypeDisplay.style.display = 'none';
+            }
         });
 
         // ====== 日記編輯器邏輯 (Right Column) ======
@@ -1076,6 +1196,321 @@
             }
         })();
     </script>
+
+    <!-- ── Modal: Batch Generation ── -->
+    <div id="modal-batch-gen" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width:400px;">
+            <h2 style="margin-top:0; color:var(--c-accent-light);">生成日記-設定篇數與日期範圍</h2>
+            <div class="form-group" style="margin-top:20px;">
+                <label>每日的篇數：</label>
+                <input type="number" id="modal-daily-count" class="input-flat" min="1" max="32" value="1"
+                    style="width:100%;">
+            </div>
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <div class="form-group" style="flex:1;">
+                    <label>起始日期：</label>
+                    <input type="date" id="modal-start-date" class="input-flat" style="width:100%;">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>結束日期：</label>
+                    <input type="date" id="modal-end-date" class="input-flat" style="width:100%;">
+                </div>
+            </div>
+            <div style="margin-top:25px; display:flex; justify-content:flex-end; gap:10px;">
+                <button id="btn-batch-gen-cancel" class="btn secondary-btn">取消</button>
+                <button id="btn-batch-gen-confirm" class="btn primary-btn">確認</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Modal: Compare Diaries ── -->
+    <div id="modal-compare-diaries" class="modal-overlay hidden">
+        <div
+            style="width:100%; height:100%; display:flex; flex-direction:column; background:var(--c-bg-root); border-radius:0;">
+            <!-- Top bar -->
+            <div
+                style="display:flex; align-items:center; gap:8px; padding:6px 12px; border-bottom:1px solid var(--c-border); flex-shrink:0; flex-wrap:nowrap; overflow-x:auto; background:var(--c-bg-card);">
+                <h2
+                    style="margin:0; font-size:22px; font-weight:bold; white-space:nowrap; color:var(--c-accent-light);">
+                    📚 多本日記比對</h2>
+                <button onclick="loadCompareDiaryList()" class="btn secondary-btn"
+                    style="flex-shrink:0; height:32px; padding:0 10px; font-size:18px;" title="重新從雲端載入日記列表">🔄
+                    更新雲端列表</button>
+                <span style="opacity:0.7; font-size:22px; flex-shrink:0;">🔍</span>
+                <span id="cd-search-count" class="log-search-count" style="min-width:70px; flex-shrink:0;"></span>
+                <button class="log-search-nav-btn" id="cd-search-prev" title="上一個">▲</button>
+                <button class="log-search-nav-btn" id="cd-search-next" title="下一個">▼</button>
+                <input type="text" id="cd-search-input" class="log-search-input"
+                    style="font-size:20px; width:50%; min-width:160px; max-width:900px;"
+                    placeholder="搜尋四欄文字（Enter 執行）...">
+                <button class="modal-close-btn"
+                    onclick="document.getElementById('modal-compare-diaries').classList.add('hidden')"
+                    style="flex-shrink:0; margin-left:auto;">&times;</button>
+            </div>
+            <!-- 4 columns -->
+            <div style="display:flex; flex:1; overflow:hidden;">
+                <!-- Col 0 -->
+                <div
+                    style="flex:1; display:flex; flex-direction:column; border-right:1px solid var(--c-border); overflow:hidden; min-width:0;">
+                    <div
+                        style="padding:6px 8px; background:var(--c-bg-card); border-bottom:1px solid var(--c-border); flex-shrink:0; display:flex; gap:4px; align-items:center;">
+                        <select class="cd-diary-select" data-col="0"
+                            style="flex:1; height:28px; font-size:18px; background:#2a2a2a; color:#eee; border:1px solid var(--c-border); border-radius:4px; padding:0 4px;">
+                            <option value="">-- 請選擇日記 --</option>
+                        </select>
+                        <button class="btn primary-btn" onclick="saveCompareDiary(0)" title="儲存修改內容"
+                            style="height:28px; padding:0 8px; font-size:14px; white-space:nowrap;">💾 儲存修改內容</button>
+                        <button class="btn-del-sec" onclick="deleteCompareDiary(0)" title="刪除此雲端日記">🗑️</button>
+                    </div>
+                    <div style="flex:1; overflow-y:auto;">
+                        <div
+                            style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-bottom:1px solid var(--c-border); flex-shrink:0;">
+                            日記文字內容 (Story)</div>
+                        <textarea class="cd-story" data-col="0"
+                            style="width:100%; height:400px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                        <div
+                            style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-top:1px solid var(--c-border); border-bottom:1px solid var(--c-border); flex-shrink:0;">
+                            生圖提示詞 (Image Prompt)</div>
+                        <textarea class="cd-image-prompt" data-col="0"
+                            style="width:100%; height:200px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                        <div
+                            style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-top:1px solid var(--c-border); border-bottom:1px solid var(--c-border); flex-shrink:0;">
+                            AI 參數 (AISetup)</div>
+                        <textarea class="cd-ai-setup" data-col="0"
+                            style="width:100%; height:150px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                    </div>
+                </div>
+                <!-- Col 1 -->
+                <div
+                    style="flex:1; display:flex; flex-direction:column; border-right:1px solid var(--c-border); overflow:hidden; min-width:0;">
+                    <div
+                        style="padding:6px 8px; background:var(--c-bg-card); border-bottom:1px solid var(--c-border); flex-shrink:0; display:flex; gap:4px; align-items:center;">
+                        <select class="cd-diary-select" data-col="1"
+                            style="flex:1; height:28px; font-size:18px; background:#2a2a2a; color:#eee; border:1px solid var(--c-border); border-radius:4px; padding:0 4px;">
+                            <option value="">-- 請選擇日記 --</option>
+                        </select>
+                        <button class="btn primary-btn" onclick="saveCompareDiary(1)" title="儲存修改內容"
+                            style="height:28px; padding:0 8px; font-size:14px; white-space:nowrap;">💾 儲存修改內容</button>
+                        <button class="btn-del-sec" onclick="deleteCompareDiary(1)" title="刪除此雲端日記">🗑️</button>
+                    </div>
+                    <div style="flex:1; overflow-y:auto;">
+                        <div
+                            style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-bottom:1px solid var(--c-border); flex-shrink:0;">
+                            日記文字內容 (Story)</div>
+                        <textarea class="cd-story" data-col="1"
+                            style="width:100%; height:400px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                        <div
+                            style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-top:1px solid var(--c-border); border-bottom:1px solid var(--c-border); flex-shrink:0;">
+                            生圖提示詞 (Image Prompt)</div>
+                        <textarea class="cd-image-prompt" data-col="1"
+                            style="width:100%; height:200px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                        <div
+                            style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-top:1px solid var(--c-border); border-bottom:1px solid var(--c-border); flex-shrink:0;">
+                            AI 參數 (AISetup)</div>
+                        <textarea class="cd-ai-setup" data-col="1"
+                            style="width:100%; height:150px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                    </div>
+                </div>
+                <!-- Col 2 -->
+                <div
+                    style="flex:1; display:flex; flex-direction:column; border-right:1px solid var(--c-border); overflow:hidden; min-width:0;">
+                    <div
+                        style="padding:6px 8px; background:var(--c-bg-card); border-bottom:1px solid var(--c-border); flex-shrink:0; display:flex; gap:4px; align-items:center;">
+                        <select class="cd-diary-select" data-col="2"
+                            style="flex:1; height:28px; font-size:18px; background:#2a2a2a; color:#eee; border:1px solid var(--c-border); border-radius:4px; padding:0 4px;">
+                            <option value="">-- 請選擇日記 --</option>
+                        </select>
+                        <button class="btn primary-btn" onclick="saveCompareDiary(2)" title="儲存修改內容"
+                            style="height:28px; padding:0 8px; font-size:14px; white-space:nowrap;">💾 儲存修改內容</button>
+                        <button class="btn-del-sec" onclick="deleteCompareDiary(2)" title="刪除此雲端日記">🗑️</button>
+                    </div>
+                    <div style="flex:1; overflow-y:auto;">
+                        <div
+                            style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-bottom:1px solid var(--c-border); flex-shrink:0;">
+                            日記文字內容 (Story)</div>
+                        <textarea class="cd-story" data-col="2"
+                            style="width:100%; height:400px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                        <div
+                            style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-top:1px solid var(--c-border); border-bottom:1px solid var(--c-border); flex-shrink:0;">
+                            生圖提示詞 (Image Prompt)</div>
+                        <textarea class="cd-image-prompt" data-col="2"
+                            style="width:100%; height:200px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                        <div
+                            style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-top:1px solid var(--c-border); border-bottom:1px solid var(--c-border); flex-shrink:0;">
+                            AI 參數 (AISetup)</div>
+                        <textarea class="cd-ai-setup" data-col="2"
+                            style="width:100%; height:150px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                    </div>
+                </div>
+                <!-- Col 3 -->
+                <div style="flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0;">
+                    <div
+                        style="padding:6px 8px; background:var(--c-bg-card); border-bottom:1px solid var(--c-border); flex-shrink:0; display:flex; gap:4px; align-items:center;">
+                        <select class="cd-diary-select" data-col="3"
+                            style="flex:1; height:28px; font-size:18px; background:#2a2a2a; color:#eee; border:1px solid var(--c-border); border-radius:4px; padding:0 4px;">
+                            <option value="">-- 請選擇日記 --</option>
+                        </select>
+                        <button class="btn primary-btn" onclick="saveCompareDiary(3)" title="儲存修改內容"
+                            style="height:28px; padding:0 8px; font-size:14px; white-space:nowrap;">💾 儲存修改內容</button>
+                        <button class="btn-del-sec" onclick="deleteCompareDiary(3)" title="刪除此雲端日記">🗑️</button>
+                    </div>
+                    <div style="flex:1; overflow-y:auto;">
+                        <div
+                            style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-bottom:1px solid var(--c-border); flex-shrink:0;">
+                            日記文字內容 (Story)</div>
+                        <textarea class="cd-story" data-col="3"
+                            style="width:100%; height:400px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                        <div
+                            style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-top:1px solid var(--c-border); border-bottom:1px solid var(--c-border); flex-shrink:0;">
+                            生圖提示詞 (Image Prompt)</div>
+                        <textarea class="cd-image-prompt" data-col="3"
+                            style="width:100%; height:200px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                        <div
+                            style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-top:1px solid var(--c-border); border-bottom:1px solid var(--c-border); flex-shrink:0;">
+                            AI 參數 (AISetup)</div>
+                        <textarea class="cd-ai-setup" data-col="3"
+                            style="width:100%; height:150px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ====== 比對多本日記 Modal ======
+        let cdDiaryList = [];
+        let cdLoadedData = [null, null, null, null]; // 每欄已載入的資料
+
+        async function loadCompareDiaryList() {
+            if (!window.SupabaseClient || !window.SupabaseClient.init()) { alert('Supabase 未初始化'); return; }
+            const sb = window.SupabaseClient.getClient();
+            const { data, error } = await sb.from('diary_entries')
+                .select('id, entry_date, character_name, story_filename')
+                .order('entry_date', { ascending: false })
+                .order('created_at', { ascending: false })
+                .limit(200);
+            if (error) { alert('載入日記列表失敗: ' + error.message); return; }
+            cdDiaryList = data || [];
+            const opts = '<option value="">-- 請選擇日記 --</option>' +
+                cdDiaryList.map(d => `<option value="${d.id}">${d.story_filename || (d.entry_date + ' - ' + d.character_name)}</option>`).join('');
+            document.querySelectorAll('.cd-diary-select').forEach(sel => { sel.innerHTML = opts; });
+        }
+
+        document.querySelectorAll('.cd-diary-select').forEach(sel => {
+            sel.addEventListener('change', async function () {
+                const col = parseInt(this.getAttribute('data-col'));
+                const id = this.value;
+                const storyTA = document.querySelector(`.cd-story[data-col="${col}"]`);
+                const imgTA = document.querySelector(`.cd-image-prompt[data-col="${col}"]`);
+                const aiSetupTA = document.querySelector(`.cd-ai-setup[data-col="${col}"]`);
+                if (!id) { storyTA.value = ''; imgTA.value = ''; aiSetupTA.value = ''; cdLoadedData[col] = null; return; }
+                try {
+                    const sb = window.SupabaseClient.getClient();
+                    const { data, error } = await sb.from('diary_entries').select('*').eq('id', id).single();
+                    if (error) throw error;
+                    cdLoadedData[col] = data;
+                    storyTA.value = data.story || '';
+                    imgTA.value = data.image_prompt || '';
+                    // ai_setup 以 JSON 格式顯示（方便閱讀）
+                    aiSetupTA.value = data.ai_setup ? JSON.stringify(data.ai_setup, null, 2) : '';
+                } catch (e) { alert('載入日記失敗: ' + e.message); }
+            });
+        });
+
+        async function saveCompareDiary(col) {
+            const data = cdLoadedData[col];
+            if (!data || !data.id) { alert('請先選擇一篇日記'); return; }
+            const storyTA = document.querySelector(`.cd-story[data-col="${col}"]`);
+            const imgTA = document.querySelector(`.cd-image-prompt[data-col="${col}"]`);
+            const aiSetupTA = document.querySelector(`.cd-ai-setup[data-col="${col}"]`);
+            // 嘗試將 ai_setup 文字框解析回 JSON；解析失敗則保留原字串
+            let aiSetupVal = null;
+            try { aiSetupVal = aiSetupTA.value ? JSON.parse(aiSetupTA.value) : null; } catch (_) { aiSetupVal = aiSetupTA.value || null; }
+            try {
+                const sb = window.SupabaseClient.getClient();
+                const { error } = await sb.from('diary_entries').update({
+                    story: storyTA.value,
+                    image_prompt: imgTA.value,
+                    ai_setup: aiSetupVal
+                }).eq('id', data.id);
+                if (error) throw error;
+                alert('✅ 儲存成功！');
+            } catch (e) { alert('儲存失敗: ' + e.message); }
+        }
+
+        async function deleteCompareDiary(col) {
+            const data = cdLoadedData[col];
+            if (!data || !data.id) { alert('請先選擇一篇日記'); return; }
+            const label = document.querySelector(`.cd-diary-select[data-col="${col}"]`).options[
+                document.querySelector(`.cd-diary-select[data-col="${col}"]`).selectedIndex
+            ].text;
+            if (!confirm(`確定要刪除此雲端日記？\n${label}`)) return;
+            try {
+                const sb = window.SupabaseClient.getClient();
+                const { error } = await sb.from('diary_entries').delete().eq('id', data.id);
+                if (error) throw error;
+                cdLoadedData[col] = null;
+                document.querySelector(`.cd-story[data-col="${col}"]`).value = '';
+                document.querySelector(`.cd-image-prompt[data-col="${col}"]`).value = '';
+                document.querySelector(`.cd-ai-setup[data-col="${col}"]`).value = '';
+                await loadCompareDiaryList();
+                alert('✅ 已刪除');
+            } catch (e) { alert('刪除失敗: ' + e.message); }
+        }
+
+        // 搜尋功能 (橫跨四欄)
+        (function initCdSearch() {
+            let matches = [], currentMatch = -1;
+            function getAllText() {
+                return Array.from(document.querySelectorAll('.cd-story, .cd-image-prompt, .cd-ai-setup'))
+                    .map(ta => ta.value).join('\n');
+            }
+            function goToMatch(idx) {
+                if (!matches.length) return;
+                currentMatch = ((idx % matches.length) + matches.length) % matches.length;
+                // highlight in the first textarea that contains the match
+                let offset = 0;
+                const tas = Array.from(document.querySelectorAll('.cd-story, .cd-image-prompt, .cd-ai-setup'));
+                for (const ta of tas) {
+                    const len = ta.value.length + 1;
+                    if (matches[currentMatch] < offset + len) {
+                        const localStart = matches[currentMatch] - offset;
+                        const query = document.getElementById('cd-search-input').value;
+                        ta.focus();
+                        ta.setSelectionRange(localStart, localStart + query.length);
+                        ta.scrollTop = ta.scrollHeight * (localStart / ta.value.length);
+                        break;
+                    }
+                    offset += len;
+                }
+                document.getElementById('cd-search-count').textContent = `${currentMatch + 1} / ${matches.length}`;
+            }
+            function doSearch() {
+                const query = document.getElementById('cd-search-input').value;
+                matches = []; currentMatch = -1;
+                if (!query) { document.getElementById('cd-search-count').textContent = ''; return; }
+                const text = getAllText();
+                const lo = text.toLowerCase(), lq = query.toLowerCase();
+                let i = 0;
+                while ((i = lo.indexOf(lq, i)) !== -1) { matches.push(i); i += lq.length; }
+                matches.length ? goToMatch(0) : (document.getElementById('cd-search-count').textContent = '找不到');
+            }
+            window.addEventListener('DOMContentLoaded', () => {
+                document.getElementById('cd-search-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSearch(); } });
+                document.getElementById('cd-search-prev').addEventListener('click', () => goToMatch(currentMatch - 1));
+                document.getElementById('cd-search-next').addEventListener('click', () => goToMatch(currentMatch + 1));
+            });
+        })();
+
+        // 開啟 modal 按鈕
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('btn-compare-diaries').addEventListener('click', () => {
+                document.getElementById('modal-compare-diaries').classList.remove('hidden');
+                if (cdDiaryList.length === 0) loadCompareDiaryList();
+            });
+        });
+    </script>
+
     <!-- ── Modal: System Message LOG ── -->
     <div id="modal-system-log" class="modal-overlay hidden">
         <div class="modal"

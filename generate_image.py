@@ -32,7 +32,14 @@ def generate_image(story_filename=None):
     with open(file_path, 'r', encoding='utf-8') as f:
         story_data = json.load(f)
 
-    prompt_text = story_data.get('image_prompt', '')
+    # 讀取生圖提示詞；新版格式為 JSON 字串 {"en": "...", "zh": "..."}，舊版為純文字
+    # ComfyUI 只需要英文部分
+    _raw_prompt = story_data.get('image_prompt', '')
+    try:
+        _prompt_obj = json.loads(_raw_prompt)
+        prompt_text = _prompt_obj.get('en', _raw_prompt) if isinstance(_prompt_obj, dict) else _raw_prompt
+    except Exception:
+        prompt_text = _raw_prompt  # 純文字，直接使用
     dest_img_name = story_filename.replace('.json', '.png')
     
     workflow_path = 'comfy_workflows/character_portrait.json'

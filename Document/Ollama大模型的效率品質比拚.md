@@ -10,7 +10,7 @@ num_predict: 8192
 ## 美如日記，要求3000字。
 * 成人甜寵+小說劇本式寫作風格。
 * 秒數取用第二次產出，避免計算到載入時間。
-- gemma4:e4b，9.6 GB，1700字，55秒，30字/秒，文筆偏硬，容易出現文青式的分析內心戲。(2026/05/26)
+- gemma4:e4b，9.6 GB，1700字，55秒，30字/秒，(`次選`)文筆偏硬，容易出現文青式的分析內心戲。(2026/05/26)
 - VladimirGav/Qwen3.6-27B-16GB-VRAM-Uncensored:latest，15 GB，一直出錯又超慢的。
 - VladimirGav/gemma4-26b-16GB-VRAM-Uncensored:latest，13 GB，一直出錯又超慢的。
 - sorc/qwen3.5-instruct-uncensored:9b，9.5 GB，3600字，112秒，32字/秒，(`優選`)以動作描述為主，但是兩篇幾乎一模一樣。(2026/05/26)

@@ -27,7 +27,8 @@ from prompt_utils import (
     build_analyze_image_prompt_text,     #從圖片生成 AI 生圖提示詞
     build_story_to_premise_prompt,       #將故事原文濃縮成故事粗綱
     build_json_repair_chapters_prompt,   #JSON格式修復：章標題與描述
-    build_json_repair_sections_prompt    #JSON格式修復：各小節大綱
+    build_json_repair_sections_prompt,   #JSON格式修復：各小節大綱
+    build_diary_image_prompt_text        #生成日記動態生圖提示詞
 )
 
 try:
@@ -438,16 +439,23 @@ def _parse_sections_from_response(job_id: str, response_text: str, model: str, m
     return [f"（不符JSON格式）{response_text[:300]}"]
 
 
-def _save_diary_json(char_data: dict, result_text: str, final_prompt: str) -> str:
-    """將日記內容存成 JSON 檔，回傳檔名（搬自 generate_daily.py）。"""
+def _save_diary_json(char_data: dict, result_text: str, final_prompt: str, image_prompt: str = "", entry_date: str = "", diary_hour: str = "", ai_setup: dict = None) -> str:
+    """將日記內容存成 JSON 檔，回傳檔名。
+    檔名格式：角色名_日記日期_日記記錄時間-序號.json（例：張小妹_2026-05-23_19-001.json）
+    entry_date: 日記的記錄日期（YYYY-MM-DD），批量生成時傳入指定日期；空白則用系統今天。
+    diary_hour: 日記的記錄時間（HH），例如 "19"；空白則省略時間欄位。"""
     import re as _re
     from datetime import datetime as _dt
     os.makedirs('diaries', exist_ok=True)
-    now = _dt.now()
-    today        = now.strftime("%Y-%m-%d")
-    now_str      = now.strftime("%Y-%m-%d_%H%M%S")
-    char_name    = char_data.get('name', 'unknown')
-    file_prefix  = f"{char_name}_{now_str}"
+    now       = _dt.now()
+    # 用日記的記錄日期當檔名，而非系統今天
+    today     = entry_date if entry_date else now.strftime("%Y-%m-%d")
+    char_name = char_data.get('name', 'unknown')
+    # 檔名前綴：角色名_日記日期_日記時間（有時間就帶入，無則省略）
+    if diary_hour:
+        file_prefix = f"{char_name}_{today}_{diary_hour}"
+    else:
+        file_prefix = f"{char_name}_{today}"
     # 取得下一個遞增編號檔名
     suffix = ".json"
     existing = [f for f in os.listdir('diaries') if f.startswith(file_prefix) and f.endswith(suffix)]
@@ -462,8 +470,9 @@ def _save_diary_json(char_data: dict, result_text: str, final_prompt: str) -> st
         "character_id":   char_data.get('id', char_name),
         "character_name": char_name,
         "story":          result_text,
-        "image_prompt":   char_data.get('image_prompt', ''),
-        "full_prompt":    final_prompt
+        "image_prompt":   image_prompt or char_data.get('image_prompt', ''),
+        "full_prompt":    final_prompt,
+        "ai_setup":       ai_setup or {}   # 記錄生成時使用的 AI 參數設定
     }
     with open(os.path.join('diaries', out_filename), 'w', encoding='utf-8') as f:
         json.dump(story_obj, f, ensure_ascii=False, indent=4)
@@ -871,8 +880,72 @@ def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_
         duration = int(time.time() - timeStartSec)
         _log_print(job_id, f"[{time.strftime('%H:%M:%S')}] 總共花費 {duration} 秒，日記初稿產生完畢，長度：{len(result_text)} 字元")
 
-        # ── 存檔
-        out_filename = _save_diary_json(char_data, result_text, diary_prompt)
+        # ── 第二次生成：動態生圖提示詞
+        _log_print(job_id, ">> 正在根據日記內容生成動態生圖提示詞 (這會花費一些時間)...")
+        img_prompt_req = build_diary_image_prompt_text(char_data, result_text)
+        _log_print(job_id, "=" * 20 + " 以下是送給 AI 的生圖提示詞生成請求 " + "=" * 20)
+        _log_print(job_id, img_prompt_req)
+        _log_print(job_id, "=" * 20 + " 請求結束 " + "=" * 20)
+        timeImgStartSec = time.time()
+        dynamic_image_prompt = _ollama_with_heartbeat(
+            job_id, model, img_prompt_req, options=opts, time_start=timeImgStartSec
+        )
+        duration_img = int(time.time() - timeImgStartSec)
+        # ── 解析動態生圖提示詞（JSON 格式 {"en": "...", "zh": "..."}）
+        _log_print(job_id, f"[{time.strftime('%H:%M:%S')}] 總共花費 {duration_img} 秒，動態生圖提示詞產生完畢！")
+        raw_img_resp = dynamic_image_prompt.strip()
+
+        img_prompt_en = ''  # 英文提示詞，送給 ComfyUI
+        img_prompt_zh = ''  # 中文提示詞，僅記錄用
+
+        # 嘗試從回應中提取 JSON 物件（去掉可能的 Markdown 包裝）
+        json_start = raw_img_resp.find('{')
+        json_end   = raw_img_resp.rfind('}')
+        json_candidate = raw_img_resp[json_start:json_end + 1] if (json_start != -1 and json_end != -1) else raw_img_resp
+
+        # 策略1：直接 json.loads
+        _parsed_img_json = None
+        try:
+            _parsed_img_json = json.loads(json_candidate)
+        except Exception:
+            pass
+
+        # 策略2：json_repair 套件修復
+        if _parsed_img_json is None and _HAS_JSON_REPAIR:
+            try:
+                _parsed_img_json = json.loads(_json_repair_lib(json_candidate))
+            except Exception:
+                pass
+
+        if _parsed_img_json and isinstance(_parsed_img_json, dict):
+            img_prompt_en = str(_parsed_img_json.get('en', '')).strip()
+            img_prompt_zh = str(_parsed_img_json.get('zh', '')).strip()
+        else:
+            # 策略3：無法解析，把原始文字當成英文提示詞（降級處理）
+            img_prompt_en = raw_img_resp.strip('"').strip("'")
+            _log_print(job_id, "⚠️  無法解析 JSON 格式的生圖提示詞，已降級為純文字模式。")
+
+        # 記錄到 LOG
+        _log_print(job_id, "=" * 20 + " 動態生圖提示詞（英文）" + "=" * 20)
+        _log_print(job_id, img_prompt_en)
+        _log_print(job_id, "=" * 20 + " 動態生圖提示詞（中文）" + "=" * 20)
+        _log_print(job_id, img_prompt_zh)
+        _log_print(job_id, "=" * 20 + " 提示詞結束 " + "=" * 20)
+
+        # dynamic_image_prompt 改存完整 JSON 字串（供存檔與前端顯示）
+        dynamic_image_prompt = json.dumps({"en": img_prompt_en, "zh": img_prompt_zh}, ensure_ascii=False)
+
+        # ── 存檔（從 time_context 解析日記的記錄日期與時間，如「日期：2026-05-23，大約晚上 19 點左右」）
+        import re as _re_tc
+        time_context_str = params.get('time_context', '')
+        # 解析日期：YYYY-MM-DD
+        tc_date_match = _re_tc.search(r'(\d{4}-\d{2}-\d{2})', time_context_str)
+        entry_date_str = tc_date_match.group(1) if tc_date_match else ''
+        # 解析時間：取「XX 點」前的數字（如「晚上 19 點」→ "19"）
+        tc_hour_match = _re_tc.search(r'(\d{1,2})\s*點', time_context_str)
+        diary_hour_str = tc_hour_match.group(1).zfill(2) if tc_hour_match else ''
+        ai_setup = params.get('ai_setup') or {}
+        out_filename = _save_diary_json(char_data, result_text, diary_prompt, dynamic_image_prompt, entry_date=entry_date_str, diary_hour=diary_hour_str, ai_setup=ai_setup)
         _log_print(job_id, f">> ✅ 日記已儲存至 diaries/{out_filename}")
         _log_print(job_id, "=" * 20 + " 以下是 AI 完整生成的日記內容 " + "=" * 20)
         _log_print(job_id, result_text)
@@ -906,6 +979,7 @@ def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_
 
         with JOBS_LOCK:
             if job_id in JOBS:
+                JOBS[job_id]["result"]     = {"diary": result_text, "image_prompt": dynamic_image_prompt}
                 JOBS[job_id]["status"]     = "done"
                 JOBS[job_id]["updated_at"] = time.time()
     except Exception as e:
@@ -2010,9 +2084,18 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(500, str(e))
             except: pass
 
+class _SilentTCPServer(socketserver.ThreadingTCPServer):
+    """覆寫 handle_error，靜默過濾瀏覽器主動中止連線的雜訊（ConnectionAbortedError / BrokenPipeError）。"""
+    def handle_error(self, request, client_address):
+        import sys
+        exc = sys.exc_info()[0]
+        if exc and issubclass(exc, (ConnectionAbortedError, ConnectionResetError, BrokenPipeError)):
+            return  # 瀏覽器關閉/重整頁面時的正常中斷，不必印出
+        super().handle_error(request, client_address)
+
 if __name__ == "__main__":
     for d in ['web', 'characters', 'diaries']: os.makedirs(d, exist_ok=True)
     print(f"Server runs at http://localhost:{PORT}")
-    with socketserver.ThreadingTCPServer(("127.0.0.1", PORT), DebugHandler) as httpd:
+    with _SilentTCPServer(("127.0.0.1", PORT), DebugHandler) as httpd:
         try: httpd.serve_forever()
         except KeyboardInterrupt: print("\nStopped.")
