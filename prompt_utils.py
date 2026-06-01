@@ -715,10 +715,12 @@ def build_chat_reply_prompt(char_data, char_name, user_name, user_message, histo
     user_desc_parts = [f"使用者姓名：{user_name}"]
     if user_persona_override:
         user_desc_parts.append(f"使用者特質：{user_persona_override}")
-    if user_char_data:
-        u_card = user_char_data
-        u_personality = u_card.get('personality', u_card.get('personality_description', ''))
-        if u_personality: user_desc_parts.append(f"使用者背景/性格：{u_personality}")
+    # 將使用者角色卡完整資訊（外貌、背景、性格、習慣等所有欄位）以同樣格式輸出
+    # 之前只取 personality / personality_description 兩個欄位，導致大部分資料未送給 AI
+    if user_char_data and isinstance(user_char_data, dict) and user_char_data:
+        user_card_text = _format_char_context(user_char_data, prefix_override="")
+        if user_card_text:
+            user_desc_parts.append(f"【使用者角色卡完整資料】：\n{user_card_text}")
     if user_extra:
         user_desc_parts.append(f"【關於使用者的額外資訊】：\n{user_extra}")
     

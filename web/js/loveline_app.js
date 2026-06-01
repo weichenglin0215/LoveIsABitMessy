@@ -828,7 +828,23 @@ async function getAIReply(sess, participant, userMessage, isProactive = false) {
     const u = state.currentUser;
     const userChar = state.characters.find(c => c.id === u.char_id);
 
-    const history = (sess.messages || []).slice(-30).map(m => ({
+    // ── 修正：persona/extra/messages 可能不在 sess 上（state.sessions[i] 沒這些欄位，
+    //          只有 state.currentSession 透過 openSession 才會帶入）。一律從權威來源解析：
+    //          persona/extra → localStorage；messages → sess.messages 為空時改從 DB 撈
+    const resolvedPersona = (sess.persona !== undefined && sess.persona !== '')
+        ? sess.persona
+        : (localStorage.getItem(`loveline_persona_${sess.id}`) || '');
+    const resolvedExtra = (sess.extra !== undefined && sess.extra !== '')
+        ? sess.extra
+        : (localStorage.getItem(`loveline_extra_${sess.id}`) || '');
+
+    let rawMessages = sess.messages;
+    if (!rawMessages || rawMessages.length === 0) {
+      // 從 DB 撈最新對話紀錄（補發/主動/自動聊天路徑常會缺）
+      rawMessages = await loadMessages(sess.id);
+      sess.messages = rawMessages; // 順便快取回 sess，避免下次再撈
+    }
+    const history = rawMessages.slice(-30).map(m => ({
       role: m.sender_type === 'user' ? 'user' : 'assistant',
       name: m.sender_name,
       content: m.content
@@ -839,8 +855,8 @@ async function getAIReply(sess, participant, userMessage, isProactive = false) {
       character: charData.card_json || {},
       character_id: charData.id,
       character_name: charName,
-      persona_override: sess.persona || '',
-      session_extra: sess.extra || '',
+      persona_override: resolvedPersona,
+      session_extra: resolvedExtra,
       user_name: u.name,
       user_character: userChar?.card_json || {},
       user_persona_override: u.persona || '',

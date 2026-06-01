@@ -164,8 +164,8 @@
   --ll-topbar-h: 46px;
 
   /* 三欄寬度初始值 */
-  --ll-panel-l-w: 260px;
-  --ll-panel-mid-w: 220px;
+  --ll-panel-l-w: 600px;
+  --ll-panel-mid-w: 300px;
 
   /* 頭像尺寸 */
   --ll-avatar-user: 36px;
@@ -1909,7 +1909,7 @@ body.daily-page {
 }
 
 .app-shell.left-collapsed {
-  grid-template-columns: 30px var(--ll-panel-mid-w) 1fr;
+  grid-template-columns: 40px var(--ll-panel-mid-w) 1fr;
 }
 
 .app-shell.left-collapsed #panel-left .left-content {

@@ -1289,6 +1289,40 @@ def _run_chat_reply_job(job_id: str, params: dict):
         timestamp = time.strftime("%H:%M:%S", time.localtime())
         _log_print(job_id, "=" * 50)
         _log_print(job_id, f"[{timestamp}] debug_server.py：【非同步】LoveLine 角色回覆 - {character_name}")
+
+        # 13 個關鍵欄位的內容檢查（有無/長度/摘要），確認前端是否完整傳入
+        def _summary(v):
+            """以摘要字串回報任一欄位的狀態。dict→鍵列表；list→筆數；str→字數"""
+            if v is None:
+                return "無 (None)"
+            if isinstance(v, str):
+                return f"有 ({len(v)} 字)" if v else "無 (空字串)"
+            if isinstance(v, dict):
+                return f"有 ({len(v)} 個鍵: {list(v.keys())[:6]})" if v else "無 (空 dict)"
+            if isinstance(v, list):
+                return f"有 ({len(v)} 筆)" if v else "無 (空 list)"
+            return f"有 ({type(v).__name__})"
+
+        _log_print(job_id, "=" * 20 + " 13 個欄位接收檢查 " + "=" * 20)
+        _log_print(job_id, f">> char_data            : {_summary(character)}")
+        _log_print(job_id, f">> char_name            : {_summary(character_name)} → 「{character_name}」")
+        _log_print(job_id, f">> user_name            : {_summary(user_name)} → 「{user_name}」")
+        _log_print(job_id, f">> user_message         : {_summary(user_message)}")
+        _log_print(job_id, f">> history              : {_summary(history)}")
+        _log_print(job_id, f">> persona_override     : {_summary(persona_override)}")
+        _log_print(job_id, f">> session_extra        : {_summary(session_extra)}")
+        _log_print(job_id, f">> user_char_data       : {_summary(user_char_data)}")
+        _log_print(job_id, f">> user_persona_override: {_summary(user_persona_override)}")
+        _log_print(job_id, f">> user_extra           : {_summary(user_extra)}")
+        _log_print(job_id, f">> session_type         : {_summary(session_type)} → 「{session_type}」")
+        _log_print(job_id, f">> other_participants   : {_summary(participants)}")
+        _log_print(job_id, f">> writer_settings      : {_summary(writer_settings)}")
+
+        # 印出完整 prompt，方便核對所有欄位是否確實嵌入 AI 提示詞
+        _log_print(job_id, "=" * 20 + f" 送給 AI 的 LoveLine 回覆提示詞 - {character_name} " + "=" * 20)
+        _log_print(job_id, prompt)
+        _log_print(job_id, "=" * 20 + " 提示詞結束 " + "=" * 20)
+
         _log_print(job_id, f">> 正在呼叫 Ollama 產生「{character_name}」的回覆({model_name})...")
 
         opts = params.get('model_options') or {}
