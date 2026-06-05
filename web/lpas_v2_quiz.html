@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,
+                     maximum-scale=1.0, user-scalable=no,
+                     viewport-fit=cover">
+    <title>LPAS v2 - 你是哪一種愛情人格？ - LoveIsABitMessy</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <!-- QRCode.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <!-- 沿用既有 v1 樣式 -->
+    <link rel="stylesheet" href="css/lpas_styles.css">
+
+    <!-- v2 微調樣式 -->
+    <style>
+        /* ─── period 4：親密與身體（粉橘紅） ─── */
+        :root {
+            --c-period-4: hsl(12, 55%, 42%);
+        }
+        body[data-period="4"],
+        body[data-period="4"] main#stage {
+            background-color: var(--c-period-4);
+        }
+
+        /* ─── 性象限同意頁 ─── */
+        #screen-sex-consent .instruction-content {
+            text-align: center;
+            color: var(--c-text-main);
+        }
+        #screen-sex-consent .consent-title {
+            font-size: var(--fs-title);
+            font-weight: 300;
+            margin-bottom: 24px;
+            color: var(--c-accent-light);
+        }
+        #screen-sex-consent .consent-desc {
+            font-size: var(--fs-desc);
+            line-height: 1.8;
+            color: var(--c-text-sec);
+            margin-bottom: 40px;
+            letter-spacing: 1px;
+        }
+        #screen-sex-consent .consent-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            align-items: center;
+        }
+
+        /* ─── 性題的「跳過這題」按鈕 ─── */
+        #skip-question-btn {
+            position: absolute;
+            top: 60px;
+            right: 40px;
+            font-size: 20px;
+        }
+
+        /* ─── 結果頁：四階段 dot（沿用 v1 period-dot 樣式） ─── */
+        .result-period-header {
+            gap: 8px;
+        }
+        /* 四個 dot 由 JS 動態建立，沿用 .period-dot 樣式 */
+
+        /* ─── 結果頁：v2 章節 slogan ─── */
+        #v2-chapter-slogan {
+            font-style: italic;
+            color: var(--c-text-sec);
+            font-size: 18px;
+            text-align: center;
+            margin: 4px 0 10px;
+            padding: 0 16px;
+        }
+
+        /* ─── 結果頁：性象限階段時的特殊呈現 ─── */
+        .sex-quadrant-display {
+            text-align: center;
+            padding: 20px 16px;
+        }
+        .sex-quadrant-display .quad-label {
+            font-size: 14px;
+            color: var(--c-text-sec);
+            letter-spacing: 3px;
+            margin-bottom: 8px;
+        }
+        .sex-quadrant-display .quad-name {
+            font-size: 38px;
+            font-weight: 500;
+            color: hsl(28, 80%, 78%);
+            margin-bottom: 12px;
+            letter-spacing: 3px;
+        }
+        .sex-quadrant-display .quad-tagline {
+            font-style: italic;
+            color: var(--c-text-main);
+            font-size: 18px;
+            line-height: 1.7;
+            margin-bottom: 16px;
+        }
+        .sex-quadrant-display .quad-skipped {
+            color: var(--c-text-sec);
+            font-size: 18px;
+            line-height: 1.8;
+            padding: 40px 16px;
+        }
+        .sex-quadrant-display .quad-eye-row {
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            color: var(--c-text-sec);
+        }
+        .sex-quadrant-display .quad-eye-btn {
+            background: transparent;
+            color: var(--c-text-main);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            font-family: inherit;
+        }
+        .sex-quadrant-display.eye-closed .quad-name,
+        .sex-quadrant-display.eye-closed .quad-tagline {
+            filter: blur(8px);
+            opacity: 0.5;
+        }
+
+        /* ─── 最終分享頁 ─── */
+        #screen-final-share .result-container {
+            background-color: var(--c-bg-card);
+            overflow-y: auto;
+            padding: 16px 14px;
+        }
+        .final-share-card {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            color: var(--c-text-main);
+        }
+        .share-section {
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 12px 16px;
+        }
+        .share-triple {
+            text-align: center;
+            background: linear-gradient(135deg,
+                hsla(298, 50%, 30%, 0.6),
+                hsla(348, 40%, 50%, 0.6),
+                hsla(220, 40%, 30%, 0.6));
+            border: none;
+            padding: 18px 8px 14px;
+        }
+        .share-triple .triple-label {
+            font-size: 14px;
+            color: var(--c-text-sec);
+            letter-spacing: 4px;
+            margin-bottom: 8px;
+        }
+        .share-triple .triple-text {
+            font-size: 30px;
+            font-weight: 500;
+            letter-spacing: 4px;
+            color: #fff;
+            line-height: 1.4;
+        }
+        .share-triple .triple-alias {
+            margin-top: 8px;
+            font-size: 13px;
+            color: var(--c-text-sec);
+        }
+
+        .share-radar {
+            height: 250px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .share-radar canvas {
+            max-height: 220px !important;
+            max-width: 100% !important;
+        }
+
+        .share-chapter {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        .share-chapter .ch-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-top: 8px;
+            flex-shrink: 0;
+        }
+        .share-chapter[data-p="1"] .ch-dot { background: hsl(298, 50%, 50%); }
+        .share-chapter[data-p="2"] .ch-dot { background: hsl(348, 40%, 65%); }
+        .share-chapter[data-p="3"] .ch-dot { background: hsl(220, 40%, 55%); }
+        .share-chapter .ch-body { flex: 1; }
+        .share-chapter .ch-period {
+            font-size: 12px;
+            color: var(--c-text-sec);
+            letter-spacing: 2px;
+        }
+        .share-chapter .ch-typename {
+            font-size: 18px;
+            color: var(--c-accent-light);
+            font-weight: 500;
+            margin: 2px 0 4px;
+        }
+        .share-chapter .ch-feedback {
+            font-size: 12px;
+            color: var(--c-text-sec);
+            float: right;
+        }
+
+        .share-sex {
+            text-align: center;
+            background: hsla(15, 50%, 35%, 0.35);
+            border-color: hsla(15, 60%, 60%, 0.4);
+        }
+        .share-sex .ss-label {
+            font-size: 13px;
+            color: var(--c-text-sec);
+            letter-spacing: 2px;
+            margin-bottom: 4px;
+        }
+        .share-sex .ss-quad {
+            font-size: 20px;
+            color: hsl(28, 80%, 78%);
+            font-weight: 500;
+            letter-spacing: 2px;
+        }
+        .share-sex.eye-closed .ss-quad { filter: blur(8px); }
+        .share-sex .ss-eye {
+            display: inline-block;
+            margin-left: 8px;
+            background: transparent;
+            color: var(--c-text-main);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: inherit;
+            vertical-align: middle;
+        }
+
+        .share-script {
+            background: linear-gradient(135deg,
+                hsla(40, 80%, 50%, 0.22),
+                hsla(20, 80%, 50%, 0.22));
+            border-color: hsla(40, 80%, 60%, 0.4);
+        }
+        .share-script .sc-ribbon {
+            font-size: 12px;
+            letter-spacing: 3px;
+            color: hsl(40, 80%, 75%);
+        }
+        .share-script .sc-name {
+            font-size: 20px;
+            font-weight: 500;
+            color: hsl(40, 80%, 80%);
+            margin: 4px 0;
+        }
+        .share-script .sc-tag {
+            font-style: italic;
+            font-size: 14px;
+            color: var(--c-text-main);
+        }
+        .share-script .sc-story {
+            font-size: 13px;
+            line-height: 1.7;
+            color: var(--c-text-main);
+            margin-top: 6px;
+            text-align: justify;
+        }
+
+        .share-pairing {
+            font-size: 13px;
+        }
+        .share-pairing .sp-title {
+            font-size: 14px;
+            color: var(--c-accent-light);
+            margin-bottom: 6px;
+            letter-spacing: 1px;
+        }
+        .share-pairing .sp-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .share-pairing .sp-label {
+            min-width: 78px;
+            color: var(--c-text-sec);
+        }
+        .share-pairing .sp-chip {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--c-text-main);
+            padding: 3px 10px;
+            border-radius: 12px;
+            margin-right: 4px;
+            display: inline-block;
+        }
+
+        .share-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 8px;
+            margin-bottom: 4px;
+        }
+        .share-actions .btn {
+            font-size: 16px;
+            padding: 6px 18px;
+        }
+        .share-watermark {
+            text-align: center;
+            font-size: 11px;
+            color: var(--c-text-sec);
+            opacity: 0.6;
+            margin-top: 4px;
+            letter-spacing: 1px;
+        }
+    </style>
+
+    <!-- v2 資料與邏輯 -->
+    <script src="js/lpas_v2_types.js" defer></script>
+    <script src="js/lpas_v2_questions.js" defer></script>
+    <script src="js/lpas_v2_scripts.js" defer></script>
+    <script src="js/lpas_v2_scoring.js" defer></script>
+
+    <!-- 共用：螢幕縮放 -->
+    <script src="js/screen_adaptive.js" defer></script>
+
+    <!-- v2 主應用程式（內含結果頁渲染） -->
+    <script src="js/lpas_v2_app.js" defer></script>
+</head>
+
+<body data-period="night">
+    <!-- 星點背景特效 -->
+    <div id="star-bg"></div>
+
+    <main id="stage">
+        <!-- 音樂控制 -->
+        <div id="music-control">
+            <span class="music-icon">🎵</span>
+        </div>
+
+        <!-- 1. 首頁 -->
+        <section id="screen-landing" class="screen active">
+            <!-- 漢堡選單（只在首頁顯示） -->
+            <button class="hamburger-btn" id="hamburger-btn" aria-label="選單">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="hamburger-dropdown hd-hidden" id="hamburger-menu">
+                <button class="hd-item" id="menu-qrcode">📱 顯示QR Code</button>
+                <button class="hd-item" id="menu-result-viewer">📊 觀看評量結果</button>
+            </div>
+            <h1 class="main-title">你在感情裡是哪一種人？</h1>
+            <h2 class="sub-title">關於你在愛情裡真實樣子的測驗</h2>
+            <div class="desc-text">55題 / 三個情境 + 親密與身體 / 約8分鐘</div>
+            <button class="btn primary-btn" onclick="app.showScreen('screen-basic-info')">開始測驗</button>
+            <div class="footer-note">本測驗資料全匿名，不收集個人識別資訊</div>
+        </section>
+
+        <!-- 2. 基本資料頁 -->
+        <section id="screen-basic-info" class="screen">
+            <div class="form-container">
+                <h2>基本資料</h2>
+                <div class="form-group">
+                    <label>匿名代號</label>
+                    <input type="text" id="input-alias" placeholder="例如：月亮上的貓">
+                </div>
+                <div class="form-group">
+                    <label>年齡區間</label>
+                    <div class="radio-group" id="group-age">
+                        <button class="radio-btn" data-val="18-">18以下</button>
+                        <button class="radio-btn" data-val="18-22">18-22</button>
+                        <button class="radio-btn" data-val="23-27">23-27</button>
+                        <button class="radio-btn" data-val="28-32">28-32</button>
+                        <button class="radio-btn" data-val="33-37">33-37</button>
+                        <button class="radio-btn" data-val="38+">38+</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>是否有過感情經驗</label>
+                    <div class="radio-group" id="group-exp">
+                        <button class="radio-btn" data-val="yes">是</button>
+                        <button class="radio-btn" data-val="no">目前還沒有</button>
+                    </div>
+                </div>
+                <button class="btn secondary-btn submit-info-btn">下一步</button>
+            </div>
+        </section>
+
+        <!-- 3. 作答說明頁 -->
+        <section id="screen-instructions" class="screen">
+            <div class="instruction-content">
+                <div id="instruction-text"></div>
+                <button class="btn secondary-btn" id="next-instruction-btn">繼續</button>
+            </div>
+        </section>
+
+        <!-- 4. 時期切換頁 -->
+        <section id="screen-transition" class="screen">
+            <h2 id="transition-text" class="fade-text"></h2>
+        </section>
+
+        <!-- 5. 作答頁 -->
+        <section id="screen-question" class="screen">
+            <div class="top-bar">
+                <span id="period-label">初期曖昧</span>
+                <span id="progress-text">1/55</span>
+            </div>
+            <div class="question-container">
+                <h2 id="question-text"></h2>
+            </div>
+            <div class="options-container">
+                <div class="likert-scale" id="likert-scale"></div>
+                <div class="scale-labels-bottom">
+                    <span class="scale-label">←🙁不同意</span>
+                    <span class="scale-label">同意😀→</span>
+                </div>
+            </div>
+            <button class="text-btn back-btn" id="prev-question-btn">《 上一題</button>
+            <button class="text-btn" id="skip-question-btn" style="display:none;">跳過這題 》</button>
+        </section>
+
+        <!-- 5.5 性象限同意頁 -->
+        <section id="screen-sex-consent" class="screen">
+            <div class="instruction-content">
+                <div class="consent-title">親密與身體</div>
+                <div class="consent-desc">
+                    接下來這 10 題<br>
+                    包含親密關係與性議題。<br><br>
+                    你可以選擇整段跳過，<br>
+                    或在每一題單獨選擇「跳過這題」。<br><br>
+                    填寫後將顯示一個可隱藏的<br>
+                    「性象限」標籤。
+                </div>
+                <div class="consent-actions">
+                    <button class="btn primary-btn" id="start-sex-stage-btn">我要填寫</button>
+                    <button class="btn secondary-btn" id="skip-sex-stage-btn">整段跳過</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. 計算中頁面 -->
+        <section id="screen-calculating" class="screen">
+            <div class="calculating-anim"></div>
+            <h2 class="fade-text">正在找到你的樣子……</h2>
+        </section>
+
+        <!-- 7. 結果頁（四階段，每階段星星評分） -->
+        <section id="screen-result" class="screen screen-result">
+            <div class="result-container">
+                <!-- 階段點點頭（四個 dot） -->
+                <div id="result-period-header" class="result-period-header">
+                    <!-- 由 JS 動態建立 4 個 .period-dot -->
+                </div>
+                <h2 id="result-period-title" style="font-weight:300; font-size:26px; margin:8px 0 4px; text-align:center;"></h2>
+                <div id="result-type-short" class="result-type-short"></div>
+                <div id="v2-chapter-slogan"></div>
+
+                <!-- 雷達圖 + 描述 -->
+                <div class="result-description-wrapper">
+                    <div class="result-radar" id="v2-radar-wrapper">
+                        <canvas id="radarChart"></canvas>
+                    </div>
+                    <div class="result-description" id="result-desc"></div>
+                </div>
+
+                <!-- 星星評分區 -->
+                <div id="feedback-section" class="feedback-section">
+                    <p class="feedback-q">這個階段的描述準確嗎？</p>
+                    <div class="star-rating" id="star-rating">
+                        <div class="feedback-labels"><span>🙁不準</span></div>
+                        <span class="star" data-val="1">★</span>
+                        <span class="star" data-val="2">★</span>
+                        <span class="star" data-val="3">★</span>
+                        <span class="star" data-val="4">★</span>
+                        <span class="star" data-val="5">★</span>
+                        <div class="feedback-labels"><span>😀好準！</span></div>
+                    </div>
+                    <button id="confirm-feedback-btn" class="btn primary-btn"
+                        style="opacity:0; pointer-events:none; transition:opacity 0.3s; margin-top:10px;"
+                        disabled>同意</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── QR Code Modal ── -->
+        <div class="stage-modal sm-hidden" id="modal-qrcode">
+            <div class="qr-box">
+                <h3>📱 掃描進入測驗</h3>
+                <div id="qrcode-container"></div>
+                <div class="qr-url-label">https://weichenglin0215.github.io/<br>LoveIsABitMessy/web/lpas_v2_quiz.html</div>
+                <button class="btn secondary-btn" id="btn-close-qr" style="font-size:16px;padding:6px 28px;">關閉</button>
+            </div>
+        </div>
+
+        <!-- ── Result Viewer Modal（觀看評量結果） ── -->
+        <div class="stage-modal sm-hidden" id="modal-result-viewer">
+            <div class="rv-box">
+                <!-- 頂部標題列 -->
+                <div class="rv-topbar">
+                    <div class="rv-title">你在愛情裡的真實樣貌</div>
+                    <button class="rv-close" id="rv-close-btn">✕</button>
+                </div>
+                <!-- 時期標籤 + 類型下拉 -->
+                <div class="rv-select-row">
+                    <span class="rv-period-lbl" id="rv-period-lbl">曖昧期</span>
+                    <select class="rv-select" id="rv-type-select">
+                        <option value="">-- 選擇類型 --</option>
+                    </select>
+                </div>
+                <!-- 類型名稱與特質（選擇後才顯示） -->
+                <div class="rv-type-header" id="rv-type-header" style="display:none;">
+                    <div class="rv-type-code-name" id="rv-type-code-name"></div>
+                    <div class="rv-type-traits" id="rv-type-traits"></div>
+                </div>
+                <!-- 說明文字框（唯讀，可捲動） -->
+                <textarea class="rv-desc" id="rv-desc" readonly></textarea>
+                <!-- 底部導覽列 -->
+                <div class="rv-navbar">
+                    <button class="rv-nav-btn" id="rv-prev-btn">← 曖昧期</button>
+                    <button class="rv-copy-btn" id="rv-copy-btn">複製評量文字</button>
+                    <button class="rv-nav-btn" id="rv-next-btn">熱戀期 →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 8. 最終分享頁（可截圖分享 IG） -->
+        <section id="screen-final-share" class="screen screen-result">
+            <div class="result-container">
+                <div class="final-share-card">
+                    <!-- 三聯主標題 -->
+                    <div class="share-section share-triple">
+                        <div class="triple-label">你的戀愛三聯</div>
+                        <div class="triple-text" id="share-triple-text"></div>
+                        <div class="triple-alias" id="share-alias"></div>
+                    </div>
+
+                    <!-- 雷達圖（三色疊圖，無高亮） -->
+                    <div class="share-section share-radar">
+                        <canvas id="share-radar-canvas"></canvas>
+                    </div>
+
+                    <!-- 三章節迷你卡（含評分） -->
+                    <div id="share-chapters"></div>
+
+                    <!-- 性象限 -->
+                    <div id="share-sex"></div>
+
+                    <!-- 經典劇本 -->
+                    <div id="share-script"></div>
+
+                    <!-- 配對 -->
+                    <div id="share-pairing"></div>
+
+                    <!-- 動作按鈕 -->
+                    <div class="share-actions">
+                        <button class="btn primary-btn" id="btn-screenshot-hint">📸 截圖分享</button>
+                        <button class="btn secondary-btn" id="btn-restart">再做一次</button>
+                    </div>
+                    <div class="share-watermark">LoveIsABitMessy · LPAS v2</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        /* ════════════════════════════════════════════════════════
+           漢堡選單 + QR Code + 觀看評量結果（v2 版）
+           ════════════════════════════════════════════════════════ */
+        document.addEventListener('DOMContentLoaded', function () {
+
+            const PERIODS = [
+                { key: '曖昧期',     label: '曖昧期' },
+                { key: '熱戀期',     label: '熱戀期' },
+                { key: '失戀期',     label: '失戀期' },
+                { key: '親密與身體', label: '親密與身體' }
+            ];
+
+            // 8 個 v2 型號（前三個 period 適用）
+            const TYPE_NAMES = ['公主', '女王', '守護者', '寶貝', '浪子', '貓系', '獨行俠', '總裁'];
+
+            // 4 個性象限（第 4 個 period 適用）
+            const SEX_QUADRANTS = [
+                { name: '深情專一型', tagline: '「沒有愛，我給不出身體」' },
+                { name: '深情多元型', tagline: '「我能愛很多人，但都是真心」' },
+                { name: '探索人性型', tagline: '「性是性，愛是愛，但我只玩一個」' },
+                { name: '自由遊戲型', tagline: '「性不需要承諾，愛也不需要獨佔」' }
+            ];
+
+            // 每個期間獨立記住的下拉選擇
+            const rvSelections = ['', '', '', ''];
+
+            /* ── 漢堡選單 ── */
+            const hamburgerBtn  = document.getElementById('hamburger-btn');
+            const hamburgerMenu = document.getElementById('hamburger-menu');
+            if (hamburgerBtn) {
+                hamburgerBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    hamburgerMenu.classList.toggle('hd-hidden');
+                });
+            }
+            document.getElementById('stage').addEventListener('click', function () {
+                if (hamburgerMenu) hamburgerMenu.classList.add('hd-hidden');
+            });
+
+            /* ── QR Code ── */
+            const modalQR = document.getElementById('modal-qrcode');
+            let qrDone = false;
+            const QR_URL = 'https://weichenglin0215.github.io/LoveIsABitMessy/web/lpas_v2_quiz.html';
+            document.getElementById('menu-qrcode').addEventListener('click', function () {
+                hamburgerMenu.classList.add('hd-hidden');
+                modalQR.classList.remove('sm-hidden');
+                if (!qrDone) {
+                    qrDone = true;
+                    new QRCode(document.getElementById('qrcode-container'), {
+                        text: QR_URL, width: 200, height: 200,
+                        colorDark: '#000000', colorLight: '#ffffff',
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                }
+            });
+            document.getElementById('btn-close-qr').addEventListener('click', function () {
+                modalQR.classList.add('sm-hidden');
+            });
+
+            /* ── 觀看評量結果 ── */
+            const modalRV      = document.getElementById('modal-result-viewer');
+            const rvBox        = modalRV.querySelector('.rv-box');
+            const rvSelect     = document.getElementById('rv-type-select');
+            const rvPeriodLbl  = document.getElementById('rv-period-lbl');
+            const rvTypeHeader = document.getElementById('rv-type-header');
+            const rvCodeName   = document.getElementById('rv-type-code-name');
+            const rvTraits     = document.getElementById('rv-type-traits');
+            const rvDesc       = document.getElementById('rv-desc');
+            const rvPrevBtn    = document.getElementById('rv-prev-btn');
+            const rvNextBtn    = document.getElementById('rv-next-btn');
+            let rvPeriodIdx = 0;
+
+            function formatRvDesc(text) {
+                if (!text) return '';
+                return text.split('\n').map(function (line) {
+                    return line.trim() === '' ? '' : '　　' + line;
+                }).join('\n\n');
+            }
+
+            // 填入下拉選單
+            function rvPopulateOptions() {
+                const period = PERIODS[rvPeriodIdx];
+                rvSelect.innerHTML = '<option value="">-- 選擇' + period.label + '的類型 --</option>';
+
+                if (rvPeriodIdx < 3) {
+                    // 前三期：8 個型號
+                    TYPE_NAMES.forEach(function (name) {
+                        const card = (window.TYPE_MAPPING_V2_PUBLIC || {})[name];
+                        const code = card ? card.code : '';
+                        const opt  = document.createElement('option');
+                        opt.value       = name;
+                        opt.textContent = name + '　' + code;
+                        rvSelect.appendChild(opt);
+                    });
+                } else {
+                    // 親密與身體：4 個性象限
+                    SEX_QUADRANTS.forEach(function (q) {
+                        const opt  = document.createElement('option');
+                        opt.value       = q.name;
+                        opt.textContent = q.name;
+                        rvSelect.appendChild(opt);
+                    });
+                }
+
+                if (rvSelections[rvPeriodIdx]) {
+                    rvSelect.value = rvSelections[rvPeriodIdx];
+                }
+            }
+
+            function rvUpdateBg() {
+                rvBox.setAttribute('data-period-idx', rvPeriodIdx);
+            }
+
+            function rvUpdateNav() {
+                if (rvPeriodIdx === 0) {
+                    rvPrevBtn.textContent = '← ' + PERIODS[0].label;
+                    rvPrevBtn.disabled = true;
+                } else {
+                    rvPrevBtn.textContent = '← ' + PERIODS[rvPeriodIdx - 1].label;
+                    rvPrevBtn.disabled = false;
+                }
+                if (rvPeriodIdx === PERIODS.length - 1) {
+                    rvNextBtn.textContent = PERIODS[PERIODS.length - 1].label + ' →';
+                    rvNextBtn.disabled = true;
+                } else {
+                    rvNextBtn.textContent = PERIODS[rvPeriodIdx + 1].label + ' →';
+                    rvNextBtn.disabled = false;
+                }
+            }
+
+            function rvUpdateContent() {
+                const period   = PERIODS[rvPeriodIdx];
+                const selVal   = rvSelect.value;
+                rvPeriodLbl.textContent = period.label;
+                rvUpdateNav();
+                rvUpdateBg();
+
+                if (!selVal) {
+                    rvTypeHeader.style.display = 'none';
+                    rvDesc.value = '';
+                    rvDesc.scrollTop = 0;
+                    return;
+                }
+
+                if (rvPeriodIdx < 3) {
+                    // 前三期：顯示型號該期間的 phase_view
+                    const card = (window.TYPE_MAPPING_V2_PUBLIC || {})[selVal];
+                    if (card) {
+                        rvTypeHeader.style.display = '';
+                        rvCodeName.textContent     = period.label + '　' + selVal + '　' + card.code;
+                        rvTraits.textContent       = card.slogan ? '「' + card.slogan + '」' : '';
+                        const desc = card.phase_views && card.phase_views[period.key]
+                                   ? card.phase_views[period.key]
+                                   : '（此期間暫無資料）';
+                        rvDesc.value = formatRvDesc(desc);
+                        rvDesc.scrollTop = 0;
+                        return;
+                    }
+                } else {
+                    // 親密與身體：顯示性象限的 tagline 與簡介
+                    const q = SEX_QUADRANTS.find(function (x) { return x.name === selVal; });
+                    if (q) {
+                        rvTypeHeader.style.display = '';
+                        rvCodeName.textContent     = period.label + '　' + q.name;
+                        rvTraits.textContent       = q.tagline;
+                        rvDesc.value = formatRvDesc(
+                            '此象限的描述：' + q.tagline + '\n\n'
+                            + '由「情感依附」與「開放度」兩個面向交織而成。\n'
+                            + '完整測驗後將呈現你個人的傾向強度與配對提示。'
+                        );
+                        rvDesc.scrollTop = 0;
+                        return;
+                    }
+                }
+
+                rvTypeHeader.style.display = 'none';
+                rvDesc.value = '';
+                rvDesc.scrollTop = 0;
+            }
+
+            // 開啟結果瀏覽器
+            document.getElementById('menu-result-viewer').addEventListener('click', function () {
+                hamburgerMenu.classList.add('hd-hidden');
+                rvPeriodIdx = 0;
+                rvPopulateOptions();
+                rvUpdateContent();
+                modalRV.classList.remove('sm-hidden');
+            });
+            document.getElementById('rv-close-btn').addEventListener('click', function () {
+                modalRV.classList.add('sm-hidden');
+            });
+
+            rvSelect.addEventListener('change', function () {
+                rvSelections[rvPeriodIdx] = rvSelect.value;
+                rvUpdateContent();
+            });
+
+            rvPrevBtn.addEventListener('click', function () {
+                if (rvPeriodIdx > 0) { rvPeriodIdx--; rvPopulateOptions(); rvUpdateContent(); }
+            });
+            rvNextBtn.addEventListener('click', function () {
+                if (rvPeriodIdx < PERIODS.length - 1) { rvPeriodIdx++; rvPopulateOptions(); rvUpdateContent(); }
+            });
+
+            // 複製評量文字
+            document.getElementById('rv-copy-btn').addEventListener('click', async function () {
+                const selVal = rvSelect.value;
+                const period = PERIODS[rvPeriodIdx];
+                let text = '';
+
+                if (selVal && rvPeriodIdx < 3) {
+                    const card = (window.TYPE_MAPPING_V2_PUBLIC || {})[selVal];
+                    if (card) {
+                        text = period.label + ' ' + selVal + ' ' + card.code + '\n'
+                             + '「' + (card.slogan || '') + '」\n\n'
+                             + (card.phase_views && card.phase_views[period.key] ? card.phase_views[period.key] : '');
+                    }
+                } else if (selVal && rvPeriodIdx === 3) {
+                    const q = SEX_QUADRANTS.find(function (x) { return x.name === selVal; });
+                    if (q) text = period.label + ' ' + q.name + '\n' + q.tagline;
+                }
+
+                if (!text) text = rvDesc.value;
+                if (!text) return;
+
+                try {
+                    await navigator.clipboard.writeText(text);
+                    const btn = document.getElementById('rv-copy-btn');
+                    const orig = btn.textContent;
+                    btn.textContent = '✓ 已複製！';
+                    setTimeout(function () { btn.textContent = orig; }, 1600);
+                } catch (e) {}
+            });
+        });
+    </script>
+</body>
+
+</html>
