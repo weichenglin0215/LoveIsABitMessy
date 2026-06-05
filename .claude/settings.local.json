@@ -34,7 +34,8 @@
       "Bash(git -C \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\" worktree unlock \".claude/worktrees/agent-a182f28b2d437c59b\")",
       "Bash(git -C \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\" worktree remove \".claude/worktrees/agent-a182f28b2d437c59b\" --force)",
       "Bash(git -C \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\" branch -d worktree-agent-a182f28b2d437c59b)",
-      "Bash(git -C \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\" worktree list)"
+      "Bash(git -C \"C:\\\\3D_prj\\\\VS_2022_prj\\\\LoveIsABitMessy\" worktree list)",
+      "Bash(awk 'END {print NR}' \"C:/3D_prj/VS_2022_prj/LoveIsABitMessy/web/js/lpas_questions.js\")"
     ]
   }
 }

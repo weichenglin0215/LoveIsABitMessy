@@ -2,7 +2,7 @@
 
 以下是常用且實用的參數整理：
 
-1. 請求基礎參數 (Payload 頂層)
+# 1. 請求基礎參數 (Payload 頂層)
 這些參數決定了 API 的基本行為。
 
 參數 | 型別 | 說明
@@ -15,26 +15,26 @@ images,List,傳遞 base64 編碼的圖片（僅限多模態模型）。
 system,String,覆蓋模型原本的 System Prompt。
 
 
-2. 模型運算參數 (options 內層)
+# 2. 模型運算參數 (options 內層)
 這些參數控制生成的隨機性、長度與硬體資源分配。
 
-控制生成質量 (品質與隨機性)
+## 控制生成質量 (品質與隨機性)
 temperature: (Float) 數值越高越隨機（如 0.8），越低越嚴謹（如 0.2）。
 top_p: (Float) 核取樣。數值越小，只會從機率最高的 token 中選擇，減少胡說八道。
 top_k: (Integer) 限制模型只從機率前 K 名的候選詞中選擇。
 repeat_penalty: (Float) 防止模型重複說同樣的話。通常設為 1.1 ~ 1.2。
 
-控制資源與長度 (解決效能問題)
+## 控制資源與長度 (解決效能問題)
 num_ctx: (Integer) 上下文長度。對於你的 16G 顯存，若模型太大，請縮小此值（如 2048 或 4096）以避免 OOM（顯存溢出）。
 num_predict: (Integer) 最大生成 Token 數。設為 -1 則由模型自行決定終點。
 num_gpu: (Integer) 強制指定載入到 GPU 的層數（Layers）。在 VRAM 臨界點時非常有用。
 num_thread: (Integer) 使用 CPU 運算時的執行緒數量。
 
-進階採樣控制
+## 進階採樣控制
 stop: (List) 設定停止詞。當模型生成這些詞時會立即中斷。例如 ["\nUser:"]。
 mirostat: (Integer) 0=禁用, 1=Mirostat, 2=Mirostat 2.0。一種動態調整溫度的技術。
 
-3. 實際程式碼範例
+# 3. 實際程式碼範例
 ```python
 import requests
 import json
@@ -62,7 +62,7 @@ response = requests.post(url, json=payload)
 print(response.json()['response'])
 ```
 
-4. 針對 16GB VRAM / 31B 模型 的建議設定
+# 4. 針對 16GB VRAM / 31B 模型 的建議設定
 考量到你的硬體限制，以下是一組穩定的建議值：
 
 Model： gemma-4-31b-it-abliterated-Q3_K_M (因已量子化，負擔較輕)
