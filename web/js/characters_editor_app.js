@@ -118,24 +118,38 @@ function initDropdownOptions() {
         });
     }
 
-    // Populate Phase types from TYPE_MAPPING (來源: character_logic.js)
-    const mapping = window.TYPE_MAPPING;
-    if (mapping) {
-        const typeKeys = Object.keys(mapping);
-        const labels = ["曖昧期", "熱戀期", "失戀期"];
-        [1, 2, 3].forEach(p => {
-            const sel = qs(`#char-type-${p}`);
-            if (sel) {
-                sel.innerHTML = `<option value="">-- 選擇${labels[p - 1]}類型 --</option>`;
-                typeKeys.forEach(k => {
-                    const opt = document.createElement('option');
-                    const code = k.replace(/-/g, '');
-                    opt.value = code;
-                    opt.textContent = `${mapping[k].name} (${code})`;
-                    sel.appendChild(opt);
-                });
-            }
+    // ── LPAS v3：曖昧期 / 熱戀期 / 失戀期下拉，使用 window.TYPE_MAPPING_V3 ──
+    //   key 形如 "A-F-O-H"，info.code 形如 "A-F-O-H_主動-快速-外放-佔有"
+    const v3 = window.TYPE_MAPPING_V3;
+    const phaseLabels = ["曖昧期", "熱戀期", "失戀期"];
+    [1, 2, 3].forEach(p => {
+        const sel = qs(`#char-type-${p}`);
+        if (!sel) return;
+        sel.innerHTML = `<option value="">-- 選擇${phaseLabels[p - 1]}類型 --</option>`;
+        if (!v3) return;
+        Object.keys(v3).forEach(k => {
+            const info = v3[k];
+            const opt = document.createElement('option');
+            opt.value = k;                                  // value = "A-F-O-H"
+            opt.textContent = `${info.name} (${k})`;        // 例：「海嘯型 (A-F-O-H)」
+            sel.appendChild(opt);
         });
+    });
+
+    // ── LPAS v3：親密關係下拉，使用 window.SEX_QUADRANTS_V3 ──
+    //   key 即類型名稱（深情專一型 / 鍾情博愛型 / 靈肉分離型 / 遊戲人間型）
+    const sexMap = window.SEX_QUADRANTS_V3;
+    const sel4 = qs('#char-type-4');
+    if (sel4) {
+        sel4.innerHTML = '<option value="">-- 選擇親密關係類型 --</option>';
+        if (sexMap) {
+            Object.keys(sexMap).forEach(label => {
+                const opt = document.createElement('option');
+                opt.value = label;
+                opt.textContent = label;
+                sel4.appendChild(opt);
+            });
+        }
     }
 }
 
@@ -153,35 +167,77 @@ function updateAgeDisplay() {
 }
 
 function updateIdPreview() {
-    if (currentCharacterId) return; // 編輯現有角色不改 ID
-
-    const name = qs('#char-name').value.trim() || "未命名";
-    const c1 = qs('#char-type-1').value || "???";
-    const c2 = qs('#char-type-2').value || "???";
-    const c3 = qs('#char-type-3').value || "???";
-
-    let n1 = "???", n2 = "???", n3 = "???";
-    const mapping = window.TYPE_MAPPING;
-    if (mapping) {
-        const getShortName = (code) => {
-            if (!code || code === "???") return "???";
-            const key = code.split('').join('-');
-            return (mapping[key] || { name: "" }).name.replace(/型/g, '');
-        };
-        n1 = getShortName(c1);
-        n2 = getShortName(c2);
-        n3 = getShortName(c3);
-    }
-
-    const ptCode = `${c1}_${c2}_${c3}`;
-    const ptNames = `${n1}_${n2}_${n3}`;
-    const lpas = `${ptCode}-${ptNames}`;
-
     if (currentCharacterId) {
         qs('#char-id').value = currentCharacterId;
     } else {
         qs('#char-id').value = "系統自動生成 (UUID)";
     }
+}
+
+/**
+ * 從 4 個下拉組裝 LPAS v3 結構化欄位。
+ * 任何一格沒選都回傳 null（避免寫入半成品）。
+ * 回傳：
+ *   {
+ *     engine_version: "v3",
+ *     ambiguity:   "A-F-O-H",   // 曖昧期 4 字代碼
+ *     love:        "A-S-O-H",   // 熱戀期
+ *     breakup:     "P-F-I-L",   // 失戀期
+ *     intimacy:    "深情專一型", // 親密關係四象限
+ *     triple_code: "A-F-O-H_A-S-O-H_P-F-I-L",
+ *     triple_name: "海嘯型・太陽型・細雨型",
+ *     full_code:   "A-F-O-H_A-S-O-H_P-F-I-L_深情專一型",
+ *     full_name:   "海嘯型・太陽型・細雨型・深情專一型"
+ *   }
+ */
+function buildLpasV3() {
+    const v3 = window.TYPE_MAPPING_V3 || {};
+    const a = qs('#char-type-1').value;
+    const l = qs('#char-type-2').value;
+    const b = qs('#char-type-3').value;
+    const i = qs('#char-type-4').value;
+    if (!a || !l || !b || !i) return null;
+
+    const nameOf = (k) => (v3[k] && v3[k].name) ? v3[k].name : '';
+    const tripleCode = `${a}_${l}_${b}`;
+    const tripleName = `${nameOf(a)}・${nameOf(l)}・${nameOf(b)}`;
+    return {
+        engine_version: 'v3',
+        ambiguity: a,
+        love: l,
+        breakup: b,
+        intimacy: i,
+        triple_code: tripleCode,
+        triple_name: tripleName,
+        full_code: `${tripleCode}_${i}`,
+        full_name: `${tripleName}・${i}`
+    };
+}
+
+/** 從既有 cardJson 還原 4 個下拉的值（僅讀 V3 結構，舊 AOCF 格式不再相容） */
+function readLpasV3FromCard(cardJson) {
+    const v = cardJson && cardJson.lpas_v3;
+    if (!v) return { t1: '', t2: '', t3: '', t4: '' };
+    return {
+        t1: v.ambiguity || '',
+        t2: v.love || '',
+        t3: v.breakup || '',
+        t4: v.intimacy || ''
+    };
+}
+
+/** 將 LPAS v3 結構寫入 cardJson；沒選滿 4 格則移除舊欄位以保持一致 */
+function writeLpasV3ToCard(cardJson) {
+    const lpasV3 = buildLpasV3();
+    if (lpasV3) {
+        cardJson.lpas_v3 = lpasV3;
+        // V3 代碼本身含「-」，所以 personality_type 只放 full_code，full_name 留在 lpas_v3 內
+        cardJson.personality_type = lpasV3.full_code;
+    } else {
+        delete cardJson.lpas_v3;
+        delete cardJson.personality_type;
+    }
+    return lpasV3;
 }
 
 function updateExplanations() {
@@ -197,34 +253,41 @@ function updateExplanations() {
     const md = window.MBTI_DESCRIPTIONS;
     if (qs('#desc-mbti')) qs('#desc-mbti').value = (md && mVal) ? md[mVal] || "" : "";
 
-    const mapping = window.TYPE_MAPPING;
-    if (mapping) {
-        [1, 2, 3].forEach(p => {
-            const codeShort = qs(`#char-type-${p}`).value;
-            const descEl = qs(`#desc-type-${p}`);
-            if (descEl) {
-                if (codeShort && codeShort !== "???") {
-                    const key = codeShort.split('').join('-');
-                    const info = mapping[key];
-                    if (info) {
-                        let subInfo;
-                        if (p === 1) subInfo = info.ambiguity;
-                        else if (p === 2) subInfo = info.love;
-                        else if (p === 3) subInfo = info.breakup;
+    // ── LPAS v3 三期說明 ──
+    const v3 = window.TYPE_MAPPING_V3 || {};
+    const phaseKeys = ['ambiguity', 'love', 'breakup'];
+    [1, 2, 3].forEach(p => {
+        const code = qs(`#char-type-${p}`).value;
+        const descEl = qs(`#desc-type-${p}`);
+        if (!descEl) return;
+        if (!code) { descEl.value = ''; return; }
+        const info = v3[code];
+        if (!info) { descEl.value = '未知類型'; return; }
+        const phase = info[phaseKeys[p - 1]] || {};
+        descEl.value =
+            `${info.name}（${info.code || code}）\n` +
+            `${info.short || ''}\n\n` +
+            `${phase.desc || info.desc || ''}`;
+    });
 
-                        if (subInfo && subInfo.desc) {
-                            descEl.value = `${subInfo.name || info.name}\n${subInfo.desc}`;
-                        } else {
-                            descEl.value = `${info.name}\n${info.desc || ''}`;
-                        }
-                    } else {
-                        descEl.value = '未知類型';
-                    }
-                } else {
-                    descEl.value = '';
-                }
+    // ── LPAS v3 親密關係說明 ──
+    const sexMap = window.SEX_QUADRANTS_V3 || {};
+    const code4 = qs('#char-type-4').value;
+    const descEl4 = qs('#desc-type-4');
+    if (descEl4) {
+        if (!code4) {
+            descEl4.value = '';
+        } else {
+            const sinfo = sexMap[code4];
+            if (sinfo) {
+                descEl4.value =
+                    `${code4}\n` +
+                    `${sinfo.tagline || ''}\n\n` +
+                    `${sinfo.desc || ''}`;
+            } else {
+                descEl4.value = '未知類型';
             }
-        });
+        }
     }
 }
 
@@ -271,37 +334,12 @@ async function loadCharacter(charId) {
     qs('#char-weight').value = cardJson.weight || '55';
     qs('#char-bust').value = cardJson.bust || 'C';
 
-    const pt = cardJson.personality_type || "";
-
-    // 解析性格類型 (相容多種舊格式與新格式 AOCF_AOCF_AOCF-太陽_太陽_太陽)
-    let t1 = "", t2 = "", t3 = "";
-    if (pt) {
-        // 先拔除後面的 "- 名稱"
-        let rawCodes = pt.split('-')[0];
-
-        if (rawCodes.length === 4 && !rawCodes.includes('_') && !rawCodes.includes('-')) {
-            // 例: "AOCF" (全部一樣)
-            t1 = rawCodes; t2 = rawCodes; t3 = rawCodes;
-        } else if (rawCodes.includes('_')) {
-            const parts = rawCodes.split('_');
-            if (parts.length >= 3 && parts[0].length === 4) {
-                // 例: "AOCF_PICS_AILF"
-                t1 = parts[0]; t2 = parts[1]; t3 = parts[2];
-            } else if (parts.length === 4) {
-                // 例: "A_O_C_F" -> A-O-C-F 轉成 AOCF
-                const combined = parts.join('');
-                t1 = combined; t2 = combined; t3 = combined;
-            }
-        } else if (pt.match(/^[A-Z]-[A-Z]-[A-Z]-[A-Z]/)) {
-            // 例: "A-O-C-F" 或 "A-O-C-F-太陽型"
-            const c = pt.substring(0, 7).replace(/-/g, ''); // "AOCF"
-            t1 = c; t2 = c; t3 = c;
-        }
-    }
-
+    // ── LPAS v3：直接讀 cardJson.lpas_v3；舊 AOCF 格式不再相容（V3 軸與 V1 不同） ──
+    const { t1, t2, t3, t4 } = readLpasV3FromCard(cardJson);
     qs('#char-type-1').value = t1;
     qs('#char-type-2').value = t2;
     qs('#char-type-3').value = t3;
+    qs('#char-type-4').value = t4;
 
     updateExplanations();
     updateAgeDisplay();
@@ -339,29 +377,14 @@ async function saveCharacter() {
     cardJson.weight = qs('#char-weight').value || "55";
     cardJson.bust = qs('#char-bust').value || "C";
 
-    // 組合 Personality Type: A_B_C-名稱1_名稱2_名稱3
-    const t1 = qs('#char-type-1').value;
-    const t2 = qs('#char-type-2').value;
-    const t3 = qs('#char-type-3').value;
-
     // 清除舊有的不必要欄位以精簡結構
     delete cardJson.age;
     delete cardJson.zodiac_description;
     delete cardJson.blood_type_description;
     delete cardJson.personality;
 
-    if (t1 && t2 && t3) {
-        const mapping = window.TYPE_MAPPING || {};
-        const getShortName = (code) => {
-            if (!code) return "???";
-            const key = code.split('').join('-');
-            return (mapping[key] || { name: "" }).name.replace(/型/g, '');
-        };
-        const n1 = getShortName(t1);
-        const n2 = getShortName(t2);
-        const n3 = getShortName(t3);
-        cardJson.personality_type = `${t1}_${t2}_${t3}-${n1}_${n2}_${n3}`;
-    }
+    // 將 LPAS v3 四個下拉組裝寫入 cardJson.lpas_v3 + personality_type
+    writeLpasV3ToCard(cardJson);
 
     const payload = {
         id: currentCharacterId,
@@ -415,22 +438,8 @@ async function saveAsNewCharacter() {
     cardJson.weight = qs('#char-weight').value || "55";
     cardJson.bust = qs('#char-bust').value || "C";
 
-    const t1 = qs('#char-type-1').value || "000";
-    const t2 = qs('#char-type-2').value || "000";
-    const t3 = qs('#char-type-3').value || "000";
-
-    if (window.TYPE_MAPPING) {
-        const mapping = window.TYPE_MAPPING;
-        const getShortName = (code) => {
-            if (!code || code === "???") return "???";
-            const key = code.split('').join('-');
-            return (mapping[key] || { name: "" }).name.replace(/型/g, '');
-        };
-        const n1 = getShortName(t1);
-        const n2 = getShortName(t2);
-        const n3 = getShortName(t3);
-        cardJson.personality_type = `${t1}_${t2}_${t3}-${n1}_${n2}_${n3}`;
-    }
+    // 將 LPAS v3 四個下拉組裝寫入 cardJson
+    writeLpasV3ToCard(cardJson);
 
     const payload = {
         name: name,
@@ -469,6 +478,7 @@ function cancelCharacterEdit() {
     qs('#char-type-1').value = '';
     qs('#char-type-2').value = '';
     qs('#char-type-3').value = '';
+    qs('#char-type-4').value = '';
     updateExplanations();
     updateAgeDisplay();
     updateButtonStates();
@@ -499,21 +509,8 @@ function updateJsonFromDropdowns() {
         cardJson.weight = qs('#char-weight').value || "55";
         cardJson.bust = qs('#char-bust').value || "C";
 
-        const t1 = qs('#char-type-1').value;
-        const t2 = qs('#char-type-2').value;
-        const t3 = qs('#char-type-3').value;
-        if (t1 && t2 && t3 && t1 !== "???" && t2 !== "???" && t3 !== "???") {
-            const mapping = window.TYPE_MAPPING || {};
-            const getShortName = (code) => {
-                if (!code || code === "???") return "???";
-                const key = code.split('').join('-');
-                return (mapping[key] || { name: "" }).name.replace(/型/g, '');
-            };
-            const n1 = getShortName(t1);
-            const n2 = getShortName(t2);
-            const n3 = getShortName(t3);
-            cardJson.personality_type = `${t1}_${t2}_${t3}-${n1}_${n2}_${n3}`;
-        }
+        // LPAS v3 四下拉 → cardJson.lpas_v3 + personality_type
+        writeLpasV3ToCard(cardJson);
 
         // 更新顯示
         qs('#char-card-json').value = prettyJson(cardJson);
@@ -755,16 +752,32 @@ function populateFormFromCharData(charData) {
         }
     }
 
-    if (charData.personality_type) {
-        const rawCodes = charData.personality_type.split('-')[0];
-        let t1 = '', t2 = '', t3 = '';
-        if (rawCodes.includes('_')) {
-            const parts = rawCodes.split('_');
-            if (parts.length >= 3 && parts[0].length === 4) { t1 = parts[0]; t2 = parts[1]; t3 = parts[2]; }
-        } else if (rawCodes.length === 4) { t1 = rawCodes; t2 = rawCodes; t3 = rawCodes; }
+    // ── 套用 AI 分析後的 LPAS v3 欄位 ──
+    //   優先讀 charData.lpas_v3；若 AI 仍只給 personality_type 字串，
+    //   嘗試從 "A-F-O-H_A-S-O-H_P-F-I-L_深情專一型-..." 取前 4 段
+    if (charData.lpas_v3) {
+        const { t1, t2, t3, t4 } = readLpasV3FromCard(charData);
         if (t1) qs('#char-type-1').value = t1;
         if (t2) qs('#char-type-2').value = t2;
         if (t3) qs('#char-type-3').value = t3;
+        if (t4) qs('#char-type-4').value = t4;
+    } else if (charData.personality_type) {
+        // V3 代碼格式：「A-F-O-H_A-S-O-H_P-F-I-L_<sex>」，用「_」拆出 4 段
+        const parts = String(charData.personality_type).split('_');
+        const isV3Code = (s) => /^[AP]-[FS]-[OI]-[HL]$/.test(s);
+        // 兼容直接給完整字串：先把 sex 名稱接回
+        // 這裡採保守作法：只在能完全辨識時才填入
+        // 三期代碼必須形如 A-F-O-H
+        // ⚠ 此 fallback 主要用於 AI 回傳 personality_type 而沒給 lpas_v3 的情況
+        // ⚠ AI 若給 V1 AOCF 格式（無連字號）將無法辨識，視為跳過。
+        if (parts.length >= 3 && isV3Code(parts[0]) && isV3Code(parts[1]) && isV3Code(parts[2])) {
+            qs('#char-type-1').value = parts[0];
+            qs('#char-type-2').value = parts[1];
+            qs('#char-type-3').value = parts[2];
+            const sexNames = ['深情專一型', '鍾情博愛型', '靈肉分離型', '遊戲人間型'];
+            const found = sexNames.find(n => String(charData.personality_type).includes(n));
+            if (found) qs('#char-type-4').value = found;
+        }
     }
     updateExplanations();
     updateAgeDisplay();
@@ -1073,8 +1086,11 @@ window.addEventListener('load', async () => {
         qs(sel).addEventListener('change', updateJsonFromDropdowns);
     });
 
-    [1, 2, 3].forEach(p => {
-        qs(`#char-type-${p}`).addEventListener('change', () => {
+    // LPAS v3：包含親密關係（type-4）共 4 個下拉
+    [1, 2, 3, 4].forEach(p => {
+        const el = qs(`#char-type-${p}`);
+        if (!el) return;
+        el.addEventListener('change', () => {
             updateIdPreview();
             updateExplanations();
             updateJsonFromDropdowns();

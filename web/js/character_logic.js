@@ -1200,8 +1200,9 @@ window.createDefaultCharacter = function (overrides = {}) {
         zodiac: "未選擇", //星座
         blood_type: "未選擇", //血型
         MBTI_type: "未選擇", //MBTI類型，例如ESFP-A、INFP-T
-        personality_type: "未選擇", // 格式：代碼-名稱，例如：AOCF_AILF_PICS-煙火_星星_迷霧
-        analysis_reasons: "詳細說明星座、血型、MBTI、LPAS四期推斷理由。",
+        personality_type: "未選擇", // LPAS v3 格式：full_code，例如「A-F-O-H_A-S-O-H_P-F-I-L_深情專一型」
+        lpas_v3: null,              // LPAS v3 結構化欄位：{ambiguity, love, breakup, intimacy, triple_code, triple_name, full_code, full_name}
+        analysis_reasons: "詳細說明星座、血型、MBTI、LPAS四期（曖昧/熱戀/失戀/親密關係）推斷理由。",
         speech_style: "說話語氣溫柔但有界線。", //說話語氣
         occupation: "自由接案者", //職業
         appearance: "典型的古典美女與性感女郎的結合。擁有娃娃臉與深情大眼，一頭黑色長直髮。身材比例極佳（35D-22-35），長腿細腰。著裝偏好簡約但具視覺衝擊力（如白色迷你緊身衣、五吋白色細高跟鞋），給人一種『純潔與誘惑並存』的感覺。", //外貌
