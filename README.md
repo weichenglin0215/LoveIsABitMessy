@@ -78,6 +78,8 @@
 
 | 版本 | 日期 | 更新亮點 |
 | :--- | :--- | :--- |
+| **V0.9.2.2** | 2026-06-11 | 同步.gitignore |
+| **V0.9.2.1** | 2026-06-11 | 移除__pycache__目錄並排除同步 |
 | **V0.9.2.0** | 2026-06-09 | LPAS v3 完整體：16 天候型名稱最終定案（**海嘯／煙火／漩渦／陣雨／岩漿／太陽／藤蔓／燈塔／雷雨／流星／流沙／晨露／梅雨／晚霞／深海／迷霧**），4 性象限（深情專一／鍾情博愛／靈肉分離／遊戲人間）。題目縮減為每軸 4 題（2+/2−）消除 acquiescence bias，PART2 完整重寫為沉浸式情境題（具體場景、可代入畫面）。新增 `lpas_v3_character_generator.js` 產出可與既有 characters_editor / novel_generator 相容的角色卡：含 `personality_type`、`v3_data` 完整結構、`markdown_summary` AI 友善摘要。完整 Supabase 雲端儲存（characters / lpas_sessions / lpas_answers / lpas_results 四張表），結果頁加入下載角色卡 JSON / 下載測驗紀錄 / 複製 Markdown 三個按鈕。新增 `supabase/schema_v3_lpas.sql` 驗證 schema 並更新欄位註解。v1/v2/v3 三版可並存於 characters 表，以 `source` 與 `lpas_version` 區分。|
 | **V0.9.1.0** | 2026-06-08 | LPAS v3 改版：放棄 v2 的抽象軸（黏度/愛之語/浪漫度），改用 4 條真正獨立的行為軸 — **主動/被動、快/慢、外放/內斂、佔有/自由**，加上性象限 4 類型作為補充。沿用 V1 的 16 個天候名（潮水、煙火、星星、陣雨、候鳥、太陽、月亮、燈塔、浪花、流星、細雨、霜花、溫泉、冰川、深海、迷霧）重新對應 4 軸座標。題目改寫原則：**每題只測一條軸 + 鎖死該期專屬情境**，三期題目絕不可互換。雙題庫 PART1（正式）+ PART2（口語）各 70 題，每題 ≤28 字、每子句 ≤14 字。介面、用色、字體、過場動畫節奏完全沿用 V1 lpas.html，無任何視覺改動。新增檔案：`web/lpas_v3.html`、`web/js/lpas_v3_types.js`、`web/js/lpas_v3_questions.js`、`web/js/lpas_v3_scoring.js`、`web/js/lpas_v3_app.js`。v1/v2/v3 三版並存，互不影響。|
 | **V0.9.0.0** | 2026-06-05 | LPAS v2 大改版：三軸架構（黏度／愛之語／浪漫度）+ 8 型角色庫（公主／女王／守護者／寶貝／浪子／貓系／獨行俠／總裁），結果為「三聯命名」(如 公主-女王-浪子) + 4 象限性標示。新增雙題庫 PART1（正式版）/ PART2（生活版）隨機抽題機制，題目共 55 題並支援階段內隨機洗牌。新增「親密與身體」第四階段（粉橘紅底色，可整段或單題跳過）。結果頁改為 4 sub-page 星星評分流程（含過場），完成後進入可截圖分享 IG 的最終頁（含三聯主標題、雷達圖、章節迷你卡、性象限眼睛切換、經典劇本彩蛋、配對地圖）。新增 lpas_v2_quiz.html / lpas_v2_test.html / 6 個 v2 JS 模組，並保留 v1 lpas.html 不受影響。Supabase 新增 schema_v2_lpas.sql 遷移腳本（engine_version、triple_code、axis_scores 等欄位）。完整企劃書於 Document/LPAS愛情人格特質評量表企劃書.md。|
