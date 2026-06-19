@@ -11,12 +11,23 @@
   <!-- 編輯器共用css/editer.css -->
   <link rel="stylesheet" href="css/editer.css">
 
+  <!-- 必填欄位未填時的紅框提示（由 characters_editor_app.js: validateRequiredFields() 套用 .field-invalid 類別） -->
+  <style>
+    .field-invalid {
+      border: 2px solid #e74c3c !important;
+      background-color: rgba(231, 76, 60, 0.08) !important;
+      box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.15) !important;
+    }
+  </style>
+
   <!-- Supabase JS (UMD) -->
   <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
   <!-- 中央角色資料與邏輯 -->
   <script src="js/character_logic.js"></script>
   <!-- LPAS v3 類型表（曖昧期 / 熱戀期 / 失戀期 16 型 + 親密關係 4 型） -->
   <script src="js/lpas_v3_types.js"></script>
+  <!-- LPAS v1 → v3 自動轉換器（載入舊角色卡時就地補上 lpas_v3） -->
+  <script src="js/lpas_v1_to_v3.js"></script>
   <script src="js/supabaseClient.js"></script>
   <script src="js/model_options_app.js" defer></script>
   <script src="js/writer_settings_app.js" defer></script>

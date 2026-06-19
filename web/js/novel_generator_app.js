@@ -382,7 +382,14 @@ function renderCharacters() {
             let label = isLocal ? c : c.name;
             if (!isLocal) {
                 const dateStr = c.updated_at ? c.updated_at.split('T')[0].replace(/-/g, '') : '';
-                const lpasStr = c.lpas || (c.card_json ? c.card_json.personality_type?.split('-')[0] : '');
+                // 舊 V1 卡片先就地補 lpas_v3，使下游（顯示 / 傳給後端）皆統一走 V3
+                if (c.card_json && typeof window.convertCardJsonV1ToV3 === 'function') {
+                    window.convertCardJsonV1ToV3(c.card_json);
+                }
+                const v3 = c.card_json && c.card_json.lpas_v3;
+                const lpasStr = (v3 && v3.triple_name)
+                    || c.lpas
+                    || (c.card_json ? (c.card_json.personality_type || '').split('-')[0] : '');
                 label = `${c.name || '未命名'}-${lpasStr || '無LPAS'}-${dateStr}`;
             }
             return `<option value="${id}" ${id === charId ? 'selected' : ''}>${label}</option>`;

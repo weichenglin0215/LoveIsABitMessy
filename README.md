@@ -78,6 +78,7 @@
 
 | 版本 | 日期 | 更新亮點 |
 | :--- | :--- | :--- |
+| **V0.9.3.0** | 2026-06-19 | LPAS v3 結果頁／最終分享頁版面微調與角色編輯器格式統一：(1) **lpas_v3.html 結果頁**：移除結果頁多餘的期別下拉列 (rv-select-row)、放大階段評量文字字級至 22px、調整 phase-section / phase-growth 外框配色、`<style>` 區塊每條 CSS 規則補上繁體中文註解。(2) **最終分享頁版面**：`.fs-sex` 與 `.fs-chapters` 同寬置中（透過 `#fs-sex-container` 接管寬度避免 90% 算錯基準）、`.fs-ch-typename` 與 `.fs-ch-code` 改為同行顯示、`.fs-sex-title` 改 flex 兩端對齊並把星星包成 `.fs-sex-stars` 套金色靠右。(3) **characters_editor 格式統一**：`buildLpasV3()` 改為產出與 LPAS 評量端一致的 `personality_type` 字串「AFOH_ASOH_PFIL-海嘯_太陽_細雨-深情專一型」；新增 `isV3PersonalityType()` / `parseV3PersonalityType()`，`readLpasV3FromCard()` 增加第三條讀取路徑（解析 LPAS 評量字串），修正載入雲端 V3 角色卡時三期下拉空白、JSON `personality_type` 被誤刪的問題。(4) **必填欄位驗證**：13 個欄位（姓名／性別／身高／體重／上圍／生日／星座／血型／MBTI／曖昧期／熱戀期／失戀期／親密關係）未填寫即時套用 `.field-invalid` 紅框，儲存（新增／覆蓋）前統一檢查未填齊則跳警告中斷。 |
 | **V0.9.2.2** | 2026-06-11 | 同步.gitignore |
 | **V0.9.2.1** | 2026-06-11 | 移除__pycache__目錄並排除同步 |
 | **V0.9.2.0** | 2026-06-09 | LPAS v3 完整體：16 天候型名稱最終定案（**海嘯／煙火／漩渦／陣雨／岩漿／太陽／藤蔓／燈塔／雷雨／流星／流沙／晨露／梅雨／晚霞／深海／迷霧**），4 性象限（深情專一／鍾情博愛／靈肉分離／遊戲人間）。題目縮減為每軸 4 題（2+/2−）消除 acquiescence bias，PART2 完整重寫為沉浸式情境題（具體場景、可代入畫面）。新增 `lpas_v3_character_generator.js` 產出可與既有 characters_editor / novel_generator 相容的角色卡：含 `personality_type`、`v3_data` 完整結構、`markdown_summary` AI 友善摘要。完整 Supabase 雲端儲存（characters / lpas_sessions / lpas_answers / lpas_results 四張表），結果頁加入下載角色卡 JSON / 下載測驗紀錄 / 複製 Markdown 三個按鈕。新增 `supabase/schema_v3_lpas.sql` 驗證 schema 並更新欄位註解。v1/v2/v3 三版可並存於 characters 表，以 `source` 與 `lpas_version` 區分。|

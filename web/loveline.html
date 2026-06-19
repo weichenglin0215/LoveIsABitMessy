@@ -10,6 +10,9 @@
   <!-- 編輯器共用css/editer.css -->
   <link rel="stylesheet" href="css/editer.css">
   <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
+  <!-- LPAS v3 類型表 + V1→V3 轉換器（讓 loveline 顯示與傳給後端的卡片皆為 V3） -->
+  <script src="js/lpas_v3_types.js"></script>
+  <script src="js/lpas_v1_to_v3.js"></script>
   <script src="js/supabaseClient.js" defer></script>
   <script src="js/model_options_app.js" defer></script>
   <script src="js/writer_settings_app.js" defer></script>
@@ -49,6 +52,9 @@
               <div class="user-name" id="current-user-name">— 請選擇 —</div>
               <div class="hint">目前使用者</div>
             </div>
+            <button class="btn-icon" id="btn-char-refresh"
+              title="從雲端重新下載角色卡與使用者列表"
+              onclick="(async()=>{try{await loadCharacters();await loadUsersFromCloud();}catch(e){console.error(e);}})()">🔄</button>
             <button id="btn-edit-user-profile" title="編輯使用者資料" class="btn-icon">⚙️</button>
           </div>
           <div class="field-label">選擇使用者</div>
@@ -114,7 +120,7 @@
           </div>
           <!-- LOG -->
           <div class="form-section">
-            <textarea id="log-output" class="log-area" style="height: 600px;">等待任務...</textarea>
+            <textarea id="log-output" class="log-area" style="height: 300px;">等待任務...</textarea>
           </div>
           <div class="log-actions">
             <button class="small-btn" onclick="clearLogOutput()" title="清空LOG欄的所有文字">🗑️清空</button>

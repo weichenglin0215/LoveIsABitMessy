@@ -177,18 +177,16 @@ function updateIdPreview() {
 /**
  * 從 4 個下拉組裝 LPAS v3 結構化欄位。
  * 任何一格沒選都回傳 null（避免寫入半成品）。
- * 回傳：
- *   {
- *     engine_version: "v3",
- *     ambiguity:   "A-F-O-H",   // 曖昧期 4 字代碼
- *     love:        "A-S-O-H",   // 熱戀期
- *     breakup:     "P-F-I-L",   // 失戀期
- *     intimacy:    "深情專一型", // 親密關係四象限
- *     triple_code: "A-F-O-H_A-S-O-H_P-F-I-L",
- *     triple_name: "海嘯型・太陽型・細雨型",
- *     full_code:   "A-F-O-H_A-S-O-H_P-F-I-L_深情專一型",
- *     full_name:   "海嘯型・太陽型・細雨型・深情專一型"
- *   }
+ *
+ * 回傳的 personality_type 字串格式（與 LPAS v3 評量端
+ * lpas_v3_character_generator.js: buildPersonalityType() 對齊）：
+ *   「AFOH_ASOH_PFIL-海嘯_太陽_細雨-深情專一型」
+ *     - 三段 4 字代碼（去連字號）以 "_" 串接
+ *     - 與三段中文型名（去「型」字）以主分隔 "-" 串接
+ *     - 性象限完整名稱（含「型」）放在最末段
+ *
+ * lpas_v3 物件本身仍保留 triple_name / full_name 以供
+ * daily_run.html、novel_generator_app.js 等顯示三聯型名使用。
  */
 function buildLpasV3() {
     const v3 = window.TYPE_MAPPING_V3 || {};
@@ -198,24 +196,91 @@ function buildLpasV3() {
     const i = qs('#char-type-4').value;
     if (!a || !l || !b || !i) return null;
 
-    const nameOf = (k) => (v3[k] && v3[k].name) ? v3[k].name : '';
-    const tripleCode = `${a}_${l}_${b}`;
-    const tripleName = `${nameOf(a)}・${nameOf(l)}・${nameOf(b)}`;
+    // 把「A-F-O-H」壓成「AFOH」（與 V1 風格對齊，也是 LPAS v3 評量端的格式）
+    const compact = (c) => (c || '').replace(/-/g, '');
+    const nameOf  = (k) => (v3[k] && v3[k].name) ? v3[k].name : '';
+    // 中文型名去「型」字，例如「海嘯型」→「海嘯」
+    const nameNoType = (k) => nameOf(k).replace('型', '');
+
+    const codeTriple = `${compact(a)}_${compact(l)}_${compact(b)}`;
+    const nameTriple = `${nameNoType(a)}_${nameNoType(l)}_${nameNoType(b)}`;
+    // ⚠ personality_type 字串：與 LPAS 評量端格式一致，例：
+    //   "AFOH_ASOH_PFIL-海嘯_太陽_細雨-深情專一型"
+    const personality_type = `${codeTriple}-${nameTriple}-${i}`;
+
     return {
         engine_version: 'v3',
         ambiguity: a,
         love: l,
         breakup: b,
         intimacy: i,
-        triple_code: tripleCode,
-        triple_name: tripleName,
-        full_code: `${tripleCode}_${i}`,
-        full_name: `${tripleName}・${i}`
+        // 顯示用：給 daily_run / novel_generator 等仍引用 triple_name / full_name 的程式
+        triple_name: `${nameOf(a)}・${nameOf(l)}・${nameOf(b)}`,
+        full_name:   `${nameOf(a)}・${nameOf(l)}・${nameOf(b)}・${i}`,
+        // 與 LPAS 評量端對齊的字串（同時會被寫入 cardJson.personality_type 與 characters.lpas 欄位）
+        personality_type: personality_type
     };
 }
 
-/** 從既有 cardJson 還原 4 個下拉的值（僅讀 V3 結構，舊 AOCF 格式不再相容） */
+/**
+ * 判斷 personality_type 字串是否為「LPAS v3 三聯」格式。
+ * 例：「AFOH_ASOH_PFIL-海嘯_太陽_細雨-深情專一型」
+ *   - 以 "-" 切至少 3 段
+ *   - 第 1 段為 3 個 4 字代碼以 "_" 串接，每段 = [AP][FS][OI][HL]
+ */
+function isV3PersonalityType(ptype) {
+    if (!ptype) return false;
+    const parts = String(ptype).split('-');
+    if (parts.length < 3) return false;
+    const codes = parts[0].split('_');
+    return codes.length === 3 && codes.every(c => /^[AP][FS][OI][HL]$/.test(c));
+}
+
+/**
+ * 把「AFOH_ASOH_PFIL-海嘯_太陽_細雨-深情專一型」解析回 4 欄位。
+ * 親密關係段若不在 SEX_QUADRANTS_V3（例如「未測」）則留空字串。
+ */
+function parseV3PersonalityType(ptype) {
+    const parts = String(ptype).split('-');
+    const codes = parts[0].split('_');
+    // 親密段：把最末段以後全部拼回（保險起見，雖然目前 4 性象限名稱不含 "-"）
+    const intimacy = parts.slice(2).join('-');
+    const expand = (c) => `${c[0]}-${c[1]}-${c[2]}-${c[3]}`;
+    const sexMap = window.SEX_QUADRANTS_V3 || {};
+    return {
+        ambiguity: expand(codes[0]),
+        love:      expand(codes[1]),
+        breakup:   expand(codes[2]),
+        intimacy:  sexMap[intimacy] ? intimacy : ''
+    };
+}
+
+/**
+ * 從既有 cardJson 還原 4 個下拉的值。
+ * 自動處理三種來源：
+ *   1) 已有 cardJson.lpas_v3 結構 → 直接讀取
+ *   2) V1 三聯字串 (AOCF_...)    → convertCardJsonV1ToV3 就地補上 lpas_v3
+ *   3) LPAS v3 評量寫出的 personality_type 字串 (AFOH_..-..-..型)
+ *      → 解析後就地補上 lpas_v3，使下拉能正確還原
+ */
 function readLpasV3FromCard(cardJson) {
+    if (cardJson && !cardJson.lpas_v3) {
+        // (2) 舊版 V1 卡片
+        if (typeof window.convertCardJsonV1ToV3 === 'function') {
+            window.convertCardJsonV1ToV3(cardJson);
+        }
+        // (3) LPAS v3 評量端寫出的 personality_type 字串
+        if (!cardJson.lpas_v3 && isV3PersonalityType(cardJson.personality_type)) {
+            const parsed = parseV3PersonalityType(cardJson.personality_type);
+            cardJson.lpas_v3 = {
+                engine_version: 'v3',
+                ambiguity: parsed.ambiguity,
+                love:      parsed.love,
+                breakup:   parsed.breakup,
+                intimacy:  parsed.intimacy
+            };
+        }
+    }
     const v = cardJson && cardJson.lpas_v3;
     if (!v) return { t1: '', t2: '', t3: '', t4: '' };
     return {
@@ -226,13 +291,39 @@ function readLpasV3FromCard(cardJson) {
     };
 }
 
-/** 將 LPAS v3 結構寫入 cardJson；沒選滿 4 格則移除舊欄位以保持一致 */
+/**
+ * 儲存前防呆：當 type_1/2/3 都已選但 type_4 (親密關係) 為空時，
+ * 自動補上「深情專一型」（4 性象限第一個非空選項），避免 buildLpasV3() 因 t4 空回 null
+ * 而導致 writeLpasV3ToCard 刪除整段 lpas_v3 資料。
+ * 適用情境：V1 舊卡片轉成 V3 後 type_4 是空字串，使用者只想改其他欄位就儲存。
+ * 僅在 saveCharacter / saveAsNewCharacter 入口呼叫，不在 JSON 即時預覽時呼叫，避免亂動 UI。
+ */
+function ensureLpasV3IntimacyFilled() {
+    const t1 = qs('#char-type-1').value;
+    const t2 = qs('#char-type-2').value;
+    const t3 = qs('#char-type-3').value;
+    const sel4 = qs('#char-type-4');
+    if (!sel4 || sel4.value) return;            // 已有值不動
+    if (!t1 || !t2 || !t3) return;              // 三期都未填則不自動補
+    // 找第一個 value 非空的 option（跳過 placeholder「-- 選擇親密關係類型 --」）
+    const firstReal = Array.from(sel4.options).find(o => o.value);
+    if (firstReal) {
+        sel4.value = firstReal.value;
+        updateExplanations();                   // 同步右側說明欄
+    }
+}
+
+/**
+ * 將 LPAS v3 結構寫入 cardJson；沒選滿 4 格則移除半成品。
+ * personality_type 與 LPAS 評量端格式一致：「AFOH_ASOH_PFIL-海嘯_太陽_細雨-深情專一型」
+ */
 function writeLpasV3ToCard(cardJson) {
     const lpasV3 = buildLpasV3();
     if (lpasV3) {
-        cardJson.lpas_v3 = lpasV3;
-        // V3 代碼本身含「-」，所以 personality_type 只放 full_code，full_name 留在 lpas_v3 內
-        cardJson.personality_type = lpasV3.full_code;
+        // 把 personality_type 從 lpas_v3 內拆出去，避免重複儲存
+        const { personality_type, ...lpasV3Body } = lpasV3;
+        cardJson.lpas_v3 = lpasV3Body;
+        cardJson.personality_type = personality_type;
     } else {
         delete cardJson.lpas_v3;
         delete cardJson.personality_type;
@@ -351,6 +442,9 @@ async function loadCharacter(charId) {
 async function saveCharacter() {
     if (!sb) { alert('Supabase 尚未初始化'); return; }
 
+    // 必填欄位防呆：未填齊不可儲存（同步顯示紅框）
+    if (!ensureAllRequiredFilled()) return;
+
     const id = qs('#char-id').value.trim();
     const name = qs('#char-name').value.trim();
     const cardJsonStr = qs('#char-card-json').value.trim();
@@ -383,6 +477,8 @@ async function saveCharacter() {
     delete cardJson.blood_type_description;
     delete cardJson.personality;
 
+    // 儲存前防呆：V1 舊卡片轉成 V3 後 type_4 可能為空，自動補預設值再寫入
+    ensureLpasV3IntimacyFilled();
     // 將 LPAS v3 四個下拉組裝寫入 cardJson.lpas_v3 + personality_type
     writeLpasV3ToCard(cardJson);
 
@@ -412,6 +508,9 @@ async function saveCharacter() {
 async function saveAsNewCharacter() {
     if (!sb) return;
 
+    // 必填欄位防呆：未填齊不可新增（同步顯示紅框）
+    if (!ensureAllRequiredFilled()) return;
+
     const name = qs('#char-name').value.trim();
     if (!name) {
         alert('請輸入姓名');
@@ -438,6 +537,8 @@ async function saveAsNewCharacter() {
     cardJson.weight = qs('#char-weight').value || "55";
     cardJson.bust = qs('#char-bust').value || "C";
 
+    // 儲存前防呆：V1 舊卡片轉成 V3 後 type_4 可能為空，自動補預設值再寫入
+    ensureLpasV3IntimacyFilled();
     // 將 LPAS v3 四個下拉組裝寫入 cardJson
     writeLpasV3ToCard(cardJson);
 
@@ -754,7 +855,11 @@ function populateFormFromCharData(charData) {
 
     // ── 套用 AI 分析後的 LPAS v3 欄位 ──
     //   優先讀 charData.lpas_v3；若 AI 仍只給 personality_type 字串，
-    //   嘗試從 "A-F-O-H_A-S-O-H_P-F-I-L_深情專一型-..." 取前 4 段
+    //   嘗試從 "A-F-O-H_A-S-O-H_P-F-I-L_深情專一型-..." 取前 4 段；
+    //   若是舊 V1 格式（如 AOCF_AICS_PILS-煙火_燈塔_深海），先自動補上 lpas_v3。
+    if (!charData.lpas_v3 && typeof window.convertCardJsonV1ToV3 === 'function') {
+        window.convertCardJsonV1ToV3(charData);
+    }
     if (charData.lpas_v3) {
         const { t1, t2, t3, t4 } = readLpasV3FromCard(charData);
         if (t1) qs('#char-type-1').value = t1;
@@ -1035,11 +1140,56 @@ async function analyzeImageCharacter() {
 
 // ====== 事件掛載 ======
 
+/* ════════════════════════════════════════════════════════════
+   必填欄位驗證
+   未填寫者輸入框會套用 .field-invalid（紅框，定義於 characters_editor.html）
+   儲存（新增 / 覆蓋）前若仍有未填欄位，跳警告並中斷儲存。
+   ════════════════════════════════════════════════════════════ */
+const REQUIRED_FIELDS = [
+    { sel: '#char-name',       label: '姓名 (Name)' },
+    { sel: '#char-gender',     label: '性別 (Gender)' },
+    { sel: '#char-height',     label: '身高 (cm)' },
+    { sel: '#char-weight',     label: '體重 (kg)' },
+    { sel: '#char-bust',       label: '上圍 (Bust)' },
+    { sel: '#char-birthday',   label: '生日 (Birthday)' },
+    { sel: '#char-zodiac',     label: '星座 (Zodiac)' },
+    { sel: '#char-blood-type', label: '血型 (Blood Type)' },
+    { sel: '#char-mbti',       label: 'MBTI 類型' },
+    { sel: '#char-type-1',     label: '曖昧期類型' },
+    { sel: '#char-type-2',     label: '熱戀期類型' },
+    { sel: '#char-type-3',     label: '失戀期類型' },
+    { sel: '#char-type-4',     label: '親密關係類型' }
+];
+
+/** 套 / 移除 .field-invalid 並回傳尚未填寫的欄位 label 列表 */
+function validateRequiredFields() {
+    const missing = [];
+    REQUIRED_FIELDS.forEach(({ sel, label }) => {
+        const el = qs(sel);
+        if (!el) return;
+        const filled = String(el.value || '').trim() !== '';
+        el.classList.toggle('field-invalid', !filled);
+        if (!filled) missing.push(label);
+    });
+    return missing;
+}
+
+/** 儲存前統一檢查；若有缺漏跳警告並回傳 false */
+function ensureAllRequiredFilled() {
+    const missing = validateRequiredFields();
+    if (missing.length > 0) {
+        alert('以下欄位尚未填寫，請補齊後再儲存：\n\n• ' + missing.join('\n• '));
+        return false;
+    }
+    return true;
+}
+
 window.addEventListener('load', async () => {
     initDropdownOptions();
 
     qs('#char-dropdown').addEventListener('change', async (e) => {
         await loadCharacter(e.target.value);
+        validateRequiredFields();
     });
 
     qs('#char-name').addEventListener('input', () => {
@@ -1095,6 +1245,14 @@ window.addEventListener('load', async () => {
             updateExplanations();
             updateJsonFromDropdowns();
         });
+    });
+
+    // 任何必填欄位變動就即時刷新紅框狀態
+    REQUIRED_FIELDS.forEach(({ sel }) => {
+        const el = qs(sel);
+        if (!el) return;
+        el.addEventListener('input', validateRequiredFields);
+        el.addEventListener('change', validateRequiredFields);
     });
 
     qs('#btn-char-refresh').addEventListener('click', refreshCharacterList);

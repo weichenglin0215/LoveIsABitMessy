@@ -767,7 +767,7 @@ let app = {
         container.innerHTML = `
             <div class="fs-sex" id="fs-sex-card">
                 <div class="fs-sex-text">
-                    <div class="fs-sex-title">親密與身體　${stars}</div>
+                    <div class="fs-sex-title"><span>親密與身體</span><span class="fs-sex-stars">${stars}</span></div>
                     <div class="fs-sex-label">${sex.label}</div>
                     <div class="fs-sex-tagline">${tagline}</div>
                 </div>

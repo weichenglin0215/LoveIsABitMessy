@@ -23,20 +23,24 @@
 
     <!-- V3 微調樣式：只新增 period 4 與性題跳過鈕 -->
     <style>
+        /* CSS 變數：定義第 4 期（親密與身體）專用的主題色，玫紅色系 */
         :root {
             --c-period-4: hsl(338, 50%, 45%);
         }
 
+        /* 當 body 標記為第 4 期時，整個舞台背景套用 period-4 主題色 */
         body[data-period="4"],
         body[data-period="4"] main#stage {
             background-color: var(--c-period-4);
         }
 
+        /* 性象限同意頁（screen-sex-consent）的內容容器：置中、套用主文字色 */
         #screen-sex-consent .instruction-content {
             text-align: center;
             color: var(--c-text-main);
         }
 
+        /* 性象限同意頁的主標題「親密與身體」：大字級、細字重、亮色強調 */
         #screen-sex-consent .consent-title {
             font-size: var(--fs-title);
             font-weight: 300;
@@ -44,6 +48,7 @@
             color: var(--c-accent-light);
         }
 
+        /* 性象限同意頁的說明段落：較大行高、加字距，便於閱讀 */
         #screen-sex-consent .consent-desc {
             font-size: var(--fs-desc);
             line-height: 1.8;
@@ -52,6 +57,7 @@
             letter-spacing: 1px;
         }
 
+        /* 性象限同意頁底部按鈕區：直向排列、置中、按鈕間距 14px */
         #screen-sex-consent .consent-actions {
             display: flex;
             flex-direction: column;
@@ -59,6 +65,7 @@
             align-items: center;
         }
 
+        /* 作答頁右上角「跳過這題」按鈕：絕對定位於右上角 */
         #skip-question-btn {
             position: absolute;
             top: 60px;
@@ -67,6 +74,7 @@
         }
 
         /* ─── 結果頁：對齊 Result Viewer Modal (.rv-box) 格式 ─── */
+        /* 結果頁外層 screen 容器：去掉預設 padding，讓內部 rv-box 完全填滿 */
         #screen-result {
             padding: 0;
         }
@@ -88,6 +96,7 @@
             margin-bottom: 10px;
         }
 
+        /* 結果頁雷達圖的 canvas：限制大小不超過父容器 */
         #screen-result .result-radar canvas {
             max-height: 100%;
             max-width: 100%;
@@ -102,24 +111,29 @@
         }
 
         /* 底部 feedback + final-actions（結果頁特有，RV Modal 無） */
+        /* 評分區塊（你覺得準確嗎？）：不被壓縮、置中、左右留白 14px */
         #screen-result .feedback-section {
             flex-shrink: 0;
             margin: 4px 14px;
             text-align: center;
         }
 
+        /* 評分區塊的提問文字「你覺得準確嗎？」：縮減上下邊距 */
         #screen-result .feedback-q {
             margin: 4px 0;
         }
 
+        /* 評分區塊的五顆星列：縮減上下邊距 */
         #screen-result .star-rating {
             margin: 4px 0;
         }
 
+        /* 確認回饋按鈕「同意」：強制上邊距 4px 覆蓋預設值 */
         #screen-result #confirm-feedback-btn {
             margin-top: 4px !important;
         }
 
+        /* 結果頁最終動作區（感謝詞 + 雲端狀態）：固定不縮、置中 */
         #screen-result #final-actions {
             flex-shrink: 0;
             margin: 4px 14px 10px;
@@ -127,11 +141,13 @@
             gap: 4px;
         }
 
+        /* 最終動作區的副標題「感謝您的參與…」：去除邊距、字級 18px */
         #screen-result #final-actions .sub-title {
             margin: 0;
             font-size: 18px;
         }
 
+        /* 最終動作區的備註（☁️ 雲端狀態）：去除邊距 */
         #screen-result #final-actions .note {
             margin: 0;
         }
@@ -139,46 +155,54 @@
         /* ═══════════════════════════════════════
            階段結果頁：陷阱 / 配對 / 成長關鍵字
            ═══════════════════════════════════════ */
+        /* 階段評量文字主體：字級 18px、行高 1.7，閱讀舒適度優先 */
         #screen-result #result-desc {
-            font-size: 18px;
+            font-size: 22px;
             line-height: 1.7;
         }
 
+        /* 階段主敘述段落（每段最上方的人格描述）：底部留白、文字兩端對齊 */
         .phase-main-desc {
-            margin-bottom: 14px;
+            margin-bottom: 18px;
             text-align: justify;
         }
 
+        /* 階段子區塊外框（🎭 角色扮演 / ⚠ 陷阱 / 💞 配對 / 🌱 成長）：半透明深色底、左側細色條 */
         .phase-section {
             margin-top: 12px;
             padding: 10px 12px;
             background: rgba(0, 0, 0, 0.18);
             border-radius: 10px;
-            border-left: 3px solid rgba(255, 255, 255, 0.22);
+            border: 1px solid hsl(45, 44%, 66%);
+            border-left: 6px solid hsl(45, 50%, 50%);
         }
 
+        /* 子區塊標題（🎭 角色扮演指引 / ⚠ 容易陷入的陷阱 …）：亮色強調、字距 2px */
         .phase-section-title {
-            font-size: 15px;
+            font-size: 22px;
             font-weight: 500;
             color: var(--c-accent-light);
             letter-spacing: 2px;
             margin-bottom: 6px;
         }
 
+        /* 陷阱清單外層 ul：去除預設圓點與內縮，由 li::before 自繪 */
         .phase-trap-list {
             list-style: none;
             padding-left: 0;
             margin: 0;
         }
 
+        /* 陷阱清單每一項 li：字級 15px、左側內縮預留圓點位置 */
         .phase-trap-list li {
-            font-size: 15px;
+            font-size: 18px;
             line-height: 1.6;
             padding: 2px 0 2px 18px;
             position: relative;
             color: var(--c-text-main);
         }
 
+        /* 陷阱清單項目前的橘色圓點：絕對定位於 li 左側 */
         .phase-trap-list li::before {
             content: "•";
             position: absolute;
@@ -186,46 +210,56 @@
             color: hsl(35, 80%, 70%);
         }
 
+        /* 配對列（🟢 最合拍 / 🟡 互補 / 🔴 危險）：橫向排列，標籤與內容對齊基線 */
         .phase-pair-row {
             display: flex;
             align-items: baseline;
             gap: 10px;
             margin: 3px 0;
-            font-size: 15px;
+            font-size: 20px;
         }
 
+        /* 配對列左側標籤（最合拍/互補對象/危險組合）：固定寬度便於對齊 */
         .phase-pair-label {
             min-width: 88px;
-            font-size: 14px;
+            font-size: 18px;
             color: var(--c-text-sec);
             flex-shrink: 0;
         }
 
+        /* 配對列標籤 - 最合拍：綠色 */
         .phase-pair-label.good {
             color: hsl(140, 60%, 70%);
         }
 
+        /* 配對列標籤 - 互補對象：黃色 */
         .phase-pair-label.balance {
             color: hsl(45, 70%, 70%);
         }
 
+        /* 配對列標籤 - 危險組合：紅色 */
         .phase-pair-label.danger {
             color: hsl(0, 65%, 70%);
         }
 
+        /* 配對列右側內容（具體類型名單）：使用主文字色 */
         .phase-pair-val {
             color: var(--c-text-main);
             line-height: 1.5;
         }
 
+        /* 成長關鍵字區塊：覆蓋 phase-section 預設色條與背景，改用綠色系強調 */
         .phase-growth {
-            border-left-color: hsl(140, 60%, 60%);
-            background: hsla(140, 40%, 30%, 0.25);
+            border: 1px solid hsl(120, 60%, 40%);
+            border-left: 6px solid hsl(140, 60%, 60%);
+            /*background: hsla(140, 40%, 30%, 0.25);*/
+            /*外框線*/
         }
 
+        /* 成長關鍵字內文：斜體、淡綠色、兩端對齊，強調勉勵語氣 */
         .phase-growth-text {
-            font-size: 16px;
-            line-height: 1.7;
+            font-size: 18px;
+            line-height: 1.6;
             font-style: italic;
             color: hsl(140, 50%, 88%);
             text-align: justify;
@@ -234,6 +268,7 @@
         /* ═══════════════════════════════════════
            最終分享頁
            ═══════════════════════════════════════ */
+        /* 最終分享頁外層 container：填滿整頁、直向排列、可上下捲動 */
         #screen-final-share .result-container {
             height: 100%;
             max-height: 100%;
@@ -245,7 +280,7 @@
             overflow-y: auto;
         }
 
-        /* 三聯主標 */
+        /* 三聯主標外框：紫→粉→藍漸層底、圓角、不被壓縮 */
         .fs-triple {
             text-align: center;
             background: linear-gradient(135deg,
@@ -257,6 +292,7 @@
             flex-shrink: 0;
         }
 
+        /* 三聯主標的副標籤「妳的戀愛三聯」：小字、寬字距 */
         .fs-triple-label {
             font-size: 13px;
             color: var(--c-text-sec);
@@ -264,6 +300,7 @@
             margin-bottom: 6px;
         }
 
+        /* 三聯主標文字（如「流星・煙火・晚霞」）：30px 大字、白色、寬字距 */
         .fs-triple-text {
             font-size: 30px;
             font-weight: 500;
@@ -272,16 +309,18 @@
             line-height: 1.3;
         }
 
+        /* 三聯主標下方的別名（受測者代號）：小字次要色 */
         .fs-alias {
             margin-top: 6px;
             font-size: 12px;
             color: var(--c-text-sec);
         }
 
-        /* 雷達圖（三色疊圖） */
+        /* 雷達圖（三色疊圖）外框：固定高度 230px、半透明深色底 */
         .fs-radar {
             flex-shrink: 0;
-            height: 230px;
+            height: 220px;
+            width: 80%;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -290,120 +329,168 @@
             padding: 6px;
         }
 
+        /* 雷達圖 canvas：強制限制高寬，避免 Chart.js 自動放大 */
         .fs-radar canvas {
             max-height: 220px !important;
             max-width: 100% !important;
         }
 
-        /* 三章節迷你卡 */
+        /* 三章節迷你卡的外層容器：直向排列、卡片間隔 6px、置中對齊 */
         .fs-chapters {
             display: flex;
             flex-direction: column;
             gap: 6px;
             flex-shrink: 0;
+            width: 90%;
+            align-self: center;
         }
 
+        /* 每張章節迷你卡：半透明深色底、左側 4px 色條（顏色依期別套用） */
         .fs-chapter {
             background: rgba(0, 0, 0, 0.2);
             border-radius: 10px;
+            border: 1px solid;
             border-left: 4px solid;
             padding: 6px 10px;
         }
 
+        /* 章節卡 - 曖昧期：左側色條為紫色 */
         .fs-chapter[data-p="1"] {
+            border-color: hsl(298, 50%, 55%);
             border-left-color: hsl(298, 50%, 55%);
         }
 
+        /* 章節卡 - 熱戀期：左側色條為粉橘色 */
         .fs-chapter[data-p="2"] {
+            border-color: hsl(10, 40%, 65%);
             border-left-color: hsl(10, 40%, 65%);
         }
 
+        /* 章節卡 - 失戀期：左側色條為藍色 */
         .fs-chapter[data-p="3"] {
-            border-left-color: hsl(220, 40%, 60%);
+            border-color: hsl(220, 50%, 60%);
+            border-left-color: hsl(220, 50%, 60%);
         }
 
+        /* 章節卡第一列：左右兩端對齊（左為期別、右為星等） */
         .fs-ch-row1 {
             display: flex;
             justify-content: space-between;
             align-items: baseline;
         }
 
+        /* 章節卡左上的期別文字（曖昧期/熱戀期/失戀期）：小字、寬字距 */
         .fs-ch-period {
-            font-size: 11px;
+            font-size: 16px;
             color: var(--c-text-sec);
             letter-spacing: 2px;
         }
 
+        /* 章節卡右上的星等顯示：金色 */
         .fs-ch-stars {
-            font-size: 13px;
+            font-size: 16px;
             color: gold;
         }
 
+        /* 章節卡主要型名（如「海嘯型」）：22px、亮色強調、與下方 code 同行顯示 */
         .fs-ch-typename {
-            font-size: 18px;
-            color: var(--c-accent-light);
+            font-size: 22px;
+            /*color: var(--c-accent-light);*/
+            color: white;
             font-weight: 500;
             margin: 2px 0;
+            display: inline-block;
+            vertical-align: baseline;
+            margin-right: 10px;
         }
 
+        /* 章節卡的代碼字串（如 A-F-O-H_主動-快速…）：與 typename 同行顯示，等寬字體便於識別 */
         .fs-ch-code {
-            font-size: 11px;
+            font-size: 16px;
             letter-spacing: 0.5px;
             color: var(--c-text-sec);
             margin: 1px 0 3px;
             font-family: ui-monospace, monospace;
+            display: inline-block;
+            vertical-align: baseline;
         }
 
+        /* 章節卡的標語（型名的一句話描述）：斜體、小字、次要色 */
         .fs-ch-slogan {
             font-style: italic;
-            font-size: 12px;
+            font-size: 18px;
             color: var(--c-text-sec);
             line-height: 1.4;
         }
 
-        /* 性象限卡 */
+        /* 性象限卡外層容器：與 .fs-chapters 同寬置中，避免 .fs-sex 90% 算錯基準寬度 */
+        #fs-sex-container {
+            width: 90%;
+            align-self: center;
+            flex-shrink: 0;
+        }
+
+        /* 性象限卡外框：玫紅色透明底 + 虛線邊框（暗示「私密、可選顯示」）、撐滿外層容器 */
         .fs-sex {
             background: hsla(348, 50%, 35%, 0.4);
             border: 1px dashed hsla(348, 50%, 60%, 0.4);
+            border-left: 4px solid hsla(4, 54%, 53%, 0.8);
             border-radius: 10px;
             padding: 8px 12px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-shrink: 0;
+            width: 100%;
+            box-sizing: border-box;
         }
 
+        /* 性象限卡 - 「閉眼」狀態：對標籤與標語套用模糊效果（隱私保護） */
         .fs-sex.eye-closed .fs-sex-label,
         .fs-sex.eye-closed .fs-sex-tagline {
             filter: blur(8px);
         }
 
+        /* 性象限卡左側文字區塊：靠左、撐滿剩餘空間 */
         .fs-sex-text {
             text-align: left;
             flex: 1;
         }
 
+        /* 性象限卡的小標題（「親密與身體」）：左標題、右星等，採 flex 兩端對齊 */
         .fs-sex-title {
-            font-size: 11px;
+            font-size: 16px;
             color: var(--c-text-sec);
             letter-spacing: 2px;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
         }
 
+        /* 性象限卡的星等（評分結果）：金色，靠右顯示 */
+        .fs-sex-stars {
+            color: gold;
+            letter-spacing: 0;
+        }
+
+        /* 性象限卡的主要標籤（如「深情專一型」）：橘色系強調 */
         .fs-sex-label {
-            font-size: 17px;
+            font-size: 22px;
             font-weight: 500;
             color: hsl(28, 80%, 80%);
             letter-spacing: 1px;
             margin-top: 2px;
         }
 
+        /* 性象限卡的標語（型名的一句話）：斜體、主文字色 */
         .fs-sex-tagline {
             font-style: italic;
-            font-size: 12px;
+            font-size: 16px;
             color: var(--c-text-main);
             margin-top: 2px;
         }
 
+        /* 性象限卡右側「眼睛」按鈕：圓形、透明背景，用於切換顯示／模糊 */
         .fs-eye-btn {
             background: transparent;
             color: var(--c-text-main);
@@ -417,29 +504,33 @@
             flex-shrink: 0;
         }
 
-        /* 結尾 */
+        /* 最終分享頁底部結尾區塊：置中、不被壓縮 */
         .fs-tail {
             text-align: center;
             margin-top: 4px;
             flex-shrink: 0;
         }
 
+        /* 結尾區的副標題（「感謝您的參與…」）：16px */
         .fs-tail .sub-title {
             font-size: 16px;
             margin: 0 0 4px;
         }
 
+        /* 結尾區的備註文字（☁️ 雲端狀態）：小字、次要色 */
         .fs-tail .note {
             font-size: 12px;
             margin: 0 0 6px;
             color: var(--c-text-sec);
         }
 
+        /* 結尾區的按鈕（「再做一次」）：較小字級、緊湊內距 */
         .fs-tail .btn {
             font-size: 16px;
             padding: 6px 24px;
         }
 
+        /* 浮水印「LoveIsABitMessy · LPAS v3」：極小字、半透明、寬字距 */
         .fs-watermark {
             text-align: center;
             font-size: 10px;
@@ -587,10 +678,9 @@
                     <div class="rv-title">你在愛情裡的真實樣貌</div>
                 </div>
 
-                <!-- 對應 RV：rv-select-row（結果頁無下拉，僅顯示期別） -->
-                <div class="rv-select-row">
-                    <span class="rv-period-lbl" id="result-period-title">曖昧期</span>
-                </div>
+                <!-- 隱藏的期別標題：lpas_v3_app.js 仍會寫入 .innerText（避免 null 拋錯），
+                     視覺上不顯示，因為期別資訊已在下方 rv-type-header 呈現。 -->
+                <span id="result-period-title" style="display:none;"></span>
 
                 <!-- 對應 RV：rv-type-header -->
                 <div class="rv-type-header" id="result-type-header">

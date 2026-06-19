@@ -51,7 +51,43 @@ def _parse_character_logic_js():
             for period in ["ambiguity", "love", "breakup"]:
                 per_m = re.search(period + r':\s*\{\s*name:\s*"([^"]+)",\s*desc:\s*"([^"]+)"', inner)
                 if per_m: ptype[k][period] = f"{per_m.group(1)}\n{per_m.group(2)}"
-                
+
+    # ── 額外解析 lpas_v3_types.js 的 TYPE_MAPPING_V3，併入 ptype dict ──
+    # V3 鍵格式為 "A-F-O-L"，與 V1 的 "A-O-C-F" 不會衝突（軸 2 集合 {F,S} vs {O,I} 互斥），可共用同一字典。
+    # 用「按 V3 鍵頭切片」的方式分割每個 block，避免靠非貪婪 .*? + lookahead 處理巢狀大括號
+    # （V3 entry 內含 pairing: {...}、ambiguity: { desc: "..." } 等多層 {}，原 regex 仰賴 backtracking
+    # 容易在 desc 字串內含 "A-... 字樣或檔案結尾格式變動時失敗）。
+    v3_path = os.path.join(os.path.dirname(__file__), 'web', 'js', 'lpas_v3_types.js')
+    if os.path.exists(v3_path):
+        with open(v3_path, 'r', encoding='utf-8') as f:
+            v3_content = f.read()
+        m = re.search(r'window\.TYPE_MAPPING_V3\s*=\s*\{', v3_content)
+        if m:
+            sub = v3_content[m.end():]
+            end_idx = sub.find('\n};')
+            if end_idx != -1: sub = sub[:end_idx]
+            # 找出每個 V3 鍵頭位置（如 "A-F-O-L":），用相鄰兩個鍵頭夾出 block 內文
+            header_re = re.compile(r'"([AP]-[FS]-[OI]-[HL])"\s*:', re.MULTILINE)
+            headers = [(mm.group(1), mm.start(), mm.end()) for mm in header_re.finditer(sub)]
+            v3_parsed_count = 0
+            for i, (k, _, hdr_end) in enumerate(headers):
+                # 此 block 內文 = 本鍵頭結束 → 下一鍵頭起點（最後一個 block 取到 sub 末尾）
+                inner_end = headers[i + 1][1] if i + 1 < len(headers) else len(sub)
+                inner = sub[hdr_end:inner_end]
+                ptype.setdefault(k, {})
+                name_m = re.search(r'name:\s*"([^"]+)"', inner)
+                v3name = name_m.group(1) if name_m else ''
+                # V3 每期欄位為 { desc: "..." }（無 name 子鍵），直接抓 desc
+                for period in ["ambiguity", "love", "breakup"]:
+                    per_m = re.search(period + r':\s*\{\s*desc:\s*"([^"]+)"', inner)
+                    if per_m:
+                        ptype[k][period] = f"{v3name}\n{per_m.group(1)}"
+                v3_parsed_count += 1
+            # 隱憂 2 監測：V3 應有 16 型，少於 16 表示解析路徑失效，沉默失敗會讓提示詞少了人格段
+            if v3_parsed_count and v3_parsed_count != 16:
+                import sys
+                print(f"[prompt_utils] WARN: TYPE_MAPPING_V3 解析到 {v3_parsed_count} 型（預期 16），請檢查 lpas_v3_types.js 格式。", file=sys.stderr)
+
     _CACHED_LOGIC = {"zodiac": zodiac, "blood": blood, "type": ptype}
     return _CACHED_LOGIC
 
@@ -75,13 +111,32 @@ def _enrich_char_data(char_data: dict, relationship_params: dict = None) -> dict
     p_status = (relationship_params or {}).get('partner_status', '戀愛期')
     p_map = {'曖昧期': 'ambiguity', '戀愛期': 'love', '失戀期': 'breakup'}
     p_key = p_map.get(p_status, 'love')
-    ptype = c.get('personality_type', '')
-    if ptype and '-' in ptype and not c.get('personality'):
-        codes = ptype.split('-')[0].split('_')
-        if len(codes) == 3:
-            idx = 0 if p_key == 'ambiguity' else 1 if p_key == 'love' else 2
-            hcode = '-'.join(list(codes[idx]))
-            c['personality'] = logic['type'].get(hcode, {}).get(p_key, "")
+
+    # ── LPAS v3 優先：若角色卡含 lpas_v3 結構，直接取該期天候型代碼 ──
+    # lpas_v3 = {ambiguity: "A-F-O-L", love: "A-S-O-L", breakup: "P-S-I-H", intimacy: "..."}
+    # V3 描述讀取沿用 character_logic.js 的 TYPE_MAPPING（v1 / v3 軸序不同但鍵都是 X-Y-Z-W 4 軸字串，
+    # 共用同一個 dict 即可——v3 自有 16 鍵，與 v1 的 16 鍵不重疊）。
+    v3 = c.get('lpas_v3') or {}
+    if v3 and not c.get('personality'):
+        v3code = v3.get(p_key) or ''  # 例如 "A-S-O-L"
+        if v3code:
+            c['personality'] = logic['type'].get(v3code, {}).get(p_key, "")
+
+    # ── 舊 V1 相容：若仍無 personality，回退解析 personality_type ──
+    if not c.get('personality'):
+        ptype = c.get('personality_type', '')
+        if ptype and '-' in ptype:
+            codes = ptype.split('-')[0].split('_')
+            if len(codes) == 3:
+                idx = 0 if p_key == 'ambiguity' else 1 if p_key == 'love' else 2
+                raw = codes[idx]
+                # V1 為 4 字無連字號（如 "AOCF"），補上連字號變成 "A-O-C-F"
+                # V3 為含連字號的 4 軸代碼（如 "A-F-O-L"）；split('_') 後不會殘留多餘片段
+                if len(raw) == 4 and '-' not in raw:
+                    hcode = '-'.join(list(raw))
+                else:
+                    hcode = raw
+                c['personality'] = logic['type'].get(hcode, {}).get(p_key, "")
     
     # 確保基本屬性有預設值
     if not c.get('height'): c['height'] = "165"
@@ -535,15 +590,23 @@ def build_analyze_text_character_prompt(text_content: str, target_name: str = ""
     #建立「從文字分析角色特質並生成角色卡 JSON」的提示詞
     #####################################################################################
     type_options = (
-        "LPAS 愛情人格量表（四軸各選一，分別為曖昧期、熱戀期、失戀期）：\n"
-        "  軸1 主動(A) vs 被動(P)　軸2 外放(O) vs 內斂(I)\n"
-        "  軸3 乾脆(C) vs 留戀(L)　軸4 快速短暫(F) vs 緩慢持久(S)\n"
-        "16種代碼與名稱：\n"
-        "  AOCF=煙火　AOCS=太陽　AOLF=潮水　AOLS=候鳥\n"
-        "  AICF=陣雨　AICS=燈塔　AILF=星星　AILS=月亮\n"
-        "  POCF=流星　POCS=冰川　POLF=浪花　POLS=溫泉\n"
-        "  PICF=霜花　PICS=迷霧　PILF=細雨　PILS=深海\n"
-        "personality_type 格式範例：AOCF_AILF_PICS-煙火_星星_迷霧（依序：曖昧期_熱戀期_失戀期）"
+        "LPAS v3 愛情人格量表（曖昧期 / 熱戀期 / 失戀期 各選一型，親密關係另選一型）：\n"
+        "\n"
+        "■ 16 天候型（用於 type_1 曖昧期、type_2 熱戀期、type_3 失戀期）\n"
+        "  四軸編碼 [A/P]-[F/S]-[O/I]-[H/L]：\n"
+        "    軸1 主動(A) vs 被動(P)       軸2 快速(F) vs 緩慢(S)\n"
+        "    軸3 外放(O) vs 內斂(I)       軸4 佔有(H) vs 自由(L)\n"
+        "  16 種代碼與名稱：\n"
+        "    A-F-O-H=海嘯　A-F-O-L=煙火　A-F-I-H=漩渦　A-F-I-L=陣雨\n"
+        "    A-S-O-H=岩漿　A-S-O-L=太陽　A-S-I-H=藤蔓　A-S-I-L=燈塔\n"
+        "    P-F-O-H=雷雨　P-F-O-L=流星　P-F-I-H=流沙　P-F-I-L=晨露\n"
+        "    P-S-O-H=梅雨　P-S-O-L=晚霞　P-S-I-H=深海　P-S-I-L=迷霧\n"
+        "\n"
+        "■ 4 性象限（用於 type_4 親密關係，四選一）\n"
+        "  深情專一型（情感高 × 開放低）：沒有愛，給不出身體；專一且鄭重。\n"
+        "  鍾情博愛型（情感高 × 開放高）：能愛很多人，但都是真心；誠實不獨佔。\n"
+        "  靈肉分離型（情感低 × 開放低）：性與愛分離，但行為專一；理性節制。\n"
+        "  遊戲人間型（情感低 × 開放高）：不執著承諾、享受當下；自由不抓不黏。\n"
     )
     # 組合目標角色指定說明
     target_instruction = ""
@@ -565,7 +628,7 @@ def build_analyze_text_character_prompt(text_content: str, target_name: str = ""
 1. 星座推斷：根據性格行為推斷最符合的星座（牡羊/金牛/雙子/巨蟹/獅子/處女/天秤/天蠍/射手/摩羯/水瓶/雙魚）
 2. 血型推斷：根據性格特質推斷血型（A型/B型/AB型/O型）
 3. MBTI 推斷：根據性格特質推斷MBTI類型（選擇其中最符合的類型，如INFP、ENFJ等）
-4. LPAS 分析：分別為「曖昧期」「熱戀期」「失戀期」三個階段各選一種類型代碼
+4. LPAS v3 分析：分別為「曖昧期」「熱戀期」「失戀期」三個階段各從 16 天候型中選一型（填入 type_1 / type_2 / type_3），並從 4 性象限中選一型作為「親密關係」（填入 type_4）。三個時期可以是相同或不同的型；若文字敘述不足，請依角色核心性格合理推斷，不可留空。
 
 {type_options}
 
@@ -580,8 +643,13 @@ def build_analyze_text_character_prompt(text_content: str, target_name: str = ""
   "zodiac": "XX座",
   "blood_type": "X型",
   "MBTI_type": "推斷的MBTI類型",
-  "personality_type": "XXXX_XXXX_XXXX-名稱1_名稱2_名稱3",
-  "analysis_reasons": "詳細說明星座、血型、MBTI、LPAS四期推斷理由，各100字以上",
+  "lpas_v3": {{
+    "type_1": "曖昧期天候型代碼，格式 A-F-O-L（含三個短橫，務必從上表 16 種代碼中挑一個）",
+    "type_2": "熱戀期天候型代碼，同上格式",
+    "type_3": "失戀期天候型代碼，同上格式",
+    "type_4": "親密關係性象限名稱（四選一：深情專一型 / 鍾情博愛型 / 靈肉分離型 / 遊戲人間型）"
+  }},
+  "analysis_reasons": "詳細說明星座、血型、MBTI、LPAS v3 四期（曖昧/熱戀/失戀/親密關係）推斷理由，各 100 字以上",
   "speech_style": "說話語氣與口吻，具體描述",
   "occupation": "職業",
   "appearance": "外貌描述，包含臉型、五官、髮型、身材、穿著風格",

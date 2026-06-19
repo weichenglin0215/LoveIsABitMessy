@@ -7,6 +7,9 @@
   <title>小說自動產生器 - LoveIsABitMessy</title>
   <!-- Supabase JS (UMD) -->
   <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
+  <!-- LPAS v3 類型表 + V1→V3 轉換器（讓登場角色顯示與傳給後端皆為 V3） -->
+  <script src="js/lpas_v3_types.js"></script>
+  <script src="js/lpas_v1_to_v3.js"></script>
   <script src="js/supabaseClient.js" defer></script>
   <script src="js/model_options_app.js" defer></script>
   <script src="js/writer_settings_app.js" defer></script>
@@ -44,6 +47,8 @@
         <button class="collapse-btn" id="toggle-char-col" title="縮放">↔</button>
         <h3>🎭 登場角色</h3>
         <div class="toolbox">
+          <button class="btn-icon" id="btn-char-refresh" title="從雲端重新下載角色卡資料"
+            onclick="(async()=>{try{await initCharacters();}catch(e){console.error(e);}})()">🔄</button>
           <button class="btn-circle" id="add-char" title="增加角色">+</button>
         </div>
       </div>

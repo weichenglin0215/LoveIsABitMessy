@@ -249,7 +249,13 @@ async function loadCharacters() {
     const sb = getSB();
     if (!sb) return;
     const { data } = await sb.from('characters').select('id,name,card_json,is_active').eq('is_active', true).order('name');
-    if (data) state.characters = data;
+    if (data) {
+      // 舊 V1 卡片就地補上 lpas_v3，使後續顯示與送往後端的角色資料一律走 V3
+      if (typeof window.convertCardJsonV1ToV3 === 'function') {
+        data.forEach(c => { if (c.card_json) window.convertCardJsonV1ToV3(c.card_json); });
+      }
+      state.characters = data;
+    }
     populateCharSelects();
   } catch (e) { appendLog('⚠️ 角色讀取失敗: ' + e.message); }
 }

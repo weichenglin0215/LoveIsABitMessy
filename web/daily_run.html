@@ -9,6 +9,9 @@
     <link rel="stylesheet" href="css/editer.css">
     <!-- 中央角色資料與邏輯 -->
     <script src="js/character_logic.js"></script>
+    <!-- LPAS v3 類型表 + V1→V3 轉換器 -->
+    <script src="js/lpas_v3_types.js"></script>
+    <script src="js/lpas_v1_to_v3.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabaseClient.js"></script>
     <script src="js/model_options_app.js" defer></script>
@@ -588,7 +591,15 @@
                 cloudCharacters = data;
                 const charOptions = data.map(c => {
                     const dateStr = c.updated_at ? c.updated_at.split('T')[0].replace(/-/g, '') : '';
-                    const lpasStr = c.lpas || (c.card_json ? c.card_json.personality_type?.split('-')[0] : '');
+                    // 若是舊 V1 卡片，先就地補上 lpas_v3，使顯示與下游處理皆走 V3
+                    if (c.card_json && typeof window.convertCardJsonV1ToV3 === 'function') {
+                        window.convertCardJsonV1ToV3(c.card_json);
+                    }
+                    const v3 = c.card_json && c.card_json.lpas_v3;
+                    // 標籤優先顯示 V3 三聯型名（如「煙火・燈塔・深海」），其次 c.lpas，最後舊 personality_type 前段
+                    const lpasStr = (v3 && v3.triple_name)
+                        || c.lpas
+                        || (c.card_json ? (c.card_json.personality_type || '').split('-')[0] : '');
                     const label = `${c.name || '未命名'}-${lpasStr || '無LPAS'}-${dateStr}`;
                     return `<option value="${c.id}">${label}</option>`;
                 }).join('');
@@ -1066,8 +1077,18 @@
                 if (found) charData = found.card_json;
             }
 
-            if (charData && charData.personality_type) {
-                pTypeDisplay.textContent = `🧬 性格：${charData.personality_type}`;
+            // 若是舊 V1 卡片，先補上 lpas_v3，使下方顯示走 V3 型名。
+            // ⚠ 依賴參考共享：上方 `charData = found.card_json` 是直接賦值參考，
+            //   此處 mutate 會同步反映在 cloudCharacters 快取中（後續再次選同一角色不重複轉換）。
+            //   若日後改成 `charData = {...found.card_json}` 淺拷貝，此優化會失效，需另想辦法。
+            if (charData && typeof window.convertCardJsonV1ToV3 === 'function') {
+                window.convertCardJsonV1ToV3(charData);
+            }
+            const v3Disp = charData && charData.lpas_v3;
+            const dispText = (v3Disp && (v3Disp.full_name || v3Disp.triple_name))
+                || (charData && charData.personality_type);
+            if (dispText) {
+                pTypeDisplay.textContent = `🧬 性格：${dispText}`;
                 pTypeDisplay.style.display = 'inline-block';
             } else {
                 pTypeDisplay.style.display = 'none';
