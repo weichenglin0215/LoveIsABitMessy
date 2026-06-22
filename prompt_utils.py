@@ -83,7 +83,7 @@ def _parse_character_logic_js():
                     if per_m:
                         ptype[k][period] = f"{v3name}\n{per_m.group(1)}"
                 v3_parsed_count += 1
-            # 隱憂 2 監測：V3 應有 16 型，少於 16 表示解析路徑失效，沉默失敗會讓提示詞少了人格段
+            # 隱憂監測：V3 應有 16 型，少於 16 表示解析路徑失效，沉默失敗會讓提示詞少了人格段
             if v3_parsed_count and v3_parsed_count != 16:
                 import sys
                 print(f"[prompt_utils] WARN: TYPE_MAPPING_V3 解析到 {v3_parsed_count} 型（預期 16），請檢查 lpas_v3_types.js 格式。", file=sys.stderr)
@@ -111,14 +111,20 @@ def _enrich_char_data(char_data: dict, relationship_params: dict = None) -> dict
     p_status = (relationship_params or {}).get('partner_status', '戀愛期')
     p_map = {'曖昧期': 'ambiguity', '戀愛期': 'love', '失戀期': 'breakup'}
     p_key = p_map.get(p_status, 'love')
+    # 將 4 字代碼正規化成 character_logic.js／lpas_v3_types.js 字典所用的「A-F-O-L」鍵格式。
+    # 新格式 lpas_v3 代碼已去除連字號（如 "AFOL"），這裡補回連字號；已含「-」則原樣保留。
+    def _to_dashed(code):
+        code = (code or '').strip()
+        if not code:
+            return ''
+        return code if '-' in code else '-'.join(list(code))
 
     # ── LPAS v3 優先：若角色卡含 lpas_v3 結構，直接取該期天候型代碼 ──
-    # lpas_v3 = {ambiguity: "A-F-O-L", love: "A-S-O-L", breakup: "P-S-I-H", intimacy: "..."}
-    # V3 描述讀取沿用 character_logic.js 的 TYPE_MAPPING（v1 / v3 軸序不同但鍵都是 X-Y-Z-W 4 軸字串，
-    # 共用同一個 dict 即可——v3 自有 16 鍵，與 v1 的 16 鍵不重疊）。
+    # lpas_v3 = {ambiguity: "AFOL", love: "ASOL", breakup: "PSIH", intimacy: "..."}（新格式無連字號）
+    # V3 描述沿用 _parse_character_logic_js 併入的 TYPE_MAPPING_V3（鍵為 "A-F-O-L" 4 軸字串）。
     v3 = c.get('lpas_v3') or {}
     if v3 and not c.get('personality'):
-        v3code = v3.get(p_key) or ''  # 例如 "A-S-O-L"
+        v3code = _to_dashed(v3.get(p_key) or '')   # 例如 "AFOL" → "A-F-O-L"
         if v3code:
             c['personality'] = logic['type'].get(v3code, {}).get(p_key, "")
 
@@ -129,13 +135,7 @@ def _enrich_char_data(char_data: dict, relationship_params: dict = None) -> dict
             codes = ptype.split('-')[0].split('_')
             if len(codes) == 3:
                 idx = 0 if p_key == 'ambiguity' else 1 if p_key == 'love' else 2
-                raw = codes[idx]
-                # V1 為 4 字無連字號（如 "AOCF"），補上連字號變成 "A-O-C-F"
-                # V3 為含連字號的 4 軸代碼（如 "A-F-O-L"）；split('_') 後不會殘留多餘片段
-                if len(raw) == 4 and '-' not in raw:
-                    hcode = '-'.join(list(raw))
-                else:
-                    hcode = raw
+                hcode = _to_dashed(codes[idx])
                 c['personality'] = logic['type'].get(hcode, {}).get(p_key, "")
     
     # 確保基本屬性有預設值
@@ -592,7 +592,7 @@ def build_analyze_text_character_prompt(text_content: str, target_name: str = ""
     type_options = (
         "LPAS v3 愛情人格量表（曖昧期 / 熱戀期 / 失戀期 各選一型，親密關係另選一型）：\n"
         "\n"
-        "■ 16 天候型（用於 type_1 曖昧期、type_2 熱戀期、type_3 失戀期）\n"
+        "■ 16 天候型（用於 ambiguity 曖昧期、love 熱戀期、breakup 失戀期）\n"
         "  四軸編碼 [A/P]-[F/S]-[O/I]-[H/L]：\n"
         "    軸1 主動(A) vs 被動(P)       軸2 快速(F) vs 緩慢(S)\n"
         "    軸3 外放(O) vs 內斂(I)       軸4 佔有(H) vs 自由(L)\n"
@@ -602,11 +602,11 @@ def build_analyze_text_character_prompt(text_content: str, target_name: str = ""
         "    P-F-O-H=雷雨　P-F-O-L=流星　P-F-I-H=流沙　P-F-I-L=晨露\n"
         "    P-S-O-H=梅雨　P-S-O-L=晚霞　P-S-I-H=深海　P-S-I-L=迷霧\n"
         "\n"
-        "■ 4 性象限（用於 type_4 親密關係，四選一）\n"
-        "  深情專一型（情感高 × 開放低）：沒有愛，給不出身體；專一且鄭重。\n"
-        "  鍾情博愛型（情感高 × 開放高）：能愛很多人，但都是真心；誠實不獨佔。\n"
-        "  靈肉分離型（情感低 × 開放低）：性與愛分離，但行為專一；理性節制。\n"
-        "  遊戲人間型（情感低 × 開放高）：不執著承諾、享受當下；自由不抓不黏。\n"
+        "■ 4 性象限（用於 intimacy 親密關係，四選一，務必『不含』結尾的「型」字）\n"
+        "  深情專一（情感高 × 開放低）：沒有愛，給不出身體；專一且鄭重。\n"
+        "  鍾情博愛（情感高 × 開放高）：能愛很多人，但都是真心；誠實不獨佔。\n"
+        "  靈肉分離（情感低 × 開放低）：性與愛分離，但行為專一；理性節制。\n"
+        "  遊戲人間（情感低 × 開放高）：不執著承諾、享受當下；自由不抓不黏。\n"
     )
     # 組合目標角色指定說明
     target_instruction = ""
@@ -628,7 +628,7 @@ def build_analyze_text_character_prompt(text_content: str, target_name: str = ""
 1. 星座推斷：根據性格行為推斷最符合的星座（牡羊/金牛/雙子/巨蟹/獅子/處女/天秤/天蠍/射手/摩羯/水瓶/雙魚）
 2. 血型推斷：根據性格特質推斷血型（A型/B型/AB型/O型）
 3. MBTI 推斷：根據性格特質推斷MBTI類型（選擇其中最符合的類型，如INFP、ENFJ等）
-4. LPAS v3 分析：分別為「曖昧期」「熱戀期」「失戀期」三個階段各從 16 天候型中選一型（填入 type_1 / type_2 / type_3），並從 4 性象限中選一型作為「親密關係」（填入 type_4）。三個時期可以是相同或不同的型；若文字敘述不足，請依角色核心性格合理推斷，不可留空。
+4. LPAS v3 分析：分別為「曖昧期」「熱戀期」「失戀期」三個階段各從 16 天候型中選一型（填入 ambiguity / love / breakup），並從 4 性象限中選一型作為「親密關係」（填入 intimacy）。三個時期可以相同或不同；若文字敘述不足，請依角色核心性格合理推斷，不可留空。
 
 {type_options}
 
@@ -644,10 +644,10 @@ def build_analyze_text_character_prompt(text_content: str, target_name: str = ""
   "blood_type": "X型",
   "MBTI_type": "推斷的MBTI類型",
   "lpas_v3": {{
-    "type_1": "曖昧期天候型代碼，格式 A-F-O-L（含三個短橫，務必從上表 16 種代碼中挑一個）",
-    "type_2": "熱戀期天候型代碼，同上格式",
-    "type_3": "失戀期天候型代碼，同上格式",
-    "type_4": "親密關係性象限名稱（四選一：深情專一型 / 鍾情博愛型 / 靈肉分離型 / 遊戲人間型）"
+    "ambiguity": "曖昧期天候型代碼，格式 A-F-O-L（含三個短橫，務必從上表 16 種代碼中挑一個）",
+    "love": "熱戀期天候型代碼，同上格式",
+    "breakup": "失戀期天候型代碼，同上格式",
+    "intimacy": "親密關係性象限（四選一：深情專一 / 鍾情博愛 / 靈肉分離 / 遊戲人間，不含結尾的「型」字）"
   }},
   "analysis_reasons": "詳細說明星座、血型、MBTI、LPAS v3 四期（曖昧/熱戀/失戀/親密關係）推斷理由，各 100 字以上",
   "speech_style": "說話語氣與口吻，具體描述",
@@ -749,6 +749,74 @@ def build_story_to_premise_prompt(text_content: str, chapter_count: int = 8, wor
     return prompt
 
 
+def build_story_to_bullet_premise_prompt(text_content: str, chapter_count: int = 8, words_per_chapter: int = 400) -> str:
+    """建立「將故事原文轉換成條列式故事粗綱」的提示詞。
+
+    與 build_story_to_premise_prompt 的差異：
+    - 輸出採用條列(*) 格式，最精簡的關鍵資訊。
+    - 每個事件除了原故事走向之外，必須額外給出兩種「AI 自行發展」的可能劇情走向，
+      讓後續 AI 撰寫故事大綱時能擇一發展，創造戲劇化轉變。
+    - 目的：讓後續 AI 不被原故事細節綁住，能自由發展更多可能性。
+    """
+    #####################################################################################
+    # 建立「將故事原文轉換成條列式故事粗綱」的提示詞
+    #####################################################################################
+    prompt = f"""你是一位頂尖的小說策劃編輯與故事拆解專家，擅長把長篇故事拆解成最精簡的「條列式」骨架，讓後續創作者能自由發揮、發展出更多戲劇化的可能性。
+請閱讀以下故事原文，依照「起、承、轉、合」結構，將整個故事濃縮成「條列式」的故事粗綱。
+
+【核心目的】
+- 不要重述原故事的劇情細節，只保留最關鍵、最能感動人心的核心元素。
+- 在「關鍵事件」中除了原故事的劇情走向之外，必須再額外發想「兩種」由 AI 自行發展、且戲劇化轉變的替代劇情走向，
+  讓後續 AI 撰寫大綱時能自行擇一發展。
+
+【整體章數】
+依照原故事的長度與複雜度將故事分成 {chapter_count} 章，依「起、承、轉、合」分配比例：
+- 起 約佔 25%
+- 承 約佔 30%
+- 轉 約佔 30%
+- 合 約佔 15%
+
+【每章輸出格式（嚴格遵守，全部使用「*」條列）】
+每章字數約 {words_per_chapter} 字。格式如下：
+
+第X章：（章節標題）
+* 男主角XXX：行為與情緒描述。
+* 女主角XXX：行為與情緒描述。
+* 配角XXX：行為與情緒描述。（其他角色一一條列；若無可省略）
+* 關鍵事件1：事件緣由。
+    ** 注意：產生章描述時，請由以下三種故事走向選擇其中之一發展。直接寫出章描述，勿添加類似"故事選擇發展【XXXX】："
+    - 原故事走向：……
+    - AI 構思走向A（戲劇化）：……
+    - AI 構思走向B（戲劇化）：……
+* 關鍵事件2：事件緣由。
+    ** 注意：產生章描述時，請由以下三種故事走向選擇其中之一發展。直接寫出章描述，勿添加類似"故事選擇發展【XXXX】："
+    - 原故事走向：……
+    - AI 構思走向A（戲劇化）：……
+    - AI 構思走向B（戲劇化）：……
+* 關鍵物品：物品名稱與在劇情中的象徵或功能。
+* 時間／地點／環境：本章發生的時間、地點、氛圍。
+* 其他補充：你認為對後續創作有幫助的任何條列項目（伏筆、情感張力、感官細節等）。
+
+【撰寫規則】
+1. 全部以「*」開頭的條列項目呈現，子項目以「    -」縮排條列，禁止寫成段落式敘述。
+2. 文字精簡、訊息密度高，每項條列盡量在一行內表達完整意思。
+3. 角色描述只保留行為與情緒「動機」，不寫具體對白、不寫具體場景細節。
+4. 「AI 替代走向」必須與「原故事走向」明顯不同，且要能合理銜接前後章，並具備戲劇張力。
+5. 必須保留原著的核心情感主軸（例如：愛情、復仇、救贖、失落等），但允許替代走向改變結局方向。
+6. 不寫流水帳，不複述原文台詞，不引用原文段落。
+
+【禁止】
+1. 禁止使用中文簡體字。
+2. 禁止寫成完整段落式粗綱（這是另一個按鈕的工作）。
+3. 禁止省略「AI 替代走向A／B」這兩個子項目。
+
+【故事原文】
+{text_content[:50000]}
+
+請開始輸出「條列式故事粗綱」（繁體中文，全部使用 * 條列）："""
+    return prompt
+
+
 def build_chat_reply_prompt(char_data, char_name, user_name, user_message, history,
                             persona_override="", session_extra="", 
                             user_char_data=None, user_persona_override="", user_extra="",
@@ -761,7 +829,7 @@ def build_chat_reply_prompt(char_data, char_name, user_name, user_message, histo
     #####################################################################################
     # --- 1. 處理目標角色 (AI) 的資料 ---
     target_char = dict(char_data)
-    
+    timestamp = time.strftime("%Y年 %m月 %d日 %H時 %M分 %S秒", time.localtime())
     # 關鍵字覆蓋邏輯 (簡易實作：如果在 persona_override 看到特定關鍵字就替換)
     for key in ['生日', '血型', '星座', '年齡', '職業', '性格']:
         if persona_override and f"{key}:" in persona_override:
@@ -841,16 +909,18 @@ def build_chat_reply_prompt(char_data, char_name, user_name, user_message, histo
 1. 回答語氣要完全符合角色的年齡跟性格，說話口吻要符合設定。
 2. 依照使用者與你的關係來調整你的互動方式。
 3. 直接回答使用者的提問。
-4. 這是通訊軟體，回應應簡短自然（1~3 句話為主），偶爾可以使用表情符號。
-5. 你的回覆對象是 {user_name}。
-6. **絕對不要**以「{char_name}:」作為開頭，直接輸出對話內容即可。
+4. 現在時間是{timestamp}，請根據目前時間來回答或主動聊天。
+5. 這是通訊軟體，回應應簡短自然（1~3 句話為主），偶爾可以使用表情符號。
+6. 你的回覆對象是 {user_name}。
+7. **絕對不要**以「{char_name}:」作為開頭，直接輸出對話內容即可。
 
 【絕對禁止】
 1. 絕對禁止重複你自己的上一次回覆。
 2. 禁止重複回答相同的意見。
 3. 禁止迴避使用者的提問，必須針對提問回答。
-4. 禁止換行與空白行。
-5. 禁止用**簡體中文**回覆。
+4. 禁止用括號()或符號[]來形容自己現在動作、表情與眼神。這是聊天，不是寫小說。
+5. 禁止換行與空白行。
+6. 禁止用**簡體中文**回覆。
 
 """
     

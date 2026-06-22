@@ -67,6 +67,8 @@ let state = {
     genParams: {
         storyToPremiseChapters: 8,
         storyToPremiseWordsPerChapter: 200,
+        storyToBulletChapters: 8,
+        storyToBulletWordsPerChapter: 400,
         chaptersFromPremiseCount: 16,
         chaptersFromPremiseWordsPerChapter: 400,
         chapterOutlineSectionCount: 4,
@@ -80,6 +82,8 @@ let state = {
 const GEN_PARAMS_DEFAULTS = {
     storyToPremiseChapters: 8,
     storyToPremiseWordsPerChapter: 200,
+    storyToBulletChapters: 8,
+    storyToBulletWordsPerChapter: 400,
     chaptersFromPremiseCount: 16,
     chaptersFromPremiseWordsPerChapter: 400,
     chapterOutlineSectionCount: 4,
@@ -145,6 +149,19 @@ window.promptAndGenChapterOutline = promptAndGenChapterOutline;
 
 let cloudCharacters = []; // 儲存雲端角色卡完整資料
 let localCharacters = []; // 儲存本機角色 ID
+
+/**
+ * 統一的角色卡下拉顯示文字：「角色名稱-full_name」。
+ * full_name 取自 card_json.lpas_v3.full_name；無 LPAS 資料時以「無LPAS」替代。
+ */
+function charDropdownLabel(c) {
+    let card = c && c.card_json;
+    if (typeof card === 'string') {
+        try { card = JSON.parse(card); } catch (e) { card = null; }
+    }
+    const fullName = (card && card.lpas_v3 && card.lpas_v3.full_name) ? card.lpas_v3.full_name : '';
+    return `${(c && c.name) || '未命名'}-${fullName || '無LPAS'}`;
+}
 let serverOnline = false;
 
 // 初始化
@@ -288,7 +305,13 @@ async function loadCloudChars() {
             .select('id, name, card_json, lpas, updated_at')
             .eq('is_active', true)
             .order('updated_at', { ascending: false });
-        if (data) cloudCharacters = data;
+        if (data) {
+            // 舊 V1 卡片就地補上 lpas_v3，使下游（顯示 full_name / 傳給後端）皆統一走 V3
+            if (typeof window.convertCardJsonV1ToV3 === 'function') {
+                data.forEach(c => { if (c.card_json) window.convertCardJsonV1ToV3(c.card_json); });
+            }
+            cloudCharacters = data;
+        }
     } catch (e) {
         console.error("Cloud load error:", e);
     }
@@ -379,19 +402,7 @@ function renderCharacters() {
                 <option value="">-- 選取角色卡 --</option>
                 ${(isLocal ? localCharacters : cloudCharacters).map(c => {
             const id = isLocal ? c : c.id;
-            let label = isLocal ? c : c.name;
-            if (!isLocal) {
-                const dateStr = c.updated_at ? c.updated_at.split('T')[0].replace(/-/g, '') : '';
-                // 舊 V1 卡片先就地補 lpas_v3，使下游（顯示 / 傳給後端）皆統一走 V3
-                if (c.card_json && typeof window.convertCardJsonV1ToV3 === 'function') {
-                    window.convertCardJsonV1ToV3(c.card_json);
-                }
-                const v3 = c.card_json && c.card_json.lpas_v3;
-                const lpasStr = (v3 && v3.triple_name)
-                    || c.lpas
-                    || (c.card_json ? (c.card_json.personality_type || '').split('-')[0] : '');
-                label = `${c.name || '未命名'}-${lpasStr || '無LPAS'}-${dateStr}`;
-            }
+            let label = isLocal ? c : charDropdownLabel(c);
             return `<option value="${id}" ${id === charId ? 'selected' : ''}>${label}</option>`;
         }).join('')}
             </select>
@@ -497,6 +508,17 @@ function setupEventListeners() {
         renderCharacters();
     });
 
+    // 從雲端重新下載角色卡資料（依目前資料來源切換 local / cloud）
+    qs('#btn-refresh-chars').addEventListener('click', async () => {
+        const btn = qs('#btn-refresh-chars');
+        btn.disabled = true;
+        try {
+            await initCharacters();
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
     qs('#add-chapter').addEventListener('click', () => {
         state.chapters.push({ title: "新章節", description: "", sections: [{ title: "新節", content: "" }] });
         renderChapters();
@@ -569,6 +591,19 @@ function setupEventListeners() {
         if (ok) qs('#story-file-input').click();
     });
     qs('#story-file-input').addEventListener('change', storyFileToPremise);
+
+    // 文檔轉條列：先跳參數彈窗，再開檔案選擇
+    qs('#btn-story-to-bullet').addEventListener('click', async () => {
+        const ok = await openParamsModal({
+            modalId: 'modal-params-stb', confirmBtnId: 'btn-stb-params-confirm', cancelBtnId: 'btn-stb-params-cancel',
+            fields: [
+                { inputId: 'stb-chapter-count', paramKey: 'storyToBulletChapters', defaultValue: 8 },
+                { inputId: 'stb-words-per-chapter', paramKey: 'storyToBulletWordsPerChapter', defaultValue: 400 }
+            ]
+        });
+        if (ok) qs('#story-bullet-file-input').click();
+    });
+    qs('#story-bullet-file-input').addEventListener('change', storyFileToBulletPremise);
 
     qs('#btn-compare-novels').addEventListener('click', openCompareModal);
     qs('#compare-mode-select').addEventListener('change', updateAllCompareContent);
@@ -1376,6 +1411,72 @@ async function storyFileToPremise(event) {
             qs('#story-premise').value = result.premise;
             state.storyPremise = result.premise;
             appendLog('✅ 故事粗綱已生成，已填入「故事粗綱」欄位。');
+        } else {
+            appendLog('❌ AI 未回傳有效粗綱，請查看 LOG 或重試。');
+        }
+    } catch (e) {
+        appendLog('❌ 發生錯誤：' + e.message);
+        alert('❌ 呼叫 AI 失敗：' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = origText;
+    }
+}
+
+/**
+ * 讀取本地端故事文字檔，由 AI 依起承轉合轉成「條列式」故事粗綱，填入 #story-premise。
+ * 與 storyFileToPremise 不同之處：使用 build_story_to_bullet_premise_prompt，
+ * 產出條列(*) 格式並包含 AI 自行發展的替代劇情走向。
+ */
+async function storyFileToBulletPremise(event) {
+    const file = event.target.files[0];
+    event.target.value = '';
+    if (!file) return;
+
+    if (!file.name.match(/\.(txt|md)$/i)) {
+        alert('❌ 僅支援 .txt 或 .md 文字檔案。');
+        return;
+    }
+
+    const btn = qs('#btn-story-to-bullet');
+    const origText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ 讀取中…';
+
+    let textContent = '';
+    try {
+        textContent = await file.text();
+    } catch (e) {
+        alert('❌ 無法讀取檔案：' + e.message);
+        btn.disabled = false;
+        btn.textContent = origText;
+        return;
+    }
+
+    if (!textContent || textContent.trim().length < 50) {
+        alert('❌ 檔案內容太短（少於 50 字），請確認檔案內容是否正確。');
+        btn.disabled = false;
+        btn.textContent = origText;
+        return;
+    }
+
+    appendLog(`📋 已讀取「${file.name}」，共 ${textContent.length} 字。`);
+    appendLog('🤖 正在呼叫 AI 依起承轉合轉成條列式故事粗綱（請稍候）...');
+    btn.textContent = '⏳ AI 分析中…';
+
+    try {
+        const payload = {
+            text_content: textContent,
+            model: state.currentModel || 'gemma4',
+            model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
+            chapter_count: state.genParams.storyToBulletChapters,
+            words_per_chapter: state.genParams.storyToBulletWordsPerChapter
+        };
+        const result = await callDebugServerAsync('/api/story_to_bullet_premise_async', payload);
+        if (result && result.premise) {
+            qs('#story-premise').value = result.premise;
+            state.storyPremise = result.premise;
+            appendLog('✅ 條列式故事粗綱已生成，已填入「故事粗綱」欄位。');
         } else {
             appendLog('❌ AI 未回傳有效粗綱，請查看 LOG 或重試。');
         }

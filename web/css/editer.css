@@ -2766,7 +2766,7 @@ body.daily-page {
   padding: 5px 12px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 0.78rem;
+  font-size: 1.17rem; /* 原 0.78rem，放大 150% */
   white-space: nowrap;
   font-family: var(--font-ui);
 }

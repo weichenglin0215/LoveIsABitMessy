@@ -260,8 +260,21 @@ async function loadCharacters() {
   } catch (e) { appendLog('⚠️ 角色讀取失敗: ' + e.message); }
 }
 
+/**
+ * 統一的角色卡下拉顯示文字：「角色名稱-full_name」。
+ * full_name 取自 card_json.lpas_v3.full_name；無 LPAS 資料時以「無LPAS」替代。
+ */
+function charDropdownLabel(c) {
+  let card = c && c.card_json;
+  if (typeof card === 'string') {
+    try { card = JSON.parse(card); } catch (e) { card = null; }
+  }
+  const fullName = (card && card.lpas_v3 && card.lpas_v3.full_name) ? card.lpas_v3.full_name : '';
+  return `${(c && c.name) || '未命名'}-${fullName || '無LPAS'}`;
+}
+
 function populateCharSelects() {
-  const opts = state.characters.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  const opts = state.characters.map(c => `<option value="${c.id}">${charDropdownLabel(c)}</option>`).join('');
   if (qs('#modal-friend-char-select')) {
     qs('#modal-friend-char-select').innerHTML = '<option value="">— 選擇角色卡 —</option>' + opts;
   }
@@ -559,13 +572,28 @@ function showBubbleMenu(bubble, msgId, rawContent, senderKey, senderCharId) {
   menu.innerHTML = `
     <button class="bubble-menu-btn">📋 複製文字</button>
     <button class="bubble-menu-btn bubble-menu-btn-del"${!canDel ? ' disabled title="暫存訊息無法刪除"' : ''}>🗑️ 刪除此對話</button>
-    <button class="bubble-menu-btn bubble-menu-btn-del"${!canDel ? ' disabled' : ''}>⬆️ 刪除此則之前所有對話</button>
-    <button class="bubble-menu-btn bubble-menu-btn-del"${!canDel ? ' disabled' : ''}>⬇️ 刪除此則後續所有對話</button>`;
+    <button class="bubble-menu-btn bubble-menu-btn-del"${!canDel ? ' disabled' : ''}>⬆️ 刪除此則之前的自訂則數對話</button>
+    <button class="bubble-menu-btn bubble-menu-btn-del"${!canDel ? ' disabled' : ''}>⬇️ 刪除此則後續的自訂則數對話</button>`;
 
-  // 定位在泡泡上方
+  // 定位在泡泡上方；需先附加到 DOM 才能量到實際寬高，再依視窗邊界夾住。
+  // 使用者訊息靠右對齊時，rect.left 接近視窗右緣，原本直接套用會讓選單溢出畫面右側。
+  // 解法：先暫時放在畫面外渲染量尺寸，再把 left/top 夾在「聊天區」與視窗邊界之內。
   const rect = bubble.getBoundingClientRect();
-  menu.style.cssText = `position:fixed;top:${rect.top - 90}px;left:${Math.max(8, rect.left)}px;z-index:9999;`;
+  menu.style.cssText = `position:fixed;visibility:hidden;left:0;top:0;z-index:9999;`;
   document.body.appendChild(menu);
+  const menuW = menu.offsetWidth;
+  const menuH = menu.offsetHeight;
+  const margin = 8;
+  // 水平：以泡泡位置為錨，盡量靠左對齊；超出右緣就向左推；同時不可小於聊天容器左緣
+  const chatArea = document.getElementById('chat-messages') || document.body;
+  const chatRect = chatArea.getBoundingClientRect();
+  const minLeft = Math.max(margin, chatRect.left + margin);
+  const maxLeft = Math.min(window.innerWidth, chatRect.right) - menuW - margin;
+  let left = Math.min(Math.max(rect.left, minLeft), Math.max(minLeft, maxLeft));
+  // 垂直：優先放在泡泡上方；若上方放不下就改放下方
+  let top = rect.top - menuH - 6;
+  if (top < margin) top = Math.min(rect.bottom + 6, window.innerHeight - menuH - margin);
+  menu.style.cssText = `position:fixed;top:${top}px;left:${left}px;z-index:9999;`;
 
   const [btnCopy, btnDel, btnBefore, btnAfter] = menu.querySelectorAll('.bubble-menu-btn');
   btnCopy.addEventListener('click', (e) => {
@@ -583,13 +611,17 @@ function showBubbleMenu(bubble, msgId, rawContent, senderKey, senderCharId) {
     e.stopPropagation();
     if (!canDel) return;
     hideBubbleMenu();
-    await deleteMessagesBySender('before', msgId, senderKey, senderCharId);
+    const n = promptDeleteCount('之前');
+    if (n == null) return;
+    await deleteMessagesBySender('before', msgId, senderKey, senderCharId, n);
   });
   btnAfter.addEventListener('click', async (e) => {
     e.stopPropagation();
     if (!canDel) return;
     hideBubbleMenu();
-    await deleteMessagesBySender('after', msgId, senderKey, senderCharId);
+    const n = promptDeleteCount('後續');
+    if (n == null) return;
+    await deleteMessagesBySender('after', msgId, senderKey, senderCharId, n);
   });
 }
 
@@ -616,11 +648,27 @@ async function deleteMessage(msgId) {
 }
 
 /**
- * 刪除「此則之前」或「此則之後」的特定發話者訊息
- * direction: 'before' | 'after'
- * senderKey / senderCharId 用來過濾只刪同一發話者的訊息
+ * 跳出輸入彈窗讓使用者指定要刪除的則數，預設 10。
+ * 回傳正整數；取消或輸入無效時回傳 null。
  */
-async function deleteMessagesBySender(direction, msgId, senderKey, senderCharId) {
+function promptDeleteCount(dirLabel) {
+  const raw = prompt(`要刪除此則${dirLabel}的幾則對話？（預設 10）`, '10');
+  if (raw == null) return null;                  // 使用者按取消
+  const n = parseInt(String(raw).trim(), 10);
+  if (!Number.isFinite(n) || n <= 0) {
+    alert('請輸入大於 0 的整數');
+    return null;
+  }
+  return n;
+}
+
+/**
+ * 刪除「此則之前」或「此則之後」的特定發話者訊息，最多 limit 則
+ *   direction: 'before' | 'after'
+ *   senderKey / senderCharId 用來過濾只刪同一發話者的訊息
+ *   limit: 最多刪幾則（取與本則最相鄰的 N 則）
+ */
+async function deleteMessagesBySender(direction, msgId, senderKey, senderCharId, limit) {
   const sb = getSB();
   if (!sb) { alert('Supabase 未連線'); return; }
 
@@ -636,12 +684,18 @@ async function deleteMessagesBySender(direction, msgId, senderKey, senderCharId)
     if (senderCharId) return m.sender_char_id === senderCharId;
     return false;
   };
-  const toDelete = pool.filter(m => m.id && isSameSender(m));
+  let toDelete = pool.filter(m => m.id && isSameSender(m));
 
   if (toDelete.length === 0) {
     alert('此方向沒有屬於同一發話者的訊息可刪除。');
     return;
   }
+
+  // 取「最靠近本則」的 N 則：之前 → 從尾端取，之後 → 從頭取
+  if (Number.isFinite(limit) && limit > 0 && toDelete.length > limit) {
+    toDelete = direction === 'before' ? toDelete.slice(-limit) : toDelete.slice(0, limit);
+  }
+
   const dirLabel = direction === 'before' ? '之前' : '後續';
   if (!confirm(`確定刪除此則${dirLabel}，同一發話者的 ${toDelete.length} 則訊息？`)) return;
 
@@ -1361,6 +1415,31 @@ function setupEventListeners() {
     qs('#modal-user-persona').value = '';
     qs('#modal-user-extra').value = '';
     qs('#modal-user-edit').classList.remove('hidden');
+  });
+
+  // 從雲端重新下載角色卡與使用者清單
+  qs('#btn-refresh-cloud').addEventListener('click', async () => {
+    const btn = qs('#btn-refresh-cloud');
+    btn.disabled = true;
+    appendLog('🔄 從雲端重新下載角色卡與使用者清單…');
+    try {
+      // 記住目前登入者，避免被覆蓋
+      const currentKey = state.currentUser ? state.currentUser.key : null;
+      await loadCharacters();
+      await loadUsersFromCloud();
+      // 若目前已登入，重新指向最新的 user 物件
+      if (currentKey) {
+        const found = state.users.find(u => u.key === currentKey);
+        if (found) state.currentUser = found;
+      }
+      state._pendingUser = null;
+      renderUserSelect();
+      appendLog(`✅ 已更新：角色 ${state.characters.length} 個 / 使用者 ${state.users.length} 個`);
+    } catch (e) {
+      appendLog('⚠️ 更新失敗: ' + e.message);
+    } finally {
+      btn.disabled = false;
+    }
   });
 
   // User profile edit

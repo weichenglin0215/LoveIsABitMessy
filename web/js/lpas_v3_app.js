@@ -483,15 +483,27 @@ let app = {
         if (this.radarChartInstance) this.radarChartInstance.destroy();
 
         const datasets = JSON.parse(JSON.stringify(resultData.radar_data.datasets));
+        // 從原本的 hsl(h,s%,l%) / hsla(h,s%,l%,a) 字串萃取色相，用來組出明暗版本，
+        // 讓「目前查看的階段」用該期飽和色（如曖昧期紫、熱戀期粉橘、失戀期藍），
+        // 其他兩期維持相同色相但低不透明度，視覺上仍可辨識卻不搶焦點。
+        const parseHsl = (str) => {
+            const m = /hsla?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)%\s*,\s*(\d+(?:\.\d+)?)%/.exec(str || '');
+            return m ? { h: m[1], s: m[2], l: m[3] } : null;
+        };
         datasets.forEach((ds, i) => {
+            const c = parseHsl(ds.borderColor) || parseHsl(ds.backgroundColor) || { h: 0, s: 0, l: 100 };
             if (i === activeIndex) {
-                ds.borderColor = '#FFFFFFFF';
-                ds.backgroundColor = 'hsla(0,0%,100%,0.3)';
+                // 目前查看的階段：飽和邊框 + 半透明同色底（取代原本的白線白底）
+                ds.borderColor = `hsla(${c.h},${c.s}%,${c.l}%,1)`;
+                ds.backgroundColor = `hsla(${c.h},${c.s}%,${c.l}%,0.35)`;
+                ds.pointBackgroundColor = `hsla(${c.h},${c.s}%,${c.l}%,1)`;
                 ds.borderWidth = 2;
                 ds.pointRadius = 5;
             } else {
-                ds.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-                ds.borderColor = 'rgba(255, 255, 255, 0.1)';
+                // 非目前階段：保留同色相但壓低不透明度，避免搶焦點
+                ds.borderColor = `hsla(${c.h},${c.s}%,${c.l}%,0.35)`;
+                ds.backgroundColor = `hsla(${c.h},${c.s}%,${c.l}%,0.08)`;
+                ds.pointBackgroundColor = `hsla(${c.h},${c.s}%,${c.l}%,0.35)`;
                 ds.borderWidth = 1;
                 ds.pointRadius = 0;
             }

@@ -47,8 +47,7 @@
         <button class="collapse-btn" id="toggle-char-col" title="縮放">↔</button>
         <h3>🎭 登場角色</h3>
         <div class="toolbox">
-          <button class="btn-icon" id="btn-char-refresh" title="從雲端重新下載角色卡資料"
-            onclick="(async()=>{try{await initCharacters();}catch(e){console.error(e);}})()">🔄</button>
+          <button class="btn-circle" id="btn-refresh-chars" title="從雲端重新下載角色卡資料">🔄</button>
           <button class="btn-circle" id="add-char" title="增加角色">+</button>
         </div>
       </div>
@@ -134,11 +133,12 @@
         <button class="collapse-btn" id="toggle-premise" title="縮放">↔</button>
         <h3>📝粗綱</h3>
         <div class="toolbox">
-          <button class="btn secondary-btn" id="btn-story-to-premise" title="讀取本地端故事文字檔，由AI依起承轉合濃縮成故事粗綱">📄
-            文檔轉粗綱</button>
+          <button class="btn secondary-btn" id="btn-story-to-bullet"
+            title="讀取本地端故事文字檔，由AI依起承轉合轉成條列式粗綱（保留最精簡資訊+額外戲劇化劇情走向）">📋文檔轉條列</button>
+          <input type="file" id="story-bullet-file-input" accept=".txt,.md" style="display:none;">
+          <button class="btn secondary-btn" id="btn-story-to-premise"
+            title="讀取本地端故事文字檔，由AI依起承轉合濃縮成故事粗綱">📄文檔轉粗綱</button>
           <input type="file" id="story-file-input" accept=".txt,.md" style="display:none;">
-
-          <button class="ai-btn" id="btn-ai-gen-chapters" title=" AI根據粗綱生成各章標題、章描述">🤖 章描述</button>
         </div>
       </div>
       <div class="scroll-area">
@@ -153,6 +153,7 @@
       <div class="col-header">
         <h3>📖 故事大綱</h3>
         <div class="toolbox">
+          <button class="ai-btn" id="btn-ai-gen-chapters" title=" AI根據粗綱生成各章標題、章描述">🤖 章描述</button>
           <button class="ai-btn" id="btn-ai-gen-all-outlines" title="撰寫所有未鎖定的小節大綱">🤖 AI 撰寫所有大綱</button>
           <button class="btn-circle" id="add-chapter" title="增加新章">+</button>
         </div>
@@ -188,8 +189,8 @@
         <input type="text" id="save-novel-name">
       </div>
       <div class="modal-field-last">
-        <label class="modal-label">密碼 (雲端存取用)：</label>
-        <input type="password" id="save-novel-password" style="color:red;">
+        <label class="modal-label" style="color:red;">密碼 (雲端存取用)：</label>
+        <input type="password" id="save-novel-password" style="color:red; border-color:red;">
       </div>
       <div class="modal-actions">
         <button id="btn-save-cancel" class="btn-modal-cancel">取消</button>
@@ -275,6 +276,27 @@
       <div class="modal-actions">
         <button id="btn-multibook-cancel" class="btn-modal-cancel">取消</button>
         <button id="btn-multibook-confirm" class="btn-modal-confirm">開始生成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Story-To-Bullet-Premise Params ── -->
+  <div id="modal-params-stb" class="modal-overlay hidden">
+    <div class="modal-box modal-box-sm">
+      <h3 class="modal-title">📋 文檔轉條列 — 生成參數</h3>
+      <div class="modal-field">
+        <label class="modal-label">建議章數：</label>
+        <input type="number" id="stb-chapter-count" min="1" max="99" value="8"
+          style="width:72px; font-size:16px; text-align:center; padding:4px 8px;">
+      </div>
+      <div class="modal-field-last">
+        <label class="modal-label">每章條列式粗綱建議字數：</label>
+        <input type="number" id="stb-words-per-chapter" min="50" max="2000" value="400"
+          style="width:80px; font-size:16px; text-align:center; padding:4px 8px;">
+      </div>
+      <div class="modal-actions">
+        <button id="btn-stb-params-cancel" class="btn-modal-cancel">取消</button>
+        <button id="btn-stb-params-confirm" class="btn-modal-confirm">確定</button>
       </div>
     </div>
   </div>

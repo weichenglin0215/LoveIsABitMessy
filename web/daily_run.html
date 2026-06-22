@@ -330,6 +330,19 @@
         let cloudCharacters = [];
         let serverOnline = false;
 
+        /**
+         * 統一的角色卡下拉顯示文字：「角色名稱-full_name」。
+         * full_name 取自 card_json.lpas_v3.full_name；無 LPAS 資料時以「無LPAS」替代。
+         */
+        function charDropdownLabel(c) {
+            let card = c && c.card_json;
+            if (typeof card === 'string') {
+                try { card = JSON.parse(card); } catch (e) { card = null; }
+            }
+            const fullName = (card && card.lpas_v3 && card.lpas_v3.full_name) ? card.lpas_v3.full_name : '';
+            return `${(c && c.name) || '未命名'}-${fullName || '無LPAS'}`;
+        }
+
         // ====== 偵測 debug_server 是否在線 ======
         async function fetchOllamaModels() {
             try {
@@ -588,20 +601,14 @@
                     charSelect.innerHTML = '<option value="">（雲端無資料）</option>';
                     return;
                 }
+                // 舊 V1 卡片就地補上 lpas_v3，使顯示（full_name）與下游處理皆走 V3
+                if (typeof window.convertCardJsonV1ToV3 === 'function') {
+                    data.forEach(c => { if (c.card_json) window.convertCardJsonV1ToV3(c.card_json); });
+                }
                 cloudCharacters = data;
                 const charOptions = data.map(c => {
-                    const dateStr = c.updated_at ? c.updated_at.split('T')[0].replace(/-/g, '') : '';
-                    // 若是舊 V1 卡片，先就地補上 lpas_v3，使顯示與下游處理皆走 V3
-                    if (c.card_json && typeof window.convertCardJsonV1ToV3 === 'function') {
-                        window.convertCardJsonV1ToV3(c.card_json);
-                    }
-                    const v3 = c.card_json && c.card_json.lpas_v3;
-                    // 標籤優先顯示 V3 三聯型名（如「煙火・燈塔・深海」），其次 c.lpas，最後舊 personality_type 前段
-                    const lpasStr = (v3 && v3.triple_name)
-                        || c.lpas
-                        || (c.card_json ? (c.card_json.personality_type || '').split('-')[0] : '');
-                    const label = `${c.name || '未命名'}-${lpasStr || '無LPAS'}-${dateStr}`;
-                    return `<option value="${c.id}">${label}</option>`;
+                    // 統一以「角色名稱-full_name」顯示
+                    return `<option value="${c.id}">${charDropdownLabel(c)}</option>`;
                 }).join('');
 
                 charSelect.innerHTML = charOptions;
@@ -683,7 +690,7 @@
 
             try {
                 const charId = charSelect.value;
-                const charName = charSelect.options[charSelect.selectedIndex]?.text.split(' (')[0] || charId;
+                const charName = charSelect.options[charSelect.selectedIndex]?.text.split('-')[0] || charId;
                 const dateStr = new Date().toISOString().split('T')[0];
 
                 // 1. 從 Job Logs 中解析出故事檔名
@@ -1077,10 +1084,7 @@
                 if (found) charData = found.card_json;
             }
 
-            // 若是舊 V1 卡片，先補上 lpas_v3，使下方顯示走 V3 型名。
-            // ⚠ 依賴參考共享：上方 `charData = found.card_json` 是直接賦值參考，
-            //   此處 mutate 會同步反映在 cloudCharacters 快取中（後續再次選同一角色不重複轉換）。
-            //   若日後改成 `charData = {...found.card_json}` 淺拷貝，此優化會失效，需另想辦法。
+            // 若是舊 V1 卡片，先就地補上 lpas_v3，使下方顯示走 V3 型名
             if (charData && typeof window.convertCardJsonV1ToV3 === 'function') {
                 window.convertCardJsonV1ToV3(charData);
             }

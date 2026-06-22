@@ -860,14 +860,16 @@ input[type="text"] {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 14px;
+    padding: 8px 14px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     flex-shrink: 0;
 }
 
 .rv-title {
-    font-size: 24px;
-    font-weight: 400;
+    font-size: 30px;
+    font-weight: 500;
+    /*文字要置中*/
+    text-align: center;
     color: var(--c-text-main);
 }
 

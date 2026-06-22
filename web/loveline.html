@@ -52,9 +52,7 @@
               <div class="user-name" id="current-user-name">— 請選擇 —</div>
               <div class="hint">目前使用者</div>
             </div>
-            <button class="btn-icon" id="btn-char-refresh"
-              title="從雲端重新下載角色卡與使用者列表"
-              onclick="(async()=>{try{await loadCharacters();await loadUsersFromCloud();}catch(e){console.error(e);}})()">🔄</button>
+            <button id="btn-refresh-cloud" title="從雲端重新下載角色卡與使用者清單" class="btn-icon">🔄</button>
             <button id="btn-edit-user-profile" title="編輯使用者資料" class="btn-icon">⚙️</button>
           </div>
           <div class="field-label">選擇使用者</div>
@@ -120,7 +118,7 @@
           </div>
           <!-- LOG -->
           <div class="form-section">
-            <textarea id="log-output" class="log-area" style="height: 300px;">等待任務...</textarea>
+            <textarea id="log-output" class="log-area" style="height: 400px;">等待任務...</textarea>
           </div>
           <div class="log-actions">
             <button class="small-btn" onclick="clearLogOutput()" title="清空LOG欄的所有文字">🗑️清空</button>

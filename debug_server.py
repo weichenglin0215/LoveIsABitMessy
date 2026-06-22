@@ -26,6 +26,7 @@ from prompt_utils import (
     build_analyze_text_character_prompt, #從文字分析角色特質
     build_analyze_image_prompt_text,     #從圖片生成 AI 生圖提示詞
     build_story_to_premise_prompt,       #將故事原文濃縮成故事粗綱
+    build_story_to_bullet_premise_prompt, #將故事原文轉成條列式故事粗綱
     build_json_repair_chapters_prompt,   #JSON格式修復：章標題與描述
     build_json_repair_sections_prompt,   #JSON格式修復：各小節大綱
     build_diary_image_prompt_text        #生成日記動態生圖提示詞
@@ -624,7 +625,8 @@ def _ollama_generate_direct(model, prompt, options=None, images=None, on_chunk=N
     # -1  → 永久保留在 VRAM（適合連續批次生成）
     # "5m" → 閒置 5 分鐘後自動卸載（節省 VRAM，偶發使用時適合）
     # 0   → 生成完立刻卸載
-    "keep_alive": -1,
+    #"keep_alive": -1,
+    "keep_alive": "10m",
     "stream": stream_val,
     "options": default_options
     }
@@ -989,6 +991,60 @@ def _run_job(job_id: str, char_id: str, scenario: str, diary_prompt: str, image_
                 JOBS[job_id]["status"]     = "error"
                 JOBS[job_id]["updated_at"] = time.time()
 
+
+
+def _run_story_to_bullet_premise_job(job_id: str, params: dict):
+    """非同步執行「將故事原文轉成條列式故事粗綱」任務"""
+    #####################################################################################
+    # 非同步執行「將故事原文轉成條列式故事粗綱」任務。
+    #####################################################################################
+    try:
+        text_content      = params.get('text_content', '')
+        model_name        = params.get('model', 'gemma4')
+        chapter_count     = int(params.get('chapter_count', 8))
+        words_per_chapter = int(params.get('words_per_chapter', 400))
+        prompt = build_story_to_bullet_premise_prompt(
+            text_content, chapter_count=chapter_count, words_per_chapter=words_per_chapter
+        )
+
+        opts = dict(params.get('model_options') or {})
+        opts.setdefault('num_predict', 4096)
+        opts.setdefault('temperature', 0.8)
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        _log_print(job_id, "=" * 50)
+        _log_print(job_id, f"[{timestamp}] debug_server.py：【非同步】將故事原文轉成條列式故事粗綱")
+        _log_print(job_id, f">> 原文長度：{len(text_content)} 字，模型：{model_name}，num_predict：{opts['num_predict']}")
+        _log_print(job_id, "=" * 20 + " 以下是送給 AI 的完整提示詞 " + "=" * 20)
+        _log_print(job_id, prompt)
+        _log_print(job_id, "=" * 20 + " 提示詞結束 " + "=" * 20)
+        _log_print(job_id, ">> 正在呼叫 Ollama 產生條列式故事粗綱中（請稍候）...")
+
+        timeStartSec = time.time()
+        response_text = _ollama_with_heartbeat(
+            job_id, model_name, prompt, options=opts, time_start=timeStartSec
+        )
+        duration = int(time.time() - timeStartSec)
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        _log_print(job_id, "=" * 20 + " 以下是 AI 完整回傳內容 " + "=" * 20)
+        _log_print(job_id, response_text if response_text.strip() else "（空字串，模型未回傳任何內容）")
+        _log_print(job_id, "=" * 20 + " AI 回傳結束 " + "=" * 20)
+        _log_print(job_id, f"[{timestamp}] 總共花費 {duration} 秒，條列式故事粗綱產生完畢，回傳長度：{len(response_text)} 字元")
+        if not response_text.strip():
+            _log_print(job_id, ">> [警告] 模型回傳空字串！可能原因：模型拒絕回應、num_ctx 不足、或模型不支援此任務。")
+
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["result"]     = {"premise": response_text.strip(), "debug_prompt": prompt}
+                JOBS[job_id]["status"]     = "done"
+                JOBS[job_id]["updated_at"] = time.time()
+    except Exception as e:
+        import traceback
+        _log_print(job_id, f"[ERROR] _run_story_to_bullet_premise_job failed: {e}\n{traceback.format_exc()}")
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["status"]     = "error"
+                JOBS[job_id]["updated_at"] = time.time()
 
 
 def _run_story_to_premise_job(job_id: str, params: dict):
@@ -2063,6 +2119,30 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                     }
                 threading.Thread(
                     target=_run_analyze_image_char_job,
+                    args=(job_id, params),
+                    daemon=True
+                ).start()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"job_id": job_id, "status": "running"}, ensure_ascii=False).encode('utf-8'))
+
+            elif self.path == '/api/story_to_bullet_premise_async':
+                ############################################################################
+                # 非同步：將故事原文轉成條列式故事粗綱（前端可透過 /api/job 輪詢 Log）
+                ############################################################################
+                job_id = str(uuid.uuid4())
+                with JOBS_LOCK:
+                    JOBS[job_id] = {
+                        "status": "running",
+                        "logs": [">> 任務啟動：正在將故事原文轉成條列式故事粗綱..."],
+                        "result": None,
+                        "created_at": time.time(),
+                        "last_activity": time.time(),
+                        "updated_at": time.time()
+                    }
+                threading.Thread(
+                    target=_run_story_to_bullet_premise_job,
                     args=(job_id, params),
                     daemon=True
                 ).start()

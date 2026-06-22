@@ -10,9 +10,3 @@ publish/
 .vs/
 .vscode/
 .fake
-
-# Python cache files
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
