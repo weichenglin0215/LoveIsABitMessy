@@ -96,6 +96,11 @@ def _enrich_char_data(char_data: dict, relationship_params: dict = None) -> dict
     # 補充角色資料
     #####################################################################################
     c = dict(char_data)
+    # 若前端傳入「劇本中的角色名稱」(role_name)，則優先以它取代角色卡名字 (name)。
+    # 這樣 prompt 中的「女主角姓名」「配角姓名」與情境比對都會使用劇中名，避免和角色卡演員名混淆。
+    role_name = (c.get('role_name') or '').strip() if isinstance(c.get('role_name'), str) else ''
+    if role_name:
+        c['name'] = role_name
     if 'birthday' in c and not c.get('age'):
         try:
             bd = datetime.strptime(c['birthday'], "%Y-%m-%d")
@@ -212,7 +217,8 @@ def build_daily_prompt(char_data: dict, scenario: str, relationship_params: dict
         other_lines = []
         count = 1
         for c in other_chars:
-            c_name = c.get('name', '')
+            # 優先用劇本中的角色名稱（role_name）做比對，無則退回角色卡名字
+            c_name = (c.get('role_name') or c.get('name') or '').strip()
             # 當設定情境 (Scenario) 欄位有提到該位閨密名字時，才加入
             if c_name and c_name in scenario:
                 other_lines.append("【第" + str(count) + "位配角資料】：\n" + _format_char_context(c))

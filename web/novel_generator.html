@@ -33,6 +33,7 @@
         </select>
       </div>
       <button class="btn secondary-btn" id="btn-load">📂 讀取小說</button>
+      <button class="btn secondary-btn" id="btn-author-notes" title="撰寫作者備註，不會提供給 AI，但會隨小說一起儲存／讀取">📝 作者備註</button>
       <button class="btn primary-btn" id="btn-save">💾 儲存小說</button>
       <button class="btn secondary-btn" id="btn-compare-novels" title="並排比對四本雲端小說的內容">📚 比對多本小說</button>
       <button class="ai-btn" id="btn-ai-gen-full-auto" title=" AI全自動生成所有文字：依粗綱生成章節→節大綱→節內文（跳過已鎖定）"
@@ -69,13 +70,13 @@
         <button id="start-server-btn" disabled>🚀 請自行啟動伺服器</button>
         <div id="model-container" class="model-container-row">
           <label class="model-label">🤖 AI 模型：</label>
-          <select id="model-select" class="select-narrow">
+          <select id="model-select" class="ws-style-dropdown">
             <option value="gemma4">gemma4</option>
           </select>
         </div>
         <div class="model-container-row">
           <label class="model-label">⚙️ 模型參數：</label>
-          <select id="model-options-select" class="select-narrow">
+          <select id="model-options-select" class="ws-style-dropdown">
             <option value="">預設</option>
           </select>
           <button id="btn-add-model-option" class="ai-btn btn-edit-sm">+編輯</button>
@@ -195,6 +196,22 @@
       <div class="modal-actions">
         <button id="btn-save-cancel" class="btn-modal-cancel">取消</button>
         <button id="btn-save-confirm" class="btn-modal-confirm">確定儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Author Notes ── -->
+  <div id="modal-author-notes" class="modal-overlay hidden">
+    <div class="modal-box" style="width:min(94vw,900px); max-width:none; padding: 24px;">
+      <h3 class="modal-title">📝 作者備註</h3>
+      <p class="modal-desc" style="font-size:14px; color:#888; margin-bottom:10px;">
+        此備註不會提供給 AI 模型，但會隨小說資料一同儲存（雲端／本機）。
+      </p>
+      <textarea id="author-notes-text" placeholder="在此撰寫作者備註..."
+        style="width:100%; min-height:400px; box-sizing:border-box; padding:10px; font-size:15px; resize:vertical;"></textarea>
+      <div class="modal-actions">
+        <button id="btn-author-notes-cancel" class="btn-modal-cancel">取消</button>
+        <button id="btn-author-notes-ok" class="btn-modal-confirm">確定</button>
       </div>
     </div>
   </div>

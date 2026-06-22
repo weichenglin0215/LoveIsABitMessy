@@ -138,6 +138,7 @@ async function loadUsersFromCloud() {
         char_id: cloud.char_id,
         persona: cloud.persona,
         extra: cloud.extra_info,
+        notes: cloud.notes,
         password: cloud.password,
         ai_model: cloud.ai_model,
         model_options: cloud.model_options,
@@ -178,6 +179,7 @@ async function saveUserProfileToCloud(u) {
     await sb.from('love_line_users').upsert({
       user_key: u.key, nickname: u.name,
       char_id: u.char_id, persona: u.persona, extra_info: u.extra,
+      notes: u.notes,
       password: u.password,
       ai_model: u.ai_model, model_options: u.model_options,
       writer_style: u.writer_style, writer_sample: u.writer_sample
@@ -195,6 +197,38 @@ function renderUserSelect() {
 
   if (state.currentUser) {
     updateUserDisplay();
+  }
+}
+
+// 在 LOG 欄列出原始（未套用前的）AI 模型／模型參數／寫作風格／寫作範本資料
+// 直接讀使用者物件（雲端 love_line_users 原始欄位），這樣若上次使用的模型已被刪除，
+// 仍可看見原始值（例如 "gemma4:latest"），方便重新下載對應模型。
+function logAISettingsFromData(title, u) {
+  u = u || {};
+  const fmt = (v) => (v === undefined || v === null || v === '') ? '(無)' : String(v);
+  // writer_style 在雲端儲存為 JSON 陣列字串 ["風格一","風格二"]，或舊版單一字串
+  let s1 = '', s2 = '';
+  if (u.writer_style) {
+    try {
+      const arr = JSON.parse(u.writer_style);
+      if (Array.isArray(arr)) { s1 = arr[0] || ''; s2 = arr[1] || ''; }
+      else { s1 = String(u.writer_style); }
+    } catch { s1 = String(u.writer_style); }
+  }
+  const lines = [
+    `─── ${title || 'AI 設定（雲端原始資料）'} ───`,
+    `🤖 AI 模型：${fmt(u.ai_model)}`,
+    `⚙️ 模型參數：${fmt(u.model_options)}`,
+    `🖋️ 寫作風格一：${fmt(s1)}`,
+    `🖋️ 寫作風格二：${fmt(s2)}`,
+    `📝 寫作範本：${fmt(u.writer_sample)}`,
+    `─────────────────────`
+  ];
+  if (typeof appendLog === 'function') {
+    lines.forEach(l => appendLog(l));
+  } else {
+    const box = document.getElementById('log-output');
+    if (box) { box.value += '\n' + lines.join('\n') + '\n'; box.scrollTop = box.scrollHeight; }
   }
 }
 
@@ -223,6 +257,8 @@ async function updateUserDisplay() {
   }
   if (u.writer_sample) qs('#writer-sample-select').value = u.writer_sample;
 
+  logAISettingsFromData(`☁️ 已載入使用者「${u.name}」- AI 設定（雲端原始值）`, u);
+
   await loadSessionsForUser();
 
   // 需求 1: 登入後啟動主動發話序列（AI 設定已套用完畢再觸發）
@@ -238,6 +274,7 @@ function openUserEditModal() {
   qs('#modal-user-password').value = u.password || '';
   qs('#modal-user-persona').value = u.persona || '';
   qs('#modal-user-extra').value = u.extra || '';
+  qs('#modal-user-notes').value = u.notes || '';
   qs('#modal-user-edit').classList.remove('hidden');
 }
 
@@ -1409,6 +1446,7 @@ function setupEventListeners() {
   // Add user
   qs('#btn-add-user').addEventListener('click', () => {
     qs('#modal-user-title').textContent = '👤 新增使用者';
+    qs('#modal-user-notes').value = '';
     qs('#modal-user-name').value = '';
     qs('#modal-user-password').value = '';
     qs('#modal-user-char-select').value = '';
@@ -1468,6 +1506,7 @@ function setupEventListeners() {
     u.char_id = qs('#modal-user-char-select').value;
     u.persona = qs('#modal-user-persona').value;
     u.extra = qs('#modal-user-extra').value;
+    u.notes = qs('#modal-user-notes').value;
 
     // 同步當前選中的 AI 設定到使用者資料中
     u.ai_model = qs('#model-select').value;

@@ -4,6 +4,46 @@
 
 const qs = (sel) => document.querySelector(sel);
 
+// 角色卡資料結構：每個 slot 是 { id: 角色卡ID, roleName: 劇本中的角色名稱 }
+// 舊資料（字串陣列）會自動轉成新格式
+function getCharId(c) {
+    if (c == null) return "";
+    if (typeof c === 'string') return c;
+    return c.id || "";
+}
+function getCharRoleName(c) {
+    if (c == null || typeof c === 'string') return "";
+    return c.roleName || "";
+}
+function normalizeCharacters(arr) {
+    if (!Array.isArray(arr)) return [];
+    return arr.map(c => ({ id: getCharId(c), roleName: getCharRoleName(c) }));
+}
+
+// 在 LOG 欄列出原始（未套用前的）AI 模型／模型參數／寫作風格／寫作範本資料
+// 直接讀 raw 物件，例如雲端 edit_data 或本機 JSON 解析後的 state，
+// 這樣若上次使用的模型已被刪除，仍可看見原始值（例如 "gemma4:latest"）。
+function logAISettingsFromData(title, data) {
+    data = data || {};
+    const fmt = (v) => (v === undefined || v === null || v === '') ? '(無)' : String(v);
+    const lines = [
+        `─── ${title || 'AI 設定（雲端原始資料）'} ───`,
+        `🤖 AI 模型：${fmt(data.aiModel)}`,
+        `⚙️ 模型參數：${fmt(data.modelOptions)}`,
+        `🖋️ 寫作風格一：${fmt(data.writerStyle1 || data.writerStyle)}`,
+        `🖋️ 寫作風格二：${fmt(data.writerStyle2)}`,
+        `🖋️ 寫作風格三：${fmt(data.writerStyle3)}`,
+        `📝 寫作範本：${fmt(data.writerSample)}`,
+        `─────────────────────`
+    ];
+    if (typeof appendLog === 'function') {
+        lines.forEach(l => appendLog(l));
+    } else {
+        const box = document.getElementById('log-output');
+        if (box) box.value += '\n' + lines.join('\n') + '\n';
+    }
+}
+
 // 全域狀態
 let state = {
     bookTitle: "未命名小說",
@@ -13,7 +53,13 @@ let state = {
         + "轉：兩人心意相通，卻總是在要更進一步的時候發生一些狀況而中斷，讓兩人都很苦惱。\n\n"
         + "合：總算是成為男女朋友，最後才發現這一切都是女主在回憶與已過世的男主交往過程。\n"
         + "目前現實中為女主角在整理與男主的遺物時，所發現的日記，記錄了兩人從相識到相戀的過程。", // 故事粗綱
-    characters: ["", "", "", ""], // 儲存角色 ID
+    // 每個 slot：{ id: 角色卡ID（演員）, roleName: 劇本中的角色名稱 }
+    characters: [
+        { id: "", roleName: "" },
+        { id: "", roleName: "" },
+        { id: "", roleName: "" },
+        { id: "", roleName: "" }
+    ],
     aiModel: "gemma4",
     modelOptions: "",
     writerStyle1: "",
@@ -379,26 +425,24 @@ function renderCharacters() {
     container.innerHTML = "";
     const isLocal = qs('#use-local-data').checked;
 
-    state.characters.forEach((charId, idx) => {
-        const slotNum = String(idx + 1).padStart(2, '0');
-        let displayName = `角色 ${slotNum}`;
-
-        // 如果有選取角色，顯示其姓名
-        if (charId) {
-            const found = cloudCharacters.find(c => c.id === charId);
-            if (found) {
-                displayName = found.name;
-            } else {
-                // 本機模式下 ID 通常就是檔名
-                displayName = charId;
-            }
+    state.characters.forEach((slot, idx) => {
+        // 自動把舊字串格式升級成物件
+        if (typeof slot === 'string' || slot == null) {
+            slot = { id: getCharId(slot), roleName: "" };
+            state.characters[idx] = slot;
         }
+        const charId = slot.id || "";
+        const slotNum = String(idx + 1).padStart(2, '0');
 
         const div = document.createElement('div');
         div.className = "model-container-row";
         div.innerHTML = `
-            <label class="form-label">${displayName}</label>
-            <select  data-idx="${idx}">
+            <input type="text" class="role-name-input" data-idx="${idx}"
+                value="${(slot.roleName || '').replace(/"/g, '&quot;')}"
+                placeholder="角色名稱 ${slotNum}"
+                title="劇本中的角色名稱（由下方角色卡演員演出）"
+                style="width: 110px;">
+            <select data-idx="${idx}">
                 <option value="">-- 選取角色卡 --</option>
                 ${(isLocal ? localCharacters : cloudCharacters).map(c => {
             const id = isLocal ? c : c.id;
@@ -409,8 +453,10 @@ function renderCharacters() {
             <button class="btn-remove-char" onclick="removeChar(${idx})">🗑️</button>
         `;
         div.querySelector('select').addEventListener('change', (e) => {
-            state.characters[idx] = e.target.value;
-            renderCharacters(); // 更新標題顯示
+            state.characters[idx].id = e.target.value;
+        });
+        div.querySelector('.role-name-input').addEventListener('input', (e) => {
+            state.characters[idx].roleName = e.target.value;
         });
         container.appendChild(div);
     });
@@ -504,7 +550,7 @@ function renderEditor() {
 // 事件處理
 function setupEventListeners() {
     qs('#add-char').addEventListener('click', () => {
-        state.characters.push("");
+        state.characters.push({ id: "", roleName: "" });
         renderCharacters();
     });
 
@@ -517,6 +563,20 @@ function setupEventListeners() {
         } finally {
             btn.disabled = false;
         }
+    });
+
+    // 作者備註
+    qs('#btn-author-notes').addEventListener('click', () => {
+        qs('#author-notes-text').value = state.authorNotes || '';
+        qs('#modal-author-notes').classList.remove('hidden');
+    });
+    qs('#btn-author-notes-cancel').addEventListener('click', () => {
+        qs('#modal-author-notes').classList.add('hidden');
+    });
+    qs('#btn-author-notes-ok').addEventListener('click', () => {
+        state.authorNotes = qs('#author-notes-text').value;
+        qs('#modal-author-notes').classList.add('hidden');
+        appendLog('📝 作者備註已更新（將隨小說儲存）');
     });
 
     qs('#add-chapter').addEventListener('click', () => {
@@ -854,11 +914,16 @@ async function aiGenChapterOutline(chIdx) {
             all_chapters,
             chapter_index: chIdx,   // 0-based
             locked_sections,        // 本章已上鎖的節（含 1-based index 與 title）
-            characters: state.characters.map(id => {
-                const found = cloudCharacters.find(c => c.id === id);
-                return found ? found.card_json : null;
-            }).filter(Boolean),
-            character_ids: state.characters.filter(Boolean),
+            characters: state.characters
+                .map(c => {
+                    const id = getCharId(c);
+                    const found = cloudCharacters.find(cc => cc.id === id);
+                    if (!found) return null;
+                    return { ...found.card_json, role_name: getCharRoleName(c) };
+                })
+                .filter(Boolean),
+            character_ids: state.characters.map(getCharId).filter(Boolean),
+            role_names: state.characters.filter(c => getCharId(c)).map(getCharRoleName),
             model: state.currentModel || 'gemma4',
             model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
             writer_settings: (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || null,
@@ -944,7 +1009,7 @@ async function aiGenFullAuto() {
         alert("請先輸入故事粗綱。");
         return;
     }
-    if (state.characters.filter(Boolean).length === 0) {
+    if (state.characters.map(getCharId).filter(Boolean).length === 0) {
         alert("請至少選擇一位登場角色（生成內文需要角色資料）。");
         return;
     }
@@ -1174,11 +1239,16 @@ async function aiGenChaptersFromPremise(skipConfirm = false) {
         const payload = {
             book_title: state.bookTitle || '故事專案',
             story_premise: state.storyPremise,
-            characters: state.characters.map(id => {
-                const found = cloudCharacters.find(c => c.id === id);
-                return found ? found.card_json : null;
-            }).filter(Boolean),
-            character_ids: state.characters.filter(Boolean),
+            characters: state.characters
+                .map(c => {
+                    const id = getCharId(c);
+                    const found = cloudCharacters.find(cc => cc.id === id);
+                    if (!found) return null;
+                    return { ...found.card_json, role_name: getCharRoleName(c) };
+                })
+                .filter(Boolean),
+            character_ids: state.characters.map(getCharId).filter(Boolean),
+            role_names: state.characters.filter(c => getCharId(c)).map(getCharRoleName),
             locked_chapters,
             model: state.currentModel || 'gemma4',
             model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
@@ -1268,7 +1338,7 @@ async function aiGenSectionContent() {
     const ch = state.chapters[chapter];
     const sec = ch.sections[section];
 
-    if (state.characters.filter(Boolean).length === 0) {
+    if (state.characters.map(getCharId).filter(Boolean).length === 0) {
         alert("請至少選擇一位登場角色。");
         return;
     }
@@ -1291,11 +1361,16 @@ async function aiGenSectionContent() {
         }));
 
         const payload = {
-            characters: state.characters.map(id => {
-                const found = cloudCharacters.find(c => c.id === id);
-                return found ? found.card_json : null;
-            }).filter(Boolean),
-            character_ids: state.characters.filter(Boolean),
+            characters: state.characters
+                .map(c => {
+                    const id = getCharId(c);
+                    const found = cloudCharacters.find(cc => cc.id === id);
+                    if (!found) return null;
+                    return { ...found.card_json, role_name: getCharRoleName(c) };
+                })
+                .filter(Boolean),
+            character_ids: state.characters.map(getCharId).filter(Boolean),
+            role_names: state.characters.filter(c => getCharId(c)).map(getCharRoleName),
             model: state.currentModel || qs('#model-select')?.value || 'gemma4',
             model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
             writer_settings: (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || null,
@@ -1969,7 +2044,7 @@ async function listCloudNovels() {
             .from('novel_entries')
             .select('id, novel_title, updated_at')
             .order('updated_at', { ascending: false })
-            .limit(30);
+            .limit(1000);
 
         if (error) throw error;
 
@@ -2097,10 +2172,12 @@ async function confirmLoadCloudNovel() {
             }
             // 寫入新狀態
             Object.assign(state, loadedState);
+            state.characters = normalizeCharacters(state.characters);
 
             try {
                 renderAll();
                 appendLog(`✅ [成功] 已載入「${state.bookTitle || '未命名小說'}」`);
+                logAISettingsFromData('☁️ 雲端載入 - AI 設定（雲端原始值）', loadedState);
             } catch (renderErr) {
                 appendLog(`❌ 介面渲染失敗: ${renderErr.message}`);
                 console.error("Render error:", renderErr);
@@ -2133,9 +2210,11 @@ async function loadProject() {
         reader.onload = readerEvent => {
             try {
                 state = JSON.parse(readerEvent.target.result);
+                state.characters = normalizeCharacters(state.characters);
                 renderAll();
                 alert("✅ 成功讀取本機檔案");
                 appendLog(`📂 已載入本機檔案: ${file.name}`);
+                logAISettingsFromData('📂 本機載入 - AI 設定（檔案原始值）', state);
             } catch (err) {
                 alert("❌ 檔案格式錯誤");
             }

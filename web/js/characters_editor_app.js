@@ -395,6 +395,116 @@ function updateExplanations() {
     }
 }
 
+// ────────────────────────────────────────────────
+// 角色照片：上傳、縮放、預覽、儲存
+// ────────────────────────────────────────────────
+// 暫存目前角色的照片資料（dataURL 格式 jpg），會在儲存時一併寫入雲端
+let currentPhotoThumb = '';  // 最長邊 256
+let currentPhotoFull = '';   // 最長邊 1024
+
+// 將 File 縮放成指定最長邊的 jpg dataURL（80% 壓縮）
+function resizeImageToDataUrl(file, maxEdge, quality = 0.8) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const reader = new FileReader();
+        reader.onload = e => { img.src = e.target.result; };
+        reader.onerror = reject;
+        img.onload = () => {
+            const w = img.naturalWidth, h = img.naturalHeight;
+            const scale = Math.min(1, maxEdge / Math.max(w, h));
+            const tw = Math.round(w * scale), th = Math.round(h * scale);
+            const canvas = document.createElement('canvas');
+            canvas.width = tw; canvas.height = th;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#fff'; // 透明背景轉 JPG 用白底
+            ctx.fillRect(0, 0, tw, th);
+            ctx.drawImage(img, 0, 0, tw, th);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+async function handleCharPhotoFile(file) {
+    if (!file || !file.type.startsWith('image/')) {
+        alert('請選擇圖片檔');
+        return;
+    }
+    const statusEl = qs('#char-photo-status');
+    statusEl.textContent = '⏳ 處理中…';
+    try {
+        const [thumb, full] = await Promise.all([
+            resizeImageToDataUrl(file, 256, 0.8),
+            resizeImageToDataUrl(file, 1024, 0.8)
+        ]);
+        currentPhotoThumb = thumb;
+        currentPhotoFull = full;
+        updateCharPhotoPreview();
+        const kbThumb = Math.round(thumb.length * 0.75 / 1024);
+        const kbFull = Math.round(full.length * 0.75 / 1024);
+        statusEl.textContent = `✅ 已載入（縮圖 ${kbThumb} KB / 原圖 ${kbFull} KB）— 儲存後寫入雲端`;
+    } catch (e) {
+        console.error(e);
+        statusEl.textContent = '❌ 圖片處理失敗：' + e.message;
+    }
+}
+
+function updateCharPhotoPreview() {
+    const img = qs('#char-photo-thumb');
+    const placeholder = qs('#char-photo-placeholder');
+    if (currentPhotoThumb) {
+        img.src = currentPhotoThumb;
+        img.style.display = 'block';
+        placeholder.style.display = 'none';
+    } else {
+        img.src = '';
+        img.style.display = 'none';
+        placeholder.style.display = 'block';
+    }
+}
+
+function clearCharPhoto() {
+    currentPhotoThumb = '';
+    currentPhotoFull = '';
+    updateCharPhotoPreview();
+    qs('#char-photo-status').textContent = '尚未上傳照片';
+    qs('#char-photo-file-input').value = '';
+}
+
+function setupCharPhotoUI() {
+    const input = qs('#char-photo-file-input');
+    const dropzone = qs('#char-photo-dropzone');
+    const btnUpload = qs('#btn-char-photo-upload');
+    const btnClear = qs('#btn-char-photo-clear');
+
+    btnUpload.addEventListener('click', () => input.click());
+    dropzone.addEventListener('click', () => input.click());
+    btnClear.addEventListener('click', clearCharPhoto);
+
+    input.addEventListener('change', e => {
+        const f = e.target.files && e.target.files[0];
+        if (f) handleCharPhotoFile(f);
+    });
+
+    dropzone.addEventListener('dragover', e => {
+        e.preventDefault();
+        dropzone.style.borderColor = '#f472b6';
+        dropzone.style.background = '#3a2a35';
+    });
+    const resetDropzoneStyle = () => {
+        dropzone.style.borderColor = '#888';
+        dropzone.style.background = '#333';
+    };
+    dropzone.addEventListener('dragleave', resetDropzoneStyle);
+    dropzone.addEventListener('drop', e => {
+        e.preventDefault();
+        resetDropzoneStyle();
+        const f = e.dataTransfer.files && e.dataTransfer.files[0];
+        if (f) handleCharPhotoFile(f);
+    });
+}
+
 async function loadCharacter(charId) {
     if (!charId || !sb) {
         cancelCharacterEdit();
@@ -416,6 +526,14 @@ async function loadCharacter(charId) {
     currentCharacterId = data.id;
     const cardJson = data.card_json || {};
     qs('#char-card-json').value = prettyJson(cardJson);
+
+    // 載入角色照片（雲端欄位 photo_thumb / photo_full）
+    currentPhotoThumb = data.photo_thumb || '';
+    currentPhotoFull = data.photo_full || '';
+    updateCharPhotoPreview();
+    qs('#char-photo-status').textContent = currentPhotoThumb
+        ? '✅ 已從雲端載入照片'
+        : '尚未上傳照片';
 
     qs('#char-birthday').value = normalizeBirthday(cardJson.birthday) || '1999-01-01';
     qs('#char-gender').value = cardJson.gender || '女';
@@ -500,6 +618,8 @@ async function saveCharacter() {
         name: cardJson.name,
         lpas: cardJson.personality_type || "",
         card_json: cardJson,
+        photo_thumb: currentPhotoThumb || null,
+        photo_full: currentPhotoFull || null,
         updated_at: new Date().toISOString()
     };
 
@@ -559,6 +679,8 @@ async function saveAsNewCharacter() {
         name: name,
         lpas: cardJson.personality_type || "",
         card_json: cardJson,
+        photo_thumb: currentPhotoThumb || null,
+        photo_full: currentPhotoFull || null,
         updated_at: new Date().toISOString()
     };
 
@@ -584,6 +706,7 @@ function cancelCharacterEdit() {
     qs('#char-id').value = '';
     qs('#char-name').value = '';
     qs('#char-card-json').value = '';
+    clearCharPhoto();
     qs('#char-birthday').value = '1999-01-01';
     qs('#char-gender').value = '女';
     qs('#char-zodiac').value = '';
@@ -1274,6 +1397,7 @@ window.addEventListener('load', async () => {
     qs('#btn-char-refresh').addEventListener('click', refreshCharacterList);
     qs('#btn-char-save').addEventListener('click', saveCharacter);
     qs('#btn-char-save-new').addEventListener('click', saveAsNewCharacter);
+    setupCharPhotoUI();
     qs('#btn-analyze-text').addEventListener('click', analyzeTextCharacter);
     qs('#btn-analyze-clipboard').addEventListener('click', analyzeClipboardCharacter);
     qs('#btn-analyze-image').addEventListener('click', analyzeImageCharacter);

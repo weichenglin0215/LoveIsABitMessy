@@ -38,6 +38,15 @@ try:
 except ImportError:
     _HAS_JSON_REPAIR = False
 
+
+def _ollama_base_url():
+    host = os.environ.get("OLLAMA_HOST", "127.0.0.1:11434").strip()
+    if not host:
+        host = "127.0.0.1:11434"
+    if not host.startswith(("http://", "https://")):
+        host = "http://" + host
+    return host.rstrip("/")
+
 PORT = 8081
 WEB_DIR = os.path.join(os.path.dirname(__file__), 'web')
 
@@ -591,7 +600,7 @@ def _ollama_generate_direct(model, prompt, options=None, images=None, on_chunk=N
     #####################################################################################
     # 直接呼叫 Ollama API 並回傳結果字串 (支援流式傳輸以免超時)
     #####################################################################################
-    url = "http://127.0.0.1:11434/api/generate"
+    url = _ollama_base_url() + "/api/generate"
 
     # 預設參數
     default_options = {
@@ -1506,7 +1515,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
         elif parsed_path.path == '/api/models':
             try:
                 import urllib.request
-                req = urllib.request.Request('http://localhost:11434/api/tags')
+                req = urllib.request.Request(_ollama_base_url() + '/api/tags')
                 with urllib.request.urlopen(req, timeout=500) as resp:
                     data = json.loads(resp.read().decode('utf-8'))
                 models = [m['name'] for m in data.get('models', [])]

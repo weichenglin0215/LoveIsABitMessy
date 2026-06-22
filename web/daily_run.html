@@ -157,6 +157,13 @@
                 <textarea id="image-prompt-box" readonly class="prompt-preview img-prompt-preview"></textarea>
             </div>
 
+            <!-- 專案備註（不會提供給 AI，僅供作者備忘） -->
+            <div class="form-section">
+                <label class="form-label">6. 專案備註（不會提供給 AI，僅供作者備忘）</label>
+                <textarea id="project-notes" class="scenario-textarea"
+                    placeholder="在此撰寫專案備註文字。此欄位不會傳給 AI 大模型，但會隨專案一起儲存／讀取雲端資料。"></textarea>
+            </div>
+
             <!-- AI 生成按鈕 -->
             <div class="ai-btn-container">
                 <button class="ai-btn" id="run-btn">🎭AI生成：日記與插圖</button>
@@ -516,7 +523,8 @@
                 model_options: document.getElementById('model-options-select').value,
                 writer_style_1: document.getElementById('writer-style-select-1').value,
                 writer_style_2: document.getElementById('writer-style-select-2').value,
-                writer_sample: document.getElementById('writer-sample-select').value
+                writer_sample: document.getElementById('writer-sample-select').value,
+                project_notes: document.getElementById('project-notes').value
             };
 
             const payload = {
@@ -574,7 +582,28 @@
             document.getElementById('writer-style-select-1').value = pd.writer_style_1 || pd.writer_style || "";
             document.getElementById('writer-style-select-2').value = pd.writer_style_2 || "";
             document.getElementById('writer-sample-select').value = pd.writer_sample || "";
+            document.getElementById('project-notes').value = pd.project_notes || "";
+            logAISettingsFromData('☁️ 雲端載入專案 - AI 設定（雲端原始值）', pd);
         });
+
+        // 在 LOG 欄列出原始（未套用前的）AI 模型／模型參數／寫作風格／寫作範本資料
+        // 直接讀 raw 物件（例如雲端 project_data），這樣若上次使用的模型已被刪除，
+        // 仍可看見原始值（例如 "gemma4:latest"），方便重新下載對應模型。
+        function logAISettingsFromData(title, pd) {
+            pd = pd || {};
+            const fmt = (v) => (v === undefined || v === null || v === '') ? '(無)' : String(v);
+            const lines = [
+                `─── ${title || 'AI 設定（雲端原始資料）'} ───`,
+                `🤖 AI 模型：${fmt(pd.ai_model)}`,
+                `⚙️ 模型參數：${fmt(pd.model_options)}`,
+                `🖋️ 寫作風格一：${fmt(pd.writer_style_1 || pd.writer_style)}`,
+                `🖋️ 寫作風格二：${fmt(pd.writer_style_2)}`,
+                `📝 寫作範本：${fmt(pd.writer_sample)}`,
+                `─────────────────────`
+            ];
+            const box = document.getElementById('log-output');
+            if (box) { box.value += '\n' + lines.join('\n') + '\n'; box.scrollTop = box.scrollHeight; }
+        }
 
         // ====== 載入雲端角色清單 ======
         async function loadCloudChars() {

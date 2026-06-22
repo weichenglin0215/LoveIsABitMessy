@@ -7,18 +7,21 @@
 ## 🎯 專案目標
 
 1.  **深度人格建模**：透過 LPAS (Love Personality Assessment System) 評量，精確定義角色在不同階段的情感反應。
-2.  **每日日記生成**：根據情境 (Scenario) 自動生成細膩的角色日記與對應的插圖。
-3.  **小說創作工具**：提供多角色、多章節的故事大綱設計與內容自動編寫功能。
-4.  **雲端/本地混合架構**：整合 Supabase 雲端資料庫與本地 Ollama / ComfyUI 引擎。
+2.  **角色資料編輯器**：管理雲端角色卡、生日、血型與各階段人格特質。
+3.  **每日日記生成**：根據情境 (Scenario) 自動生成細膩的角色日記與對應的插圖。
+4.  **loveline 聊天功能**：整合大型語言模型，提供基於角色與使用者人設的文字互動對話功能。
+5.  **小說創作工具**：提供多角色、多章節的故事大綱設計與內容自動編寫功能。
+6.  **雲端/本地混合架構**：整合 Supabase 雲端資料庫與本地 Ollama / ComfyUI 引擎。
 
 ---
 
 ## 🏗️ 系統架構
 
 ### 1. 前端網頁 (Web Interface)
--   **`lpas.html`**: 愛情人格評量測驗。生成具備性格演化邏輯的「角色卡 (Character Card)」。
+-   **`lpas_v3.html`**: 愛情人格評量測驗。生成具備性格演化邏輯的「角色卡 (Character Card)」。
+-   **`characters_editor.html`**: 進階角色資料編輯功能，包括由AI生成角色圖片。
 -   **`daily_run.html`**: 每日日記執行中心。選擇演員、設定情境，即時監控後台生成進度。
--   **`characters_editor.html`**: 角色資料編輯器。管理雲端角色卡、生日、血型與各階段人格特質。
+-   **`loveline.html`**: 聊天互動中心。選擇角色，進行 AI 角色文字互動。
 -   **`novel_generator.html`**: 小說自動產生器。支援章節規劃、AI 生成大綱與小節內文創作。
 
 ### 2. 後端核心 (Python Backend)
@@ -38,7 +41,7 @@
 ## 🚀 使用流程
 
 1.  **愛情人格評量產生基本角色卡**
-    -   執行 `lpas.html`：完成測驗並儲存角色卡（本地或雲端）。
+    -   執行 `lpas_v3.html`：完成測驗並儲存角色卡（本地或雲端）。
     -   產生足夠的角色之後就不需要再執行此步驟。
 2.  **啟動伺服器**
     -   執行 `start_debug_server.bat`。
@@ -50,7 +53,9 @@
 4.  **產生日記**
     -   透過介面：開啟 `daily_run.html` 進行互動式生成。
     -   (已暫時取消)一鍵腳本：執行 `產生每日故事.bat` 自動完成全流程。
-5.  **創作小說**
+5.  **loveline 聊天**
+    -   執行 `loveline.html`：選擇角色，進行 AI 角色文字互動。
+6.  **創作小說**
     -   開啟 `novel_generator.html` 規劃您的故事長篇。
 
 ---
@@ -78,6 +83,7 @@
 
 | 版本 | 日期 | 更新亮點 |
 | :--- | :--- | :--- |
+| **V0.9.5.0** | 2026-06-22 | **演員／劇本角色名稱分離 + 三頁面備註欄 + 角色照片 + 多項雲端載入改進**。① `debug_server.py` 改讀 `OLLAMA_HOST` 環境變數（預設 `127.0.0.1:11434`），支援非預設埠的 Ollama。② `novel_generator.html` 登場角色欄新增「角色名稱」文字輸入欄：角色卡＝演員，角色名稱＝劇本中的角色名（如：角色卡「惠茹」演出劇本中的「寶蓮」）；`state.characters` 改為 `{id, roleName}` 結構並自動相容舊資料；`prompt_utils._enrich_char_data` 統一將 `role_name` 蓋過 `name`，所有 prompt（女主角姓名／配角姓名／scenario 比對）自動使用劇本角色名。③ `novel_generator` / `daily_run` / `loveline` 三頁面載入雲端／本機資料後，於 LOG 欄顯示「雲端原始 AI 設定值」（模型／模型參數／寫作風格／寫作範本），即使該模型已被刪除仍可看到原始字串（如 `gemma4:latest`）方便重新拉模型。④ `novel_generator.html` 新增「📝 作者備註」按鈕（位於儲存小說左側）：彈窗大型 textarea，存進 `state.authorNotes` 隨小說一同儲存／讀取，不會提供給 AI。⑤ `daily_run.html` 新增「6. 專案備註」textarea，寫入 `project_data.project_notes`，不會傳給 AI。⑥ `loveline.html` 編輯使用者資料彈窗改為 1600px 兩欄版型：左欄=暱稱／登入密碼／關聯角色卡，右欄=覆蓋設定／額外補充／**使用者備註**（新增欄位 `love_line_users.notes`，不會傳給 AI）。⑦ `characters_editor.html` 在「角色設定 JSON」上方新增「角色照片」區塊：160×160 縮圖框（深灰底＋淺灰虛線框），支援拖曳上傳或點擊開啟檔案選擇，自動縮放成最長邊 256（縮圖）與 1024（原圖）兩種 JPEG（80% 壓縮），儲存至 `characters.photo_thumb` 與 `characters.photo_full` 兩個新欄位。⑧ `novel_generator` 讀取雲端小說清單由 `.limit(30)` 改為 `.limit(1000)`，解決 30 筆以上看不到後續紀錄的問題。⑨ Supabase 需新增欄位：`love_line_users.notes text`、`characters.photo_thumb text`、`characters.photo_full text`。 |
 | **V0.9.4.0** | 2026-06-22 | **角色卡格式統一 + LPAS V1→V3 自動轉換 + LoveLine／結果頁優化**。①角色卡 `lpas_v3` 格式統一去除連字號（`AFOL`）、`intimacy` 去除結尾「型」字（如「深情專一」）；`personality_type` 新格式 `PFOL_AFOL_PSOL_深情專一`（提供 `supabase/schema_v3_strip_intimacy_type.sql` 一次性遷移既有資料）。②新增 `web/js/lpas_v1_to_v3.js` V1→V3 16 型對照轉換器，characters_editor / loveline / daily_run / novel_generator 載入舊角色卡時自動就地補上 `lpas_v3`。③ characters_editor 必填欄位驗證：未填欄位即時套用紅框、儲存前列出缺漏並中斷；V1 轉 V3 後 intimacy 為空時自動補預設。④ `build_analyze_text_character_prompt` 改輸出 V3 規格（`lpas_v3: {ambiguity, love, breakup, intimacy}`、16 天候型 + 4 性象限）。⑤四個頁面的角色下拉統一顯示「角色名稱-`full_name`」。⑥ loveline / novel_generator 新增「從雲端重新下載角色卡」🔄 按鈕，loveline 同步刷新使用者清單。⑦ novel_generator 新增「📋 文檔轉條列」：依起承轉合輸出條列式粗綱，每個關鍵事件含原劇情走向 + 兩條 AI 替代戲劇化走向。⑧ lpas_v3.html 結果頁雷達圖改用各階段專屬色（紫 / 粉橘 / 藍），同色相區分主／從焦點。⑨ LoveLine 對話次選單：刪除前後改為「自訂則數」（彈窗預設 10）、選單定位夾住在聊天區內避免溢出、字級放大 150%。 |
 | **V0.9.3.0** | 2026-06-19 | LPAS-v3 與角色卡編輯格式統一。LPAS-V3 結果頁／最終分享頁版面優化。新增 `web/js/lpas_v1_to_v3.js` V1→V3 自動轉換器；`prompt_utils.py` 併入 `TYPE_MAPPING_V3` 解析，提示詞 `personality` 優先取 `lpas_v3`、V1 字串作後備；`characters_editor.html` 新增必填欄位紅框提示與儲存前驗證。 |
 | **V0.9.2.0** | 2026-06-09 | LPAS v3 完整體：16 天候型名稱最終定案（**海嘯／煙火／漩渦／陣雨／岩漿／太陽／藤蔓／燈塔／雷雨／流星／流沙／晨露／梅雨／晚霞／深海／迷霧**），4 性象限（深情專一／鍾情博愛／靈肉分離／遊戲人間）。題目縮減為每軸 4 題（2+/2−）消除 acquiescence bias，PART2 完整重寫為沉浸式情境題（具體場景、可代入畫面）。新增 `lpas_v3_character_generator.js` 產出可與既有 characters_editor / novel_generator 相容的角色卡：含 `personality_type`、`v3_data` 完整結構、`markdown_summary` AI 友善摘要。完整 Supabase 雲端儲存（characters / lpas_sessions / lpas_answers / lpas_results 四張表），結果頁加入下載角色卡 JSON / 下載測驗紀錄 / 複製 Markdown 三個按鈕。新增 `supabase/schema_v3_lpas.sql` 驗證 schema 並更新欄位註解。v1/v2/v3 三版可並存於 characters 表，以 `source` 與 `lpas_version` 區分。|

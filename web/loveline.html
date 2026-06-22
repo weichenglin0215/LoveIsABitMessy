@@ -193,24 +193,36 @@
 
   <!-- ── Modal: Edit User Profile ── -->
   <div class="modal-overlay hidden" id="modal-user-edit">
-    <div class="modal" style="width: 640px;">
+    <div class="modal" style="width: min(96vw, 1600px); max-width: none;">
       <h3 id="modal-user-title">👤 編輯使用者資料</h3>
-      <label>暱稱</label>
-      <input type="text" id="modal-user-name" placeholder="輸入您的暱稱" class="editor-input">
+      <div style="display:flex; gap:24px; align-items:stretch;">
+        <!-- 左側：基本資料 -->
+        <div style="flex:0 0 500px; display:flex; flex-direction:column;">
+          <label>暱稱</label>
+          <input type="text" id="modal-user-name" placeholder="輸入您的暱稱" class="editor-input">
 
-      <label>登入密碼 (必要)</label>
-      <input type="password" id="modal-user-password" placeholder="輸入登入密碼" class="editor-input">
+          <label>登入密碼 (必要)</label>
+          <input type="password" id="modal-user-password" placeholder="輸入登入密碼" class="editor-input">
 
-      <label>關聯角色卡 (選填)</label>
-      <select id="modal-user-char-select">
-        <option value="">— 無 —</option>
-      </select>
+          <label>關聯角色卡 (選填)</label>
+          <select id="modal-user-char-select">
+            <option value="">— 無 —</option>
+          </select>
+        </div>
 
-      <label>覆蓋設定的資料 (關鍵字會覆蓋，如：生日: 01-01, 血型: O...)</label>
-      <textarea id="modal-user-persona" rows="6" placeholder="在此輸入要覆寫角色卡的資料內容...例如：生日、血型、星座..."></textarea>
+        <!-- 右側：角色描述／備註 -->
+        <div
+          style="flex:1; min-width:0; display:flex; flex-direction:column; border-left:1px solid var(--c-border); padding-left:24px;">
+          <label>覆蓋設定的資料 (關鍵字會覆蓋，如：生日: 01-01, 血型: O...)</label>
+          <textarea id="modal-user-persona" rows="6" placeholder="在此輸入要覆寫角色卡的資料內容...例如：生日、血型、星座..."></textarea>
 
-      <label>額外補充的資料 (將直接加入 AI 提示詞)</label>
-      <textarea id="modal-user-extra" rows="6" placeholder="在此輸入更多關於使用者的描述..."></textarea>
+          <label>額外補充的資料 (將直接加入 AI 提示詞)</label>
+          <textarea id="modal-user-extra" rows="6" placeholder="在此輸入更多關於使用者的描述..."></textarea>
+
+          <label>使用者備註（不會提供給 AI，僅供作者備忘，會隨資料儲存／讀取雲端）</label>
+          <textarea id="modal-user-notes" rows="6" placeholder="在此撰寫使用者備註文字。此欄位不會傳給 AI 大模型，但會儲存至雲端。"></textarea>
+        </div>
+      </div>
 
       <p style="font-size:12px;color:#888;margin:8px 0 0;">
         💡 AI模型、模型參數、寫作風格、寫作範本將在儲存時一併記錄，下次載入此使用者時自動套用。
