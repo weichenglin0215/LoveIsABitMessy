@@ -1,0 +1,2316 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoveIsABitMessy — 我想寫小說，所以我教 AI 認識人</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&family=Noto+Serif+TC:wght@400;700;900&display=swap"
+        rel="stylesheet">
+    <style>
+        /* ============================================================
+   全域樣式
+   ============================================================ */
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            /* 主色系（沿用專案配色） */
+            --c-bg-main: #0F0A1E;
+            --c-bg-card: #1A1035;
+            --c-bg-deep: #08050F;
+            --c-accent: #9C6FD6;
+            --c-accent-light: #C5A8F0;
+            --c-accent-dim: #6B47A8;
+            --c-text-main: #E8E0F5;
+            --c-text-sec: #A89BC0;
+            --c-text-dim: #5A5070;
+            --c-divider: #2A1E50;
+
+            /* 三階段色彩 */
+            --c-phase-ambig: hsl(266, 56%, 64%);
+            --c-phase-love: hsl(20, 70%, 65%);
+            --c-phase-break: hsl(210, 60%, 65%);
+
+            /* 16 天候型代表色（粗分 4 大區） */
+            --c-tsunami: hsl(210, 70%, 55%);
+            --c-firework: hsl(35, 85%, 60%);
+            --c-rain: hsl(195, 50%, 60%);
+            --c-vine: hsl(140, 40%, 55%);
+
+            /* 字體與間距 */
+            --font-main: 'Noto Sans TC', sans-serif;
+            --font-serif: 'Noto Serif TC', serif;
+            --vw: 1vw;
+        }
+
+        html,
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: var(--c-bg-main);
+            color: var(--c-text-main);
+            font-family: var(--font-main);
+            font-weight: 400;
+            line-height: 1.3;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* 背景星點動畫 */
+        .starfield {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background:
+                radial-gradient(2px 2px at 20% 30%, rgba(229, 220, 245, 0.4), transparent),
+                radial-gradient(1px 1px at 80% 20%, rgba(229, 220, 245, 0.3), transparent),
+                radial-gradient(2px 2px at 60% 80%, rgba(197, 168, 240, 0.3), transparent),
+                radial-gradient(1px 1px at 30% 70%, rgba(229, 220, 245, 0.25), transparent),
+                radial-gradient(1px 1px at 90% 60%, rgba(197, 168, 240, 0.2), transparent),
+                radial-gradient(2px 2px at 50% 10%, rgba(229, 220, 245, 0.3), transparent),
+                radial-gradient(1px 1px at 10% 90%, rgba(229, 220, 245, 0.25), transparent),
+                radial-gradient(1px 1px at 70% 40%, rgba(229, 220, 245, 0.2), transparent);
+            background-size: 100% 100%;
+            z-index: 0;
+            animation: twinkle 8s ease-in-out infinite alternate;
+        }
+
+        @keyframes twinkle {
+            0% {
+                opacity: 0.4;
+            }
+
+            100% {
+                opacity: 0.9;
+            }
+        }
+
+        /* ============================================================
+   投影片容器
+   ============================================================ */
+
+        .deck {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .slide {
+            position: absolute;
+            inset: 0;
+            padding: 9vh 9vw;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow-y: auto;
+            overflow-x: hidden;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        .slide.active {
+            display: flex;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .slide-inner {
+            width: 100%;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        /* 不同投影片變體 */
+        .slide.center {
+            text-align: center;
+        }
+
+        .slide.dark {
+            background: var(--c-bg-deep);
+        }
+
+        /* ============================================================
+   排版基礎
+   ============================================================ */
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            font-weight: 700;
+            line-height: 1.3;
+            letter-spacing: 0.02em;
+        }
+
+        .title-xl {
+            font-size: clamp(5rem, 11vw, 9rem);
+            font-weight: 900;
+        }
+
+        .title-l {
+            font-size: clamp(4rem, 8vw, 6.4rem);
+            font-weight: 700;
+        }
+
+        .title-m {
+            font-size: clamp(3.2rem, 6vw, 4.8rem);
+            font-weight: 700;
+        }
+
+        .title-s {
+            font-size: clamp(2.6rem, 4.4vw, 3.6rem);
+            font-weight: 500;
+        }
+
+        .text-l {
+            font-size: clamp(2.4rem, 4vw, 3.2rem);
+        }
+
+        .text-m {
+            font-size: clamp(2rem, 2.8vw, 2.4rem);
+        }
+
+        .text-s {
+            font-size: clamp(1.8rem, 2.4vw, 2rem);
+        }
+
+        .serif {
+            font-family: var(--font-serif);
+        }
+
+        .dim {
+            color: var(--c-text-sec);
+        }
+
+        .accent {
+            color: var(--c-accent-light);
+        }
+
+        .muted {
+            color: var(--c-text-dim);
+        }
+
+        .mt-1 {
+            margin-top: 0.8rem;
+        }
+
+        .mt-2 {
+            margin-top: 1.6rem;
+        }
+
+        .mt-3 {
+            margin-top: 2.4rem;
+        }
+
+        .mt-4 {
+            margin-top: 3.2rem;
+        }
+
+        .mb-1 {
+            margin-bottom: 0.8rem;
+        }
+
+        .mb-2 {
+            margin-bottom: 1.6rem;
+        }
+
+        .mb-3 {
+            margin-bottom: 2.4rem;
+        }
+
+        .mb-4 {
+            margin-bottom: 3.2rem;
+        }
+
+        /* ============================================================
+   元件樣式
+   ============================================================ */
+
+        .kicker {
+            display: inline-block;
+            padding: 0.3rem 1.2rem;
+            background: var(--c-bg-card);
+            border: 1px solid var(--c-accent-dim);
+            border-radius: 999px;
+            font-size: clamp(1.6rem, 2vw, 2rem);
+            color: var(--c-accent-light);
+            letter-spacing: 0.1em;
+            margin-bottom: 2rem;
+        }
+
+        .quote-block {
+            border-left: 4px solid var(--c-accent);
+            padding: 1.5rem 2rem;
+            background: var(--c-bg-card);
+            border-radius: 0 12px 12px 0;
+            margin: 1rem 0;
+            font-family: var(--font-serif);
+            font-size: clamp(2rem, 3.2vw, 2.6rem);
+            line-height: 1.9;
+        }
+
+        .example-card {
+            background: var(--c-bg-card);
+            border: 1px solid var(--c-divider);
+            border-radius: 12px;
+            padding: 1.2rem 1.4rem;
+            margin: 1rem 0;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .example-card h4 {
+            color: var(--c-accent-light);
+            font-size: clamp(1.9rem, 2.6vw, 2.3rem);
+            margin-bottom: 0.8rem;
+            letter-spacing: 0.05em;
+        }
+
+        .example-card p {
+            font-family: var(--font-serif);
+            font-size: clamp(1.9rem, 2.6vw, 2.3rem);
+            line-height: 1.9;
+            color: var(--c-text-main);
+        }
+
+        /* 小說／日記／對話範例內文：縮小字型並收緊行高 */
+        .example-card p.serif,
+        .example-card p[class*="text-s"],
+        .phase-card p,
+        .chat-bubble,
+        .type-detail-card .section-body,
+        .quote-block {
+            font-size: clamp(1.3rem, 1.8vw, 1.6rem) !important;
+            line-height: 1.4 !important;
+        }
+
+        /* 兩欄 / 三欄佈局 */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.2rem;
+            width: 100%;
+            align-items: stretch;
+        }
+
+        .three-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1rem;
+            width: 100%;
+        }
+
+        .four-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 1.5rem;
+            width: 100%;
+        }
+
+        /* 階段色卡 */
+        .phase-card {
+            border-radius: 12px;
+            padding: 1.5rem 1.8rem;
+            border: 1px solid var(--c-divider);
+        }
+
+        .phase-card.ambig {
+            background: linear-gradient(135deg, hsla(266, 60%, 25%, 0.7), hsla(266, 40%, 15%, 0.5));
+            border-color: var(--c-phase-ambig);
+        }
+
+        .phase-card.love {
+            background: linear-gradient(135deg, hsla(20, 60%, 25%, 0.6), hsla(20, 40%, 15%, 0.4));
+            border-color: var(--c-phase-love);
+        }
+
+        .phase-card.break {
+            background: linear-gradient(135deg, hsla(210, 60%, 25%, 0.7), hsla(210, 40%, 15%, 0.5));
+            border-color: var(--c-phase-break);
+        }
+
+        .phase-card h4 {
+            font-size: clamp(2.2rem, 3vw, 2.8rem);
+            margin-bottom: 0.6rem;
+            letter-spacing: 0.05em;
+        }
+
+        .phase-card.ambig h4 {
+            color: var(--c-phase-ambig);
+        }
+
+        .phase-card.love h4 {
+            color: var(--c-phase-love);
+        }
+
+        .phase-card.break h4 {
+            color: var(--c-phase-break);
+        }
+
+        .phase-card p {
+            font-family: var(--font-serif);
+            font-size: clamp(1.8rem, 2.3vw, 2.1rem);
+            line-height: 1.85;
+        }
+
+        /* 觀眾提問框 */
+        .audience-q {
+            margin-top: 2rem;
+            background: linear-gradient(135deg, rgba(156, 111, 214, 0.15), rgba(156, 111, 214, 0.05));
+            border: 1px dashed var(--c-accent);
+            border-radius: 12px;
+            padding: 0.6rem 0.9rem;
+            color: var(--c-accent-light);
+            font-size: clamp(1rem, 1.4vw, 1.2rem);
+        }
+
+        .audience-q::before {
+            content: "💬 ";
+            margin-right: 0.5rem;
+        }
+
+        /* Demo 標記 */
+        .demo-tag {
+            display: inline-block;
+            padding: 0.2rem 0.8rem;
+            background: var(--c-bg-card);
+            border: 1px solid var(--c-accent-dim);
+            border-radius: 4px;
+            font-size: clamp(1.4rem, 1.8vw, 1.7rem);
+            color: var(--c-accent-light);
+            margin-bottom: 1rem;
+        }
+
+        .demo-tag::before {
+            content: "🎬 ";
+        }
+
+        /* 16 型網格 */
+        .types-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.8rem;
+            width: 100%;
+        }
+
+        .type-cell {
+            background: var(--c-bg-card);
+            border: 1px solid var(--c-divider);
+            border-radius: 10px;
+            padding: 0.9rem 0.8rem;
+            text-align: center;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .type-cell:hover {
+            transform: translateY(-3px);
+            border-color: var(--c-accent);
+        }
+
+        .type-cell .name {
+            font-size: clamp(1.9rem, 2.6vw, 2.3rem);
+            font-weight: 700;
+            color: var(--c-accent-light);
+            margin-bottom: 0.4rem;
+        }
+
+        .type-cell .short {
+            font-size: clamp(1.4rem, 1.9vw, 1.7rem);
+            color: var(--c-text-sec);
+            line-height: 1.5;
+        }
+
+        /* 軸表格 */
+        .axis-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        .axis-table th,
+        .axis-table td {
+            padding: 1rem 1.2rem;
+            text-align: left;
+            border-bottom: 1px solid var(--c-divider);
+            font-size: clamp(1.9rem, 2.6vw, 2.3rem);
+        }
+
+        .axis-table th {
+            color: var(--c-accent-light);
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            background: var(--c-bg-card);
+        }
+
+        .axis-table td:nth-child(2),
+        .axis-table td:nth-child(3) {
+            text-align: center;
+            font-family: var(--font-serif);
+        }
+
+        /* 工具流水線 */
+        .pipeline {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.6rem;
+            width: 100%;
+            margin: 1.5rem 0;
+        }
+
+        .pipeline-step {
+            background: var(--c-bg-card);
+            border: 1px solid var(--c-divider);
+            border-radius: 12px;
+            padding: 1.2rem 0.8rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .pipeline-step.active {
+            border-color: var(--c-accent);
+            box-shadow: 0 0 20px rgba(156, 111, 214, 0.3);
+        }
+
+        .pipeline-step .num {
+            display: inline-block;
+            width: 2rem;
+            height: 2rem;
+            line-height: 2rem;
+            background: var(--c-accent);
+            color: var(--c-bg-deep);
+            border-radius: 50%;
+            font-weight: 700;
+            margin-bottom: 0.6rem;
+        }
+
+        .pipeline-step .name {
+            font-size: clamp(1.9rem, 2.6vw, 2.3rem);
+            font-weight: 700;
+            color: var(--c-accent-light);
+            margin-bottom: 0.4rem;
+        }
+
+        .pipeline-step .desc {
+            font-size: clamp(1.5rem, 2vw, 1.8rem);
+            color: var(--c-text-sec);
+            line-height: 1.5;
+        }
+
+        /* 數字卡 */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.2rem;
+            width: 100%;
+            margin: 2rem 0;
+        }
+
+        .stat-card {
+            background: var(--c-bg-card);
+            border: 1px solid var(--c-divider);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-card .num {
+            font-size: clamp(5rem, 10vw, 8rem);
+            font-weight: 900;
+            color: var(--c-accent-light);
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .label {
+            font-size: clamp(1.7rem, 2.2vw, 2rem);
+            color: var(--c-text-sec);
+        }
+
+        /* 對話氣泡 */
+        .chat-bubble {
+            max-width: 75%;
+            padding: 0.9rem 1.3rem;
+            border-radius: 18px;
+            margin: 0.5rem 0;
+            font-family: var(--font-serif);
+            font-size: clamp(1.9rem, 2.6vw, 2.2rem);
+            line-height: 1.7;
+        }
+
+        .chat-bubble.user {
+            background: var(--c-accent-dim);
+            color: var(--c-text-main);
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-bubble.ai {
+            background: var(--c-bg-card);
+            color: var(--c-text-main);
+            border: 1px solid var(--c-divider);
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-bubble .who {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--c-text-sec);
+            margin-bottom: 0.3rem;
+            font-family: var(--font-main);
+        }
+
+        /* 投票選項 */
+        .vote-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .vote-option {
+            background: var(--c-bg-card);
+            border: 1px solid var(--c-divider);
+            border-radius: 10px;
+            padding: 1rem 1.5rem;
+            font-size: clamp(2rem, 2.8vw, 2.4rem);
+            transition: all 0.2s;
+        }
+
+        .vote-option .key {
+            display: inline-block;
+            width: 1.8rem;
+            height: 1.8rem;
+            line-height: 1.8rem;
+            background: var(--c-accent-dim);
+            color: var(--c-text-main);
+            border-radius: 50%;
+            text-align: center;
+            font-weight: 700;
+            margin-right: 0.8rem;
+        }
+
+        .vote-option.correct {
+            border-color: var(--c-accent);
+            box-shadow: 0 0 20px rgba(156, 111, 214, 0.4);
+        }
+
+        .vote-option.correct .key {
+            background: var(--c-accent);
+            color: var(--c-bg-deep);
+        }
+
+        /* 時間軸 */
+        .timeline {
+            border-left: 2px solid var(--c-accent-dim);
+            padding-left: 2rem;
+            margin: 1.5rem 0 1.5rem 1rem;
+        }
+
+        .timeline-item {
+            margin-bottom: 1.4rem;
+            position: relative;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -2.5rem;
+            top: 0.5rem;
+            width: 12px;
+            height: 12px;
+            background: var(--c-accent);
+            border-radius: 50%;
+            box-shadow: 0 0 0 4px var(--c-bg-main);
+        }
+
+        .timeline-item .date {
+            color: var(--c-accent-light);
+            font-weight: 700;
+            font-size: clamp(1.8rem, 2.4vw, 2.1rem);
+            margin-bottom: 0.3rem;
+        }
+
+        .timeline-item .desc {
+            font-size: clamp(1.8rem, 2.4vw, 2.1rem);
+            color: var(--c-text-main);
+            line-height: 1.7;
+        }
+
+        /* 標題頁特殊樣式 */
+        .title-slide {
+            text-align: center;
+        }
+
+        .title-slide .title-xl {
+            background: linear-gradient(135deg, var(--c-text-main), var(--c-accent-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .title-slide .subtitle {
+            color: var(--c-text-sec);
+            font-size: clamp(2.2rem, 3.6vw, 3rem);
+            margin-bottom: 4rem;
+        }
+
+        .title-slide .meta {
+            font-size: clamp(1.8rem, 2.2vw, 2rem);
+            color: var(--c-text-dim);
+            letter-spacing: 0.15em;
+        }
+
+        /* 章節分隔投影片 */
+        .section-divider {
+            text-align: center;
+        }
+
+        .section-divider .part-num {
+            font-family: var(--font-serif);
+            font-size: clamp(8rem, 20vw, 16rem);
+            font-weight: 900;
+            color: var(--c-accent);
+            opacity: 0.4;
+            line-height: 1;
+        }
+
+        .section-divider .part-title {
+            font-size: clamp(4rem, 8vw, 6rem);
+            font-weight: 700;
+            margin-top: -2rem;
+        }
+
+        /* ============================================================
+   導航與控制
+   ============================================================ */
+
+        .nav {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: rgba(15, 10, 30, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--c-divider);
+            border-radius: 999px;
+            padding: 0.5rem 1.2rem;
+        }
+
+        .nav button {
+            background: none;
+            border: none;
+            color: var(--c-text-main);
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .nav button:hover {
+            background: var(--c-bg-card);
+        }
+
+        .nav button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .nav .counter {
+            font-size: 0.9rem;
+            color: var(--c-text-sec);
+            letter-spacing: 0.1em;
+            font-feature-settings: "tnum";
+        }
+
+        /* 講者備註面板 */
+        .notes-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(8, 5, 15, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 2px solid var(--c-accent);
+            padding: 1.5rem 3rem;
+            transform: translateY(100%);
+            transition: transform 0.3s;
+            z-index: 90;
+            max-height: 40vh;
+            overflow-y: auto;
+        }
+
+        .notes-panel.show {
+            transform: translateY(0);
+        }
+
+        .notes-panel h5 {
+            color: var(--c-accent-light);
+            font-size: 0.9rem;
+            letter-spacing: 0.15em;
+            margin-bottom: 0.6rem;
+        }
+
+        .notes-panel p {
+            font-size: 1rem;
+            color: var(--c-text-main);
+            line-height: 1.7;
+        }
+
+        /* 進度條 */
+        .progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: var(--c-accent);
+            transition: width 0.3s;
+            z-index: 101;
+        }
+
+        /* 幫助提示 */
+        .help-hint {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 100;
+            font-size: 0.8rem;
+            color: var(--c-text-dim);
+            text-align: right;
+            line-height: 1.6;
+        }
+
+        .help-hint kbd {
+            background: var(--c-bg-card);
+            border: 1px solid var(--c-divider);
+            border-radius: 4px;
+            padding: 0.1rem 0.4rem;
+            font-family: monospace;
+            color: var(--c-accent-light);
+            font-size: 0.75rem;
+        }
+
+        /* 章節標籤 */
+        .section-tag {
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 100;
+            font-size: 0.8rem;
+            color: var(--c-text-dim);
+            letter-spacing: 0.15em;
+            padding: 0.3rem 0.8rem;
+            background: rgba(15, 10, 30, 0.7);
+            border: 1px solid var(--c-divider);
+            border-radius: 4px;
+        }
+
+        /* 列表 */
+        .numbered-list {
+            list-style: none;
+            counter-reset: item;
+            margin: 1rem 0;
+        }
+
+        .numbered-list li {
+            counter-increment: item;
+            padding: 0.8rem 0 0.8rem 3rem;
+            position: relative;
+            font-size: clamp(2rem, 2.8vw, 2.4rem);
+            line-height: 1.7;
+            border-bottom: 1px solid var(--c-divider);
+        }
+
+        .numbered-list li::before {
+            content: counter(item);
+            position: absolute;
+            left: 0;
+            top: 0.8rem;
+            width: 2rem;
+            height: 2rem;
+            background: var(--c-accent);
+            color: var(--c-bg-deep);
+            border-radius: 50%;
+            text-align: center;
+            line-height: 2rem;
+            font-weight: 700;
+            font-family: var(--font-serif);
+        }
+
+        .bullet-list {
+            list-style: none;
+            margin: 1rem 0;
+        }
+
+        .bullet-list li {
+            padding: 0.6rem 0 0.6rem 1.8rem;
+            position: relative;
+            font-size: clamp(2rem, 2.7vw, 2.3rem);
+            line-height: 1.7;
+        }
+
+        .bullet-list li::before {
+            content: "▸";
+            position: absolute;
+            left: 0;
+            color: var(--c-accent);
+        }
+
+        /* 16 型卡片詳細版 */
+        .type-detail-card {
+            background: var(--c-bg-card);
+            border: 1px solid var(--c-divider);
+            border-radius: 16px;
+            padding: 1.4rem 1.8rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        .type-detail-card .type-name {
+            font-size: clamp(4rem, 8vw, 6rem);
+            font-weight: 900;
+            color: var(--c-accent-light);
+            line-height: 1;
+            margin-bottom: 0.3rem;
+        }
+
+        .type-detail-card .type-code {
+            font-size: clamp(1.7rem, 2.2vw, 2rem);
+            color: var(--c-text-dim);
+            letter-spacing: 0.15em;
+            margin-bottom: 1rem;
+        }
+
+        .type-detail-card .type-short {
+            font-family: var(--font-serif);
+            font-size: clamp(2.2rem, 3.2vw, 2.8rem);
+            color: var(--c-text-main);
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--c-divider);
+        }
+
+        .type-detail-card .section-head {
+            color: var(--c-accent);
+            font-size: clamp(1.6rem, 2vw, 1.9rem);
+            letter-spacing: 0.15em;
+            margin-bottom: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .type-detail-card .section-body {
+            font-family: var(--font-serif);
+            font-size: clamp(1.9rem, 2.4vw, 2.1rem);
+            line-height: 1.85;
+            color: var(--c-text-main);
+        }
+
+        /* ============================================================
+   響應式（簡報以投影為主，但確保筆電也正常）
+   ============================================================ */
+        @media (max-width: 900px) {
+
+            .two-col,
+            .three-col,
+            .four-col,
+            .types-grid,
+            .pipeline,
+            .stat-grid,
+            .vote-options {
+                grid-template-columns: 1fr;
+            }
+
+            .types-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .slide {
+                padding: 4vh 5vw;
+            }
+        }
+
+        /* 列印樣式 */
+        @media print {
+
+            .nav,
+            .help-hint,
+            .section-tag,
+            .progress,
+            .notes-panel,
+            .starfield {
+                display: none !important;
+            }
+
+            .slide {
+                display: flex !important;
+                page-break-after: always;
+                position: relative;
+                height: 100vh;
+            }
+
+            body,
+            html {
+                overflow: visible;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="starfield"></div>
+    <div class="progress" id="progress"></div>
+
+    <div class="section-tag" id="sectionTag">PART 0 ‧ 開場</div>
+    <div class="help-hint">
+        <div><kbd>←</kbd> <kbd>→</kbd> 切換投影片　<kbd>N</kbd> 講者備註　<kbd>F</kbd> 全螢幕</div>
+    </div>
+
+    <div class="deck" id="deck">
+
+        <!-- ============================================================
+     PART 0 — 開場
+     ============================================================ -->
+
+        <!-- 投影片 01 — 標題頁 -->
+        <section class="slide active center title-slide" data-section="PART 0 ‧ 開場"
+            data-notes="開場保持低音量。從『我想寫小說』停頓兩秒，再接『然後我發現一件事』自然進入下一張。觀察觀眾的反應，建立對話的初始連結。">
+            <div class="slide-inner">
+                <div class="title-xl">我想寫小說，<br>所以我教 AI 認識人</div>
+                <div class="subtitle">一個業餘小說家的兩個半月 AI 實驗</div>
+                <div class="meta">LoveIsABitMessy · 2026.07</div>
+            </div>
+        </section>
+
+        <!-- 投影片 02 — 我是誰 -->
+        <section class="slide" data-section="PART 0 ‧ 開場"
+            data-notes="刻意強調『我不是工程師』，建立與一般觀眾的連結，降低『這場簡報會很技術』的預期。可以加入一兩句你的職業/興趣背景。">
+            <div class="slide-inner">
+                <div class="kicker">關於講者</div>
+                <h1 class="title-l mb-3">我不是 AI 工程師。<br><span class="accent">我只是一個想寫小說的人。</span></h1>
+                <div class="mt-3">
+                    <p class="text-l mb-2">最近兩個半月，我用 AI 蓋了一套工具來幫自己寫小說。</p>
+                    <p class="text-l mb-2">這套工具叫 <span class="accent serif">LoveIsABitMessy（愛是有點亂）</span>。</p>
+                    <p class="text-l mt-3 dim">今天兩小時，我想把這個過程分享給你們。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 投影片 03 — 今天會講什麼 -->
+        <section class="slide center" data-section="PART 0 ‧ 開場"
+            data-notes="明確告訴觀眾這場簡報歡迎隨時打斷，這是輕鬆氛圍的關鍵。可以開玩笑說『打斷我比讓我講完更好』。">
+            <div class="slide-inner">
+                <h1 class="title-l mb-4">今天會講三件事</h1>
+                <div class="three-col mt-3">
+                    <div class="example-card">
+                        <h4>① 一個問題</h4>
+                        <p class="serif">AI 寫的人物<br>為什麼像紙片人？</p>
+                    </div>
+                    <div class="example-card">
+                        <h4>② 一套方法</h4>
+                        <p class="serif">五個工具<br>怎麼讓 AI 認識「人」</p>
+                    </div>
+                    <div class="example-card">
+                        <h4>③ 一個邀請</h4>
+                        <p class="serif">你想當<br>第一批試用者嗎？</p>
+                    </div>
+                </div>
+                <p class="dim text-m mt-4">⏰ 兩小時 ‧ 隨時可以打斷我發問</p>
+            </div>
+        </section>
+
+        <!-- ============================================================
+     PART 1 — 鉤子與問題
+     ============================================================ -->
+
+        <!-- 投影片 04 — 起點：我想寫小說 -->
+        <section class="slide center dark" data-section="PART 1 ‧ 鉤子與問題"
+            data-notes="這個情境會在接下來的簡報重複出現好幾次，現在先讓它『存在』。停頓 3 秒讓觀眾消化。">
+            <div class="slide-inner">
+                <div class="kicker">起點</div>
+                <h1 class="title-l mb-4 dim">我想寫一篇短篇小說。</h1>
+                <div class="quote-block mt-3">
+                    學生時代的舊情人，<br>
+                    在 40 歲那年於台北重逢。
+                </div>
+                <p class="text-l mt-3 accent">⋯⋯我想寫這個故事。</p>
+            </div>
+        </section>
+
+        <!-- 投影片 05 — 小說寫的不是情節 -->
+        <section class="slide" data-section="PART 1 ‧ 鉤子與問題"
+            data-notes="這張投影片建議 stop and ask。一般人通常記得人物，不記得情節，這個共識會成為整場簡報的基礎。預期會有 3-5 分鐘討論。">
+            <div class="slide-inner">
+                <div class="kicker">第一層洞察</div>
+                <h1 class="title-l mb-3">小說寫的不是情節。<br><span class="accent">小說寫的是人。</span></h1>
+                <div class="two-col mt-3">
+                    <div class="example-card" style="opacity: 0.55;">
+                        <h4>情節（人人會寫）</h4>
+                        <p class="serif">「兩人重逢 → 一起吃了一頓飯 → 各自回家。」</p>
+                    </div>
+                    <div class="example-card" style="border-color: var(--c-accent);">
+                        <h4>人（必須是「那個人」）</h4>
+                        <p class="serif">「兩個 40 歲的人在咖啡廳坐下，咖啡涼了一半，誰先開口？開口說什麼？」</p>
+                    </div>
+                </div>
+                <div class="audience-q">你最近讀過的小說，你還記得情節嗎？還是記得人物？</div>
+            </div>
+        </section>
+
+        <!-- 投影片 06 — 角色推動劇情 -->
+        <section class="slide" data-section="PART 1 ‧ 鉤子與問題"
+            data-notes="這張投影片是整場簡報的『核心鉤子』，要慢、要讓觀眾感受到兩段範例的差異。讀完之後可以問：『你覺得這兩個故事接下來會怎麼發展？』邀請觀眾發想 1-2 分鐘。">
+            <div class="slide-inner">
+                <div class="kicker">第二層洞察</div>
+                <h1 class="title-m mb-3">好的故事，作者不能硬推。<br><span class="accent">是角色的個性，決定故事怎麼走。</span></h1>
+                <div class="two-col mt-2">
+                    <div class="example-card">
+                        <h4>範例 A：兩位台北土生土長的人</h4>
+                        <p class="serif text-s">
+                            「李婷婷在窗邊半小時了。陳浩宇推門進來時帶著一臉抱歉的笑——還是那個樣子，永遠遲到、永遠笑得讓人氣不起來。她推給他一杯黑咖啡：『跟以前一樣，黑的。』他笑了：『妳還記得喔。』她聳聳肩：『記得有什麼用。』」
+                        </p>
+                    </div>
+                    <div class="example-card" style="background: linear-gradient(135deg, #0c1a2e, #08111e);">
+                        <h4>範例 B：冷酷德國工程師 × 委婉日本翻譯</h4>
+                        <p class="serif text-s">「Stefan 推開門，準時得像鐘錶。他點了點頭，坐下，沒有道歉、沒有寒暄。Yuki 鞠了一個 30
+                            度的躬，輕聲說：『お久しぶり⋯⋯不對，是好久不見。』他看著她：『二十年了。』她笑了一下，沒有否認，也沒有承認。空氣安靜地涼著。」</p>
+                    </div>
+                </div>
+                <p class="text-l mt-3 center" style="text-align: center;"><span
+                        class="accent">同一個框架。完全不同的故事。</span><br><span class="dim">誰決定的？角色決定的。</span></p>
+            </div>
+        </section>
+
+        <!-- 投影片 07 — 中心問句 -->
+        <section class="slide center dark" data-section="PART 1 ‧ 鉤子與問題"
+            data-notes="停頓 5 秒，讓問題沉澱。這是整場簡報的中心問句，後面每一個解法都是在回答這句話。">
+            <div class="slide-inner">
+                <div class="kicker">所以問題變成⋯⋯</div>
+                <h1 class="title-m serif mt-4" style="line-height: 1.8;">
+                    怎麼讓 AI 真的理解一個「<span class="accent">人</span>」——<br>
+                    理解到它寫出來的角色，<br>
+                    會自己<span class="accent">推動劇情</span>？
+                </h1>
+                <p class="dim text-m mt-4">這就是整個專案要回答的唯一問題。</p>
+            </div>
+        </section>
+
+        <!-- 投影片 08 — 自問自答 -->
+        <section class="slide" data-section="PART 1 ‧ 鉤子與問題"
+            data-notes="這張投影片預期會打開觀眾話匣子。準備好接住 5-10 分鐘的閒聊，再回到主線。如果現場冷，主動點人問問題。">
+            <div class="slide-inner">
+                <div class="kicker">你可能會問⋯⋯</div>
+                <h1 class="title-m mb-3">三個預先回答</h1>
+                <div class="three-col mt-2">
+                    <div class="example-card">
+                        <h4>Q：為什麼不直接餵 AI 角色設定？</h4>
+                        <p class="text-s mt-2">A：我試過了。<br>AI 寫出來還是紙片人。<br>我們等下會看為什麼。</p>
+                    </div>
+                    <div class="example-card">
+                        <h4>Q：為什麼要做這麼複雜的東西？</h4>
+                        <p class="text-s mt-2">A：因為我希望 AI 寫出我覺得「對」的角色，<br>不是「OK」的角色。</p>
+                    </div>
+                    <div class="example-card">
+                        <h4>Q：這能解決別人的問題嗎？</h4>
+                        <p class="text-s mt-2">A：我不知道。我只知道它解決了我的問題。<br>然後我發現可能也能解決別人的。</p>
+                    </div>
+                </div>
+                <div class="audience-q">你們現在用 AI 寫過東西嗎？覺得它寫得怎麼樣？</div>
+            </div>
+        </section>
+
+        <!-- ============================================================
+     PART 2 — 為什麼 AI 寫不出人
+     ============================================================ -->
+
+        <!-- 投影片 09 — AI 範例（差） -->
+        <section class="slide" data-section="PART 2 ‧ 為什麼 AI 寫不出人"
+            data-notes="這段刻意寫得『正常但平庸』。觀眾應該會覺得『看起來沒問題，但無感』。建立『AI 寫得出字，寫不出人』的共識。">
+            <div class="slide-inner">
+                <div class="kicker">實驗一</div>
+                <h1 class="title-m mb-3">給 AI 一個簡單 Prompt</h1>
+                <div class="example-card" style="background: var(--c-bg-deep);">
+                    <h4>Prompt</h4>
+                    <p class="serif">「寫一段 30 歲女性主管在會議室對下屬說話的場景，要有個性。」</p>
+                </div>
+                <div class="example-card mt-2" style="opacity: 0.7;">
+                    <h4>AI 寫出來</h4>
+                    <p class="serif text-s">
+                        「李經理走進會議室，臉色嚴肅。她環視在場每一位員工，緩緩開口：『各位，我們的業績不能再這樣下去了。我希望大家從這個月開始全力以赴。』她的眼神堅定，語氣不容置疑，散發著主管應有的氣場。」</p>
+                </div>
+                <p class="text-l mt-3 dim">⋯⋯讀起來怎麼樣？</p>
+                <div class="audience-q">你會記得這個角色嗎？她跟你看過的多少個 AI 寫的女主管很像？</div>
+            </div>
+        </section>
+
+        <!-- 投影片 10 — AI 範例（好） -->
+        <section class="slide" data-section="PART 2 ‧ 為什麼 AI 寫不出人"
+            data-notes="這張是『啊哈時刻』的核心。可以稍微多停留，讓觀眾感受兩段文字的差異有多大。問：『你覺得右邊這個林沛雯，是不是一個你能想像她下班後做什麼的人？』">
+            <div class="slide-inner">
+                <div class="kicker">實驗二</div>
+                <h1 class="title-m mb-3">同樣場景，先給 AI 一張具體角色卡</h1>
+                <div class="two-col mt-2">
+                    <div class="example-card">
+                        <h4>角色卡片段</h4>
+                        <p class="text-s">林沛雯，34 歲，行銷部副總。<br>離婚一年，獨自帶 7
+                            歲女兒。<br><br>個性：表面冷靜、內裡焦躁，<br>對「失控」極度敏感。<br><br>口頭禪：「我不是在質疑，<br>我是在確認。」<br><br>動作特徵：說話前會先把馬克杯轉半圈。
+                        </p>
+                    </div>
+                    <div class="example-card" style="border-color: var(--c-accent);">
+                        <h4>AI 寫出來</h4>
+                        <p class="serif text-s">
+                            「林沛雯把咖啡杯往右轉了半圈，沒抬頭：『所以這個月的數字。』她停了一下，等所有人意識到這不是疑問句。『我不是在質疑你們，我是在確認——我們是不是真的有去問過客戶。』她終於抬眼，視線只停在剛升任副理的張哲身上一秒，然後就移開了。會議室裡突然沒人動了。」
+                        </p>
+                    </div>
+                </div>
+                <p class="text-l mt-3 center" style="text-align: center;">同一個 AI、同一個場景。<span
+                        class="accent">差別是：它認識了這個人。</span></p>
+            </div>
+        </section>
+
+        <!-- 投影片 11 — 差別在哪裡 -->
+        <section class="slide" data-section="PART 2 ‧ 為什麼 AI 寫不出人"
+            data-notes="這張是 Part 2 的結論句。從這裡開始，所有後續內容都是在回答：『那要怎麼給 AI 一個真的人？』">
+            <div class="slide-inner">
+                <h1 class="title-l mb-3">差別在哪裡？</h1>
+                <ol class="numbered-list">
+                    <li>左邊只知道「30 歲女主管」這個<span class="dim">標籤</span>。<br>右邊知道一個有名字、有故事、有特定動作的<span
+                            class="accent">人</span>。</li>
+                    <li>左邊寫「散發氣場」這種<span class="dim">抽象詞</span>。<br>右邊寫「把咖啡杯往右轉了半圈」這種<span class="accent">具體行為</span>。
+                    </li>
+                    <li>左邊你看完五分鐘就<span class="dim">忘了她</span>。<br>右邊你會記得她<span class="accent">至少今晚</span>。</li>
+                </ol>
+                <div class="quote-block mt-3" style="border-color: var(--c-accent-light);">
+                    AI 不是寫不出人。<br>
+                    <span class="accent">是我們沒有給它「一個真的人」。</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 投影片 12 — 問題的形狀 -->
+        <section class="slide" data-section="PART 2 ‧ 為什麼 AI 寫不出人"
+            data-notes="這是 Part 2 的尾聲，也是 Part 3 的開場準備。預期觀眾的答案會包含『先做問卷』『先寫角色模板』等，可以順勢帶到 Part 3。">
+            <div class="slide-inner">
+                <h1 class="title-m mb-3">問題的形狀變了</h1>
+                <ul class="bullet-list">
+                    <li>我們不能訓練自己的 AI 模型——成本太高</li>
+                    <li>我們可以做的是：給現有的 AI 一份「會讓它寫得像」的角色資料</li>
+                    <li>但這份資料怎麼來？人為手寫太慢，而且容易扁平</li>
+                    <li>所以我需要⋯⋯</li>
+                </ul>
+                <div class="quote-block mt-3">
+                    <span class="accent">一套可以從真實的人，自動產出可餵 AI 的角色資料的工具。</span>
+                </div>
+                <div class="audience-q">如果你要設計這套工具，你會從哪裡開始？</div>
+            </div>
+        </section>
+
+        <!-- ============================================================
+     PART 3 — 從愛情切入「人」
+     ============================================================ -->
+
+        <!-- 投影片 13 — 我的答案：從愛情開始 -->
+        <section class="slide" data-section="PART 3 ‧ 從愛情切入「人」"
+            data-notes="這張投影片的『同一個人，三個樣子』是 LPAS 整個架構的核心觀察，必須讓它深深印在觀眾腦裡。">
+            <div class="slide-inner">
+                <div class="kicker">我的答案</div>
+                <h1 class="title-l mb-3">從<span class="accent">愛情</span>開始。</h1>
+                <ul class="bullet-list">
+                    <li>為什麼愛情？因為它是人最不受控、最會把「真實的你」逼出來的情境</li>
+                    <li>在工作場合，你還可以裝；在愛情裡，幾乎裝不下去</li>
+                    <li>而且愛情<span class="accent">天然分成三個階段</span>——這給了我們一個天然的觀察實驗室</li>
+                </ul>
+                <div class="quote-block mt-3" style="border-color: var(--c-accent-light); text-align: center;">
+                    <span class="accent">同一個人</span>，<br>
+                    在<span style="color: var(--c-phase-ambig);">曖昧</span>、<span
+                        style="color: var(--c-phase-love);">熱戀</span>、<span
+                        style="color: var(--c-phase-break);">失戀</span>，<br>
+                    可能是<span class="accent">三個完全不同的樣子</span>。
+                </div>
+            </div>
+        </section>
+
+        <!-- 投影片 14 — 一個例子：李婷婷 -->
+        <section class="slide" data-section="PART 3 ‧ 從愛情切入「人」"
+            data-notes="這個問題大部分人會答『不是同一個人』。這正是 LPAS 想要捕捉的洞察。預期會引發 3-5 分鐘的自我分享，順其自然。">
+            <div class="slide-inner">
+                <div class="kicker">具體例子</div>
+                <h1 class="title-m mb-3">李婷婷，29 歲，廣告公司 AE</h1>
+                <div class="three-col mt-2">
+                    <div class="phase-card ambig">
+                        <h4>曖昧期</h4>
+                        <p>喜歡上同公司設計師之後，第二週就找理由去他工位三次。下班順路傳訊息「我剛好經過你家那邊，要不要吃宵夜」，沒回應就直接打電話。</p>
+                    </div>
+                    <div class="phase-card love">
+                        <h4>熱戀期</h4>
+                        <p>在一起之後反而安靜了。不放閃、不打卡、不在朋友面前提他。但每天早上六點起床做便當，他完全不知道。</p>
+                    </div>
+                    <div class="phase-card break">
+                        <h4>失戀期</h4>
+                        <p>分手第三週，朋友才知道。她沒哭、沒發限動、沒去酒吧。她去學了陶藝，每週一三五，七點到十點，從不缺席。</p>
+                    </div>
+                </div>
+                <p class="text-l mt-3 center" style="text-align: center;">這還是同一個人嗎？<span
+                        class="accent">是。但這也是三個不同的人。</span></p>
+                <div class="audience-q">你在曖昧期、熱戀期、失戀期，是同一個人嗎？</div>
+            </div>
+        </section>
+
+        <!-- 投影片 15 — 所以我做了一份問卷 -->
+        <section class="slide" data-section="PART 3 ‧ 從愛情切入「人」"
+            data-notes="這張可以開始切到實際的系統畫面（如果有錄影）。Demo 影片：實際操作 lpas_v3.html，30 秒。">
+            <div class="slide-inner">
+                <div class="kicker">解法：LPAS</div>
+                <h1 class="title-l mb-3"><span class="accent">L</span>ove <span
+                        class="accent">P</span>ersonality<br><span class="accent">A</span>ssessment <span
+                        class="accent">S</span>ystem</h1>
+                <p class="text-l serif dim mt-2">「愛情人格特質評量表」</p>
+                <div class="stat-grid mt-3">
+                    <div class="stat-card">
+                        <div class="num">56</div>
+                        <div class="label">題目</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="num">10</div>
+                        <div class="label">分鐘</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="num">∞</div>
+                        <div class="label">用法</div>
+                    </div>
+                </div>
+                <p class="text-l mt-3 dim">結果不是一張標籤，是一張<span class="accent">有故事的角色卡</span>。</p>
+                <div class="demo-tag">Demo：實際填寫 LPAS V3</div>
+            </div>
+        </section>
+
+        <!-- 投影片 16 — 四條軸 -->
+        <section class="slide" data-section="PART 3 ‧ 從愛情切入「人」"
+            data-notes="刻意不使用英文代碼（A/P/F/S/O/I/H/L），保持口語感。問：『你覺得自己在這四條軸上，會偏向哪邊？』鼓勵 2-3 位觀眾自己描述。">
+            <div class="slide-inner">
+                <h1 class="title-m mb-3">它怎麼分類？<span class="accent">四條軸</span>。</h1>
+                <table class="axis-table">
+                    <thead>
+                        <tr>
+                            <th>軸</th>
+                            <th>一邊</th>
+                            <th>另一邊</th>
+                            <th>看的是</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>主動 vs 被動</td>
+                            <td>我會直接去敲門</td>
+                            <td>我會等他來</td>
+                            <td>你怎麼開始</td>
+                        </tr>
+                        <tr>
+                            <td>快 vs 慢</td>
+                            <td>一週就確定</td>
+                            <td>半年才看清楚</td>
+                            <td>你決定的節奏</td>
+                        </tr>
+                        <tr>
+                            <td>外放 vs 內斂</td>
+                            <td>全世界都會知道</td>
+                            <td>連好朋友都未必</td>
+                            <td>你怎麼表達</td>
+                        </tr>
+                        <tr>
+                            <td>佔有 vs 自由</td>
+                            <td>你跟誰吃飯我要知道</td>
+                            <td>你過你的我過我的</td>
+                            <td>你需要的距離</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p class="text-l mt-3 center" style="text-align: center;">這四條軸的組合 →<span class="accent"> 16
+                        種完全不同的「愛人方式」</span>。</p>
+                <div class="audience-q">你覺得自己在這四條軸上，會偏向哪邊？</div>
+            </div>
+        </section>
+
+        <!-- 投影片 17 — 16 個天候型 -->
+        <section class="slide" data-section="PART 3 ‧ 從愛情切入「人」"
+            data-notes="這張可以稍微停留，讓觀眾自己掃過 16 個名字，挑感興趣的問。『有哪一型你想多聽一點？』可以開放讓觀眾點。">
+            <div class="slide-inner">
+                <h1 class="title-m mb-3">結果是<span class="accent"> 16 種「天候型」</span></h1>
+                <div class="types-grid">
+                    <div class="type-cell">
+                        <div class="name">海嘯型</div>
+                        <div class="short">狂暴的愛情巨浪</div>
+                    </div>
+                    <div class="type-cell">
+                        <div class="name">煙火型</div>
+                        <div class="short">燦爛而短暫</div>
+                    </div>
+                    <div class="type-cell">
+                        <div class="name">漩渦型</div>
+                        <div class="short">表面靜止水流深</div>
+                    </div>
+                    <div class="type-cell">
+                        <div class="name">陣雨型</div>
+                        <div class="short">來去不留水痕</div>
+                    </div>
+                    <div class="type-cell">
+                        <div class="name">岩漿型</div>
+                        <div class="short">慢慢覆蓋一切</div>
+                    </div>
+                    <div class="type-cell">
+                        <div class="name">太陽型</div>
+                        <div class="short">日復一日的溫暖</div>
+                    </div>
+                    <div class="type-cell">
+                        <div class="name">藤蔓型</div>
+                        <div class="short">無聲攀上每面牆</div>
+                    </div>
+                    <div class="type-cell">
+                        <div class="name">燈塔型</div>
+                        <div class="short">穩穩照不索求</div>
+                    </div>
+                    <div class="type-cell">
+                        <div class="name">雷雨型</div>
+                        <div class="short">一觸即發劈天空</div>
+                    </div>
+                    <div class="type-cell">
+                        <div class="name">流星型</div>
+                        <div class="short">燃完不留</div>
+                    </div>
+                    <div class="type-cell">
+                        <div class="name">流沙型</div>
+                        <div class="short">越掙扎陷越深</div>
+                    </div>
+                    <div class="type-cell">
+                        <div class="name">晨露型</div>
+                        <div class="short">天亮就蒸發</div>
+                    </div>
+                    <div class="type-cell">
+                        <div class="name">梅雨型</div>
+                        <div class="short">整月連著下</div>
+                    </div>
+                    <div class="type-cell">
+                        <div class="name">晚霞型</div>
+                        <div class="short">染紅整片天</div>
+                    </div>
+                    <div class="type-cell">
+                        <div class="name">深海型</div>
+                        <div class="short">靜默深處記每場風暴</div>
+                    </div>
+                    <div class="type-cell">
+                        <div class="name">迷霧型</div>
+                        <div class="short">無聲圍繞不索求</div>
+                    </div>
+                </div>
+                <p class="text-m mt-3 dim center" style="text-align: center;">
+                    為什麼是天候？因為「海嘯型」一個詞，你就大概知道她是怎麼愛人的。<br>比「主動外放佔有型」<span class="accent">好懂多了</span>。</p>
+            </div>
+        </section>
+
+        <!-- ============================================================
+     PART 4 — LPAS 16 型實際看
+     ============================================================ -->
+
+        <!-- 投影片 18 — 三個型號預告 -->
+        <section class="slide center dark" data-section="PART 4 ‧ 16 型實際看"
+            data-notes="預告接下來三張。挑這三個是因為對比強烈：海嘯（最強），燈塔（最穩），深海（最沉）。">
+            <div class="slide-inner">
+                <div class="kicker">PART 4</div>
+                <h1 class="title-l mb-3">來看三個<span class="accent">對比強烈</span>的型號</h1>
+                <div class="three-col mt-4">
+                    <div class="example-card center" style="text-align: center;">
+                        <h4 style="color: hsl(210, 70%, 65%);">海嘯型</h4>
+                        <p class="text-s dim">主動 × 快 × 外放 × 佔有</p>
+                    </div>
+                    <div class="example-card center" style="text-align: center;">
+                        <h4 style="color: hsl(50, 80%, 65%);">燈塔型</h4>
+                        <p class="text-s dim">主動 × 慢 × 內斂 × 自由</p>
+                    </div>
+                    <div class="example-card center" style="text-align: center;">
+                        <h4 style="color: hsl(200, 60%, 55%);">深海型</h4>
+                        <p class="text-s dim">被動 × 慢 × 內斂 × 佔有</p>
+                    </div>
+                </div>
+                <p class="text-l mt-4 dim">同樣是「喜歡上一個人」，她們的反應<span class="accent">完全不一樣</span>。</p>
+            </div>
+        </section>
+
+        <!-- 投影片 19 — 海嘯型 -->
+        <section class="slide" data-section="PART 4 ‧ 16 型實際看" data-notes="觀眾提問：『你身邊有沒有海嘯型的朋友？她的故事是？』預期會引發故事分享。">
+            <div class="slide-inner">
+                <div class="two-col">
+                    <div class="type-detail-card">
+                        <div class="type-name">海嘯型</div>
+                        <div class="type-code">主動 × 快 × 外放 × 佔有</div>
+                        <div class="type-short">「狂暴的愛情巨浪包圍著你們，也可能是場災難。」</div>
+                        <div class="section-head">曖昧期</div>
+                        <div class="section-body">當你心動的那一刻，整個世界就已經知道：他是你選定的人。你不繞圈子、不留試探的餘地⋯⋯你不是在追求他，你是在讓他知道：這片海已經朝他湧過去了。
+                        </div>
+                        <div class="section-head">陷阱</div>
+                        <div class="section-body text-s">▸ 對方都還沒答應，就向全世界宣告了<br>▸ 把對方屬於妳當成愛的唯一證據<br>▸ 沖走了綠茶，卻連他也一起沖散了
+                        </div>
+                    </div>
+                    <div>
+                        <div class="kicker">具體場景</div>
+                        <div class="example-card mt-2">
+                            <h4>林婉柔的午餐約</h4>
+                            <p class="serif text-s">「林婉柔約了陳奕翔吃午餐。他答應後 5 分鐘，她已經訂好餐廳、IG
+                                限動發了『今天約超帥的人吃飯』、傳了三張可以選的洋裝照片給閨蜜群。中午一見面，她笑著說：『我跟我媽說過你了喔。』陳奕翔還沒吃第一口飯。」</p>
+                        </div>
+                        <div class="audience-q">你身邊有沒有海嘯型的朋友？</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 投影片 20 — 燈塔型 -->
+        <section class="slide" data-section="PART 4 ‧ 16 型實際看" data-notes="可以順勢問：『如果你要找個伴，你會想要哪一種？』（這個問題會引發討論）">
+            <div class="slide-inner">
+                <div class="two-col">
+                    <div class="type-detail-card">
+                        <div class="type-name">燈塔型</div>
+                        <div class="type-code">主動 × 慢 × 內斂 × 自由</div>
+                        <div class="type-short">「穩穩照著夜色，從不索求停留。」</div>
+                        <div class="section-head">熱戀期</div>
+                        <div class="section-body">
+                            你是他航向中的燈塔，沉穩、可靠、永遠在原地。你愛得深，但不壓迫；你存在感清晰，但不黏附。你尊重他的航線，允許他偶爾離開又回來。你不需要每天表白來證明感情的份量。</div>
+                        <div class="section-head">陷阱</div>
+                        <div class="section-body text-s">▸ 太穩定、太冷靜，對方覺得遙不可及<br>▸ 不證明感情份量，常被誤解為不在意<br>▸ 分手後不哭不鬧，連自己都以為沒事
+                        </div>
+                    </div>
+                    <div>
+                        <div class="kicker">具體場景</div>
+                        <div class="example-card mt-2">
+                            <h4>她沒傳任何訊息</h4>
+                            <p class="serif text-s">
+                                「他出差兩週，每天忙到很晚。沒有看到她的訊息——但他回到家門口，發現門縫底下塞著一張字條：『冰箱有湯，微波兩分半。』他打開冰箱，那盒湯放得整整齊齊。沒有
+                                emoji、沒有『辛苦了』。但他一邊吃一邊知道：她在。」</p>
+                        </div>
+                        <div class="audience-q">如果你要找個伴，你會想要哪一種？</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 投影片 21 — 深海型 -->
+        <section class="slide" data-section="PART 4 ‧ 16 型實際看" data-notes="問：『你覺得深海型最大的問題是什麼？』這個問題可能會引出觀眾的個人經驗。要溫柔接住。">
+            <div class="slide-inner">
+                <div class="two-col">
+                    <div class="type-detail-card">
+                        <div class="type-name">深海型</div>
+                        <div class="type-code">被動 × 慢 × 內斂 × 佔有</div>
+                        <div class="type-short">「靜默深處，永遠記得每場風暴。」</div>
+                        <div class="section-head">失戀期</div>
+                        <div class="section-body">
+                            深海記得每一場風暴。你會藏起傷痛，不發限動、不找閨密哭訴、不讓任何人看見你的崩塌。但內心深處，那段感情會留下一道難以閉合的縫——可能多年都還在隱隱作疼。你不會去復合、也不會去報復，你只是把那份重量沉到更深的地方。
+                        </div>
+                        <div class="section-head">陷阱</div>
+                        <div class="section-body text-s">▸ 太深，對方看不見水底正在發生的事<br>▸ 把守候當成愛，但守候不等於對方知道<br>▸ 心裡那道縫，可能多年都不會閉合
+                        </div>
+                    </div>
+                    <div>
+                        <div class="kicker">具體場景</div>
+                        <div class="example-card mt-2">
+                            <h4>蹲在便利商店 20 分鐘</h4>
+                            <p class="serif text-s">
+                                「他分手後沒事人一樣繼續上班。她跟同事吃午餐、跟朋友看電影、跟家人吃飯，沒人看出來。三年後的某個雨天，她在便利商店看到他喜歡的那種布丁，蹲下來假裝挑選了 20
+                                分鐘——出來的時候眼睛紅的，但天也黑了，沒人會發現。」</p>
+                        </div>
+                        <div class="audience-q">你覺得深海型最大的問題是什麼？</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 投影片 22 — 同一個人，三聯型號 -->
+        <section class="slide" data-section="PART 4 ‧ 16 型實際看"
+            data-notes="這張投影片是 PART 4 的高潮。把『同一個人，三種樣子』的洞察用一個具體例子釘下來。">
+            <div class="slide-inner">
+                <h1 class="title-m mb-3">同一個人，三個階段，<span class="accent">三個型號</span></h1>
+                <div class="example-card center" style="text-align: center; padding: 2.5rem;">
+                    <p class="text-m dim mb-2">林沛雯，34 歲</p>
+                    <h2 class="title-l mt-1 mb-3" style="font-family: var(--font-serif);">
+                        <span style="color: var(--c-phase-ambig);">海嘯</span>
+                        <span class="dim"> ‧ </span>
+                        <span style="color: var(--c-phase-love);">岩漿</span>
+                        <span class="dim"> ‧ </span>
+                        <span style="color: var(--c-phase-break);">深海</span>
+                    </h2>
+                </div>
+                <div class="three-col mt-3">
+                    <div class="phase-card ambig">
+                        <h4>曖昧期 ‧ 海嘯</h4>
+                        <p>一旦心動就以最強烈、最公開的方式撲過去。</p>
+                    </div>
+                    <div class="phase-card love">
+                        <h4>熱戀期 ‧ 岩漿</h4>
+                        <p>慢、深、持續流動，覆蓋他生活每一面。</p>
+                    </div>
+                    <div class="phase-card break">
+                        <h4>失戀期 ‧ 深海</h4>
+                        <p>平靜的表面下，永遠記得每一場風暴。</p>
+                    </div>
+                </div>
+                <p class="text-l mt-3 center" style="text-align: center;"><span class="accent">這就是 LPAS
+                        想做到的事</span>：一張角色卡，能描述同一個人在三個階段，是三個不同的人。</p>
+            </div>
+        </section>
+
+        <!-- 投影片 23 — 性象限 -->
+        <section class="slide" data-section="PART 4 ‧ 16 型實際看"
+            data-notes="說明這部分的設計考量——對小說來說性是關鍵維度，但對填寫者要給選擇權。簡短帶過，不過度展開。">
+            <div class="slide-inner">
+                <h1 class="title-m mb-3">還有第四個維度：<span class="accent">性象限</span></h1>
+                <p class="text-l mb-2 dim">性議題太重要不能省略，但獨立成段——可以跳過。</p>
+                <div class="two-col mt-2">
+                    <div class="example-card">
+                        <h4>深情專一型 <span class="dim" style="font-size: 0.8em;">（高依附 × 專一）</span></h4>
+                        <p class="serif text-s">「沒有愛，我給不出身體」</p>
+                    </div>
+                    <div class="example-card">
+                        <h4>鍾情博愛型 <span class="dim" style="font-size: 0.8em;">（高依附 × 開放）</span></h4>
+                        <p class="serif text-s">「我能愛很多人，但都是真心」</p>
+                    </div>
+                    <div class="example-card">
+                        <h4>靈肉分離型 <span class="dim" style="font-size: 0.8em;">（低依附 × 專一）</span></h4>
+                        <p class="serif text-s">「性是性，愛是愛，但我只玩一個」</p>
+                    </div>
+                    <div class="example-card">
+                        <h4>遊戲人間型 <span class="dim" style="font-size: 0.8em;">（低依附 × 開放）</span></h4>
+                        <p class="serif text-s">「性不需要承諾，愛也不需要獨佔」</p>
+                    </div>
+                </div>
+                <p class="text-s dim mt-3">這段可以選擇整段跳過，或單題跳過。結果頁也有眼睛圖示可以隱藏。</p>
+            </div>
+        </section>
+
+        <!-- 投影片 24 — 投票遊戲 -->
+        <section class="slide" data-section="PART 4 ‧ 16 型實際看"
+            data-notes="這張投影片是 PART 4 的小高潮，把觀眾從『聽眾』變成『玩家』。預期會引發 5-10 分鐘的熱烈討論。按 N 顯示答案。">
+            <div class="slide-inner">
+                <div class="kicker">來玩個遊戲</div>
+                <h1 class="title-m mb-3">這個人是哪一型？</h1>
+                <div class="example-card mt-2">
+                    <h4>王莉雯，32 歲，醫院護理長</h4>
+                    <p class="serif text-s mt-2">
+                        她跟同事吃飯時話不多，但每次都會在離開前默默結帳。<br>
+                        她喜歡的人在 IG 發新照片，她會看，但從不按讚。<br>
+                        那個人感冒兩天沒上班，她「剛好」週末走過他家樓下便利商店買藥。<br>
+                        <span class="accent">沒人知道她喜歡他。連那個人自己都不知道。</span>
+                    </p>
+                </div>
+                <div class="vote-options">
+                    <div class="vote-option"><span class="key">A</span>漩渦型</div>
+                    <div class="vote-option correct"><span class="key">B</span>藤蔓型 ✓</div>
+                    <div class="vote-option"><span class="key">C</span>深海型</div>
+                    <div class="vote-option"><span class="key">D</span>燈塔型</div>
+                </div>
+                <p class="text-s mt-3 dim center" style="text-align: center;">答案：<span
+                        class="accent">藤蔓型</span>（主動／慢／內斂／佔有）——「無聲攀上你生活的每一面牆」</p>
+            </div>
+        </section>
+
+        <!-- 投影片 25 — LPAS 還只是第一步 -->
+        <section class="slide center dark" data-section="PART 4 ‧ 16 型實際看"
+            data-notes="這張是 PART 4 → PART 5 的橋樑。提醒觀眾：『現在我們知道了第一個工具，接下來看其他四個。』">
+            <div class="slide-inner">
+                <h1 class="title-m mb-3"><span class="accent">LPAS 還只是第一步</span></h1>
+                <div class="quote-block mt-3">
+                    一張 LPAS 角色卡告訴我「<span class="accent">這是一個海嘯型的人</span>」。<br><br>
+                    但她叫什麼名字？幾歲？做什麼工作？她說話的習慣是什麼？她家養貓還是養狗？<br><br>
+                    <span class="dim">這些都還不知道。</span>
+                </div>
+                <p class="text-l mt-4 center" style="text-align: center;">所以這只是第一個工具。<br><span
+                        class="accent">LoveIsABitMessy 有五個工具，組成一條完整的創作流水線。</span></p>
+            </div>
+        </section>
+
+        <!-- ============================================================
+     PART 5 — 五工具流水線
+     ============================================================ -->
+
+        <!-- 投影片 26 — 五個工具，一條動線 -->
+        <section class="slide" data-section="PART 5 ‧ 五工具流水線"
+            data-notes="這張是 PART 5 的地圖，後續每張投影片都對應其中一個工具。可以快速帶過，告訴觀眾接下來會逐一深入。">
+            <div class="slide-inner">
+                <h1 class="title-m mb-3">五個工具，<span class="accent">一條動線</span></h1>
+                <div class="pipeline">
+                    <div class="pipeline-step active">
+                        <div class="num">1</div>
+                        <div class="name">LPAS</div>
+                        <div class="desc">產出人格骨架</div>
+                    </div>
+                    <div class="pipeline-step">
+                        <div class="num">2</div>
+                        <div class="name">編輯器</div>
+                        <div class="desc">補完角色血肉</div>
+                    </div>
+                    <div class="pipeline-step">
+                        <div class="num">3</div>
+                        <div class="name">LoveLine</div>
+                        <div class="desc">驗證 AI 接得住</div>
+                    </div>
+                    <div class="pipeline-step">
+                        <div class="num">4</div>
+                        <div class="name">日記</div>
+                        <div class="desc">讓角色活在時間裡</div>
+                    </div>
+                    <div class="pipeline-step">
+                        <div class="num">5</div>
+                        <div class="name">小說產生器</div>
+                        <div class="desc">組裝成長篇</div>
+                    </div>
+                </div>
+                <div class="example-card mt-3">
+                    <h4>而且這條路徑是雙向的</h4>
+                    <p class="text-s mt-2">
+                        ▸ <span class="accent">正向</span>：作者從第一個工具一路走到第五個<br>
+                        ▸ <span class="accent">反向</span>：既有作品可以反推回角色卡（工具 2）或回到粗綱（工具 5）
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 投影片 27 — 工具 1 LPAS（複習） -->
+        <section class="slide" data-section="PART 5 ‧ 五工具流水線" data-notes="這張只是過場，1 分鐘帶過。如果有截圖請放進去。">
+            <div class="slide-inner">
+                <div class="kicker">工具 ①</div>
+                <h1 class="title-l mb-3">LPAS：產出<span class="accent">人格地基</span></h1>
+                <div class="two-col mt-2">
+                    <div>
+                        <p class="text-l serif mb-2">填 56 題 → 得到一張帶天候型的角色卡。</p>
+                        <p class="text-l serif">約 10 分鐘。</p>
+                        <p class="text-m dim mt-3">這部分我們在 PART 3 / PART 4 已經看過了。</p>
+                    </div>
+                    <div class="example-card">
+                        <h4>輸出範例</h4>
+                        <p class="serif text-s mt-2">
+                            <span class="accent">林沛雯</span><br>
+                            三聯型號：<span style="color: var(--c-phase-ambig);">海嘯</span> ‧ <span
+                                style="color: var(--c-phase-love);">岩漿</span> ‧ <span
+                                style="color: var(--c-phase-break);">深海</span><br>
+                            性象限：深情專一<br><br>
+                            + 完整三階段描述<br>
+                            + 雷達圖<br>
+                            + 配對提示<br>
+                            + Markdown 摘要（可直接餵 prompt）
+                        </p>
+                    </div>
+                </div>
+                <div class="demo-tag">Demo：LPAS V3 結果頁截圖</div>
+            </div>
+        </section>
+
+        <!-- 投影片 28 — 工具 2 編輯器 -->
+        <section class="slide" data-section="PART 5 ‧ 五工具流水線" data-notes="可以開玩笑說『養什麼寵物』也要寫——這些細節真的會影響 AI 寫出來的對話。">
+            <div class="slide-inner">
+                <div class="kicker">工具 ②</div>
+                <h1 class="title-m mb-3">角色卡編輯器：<span class="accent">補上血肉</span></h1>
+                <div class="two-col">
+                    <div class="example-card" style="opacity: 0.8;">
+                        <h4>LPAS 給出來的（骨架）</h4>
+                        <p class="serif text-s mt-2">
+                            三聯型號：海嘯 ‧ 岩漿 ‧ 深海<br>
+                            性象限：深情專一
+                        </p>
+                    </div>
+                    <div class="example-card" style="border-color: var(--c-accent);">
+                        <h4>編輯器補完後（完整角色卡）</h4>
+                        <p class="serif text-s mt-2">
+                            林沛雯，34 歲，行銷部副總，<br>
+                            離婚一年，獨自帶 7 歲女兒。<br><br>
+                            個性：表面冷靜、內裡焦躁。<br>
+                            口頭禪：「我不是在質疑，我是在確認。」<br><br>
+                            習慣：說話前轉馬克杯半圈；<br>
+                            買 7-11 美式但從不喝完；<br>
+                            每週三晚上去學畫一小時。<br><br>
+                            外貌：短髮、無妝、深色襯衫。<br>
+                            寵物：虎斑貓「主任」。
+                        </p>
+                    </div>
+                </div>
+                <p class="text-l mt-3 center" style="text-align: center;">這張卡，AI 就會寫出我們在 PART 2 看到的那個<span
+                        class="accent">林沛雯</span>。</p>
+                <div class="demo-tag">Demo：characters_editor 操作影片</div>
+            </div>
+        </section>
+
+        <!-- 投影片 29 — 工具 2 反向用法 -->
+        <section class="slide" data-section="PART 5 ‧ 五工具流水線" data-notes="對『過去寫過很多小說但沒系統化角色管理』的作者特別有用。">
+            <div class="slide-inner">
+                <div class="kicker">工具 ② 的隱藏功能</div>
+                <h1 class="title-m mb-3">讀舊作品，<span class="accent">反推</span>角色卡</h1>
+                <div class="two-col">
+                    <div class="example-card">
+                        <h4>輸入：作者上傳一篇舊小說</h4>
+                        <p class="serif text-s mt-2">
+                            「⋯⋯她又把雜誌翻到背面看看價格。鄭子翔說『我送妳』，她搖搖頭，把雜誌放回架上：『不用啦，看看就好。』走出書店時下雨了，她張開包包擋頭，他默默把外套脫下來遞給她，她猶豫了一下才接過⋯⋯」
+                        </p>
+                    </div>
+                    <div class="example-card" style="border-color: var(--c-accent);">
+                        <h4>AI 分析後反推</h4>
+                        <p class="text-s mt-2">
+                            <span class="accent">推測年齡</span>：25-30 歲<br>
+                            <span class="accent">個性</span>：節儉、有自尊、對善意會猶豫但最終接受<br>
+                            <span class="accent">推測 LPAS</span>：被動／慢／內斂（燈塔型或深海型）<br>
+                            <span class="accent">習慣</span>：在意金額、不擅長直接拒絕、用肢體語言回應而非言語
+                        </p>
+                    </div>
+                </div>
+                <p class="text-l mt-3 center" style="text-align: center;"><span
+                        class="accent">你過去的小說人物，可以重新進入這個系統，繼續被使用。</span></p>
+                <div class="demo-tag">Demo：characters_editor 文字反推角色卡</div>
+            </div>
+        </section>
+
+        <!-- 投影片 30 — 工具 3 LoveLine -->
+        <section class="slide" data-section="PART 5 ‧ 五工具流水線"
+            data-notes="強調『驗證』的概念——大部分人都是寫完角色卡直接拿去寫小說，但其實先聊兩句會大大提升小說品質。這是整套系統最被低估的工具。">
+            <div class="slide-inner">
+                <div class="kicker">工具 ③</div>
+                <h1 class="title-m mb-3">LoveLine：<span class="accent">驗證</span>角色卡</h1>
+                <p class="text-l mb-2">寫完角色卡，先別寫小說——<span class="accent">先跟她聊兩句</span>。</p>
+                <div class="example-card mt-2">
+                    <h4>觀察重點</h4>
+                    <ul class="bullet-list">
+                        <li>她說話的口吻對嗎？</li>
+                        <li>她用的詞符合她的年齡跟職業嗎？</li>
+                        <li>她遇到尷尬時的反應，像你心目中的她嗎？</li>
+                    </ul>
+                </div>
+                <div class="quote-block mt-3" style="border-color: var(--c-accent);">
+                    如果不對 → 回去調整角色卡 → 再回來聊。<br>
+                    <span class="accent">聊到對為止。</span>
+                </div>
+                <p class="text-l mt-3 center" style="text-align: center;"><span class="accent">這是整套系統最關鍵的一步。</span></p>
+            </div>
+        </section>
+
+        <!-- 投影片 31 — LoveLine 範例對話 -->
+        <section class="slide" data-section="PART 5 ‧ 五工具流水線"
+            data-notes="Demo 影片是這張投影片的關鍵。錄一段真實的 LoveLine 對話，會比靜態截圖有說服力得多。">
+            <div class="slide-inner">
+                <div class="kicker">實際對話</div>
+                <h1 class="title-m mb-3">跟林沛雯聊兩句</h1>
+                <div class="two-col" style="grid-template-columns: 1.5fr 1fr;">
+                    <div>
+                        <div class="chat-bubble user"><span class="who">你</span>嗨，今天工作怎麼樣？</div>
+                        <div class="chat-bubble ai"><span class="who">林沛雯</span>還行。</div>
+                        <div class="chat-bubble user"><span class="who">你</span>只有「還行」？</div>
+                        <div class="chat-bubble ai"><span class="who">林沛雯</span>嗯。⋯⋯下午跟業務開會吵了一小段，沒什麼。</div>
+                        <div class="chat-bubble user"><span class="who">你</span>吵什麼？</div>
+                        <div class="chat-bubble ai"><span
+                                class="who">林沛雯</span>我不是在質疑他們的方案，我是在確認他們有沒有去問過客戶。他覺得我是質疑。算了。你呢？</div>
+                    </div>
+                    <div class="example-card">
+                        <h4>觀察點</h4>
+                        <p class="text-s mt-2">
+                            ✅ 口頭禪「我不是質疑，是確認」自然出現<br><br>
+                            ✅ 先冷淡回應、被追問才展開（符合「內裡焦躁但表面冷靜」）<br><br>
+                            ✅ 最後把話題丟回給你，避免繼續談自己<br><br>
+                            <span class="accent">→ 這張角色卡 OK，可以拿去寫小說了。</span>
+                        </p>
+                    </div>
+                </div>
+                <div class="demo-tag">Demo：真實 LoveLine 對話錄影</div>
+            </div>
+        </section>
+
+        <!-- 投影片 32 — 不同模型不同演法 -->
+        <section class="slide" data-section="PART 5 ‧ 五工具流水線" data-notes="這張投影片揭露『AI 模型不是萬能、各有風格』這件事，對一般觀眾來說是個有趣的觀察。">
+            <div class="slide-inner">
+                <div class="kicker">LoveLine 隱藏用途</div>
+                <h1 class="title-m mb-3">同一張卡，不同模型，<span class="accent">不同的「演法」</span></h1>
+                <div class="example-card" style="background: var(--c-bg-deep);">
+                    <p class="text-m">問題：「林沛雯，下班想去喝一杯嗎？」</p>
+                </div>
+                <div class="three-col mt-2">
+                    <div class="example-card">
+                        <h4>模型 A（gemma4）</h4>
+                        <p class="serif text-s mt-2">「我不太喝。⋯⋯但如果你只是想找人說話，可以去我家附近那家便利商店。我可以陪你坐 20 分鐘。」</p>
+                        <p class="text-s accent mt-2">✓ 像</p>
+                    </div>
+                    <div class="example-card">
+                        <h4>模型 B（llama3）</h4>
+                        <p class="serif text-s mt-2">「好啊，去哪？」</p>
+                        <p class="text-s dim mt-2">✗ 太隨意了</p>
+                    </div>
+                    <div class="example-card">
+                        <h4>模型 C（mistral）</h4>
+                        <p class="serif text-s mt-2">「我這個年紀的女人，喝酒會被誤會。下次吧。」</p>
+                        <p class="text-s dim mt-2">✗ 太古板了</p>
+                    </div>
+                </div>
+                <p class="text-l mt-3 center" style="text-align: center;">哪個模型最像我心目中的林沛雯？<span
+                        class="accent">這是作者要判斷的。</span></p>
+            </div>
+        </section>
+
+        <!-- 投影片 33 — 工具 4 日記 -->
+        <section class="slide" data-section="PART 5 ‧ 五工具流水線"
+            data-notes="『作者寫一行，AI 寫一千字』這句話可以慢一點說。強調作者的核心動作是『寫關鍵』，不是寫文字。">
+            <div class="slide-inner">
+                <div class="kicker">工具 ④</div>
+                <h1 class="title-m mb-3">日記：<span class="accent">讓角色活在時間裡</span></h1>
+                <p class="text-l mb-2 dim serif">日記不是日記。日記是縮微的小說。</p>
+                <div class="two-col">
+                    <div class="example-card">
+                        <h4>作者寫的（30~50 字）</h4>
+                        <p class="serif text-s mt-2">
+                            <span class="accent">2026/06/28：</span>今天主管在會議上當眾糾正我，我表面說好，回座位才發現手在抖。
+                        </p>
+                    </div>
+                    <div class="example-card" style="border-color: var(--c-accent);">
+                        <h4>AI 自動展開的（一千字）</h4>
+                        <p class="serif text-s mt-2" style="font-size: 0.85em;">
+                            「6/28（六）多雲偶雨<br><br>
+                            早上開會的時候被主管當著全部人糾正了一次。她沒有特別兇，就是那種『林沛雯妳這個版本還是再想一下吧』的語氣，但話說出口的瞬間，我感覺到旁邊張哲在看我。<br><br>
+                            我說：『好。』<br><br>
+                            回座位之後，我把咖啡杯轉了半圈，又轉了半圈。手指有點抖。<br><br>
+                            不是因為被糾正。是因為被糾正的時候，我第一個念頭是『不要讓張哲覺得我很弱』——我居然在乎這件事。<br><br>
+                            主任今晚一直繞著我的腳走⋯⋯」
+                        </p>
+                    </div>
+                </div>
+                <p class="text-l mt-3 center" style="text-align: center;"><span class="accent">作者寫一行，AI 寫一千字。</span>
+                    但每一字都是這個角色會寫出來的。</p>
+                <div class="demo-tag">Demo：daily_run.html 生成過程</div>
+            </div>
+        </section>
+
+        <!-- 投影片 34 — 工具 5 小說產生器 -->
+        <section class="slide" data-section="PART 5 ‧ 五工具流水線" data-notes="這張可以強調『作者每一層都可以介入』這件事，避免觀眾誤以為『AI 全自動寫一本』。">
+            <div class="slide-inner">
+                <div class="kicker">工具 ⑤</div>
+                <h1 class="title-m mb-3">小說產生器：<span class="accent">四個粒度</span></h1>
+                <div class="two-col">
+                    <div>
+                        <div class="example-card">
+                            <h4 class="dim" style="font-size: 0.85em;">粒度 1</h4>
+                            <p class="serif"><span class="accent">粗綱</span>：整本小說的梗概（一段）</p>
+                        </div>
+                        <p class="text-s dim center mt-1" style="text-align:center;">↓ AI 展開</p>
+                        <div class="example-card">
+                            <h4 class="dim" style="font-size: 0.85em;">粒度 2</h4>
+                            <p class="serif"><span class="accent">章</span>：章節大綱（每章一段）</p>
+                        </div>
+                        <p class="text-s dim center mt-1" style="text-align:center;">↓ AI 展開</p>
+                        <div class="example-card">
+                            <h4 class="dim" style="font-size: 0.85em;">粒度 3</h4>
+                            <p class="serif"><span class="accent">節</span>：每節細綱（每節數段）</p>
+                        </div>
+                        <p class="text-s dim center mt-1" style="text-align:center;">↓ AI 展開</p>
+                        <div class="example-card">
+                            <h4 class="dim" style="font-size: 0.85em;">粒度 4</h4>
+                            <p class="serif"><span class="accent">內文</span>：實際小說文字</p>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="example-card" style="border-color: var(--c-accent);">
+                            <h4>關鍵設計</h4>
+                            <ul class="bullet-list">
+                                <li><span class="accent">每一層作者都可以介入修改</span></li>
+                                <li>AI 根據該層產生下一層</li>
+                                <li>不是 AI 自動寫一本</li>
+                                <li>是作者用更少的時間，<br>寫出更像他想要的故事</li>
+                            </ul>
+                        </div>
+                        <div class="example-card mt-2">
+                            <h4>反向也可以</h4>
+                            <p class="text-s mt-1">丟一本既有小說 → AI 反推節→章→粗綱<br><span class="accent">→ 變成下一本的起點</span></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="demo-tag">Demo：novel_generator.html 四階段展開</div>
+            </div>
+        </section>
+
+        <!-- 投影片 35 — 同一個粗綱，不同角色 -->
+        <section class="slide" data-section="PART 5 ‧ 五工具流水線" data-notes="這張投影片把整場簡報的核心訊息（角色推動劇情）再用一個具體展示釘下來。預期會引發討論。">
+            <div class="slide-inner">
+                <div class="kicker">最有趣的證明</div>
+                <h1 class="title-s mb-3">同一個粗綱，不同角色，<span class="accent">完全不同的小說</span></h1>
+                <div class="example-card mb-2" style="background: var(--c-bg-deep);">
+                    <h4>共同粗綱</h4>
+                    <p class="serif text-s mt-2">「學生時代的舊情人，在 40 歲那年於台北重逢。三天的相處，讓彼此意識到一些一直沒說出口的事，但最終各自回到原本的生活。」</p>
+                </div>
+                <div class="two-col">
+                    <div class="example-card">
+                        <h4 style="color: var(--c-phase-love);">A：李婷婷（海嘯）× 陳奕翔（燈塔）</h4>
+                        <p class="serif text-s mt-2">「李婷婷在約定時間提早半小時到了。她在咖啡廳門口拍了一張照、發了限動：『二十年沒見的人，今天要見了。』陳奕翔遲到了 8
+                            分鐘，推門進來時什麼都沒解釋，只是放下公事包，看著她：『妳沒變。』她笑：『騙鬼。』他坐下：『真的。』她突然覺得二十年的氣，三秒就消了。」</p>
+                    </div>
+                    <div class="example-card" style="background: linear-gradient(135deg, #0c1a2e, #08111e);">
+                        <h4 style="color: var(--c-phase-break);">B：林沛雯（深海）× Stefan（燈塔/總裁）</h4>
+                        <p class="serif text-s mt-2">「林沛雯一週前就知道 Stefan 會來台北。她沒主動聯絡。是 Stefan 的助理透過 LinkedIn
+                            找到她，約了禮拜五晚上七點。她回了『好』，沒有問為什麼是七點、為什麼是這家餐廳。當晚她比預定時間早 15 分鐘到，坐在最角落的位子。Stefan
+                            七點整推門。十年了。他點了頭，坐下，沒寒暄：『我下個月要結婚了。』」</p>
+                    </div>
+                </div>
+                <p class="text-l mt-3 center" style="text-align: center;">同一個粗綱。<span class="accent">完全不同的兩本小說。</span>
+                </p>
+                <div class="audience-q">你會更想讀哪一本？為什麼？</div>
+            </div>
+        </section>
+
+        <!-- 投影片 36 — 反向：舊小說反推粗綱 -->
+        <section class="slide" data-section="PART 5 ‧ 五工具流水線" data-notes="對長期創作的作者來說，這是很實用的整理工具。">
+            <div class="slide-inner">
+                <div class="kicker">工具 ⑤ 反向用法</div>
+                <h1 class="title-m mb-3">把舊小說，<span class="accent">拆回粗綱</span></h1>
+                <div class="two-col">
+                    <div class="example-card">
+                        <h4>輸入：作者上傳一本舊作（10 萬字）</h4>
+                        <p class="serif text-s mt-2 dim">📕 《京都半年》<br><br>「30 歲女性插畫家因為工作關係搬到京都半年。在當地遇到一位安靜的木工師傅⋯⋯」</p>
+                    </div>
+                    <div class="example-card" style="border-color: var(--c-accent);">
+                        <h4>AI 分析後輸出</h4>
+                        <p class="text-s mt-2">
+                            <span class="accent">粗綱（自動生成）</span>：<br>
+                            「30 歲插畫家搬到京都半年。當地遇到木工師傅，發展朦朧情感但都沒說出口。半年回台北後繼續通信，五年後重逢時他已結婚生子。」<br><br>
+                            <span class="accent">章（自動生成）</span>：<br>
+                            Ch.1 抵達京都<br>
+                            Ch.2 鴨川的下午<br>
+                            Ch.3 第一次的「差一點」<br>
+                            Ch.4 ⋯⋯
+                        </p>
+                    </div>
+                </div>
+                <p class="text-l mt-3 center" style="text-align: center;"><span
+                        class="accent">這個功能讓你的舊作可以變成新作的素材庫。</span></p>
+                <div class="demo-tag">Demo：novel_generator 文字檔轉粗綱</div>
+            </div>
+        </section>
+
+        <!-- 投影片 37 — 全部串起來：完整工作流 -->
+        <section class="slide" data-section="PART 5 ‧ 五工具流水線"
+            data-notes="這張是整套系統的『實際使用故事』。讓觀眾看到五個工具如何在真實的兩週裡被串起來。可以稍微多停留。">
+            <div class="slide-inner">
+                <div class="kicker">把五個工具串起來</div>
+                <h1 class="title-m mb-3">一個真實的<span class="accent">兩週工作流</span></h1>
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="date">6/01</div>
+                        <div class="desc">我想寫一個故事——30 歲在台北一個人住的女生，遇到比她小 5 歲的男生。</div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="date">6/02</div>
+                        <div class="desc">填 LPAS，把結果當女主角人格地基：<span class="accent">海嘯 ‧ 岩漿 ‧ 深海</span>。</div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="date">6/03</div>
+                        <div class="desc">編輯器補完：林沛雯，34 歲，副總，離婚一年，養貓「主任」⋯⋯</div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="date">6/04</div>
+                        <div class="desc">LoveLine 聊半小時。發現她太流暢——應該更冷一點。回去調個性，再聊。對了。</div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="date">6/05</div>
+                        <div class="desc">建男主角：張哲，29 歲，新進副理，活潑外放，海嘯型。LoveLine 聊。</div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="date">6/06 ~ 6/12</div>
+                        <div class="desc">為兩人各寫一週的日記，建立「小說開始之前」的歷史。</div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="date">6/13</div>
+                        <div class="desc">小說產生器寫粗綱：「34 歲離婚女主管 × 小 5 歲下屬，男生升職調走，女主角發現自己已經放不下。」</div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="date">6/14 ~ 6/19</div>
+                        <div class="desc">AI 生章 → 我調章 → AI 生節 → 我調節 → AI 生內文。</div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="date">6/20</div>
+                        <div class="desc"><span class="accent">完成一本 6 萬字的中篇小說。我覺得這個故事，真的是林沛雯的故事——不是我硬塞給她的故事。</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================
+     PART 6 — 把所有東西串起來
+     ============================================================ -->
+
+        <!-- 投影片 38 — 一句話的總結 -->
+        <section class="slide center dark" data-section="PART 6 ‧ 收尾"
+            data-notes="這張投影片是整場簡報的『題眼』，停留 5-10 秒讓觀眾消化。可以重新念一次。">
+            <div class="slide-inner">
+                <div class="kicker">如果只能帶走一件事</div>
+                <h1 class="title-l mt-3" style="line-height: 1.4;">
+                    <span class="dim">AI 可以這樣被用來</span>
+                    <span class="accent">寫角色</span>，<br>
+                    <span class="dim">不只是寫文字。</span>
+                </h1>
+                <div class="mt-4" style="display: inline-block; text-align: left;">
+                    <p class="text-m dim">▸ LPAS 給角色人格地基</p>
+                    <p class="text-m dim">▸ 編輯器補完細節</p>
+                    <p class="text-m dim">▸ LoveLine 驗證 AI 接得住</p>
+                    <p class="text-m dim">▸ 日記讓角色活在時間裡</p>
+                    <p class="text-m dim">▸ 小說產生器組裝成完整章節</p>
+                    <p class="text-m accent mt-2">而每一步，作者都可以介入。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 投影片 39 — 數字回顧 -->
+        <section class="slide" data-section="PART 6 ‧ 收尾"
+            data-notes="這張投影片刻意強調『業餘』、『會繞遠路』，避免讓觀眾覺得『這要工程師才做得到』，建立『你也可以』的氛圍。">
+            <div class="slide-inner">
+                <h1 class="title-m mb-3">兩個半月，<span class="accent">從零到一個能用的系統</span></h1>
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="num">2.5</div>
+                        <div class="label">個月</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="num">5</div>
+                        <div class="label">個工具</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="num">16</div>
+                        <div class="label">個天候型</div>
+                    </div>
+                </div>
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="num">30+</div>
+                        <div class="label">個版本</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="num">3</div>
+                        <div class="label">次 LPAS 大改</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="num">1</div>
+                        <div class="label">個業餘作者</div>
+                    </div>
+                </div>
+                <div class="quote-block mt-3" style="border-color: var(--c-accent-light);">
+                    <span class="accent">這不是一場完美的開發，</span><br>
+                    是一場真實的、會繞遠路的、不斷修正的探索。
+                </div>
+            </div>
+        </section>
+
+        <!-- 投影片 40 — CTA -->
+        <section class="slide" data-section="PART 6 ‧ 收尾"
+            data-notes="CTA 必須具體、低門檻、有清楚的『我接下來該做什麼』。可以開玩笑說『我等下可以幫你直接開帳號』。">
+            <div class="slide-inner">
+                <div class="kicker">我需要你</div>
+                <h1 class="title-m mb-3">這個系統需要更多人試用<br><span class="accent">才能找出我自己看不到的盲點</span></h1>
+                <div class="three-col mt-3">
+                    <div class="example-card">
+                        <h4>① 填一份 LPAS</h4>
+                        <p class="text-s mt-2 dim">10 分鐘<br><br>告訴我結果<span class="accent">準不準</span></p>
+                    </div>
+                    <div class="example-card">
+                        <h4>② 跟一個角色聊兩句</h4>
+                        <p class="text-s mt-2 dim">5 分鐘<br><br>告訴我她<span class="accent">像不像「人」</span></p>
+                    </div>
+                    <div class="example-card">
+                        <h4>③ 丟一本舊小說</h4>
+                        <p class="text-s mt-2 dim">不限時間<br><br>我幫你<span class="accent">反推角色卡</span>，結果回給你</p>
+                    </div>
+                </div>
+                <div class="quote-block mt-3" style="border-color: var(--c-accent); text-align: center;">
+                    想試用的話，<br>
+                    <span class="accent">簡報結束後請來找我，我直接幫你開帳號。</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================
+     PART 7 — 結尾 Q&A
+     ============================================================ -->
+
+        <!-- 投影片 41 — 謝謝 -->
+        <section class="slide center dark" data-section="PART 7 ‧ Q&A"
+            data-notes="這張之後留 10-15 分鐘給 Q&A。維持輕鬆氛圍。準備一兩個自己預想會被問的問題的答案。">
+            <div class="slide-inner">
+                <h1 class="title-xl mb-3"><span class="accent">謝謝</span></h1>
+                <p class="text-l serif dim mb-4">謝謝你們聽我講了兩小時。</p>
+                <div class="quote-block mt-3" style="text-align: center; border-color: var(--c-accent-light);">
+                    接下來的時間都是你們的。<br><br>
+                    <span class="accent">任何問題、質疑、好奇、想自己試試看、想合作⋯⋯</span><br>
+                    都歡迎。
+                </div>
+                <p class="text-m dim mt-4 serif">— LoveIsABitMessy —<br>愛是有點亂</p>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- ============================================================
+     講者備註面板
+     ============================================================ -->
+
+    <div class="notes-panel" id="notesPanel">
+        <h5>講者備註</h5>
+        <p id="notesContent">—</p>
+    </div>
+
+    <!-- ============================================================
+     導航控制
+     ============================================================ -->
+
+    <div class="nav">
+        <button id="btnFirst" title="第一張">⏮</button>
+        <button id="btnPrev" title="上一張">◀</button>
+        <span class="counter"><span id="currNum">1</span> / <span id="totalNum">41</span></span>
+        <button id="btnNext" title="下一張">▶</button>
+        <button id="btnLast" title="最後一張">⏭</button>
+    </div>
+
+    <script>
+        /* ============================================================
+           投影片控制邏輯
+           ============================================================ */
+
+        const deck = document.getElementById('deck');
+        const slides = deck.querySelectorAll('.slide');
+        const total = slides.length;
+
+        let current = 0;
+        let notesVisible = false;
+
+        const progressEl = document.getElementById('progress');
+        const sectionTag = document.getElementById('sectionTag');
+        const notesPanel = document.getElementById('notesPanel');
+        const notesContent = document.getElementById('notesContent');
+        const currNumEl = document.getElementById('currNum');
+        const totalNumEl = document.getElementById('totalNum');
+
+        totalNumEl.textContent = total;
+
+        function showSlide(idx) {
+            if (idx < 0) idx = 0;
+            if (idx >= total) idx = total - 1;
+
+            slides.forEach((s, i) => {
+                s.classList.toggle('active', i === idx);
+            });
+
+            current = idx;
+            currNumEl.textContent = idx + 1;
+            progressEl.style.width = ((idx + 1) / total * 100) + '%';
+
+            const slide = slides[idx];
+            const section = slide.dataset.section || '';
+            const notes = slide.dataset.notes || '—';
+            sectionTag.textContent = section;
+            notesContent.textContent = notes;
+
+            // 控制按鈕禁用狀態
+            document.getElementById('btnFirst').disabled = idx === 0;
+            document.getElementById('btnPrev').disabled = idx === 0;
+            document.getElementById('btnNext').disabled = idx === total - 1;
+            document.getElementById('btnLast').disabled = idx === total - 1;
+
+            // 同步 URL hash
+            history.replaceState(null, '', '#' + (idx + 1));
+        }
+
+        function next() { showSlide(current + 1); }
+        function prev() { showSlide(current - 1); }
+        function first() { showSlide(0); }
+        function last() { showSlide(total - 1); }
+
+        function toggleNotes() {
+            notesVisible = !notesVisible;
+            notesPanel.classList.toggle('show', notesVisible);
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        /* 鍵盤導航 */
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+                e.preventDefault();
+                next();
+            } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+                e.preventDefault();
+                prev();
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                first();
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                last();
+            } else if (e.key === 'n' || e.key === 'N') {
+                e.preventDefault();
+                toggleNotes();
+            } else if (e.key === 'f' || e.key === 'F') {
+                e.preventDefault();
+                toggleFullscreen();
+            } else if (e.key === 'Escape') {
+                notesVisible = false;
+                notesPanel.classList.remove('show');
+            } else if (/^[0-9]$/.test(e.key)) {
+                // 數字鍵跳到投票選項顯示（單純演示用，不做事）
+            }
+        });
+
+        /* 按鈕點擊 */
+        document.getElementById('btnFirst').addEventListener('click', first);
+        document.getElementById('btnPrev').addEventListener('click', prev);
+        document.getElementById('btnNext').addEventListener('click', next);
+        document.getElementById('btnLast').addEventListener('click', last);
+
+        /* 點擊投影片左右半邊切換 */
+        deck.addEventListener('click', (e) => {
+            // 排除互動元素
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A' || e.target.closest('button')) return;
+            const w = window.innerWidth;
+            if (e.clientX < w * 0.3) {
+                prev();
+            } else if (e.clientX > w * 0.7) {
+                next();
+            }
+        });
+
+        /* 載入時從 URL hash 還原 */
+        window.addEventListener('load', () => {
+            const hash = parseInt(window.location.hash.slice(1));
+            if (hash && hash >= 1 && hash <= total) {
+                showSlide(hash - 1);
+            } else {
+                showSlide(0);
+            }
+        });
+
+    </script>
+
+</body>
+
+</html>
