@@ -2220,6 +2220,7 @@ class _SilentTCPServer(socketserver.ThreadingTCPServer):
 if __name__ == "__main__":
     for d in ['web', 'characters', 'diaries']: os.makedirs(d, exist_ok=True)
     print(f"Server runs at http://localhost:{PORT}")
+    print(f"Ollama target  : {_ollama_base_url()}  (OLLAMA_HOST={os.environ.get('OLLAMA_HOST', '<未設定，使用預設>')})")
     with _SilentTCPServer(("127.0.0.1", PORT), DebugHandler) as httpd:
         try: httpd.serve_forever()
         except KeyboardInterrupt: print("\nStopped.")
