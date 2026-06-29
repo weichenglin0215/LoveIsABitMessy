@@ -610,7 +610,8 @@ def _ollama_generate_direct(model, prompt, options=None, images=None, on_chunk=N
         "repeat_penalty": 1.1,
         "top_k": 40,
         "top_p": 0.9,
-        "num_gpu": 999 #強制所有資料放入GPU跟VRAM。
+        "num_gpu": 999, #強制所有資料放入GPU跟VRAM。
+        #"think": False #不顯示運算過程，沒作用。
     }
     
     # 合併外部傳入的 options（不修改原始 dict）

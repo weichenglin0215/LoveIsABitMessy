@@ -21,16 +21,16 @@
 
         :root {
             /* 主色系（沿用專案配色） */
-            --c-bg-main: #0F0A1E;
-            --c-bg-card: #1A1035;
-            --c-bg-deep: #08050F;
-            --c-accent: #9C6FD6;
-            --c-accent-light: #C5A8F0;
-            --c-accent-dim: #6B47A8;
-            --c-text-main: #E8E0F5;
-            --c-text-sec: #A89BC0;
-            --c-text-dim: #5A5070;
-            --c-divider: #2A1E50;
+            --c-bg-main: hsl(255, 50%, 8%);
+            --c-bg-card: hsl(255, 30%, 20%);
+            --c-bg-deep: hsl(255, 55%, 4%);
+            --c-accent: hsl(266, 60%, 64%);
+            --c-accent-light: hsl(266, 60%, 75%);
+            --c-accent-dim: hsl(266, 60%, 50%);
+            --c-text-main: hsl(245, 60%, 90%);
+            --c-text-sec: hsl(245, 60%, 70%);
+            --c-text-dim: hsl(245, 60%, 55%);
+            --c-divider: hsl(245, 30%, 18%);
 
             /* 三階段色彩 */
             --c-phase-ambig: hsl(266, 56%, 64%);
@@ -201,6 +201,11 @@
             color: var(--c-text-sec);
         }
 
+        .dim_bg {
+            color: var(--c-text-sec);
+            background-color: aliceblue;
+        }
+
         .accent {
             color: var(--c-accent-light);
         }
@@ -244,12 +249,13 @@
         /* ============================================================
    元件樣式
    ============================================================ */
-
+        /*最上方藥丸框*/
         .kicker {
             display: inline-block;
             padding: 0.3rem 1.2rem;
             background: var(--c-bg-card);
             border: 1px solid var(--c-accent-dim);
+            border-bottom: 5px solid var(--c-accent-dim);
             border-radius: 999px;
             font-size: clamp(1.6rem, 2vw, 2rem);
             color: var(--c-accent-light);
@@ -257,8 +263,9 @@
             margin-bottom: 2rem;
         }
 
+        /*引言框*/
         .quote-block {
-            border-left: 4px solid var(--c-accent);
+            border-left: 8px solid var(--c-accent);
             padding: 1.5rem 2rem;
             background: var(--c-bg-card);
             border-radius: 0 12px 12px 0;
@@ -268,10 +275,12 @@
             line-height: 1.9;
         }
 
+        /*有框線的卡片*/
         .example-card {
             background: var(--c-bg-card);
-            border: 1px solid var(--c-divider);
+            border: 1px solid var(--c-accent-light);
             border-radius: 12px;
+            border-left: 10px solid var(--c-accent);
             padding: 1.2rem 1.4rem;
             margin: 1rem 0;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
@@ -330,6 +339,7 @@
             border-radius: 12px;
             padding: 1.5rem 1.8rem;
             border: 1px solid var(--c-divider);
+            border-top: 10px solid var(--c-phase-ambig);
         }
 
         .phase-card.ambig {
@@ -413,7 +423,8 @@
 
         .type-cell {
             background: var(--c-bg-card);
-            border: 1px solid var(--c-divider);
+            border: 1px solid var(--c-accent-dim);
+            border-top: 5px solid var(--c-accent-dim);
             border-radius: 10px;
             padding: 0.9rem 0.8rem;
             text-align: center;
@@ -462,7 +473,7 @@
 
         .axis-table td:nth-child(2),
         .axis-table td:nth-child(3) {
-            text-align: center;
+            text-align: left;
             font-family: var(--font-serif);
         }
 
@@ -897,10 +908,14 @@
         }
 
         .type-detail-card .type-code {
-            font-size: clamp(1.7rem, 2.2vw, 2rem);
+            font-size: clamp(2.5rem, 2.2vw, 3.0rem);
+            font-weight: 600;
             color: var(--c-text-dim);
+            background-color: lightblue;
             letter-spacing: 0.15em;
+            margin-top: 1rem;
             margin-bottom: 1rem;
+            padding-left: 1rem;
         }
 
         .type-detail-card .type-short {
@@ -1252,33 +1267,7 @@
             </div>
         </section>
 
-        <!-- 投影片 14 — 一個例子：李婷婷 -->
-        <section class="slide" data-section="PART 3 ‧ 從愛情切入「人」"
-            data-notes="這個問題大部分人會答『不是同一個人』。這正是 LPAS 想要捕捉的洞察。預期會引發 3-5 分鐘的自我分享，順其自然。">
-            <div class="slide-inner">
-                <div class="kicker">具體例子</div>
-                <h1 class="title-m mb-3">李婷婷，29 歲，廣告公司 AE</h1>
-                <div class="three-col mt-2">
-                    <div class="phase-card ambig">
-                        <h4>曖昧期</h4>
-                        <p>喜歡上同公司設計師之後，第二週就找理由去他工位三次。下班順路傳訊息「我剛好經過你家那邊，要不要吃宵夜」，沒回應就直接打電話。</p>
-                    </div>
-                    <div class="phase-card love">
-                        <h4>熱戀期</h4>
-                        <p>在一起之後反而安靜了。不放閃、不打卡、不在朋友面前提他。但每天早上六點起床做便當，他完全不知道。</p>
-                    </div>
-                    <div class="phase-card break">
-                        <h4>失戀期</h4>
-                        <p>分手第三週，朋友才知道。她沒哭、沒發限動、沒去酒吧。她去學了陶藝，每週一三五，七點到十點，從不缺席。</p>
-                    </div>
-                </div>
-                <p class="text-l mt-3 center" style="text-align: center;">這還是同一個人嗎？<span
-                        class="accent">是。但這也是三個不同的人。</span></p>
-                <div class="audience-q">你在曖昧期、熱戀期、失戀期，是同一個人嗎？</div>
-            </div>
-        </section>
-
-        <!-- 投影片 15 — 所以我做了一份問卷 -->
+        <!-- 投影片 14 — 所以我做了一份問卷 -->
         <section class="slide" data-section="PART 3 ‧ 從愛情切入「人」"
             data-notes="這張可以開始切到實際的系統畫面（如果有錄影）。Demo 影片：實際操作 lpas_v3.html，30 秒。">
             <div class="slide-inner">
@@ -1306,11 +1295,44 @@
             </div>
         </section>
 
+        <!-- 投影片 16 — 四條軸說明 -->
+        <section class="slide" data-section="PART 3 ‧ 從愛情切入「人」"
+            data-notes="刻意不使用英文代碼（A/P/F/S/O/I/H/L），保持口語感。問：『你覺得自己在這四條軸上，會偏向哪邊？』鼓勵 2-3 位觀眾自己描述。">
+            <div class="slide-inner">
+                <h1 class="title-m mb-3"><span class="accent">四條獨立軸</span>，互不關連且全面覆蓋MECE。</h1>
+                <div class="four-col mt-2">
+                    <div class="example-card">
+                        <h1 style="font-size: 3.5rem;">主動 vs 被動<br><span class="dim"
+                                style="font-size: 0.8em;">（你怎麼開始）</span></h1>
+                        <p class="serif text-s"></p>
+                    </div>
+                    <div class="example-card">
+                        <h1 style="font-size: 3.5rem;">快速 vs 緩慢<span class="dim"
+                                style="font-size: 0.8em;">（你掌握進度）</span></h1>
+                        <p class="serif text-s"></p>
+                    </div>
+                    <div class="example-card">
+                        <h1 style="font-size: 3.5rem;">外放 vs 內斂<span class="dim"
+                                style="font-size: 0.8em;">（你如何表達）</span></h1>
+                        <p class="serif text-s"></p>
+                    </div>
+                    <div class="example-card">
+                        <h1 style="font-size: 3.5rem;">佔有 vs 自由<span class="dim"
+                                style="font-size: 0.8em;">（你們的距離）</span></h1>
+                        <p class="serif text-s"></p>
+                    </div>
+                </div>
+                <p class="text-l mt-3 center" style="text-align: center;">【主動-緩慢-外放-自由】或【被動-快速-內斂-佔有】</p>
+                <p class="text-l mt-3 center" style="text-align: center;">這四條軸的組合 →<span class="accent"> 16
+                        種完全不同的「愛人方式」</span>。</p>
+                <div class="audience-q">你覺得自己在這四條軸上，會偏向哪邊？</div>
+            </div>
+        </section>
         <!-- 投影片 16 — 四條軸 -->
         <section class="slide" data-section="PART 3 ‧ 從愛情切入「人」"
             data-notes="刻意不使用英文代碼（A/P/F/S/O/I/H/L），保持口語感。問：『你覺得自己在這四條軸上，會偏向哪邊？』鼓勵 2-3 位觀眾自己描述。">
             <div class="slide-inner">
-                <h1 class="title-m mb-3">它怎麼分類？<span class="accent">四條軸</span>。</h1>
+                <h1 class="title-m mb-3">它怎麼分類？<span class="accent">四條獨立軸</span>。</h1>
                 <table class="axis-table">
                     <thead>
                         <tr>
@@ -1329,21 +1351,21 @@
                         </tr>
                         <tr>
                             <td>快 vs 慢</td>
-                            <td>一週就確定</td>
-                            <td>半年才看清楚</td>
+                            <td>一天就確診</td>
+                            <td>半年還在觀察</td>
                             <td>你決定的節奏</td>
                         </tr>
                         <tr>
                             <td>外放 vs 內斂</td>
-                            <td>全世界都會知道</td>
-                            <td>連好朋友都未必</td>
-                            <td>你怎麼表達</td>
+                            <td>讓全世界都會知道</td>
+                            <td>連閨蜜都不知道</td>
+                            <td>你如何表達</td>
                         </tr>
                         <tr>
                             <td>佔有 vs 自由</td>
-                            <td>你跟誰吃飯我要知道</td>
-                            <td>你過你的我過我的</td>
-                            <td>你需要的距離</td>
+                            <td>我要知道你跟誰吃飯</td>
+                            <td>我過我的，你過你的</td>
+                            <td>你們之間的距離</td>
                         </tr>
                     </tbody>
                 </table>
@@ -1361,11 +1383,11 @@
                 <div class="types-grid">
                     <div class="type-cell">
                         <div class="name">海嘯型</div>
-                        <div class="short">狂暴的愛情巨浪</div>
+                        <div class="short">主動-快速-外放-佔有<br>狂暴的愛情巨浪</div>
                     </div>
                     <div class="type-cell">
                         <div class="name">煙火型</div>
-                        <div class="short">燦爛而短暫</div>
+                        <div class="short">主動-快速-外放-自由<br>燦爛而短暫</div>
                     </div>
                     <div class="type-cell">
                         <div class="name">漩渦型</div>
@@ -1417,11 +1439,11 @@
                     </div>
                     <div class="type-cell">
                         <div class="name">深海型</div>
-                        <div class="short">靜默深處記每場風暴</div>
+                        <div class="short">被動-緩慢-內斂-佔有<br>靜默深處記每場風暴</div>
                     </div>
                     <div class="type-cell">
                         <div class="name">迷霧型</div>
-                        <div class="short">無聲圍繞不索求</div>
+                        <div class="short">被動-緩慢-內斂-自由<br>無聲圍繞不索求</div>
                     </div>
                 </div>
                 <p class="text-m mt-3 dim center" style="text-align: center;">
@@ -1438,19 +1460,23 @@
             data-notes="預告接下來三張。挑這三個是因為對比強烈：海嘯（最強），燈塔（最穩），深海（最沉）。">
             <div class="slide-inner">
                 <div class="kicker">PART 4</div>
-                <h1 class="title-l mb-3">來看三個<span class="accent">對比強烈</span>的型號</h1>
-                <div class="three-col mt-4">
+                <h1 class="title-l mb-3">來看四個<span class="accent">對比強烈</span>的型號</h1>
+                <div class="four-col mt-4">
                     <div class="example-card center" style="text-align: center;">
                         <h4 style="color: hsl(210, 70%, 65%);">海嘯型</h4>
-                        <p class="text-s dim">主動 × 快 × 外放 × 佔有</p>
+                        <p class="text-s dim">主動 × 快速 × 外放 × 佔有</p>
                     </div>
                     <div class="example-card center" style="text-align: center;">
                         <h4 style="color: hsl(50, 80%, 65%);">燈塔型</h4>
-                        <p class="text-s dim">主動 × 慢 × 內斂 × 自由</p>
+                        <p class="text-s dim">主動 × 緩慢 × 內斂 × 自由</p>
                     </div>
                     <div class="example-card center" style="text-align: center;">
                         <h4 style="color: hsl(200, 60%, 55%);">深海型</h4>
-                        <p class="text-s dim">被動 × 慢 × 內斂 × 佔有</p>
+                        <p class="text-s dim">被動 × 緩慢 × 內斂 × 佔有</p>
+                    </div>
+                    <div class="example-card center" style="text-align: center;">
+                        <h4 style="color: hsl(50, 80%, 65%);">流星型</h4>
+                        <p class="text-s dim">被動 × 快速 × 外放 × 自由</p>
                     </div>
                 </div>
                 <p class="text-l mt-4 dim">同樣是「喜歡上一個人」，她們的反應<span class="accent">完全不一樣</span>。</p>
@@ -1463,7 +1489,7 @@
                 <div class="two-col">
                     <div class="type-detail-card">
                         <div class="type-name">海嘯型</div>
-                        <div class="type-code">主動 × 快 × 外放 × 佔有</div>
+                        <div class="type-code">主動 × 快速 × 外放 × 佔有</div>
                         <div class="type-short">「狂暴的愛情巨浪包圍著你們，也可能是場災難。」</div>
                         <div class="section-head">曖昧期</div>
                         <div class="section-body">當你心動的那一刻，整個世界就已經知道：他是你選定的人。你不繞圈子、不留試探的餘地⋯⋯你不是在追求他，你是在讓他知道：這片海已經朝他湧過去了。
@@ -1491,7 +1517,7 @@
                 <div class="two-col">
                     <div class="type-detail-card">
                         <div class="type-name">燈塔型</div>
-                        <div class="type-code">主動 × 慢 × 內斂 × 自由</div>
+                        <div class="type-code">主動 × 緩慢 × 內斂 × 自由</div>
                         <div class="type-short">「穩穩照著夜色，從不索求停留。」</div>
                         <div class="section-head">熱戀期</div>
                         <div class="section-body">
@@ -1520,7 +1546,7 @@
                 <div class="two-col">
                     <div class="type-detail-card">
                         <div class="type-name">深海型</div>
-                        <div class="type-code">被動 × 慢 × 內斂 × 佔有</div>
+                        <div class="type-code">被動 × 緩慢 × 內斂 × 佔有</div>
                         <div class="type-short">「靜默深處，永遠記得每場風暴。」</div>
                         <div class="section-head">失戀期</div>
                         <div class="section-body">
@@ -1544,6 +1570,29 @@
             </div>
         </section>
 
+        <!-- 投影片 22 — 時間三階段 -->
+        <section class="slide" data-section="PART 4 ‧ 16 型實際看"
+            data-notes="這張投影片是 PART 4 的高潮。把『同一個人，三種樣子』的洞察用一個具體例子釘下來。">
+            <div class="slide-inner">
+                <h1 class="title-m mb-3">同一個人，<span class="accent">戀愛的三個期間</span></h1>
+                <div class="three-col mt-3">
+                    <div class="phase-card ambig">
+                        <h4 style="font-size: 9.0rem; color: var(--c-phase-ambig);">曖昧期</h4>
+                        <span style="font-size: 3.5rem;">想起初相見，<br>似地轉天旋。</span>
+                    </div>
+                    <div class=" phase-card love">
+                        <h4 style="font-size: 9.0rem; color: var(--c-phase-love);">熱戀期</h4>
+                        <span style="font-size: 3.5rem;">就是傻。</span>
+                    </div>
+                    <div class="phase-card break">
+                        <h4 style="font-size: 9.0rem; color: var(--c-phase-break);">失戀期</h4>
+                        <span style="font-size: 3.5rem;">當意念改變，<br>一切如過眼雲煙。</span>
+                    </div>
+                </div>
+                <p class="text-l mt-3 center" style="text-align: center;"><span
+                        class="accent">愛情有點亂</span>：還分成了三個時間階段，情緒各有不同。</p>
+            </div>
+        </section>
         <!-- 投影片 22 — 同一個人，三聯型號 -->
         <section class="slide" data-section="PART 4 ‧ 16 型實際看"
             data-notes="這張投影片是 PART 4 的高潮。把『同一個人，三種樣子』的洞察用一個具體例子釘下來。">
@@ -1574,7 +1623,33 @@
                     </div>
                 </div>
                 <p class="text-l mt-3 center" style="text-align: center;"><span class="accent">這就是 LPAS
-                        想做到的事</span>：一張角色卡，能描述同一個人在三個階段，是三個不同的人。</p>
+                        想做到的事</span>：一張角色卡，能描述同一個人在三個階段，是三個不同的人(性格)。</p>
+            </div>
+        </section>
+
+        <!-- 投影片 15 — 一個例子：李婷婷 -->
+        <section class="slide" data-section="PART 3 ‧ 從愛情切入「人」"
+            data-notes="這個問題大部分人會答『不是同一個人』。這正是 LPAS 想要捕捉的洞察。預期會引發 3-5 分鐘的自我分享，順其自然。">
+            <div class="slide-inner">
+                <div class="kicker">具體例子</div>
+                <h1 class="title-m mb-3">李婷婷，29 歲，廣告公司 AE</h1>
+                <div class="three-col mt-2">
+                    <div class="phase-card ambig">
+                        <h4>曖昧期</h4>
+                        <p>喜歡上同公司設計師之後，第二週就找理由去他工位三次。下班順路傳訊息「我剛好經過你家那邊，要不要吃宵夜」，沒回應就直接打電話。</p>
+                    </div>
+                    <div class="phase-card love">
+                        <h4>熱戀期</h4>
+                        <p>在一起之後反而安靜了。不放閃、不打卡、不在朋友面前提他。但每天早上六點起床做便當，他完全不知道。</p>
+                    </div>
+                    <div class="phase-card break">
+                        <h4>失戀期</h4>
+                        <p>分手第三週，朋友才知道。她沒哭、沒發限動、沒去酒吧。她去學了陶藝，每週一三五，七點到十點，從不缺席。</p>
+                    </div>
+                </div>
+                <p class="text-l mt-3 center" style="text-align: center;">這還是同一個人嗎？<span
+                        class="accent">是。但這也是三個不同的人。</span></p>
+                <div class="audience-q">你在曖昧期、熱戀期、失戀期，是同一個人嗎？</div>
             </div>
         </section>
 
@@ -1583,24 +1658,29 @@
             data-notes="說明這部分的設計考量——對小說來說性是關鍵維度，但對填寫者要給選擇權。簡短帶過，不過度展開。">
             <div class="slide-inner">
                 <h1 class="title-m mb-3">還有第四個維度：<span class="accent">性象限</span></h1>
-                <p class="text-l mb-2 dim">性議題太重要不能省略，但獨立成段——可以跳過。</p>
-                <div class="two-col mt-2">
-                    <div class="example-card">
-                        <h4>深情專一型 <span class="dim" style="font-size: 0.8em;">（高依附 × 專一）</span></h4>
-                        <p class="serif text-s">「沒有愛，我給不出身體」</p>
-                    </div>
-                    <div class="example-card">
-                        <h4>鍾情博愛型 <span class="dim" style="font-size: 0.8em;">（高依附 × 開放）</span></h4>
-                        <p class="serif text-s">「我能愛很多人，但都是真心」</p>
-                    </div>
-                    <div class="example-card">
-                        <h4>靈肉分離型 <span class="dim" style="font-size: 0.8em;">（低依附 × 專一）</span></h4>
-                        <p class="serif text-s">「性是性，愛是愛，但我只玩一個」</p>
-                    </div>
-                    <div class="example-card">
-                        <h4>遊戲人間型 <span class="dim" style="font-size: 0.8em;">（低依附 × 開放）</span></h4>
-                        <p class="serif text-s">「性不需要承諾，愛也不需要獨佔」</p>
-                    </div>
+                <p class="text-l mb-2 dim">性議題也是愛情重要的一環，可獨立成段——也能跳過。</p>
+                <div class="three-col mt-2" style="grid-template-columns: 0.3fr 1fr 1fr;">
+                    <h1>軸向</h>
+                        <h1 style="text-align: center;">專一</h1>
+                        <h1 style="text-align: center;">開放</h1>
+                        <h1 style="text-align: center; padding-top: 3rem;">性、愛<br>高度依附</h1>
+                        <div class="example-card">
+                            <h4>深情專一型 <span class="dim" style="font-size: 0.8em;">（高依附 × 專一）</span></h4>
+                            <p class="serif text-s">「沒有愛，我給不出身體」</p>
+                        </div>
+                        <div class="example-card">
+                            <h4>鍾情博愛型 <span class="dim" style="font-size: 0.8em;">（高依附 × 開放）</span></h4>
+                            <p class="serif text-s">「我能愛很多人，但都是真心」</p>
+                        </div>
+                        <h1 style="text-align: center; padding-top: 3rem;">性、愛<br>低關聯</h1>
+                        <div class="example-card">
+                            <h4>靈肉分離型 <span class="dim" style="font-size: 0.8em;">（低依附 × 專一）</span></h4>
+                            <p class="serif text-s">「性是性，愛是愛，但我只玩一個」</p>
+                        </div>
+                        <div class="example-card">
+                            <h4>遊戲人間型 <span class="dim" style="font-size: 0.8em;">（低依附 × 開放）</span></h4>
+                            <p class="serif text-s">「性不需要承諾，愛也不需要獨佔」</p>
+                        </div>
                 </div>
                 <p class="text-s dim mt-3">這段可以選擇整段跳過，或單題跳過。結果頁也有眼睛圖示可以隱藏。</p>
             </div>
@@ -1613,19 +1693,19 @@
                 <div class="kicker">來玩個遊戲</div>
                 <h1 class="title-m mb-3">這個人是哪一型？</h1>
                 <div class="example-card mt-2">
-                    <h4>王莉雯，32 歲，醫院護理長</h4>
-                    <p class="serif text-s mt-2">
+                    <h4>王莉雯，36 歲，會計主管</h4>
+                    <span class="serif text-l mt-2" style="font-size: 48px;">
                         她跟同事吃飯時話不多，但每次都會在離開前默默結帳。<br>
                         她喜歡的人在 IG 發新照片，她會看，但從不按讚。<br>
                         那個人感冒兩天沒上班，她「剛好」週末走過他家樓下便利商店買藥。<br>
                         <span class="accent">沒人知道她喜歡他。連那個人自己都不知道。</span>
-                    </p>
+                    </span>
                 </div>
                 <div class="vote-options">
-                    <div class="vote-option"><span class="key">A</span>漩渦型</div>
-                    <div class="vote-option correct"><span class="key">B</span>藤蔓型 ✓</div>
-                    <div class="vote-option"><span class="key">C</span>深海型</div>
-                    <div class="vote-option"><span class="key">D</span>燈塔型</div>
+                    <div class="vote-option"><span class="key">A</span>漩渦型：主動-快速-內斂-佔有</div>
+                    <div class="vote-option"><span class="key">B</span>藤蔓型：主動-緩慢-內斂-佔有</div>
+                    <div class="vote-option"><span class="key">C</span>深海型：被動-緩慢-內斂-佔有</div>
+                    <div class="vote-option"><span class="key">D</span>燈塔型：主動-緩慢-內斂-自由</div>
                 </div>
                 <p class="text-s mt-3 dim center" style="text-align: center;">答案：<span
                         class="accent">藤蔓型</span>（主動／慢／內斂／佔有）——「無聲攀上你生活的每一面牆」</p>

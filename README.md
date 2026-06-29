@@ -38,6 +38,60 @@
 
 ---
 
+## 🧠 提示詞與開源AI大模型的思考衝突
+### **prompt_utils.py 要求太多且互相牴觸**
+- 盡量減少 system_prompt 的 【核心指令】、【寫作技巧】、【禁止】，並避免互相干擾，造成開源AI大模型過度thinking而卡住或進入無窮迴圈。例如：
+    - 禁止使用第一人稱，又要用第一人稱寫日記。
+    - 強調字數限制，又要分段。
+
+實測在 Ollama 上跑同一份「日記生成」提示詞時發現：
+- **非推理模型**（如 `qwen2.5`、`llama3.1`、`gemma2`）：約 16 秒順利輸出。
+- **推理模型**（如 `DeepSeek-R1`、`QwQ`、`Qwen3-thinking`、`GLM-Z1`）：思考兩分鐘以上仍未輸出，或不斷重複思考內容陷入無窮迴圈。
+
+> ⚠️ **註：Qwen3.5、Qwen3.6 系列大模型目前無法用於分析圖片產生提示詞**（不支援 vision / multimodal 輸入），執行 `build_diary_image_prompt_text` 與 `build_analyze_image_prompt_text` 相關功能時請改用支援視覺的模型（如 `llava`、`qwen2.5-vl`、`minicpm-v` 等）。
+
+### 卡死的三個典型原因
+
+1. **規則自我糾結** — 例如同時要求「以內心獨白形式撰寫」+「禁止使用『我』『你』字」，內心獨白本身極難避開第一/第二人稱，推理模型會在 `<think>` 中反覆嘗試、否決、重來，永遠不收斂到 `</think>`。
+2. **內容審查內耗** — 提示詞含「出軌、一夜情、亂倫、暴力」等敏感詞，推理模型會在思考階段自我審查、糾結是否該寫，token 用光在思考裡。
+3. **規則對撞** — 「分成段節」與「字數約 300 字」互斥；「8 條寫作技巧 + 5 條禁止」規則數量過多，推理模型會逐條對齊耗盡 token。
+
+### 修正方向（V0.9.6.0 → 目前版本的優化）
+
+針對 [prompt_utils.py:284](prompt_utils.py:284) `build_daily_prompt()` 的「日記提示詞」做了三項關鍵調整：
+
+| 類別 | 修改內容 | 目的 |
+| :--- | :--- | :--- |
+| **核心指令** | 新增第 5 條「**無須思考，直接輸出日記內容**」 | 明確指示推理模型跳過 `<think>` 階段 |
+| **核心指令** | 移除「以**內心獨白**形式」 | 解除與「禁用我/你字」的死結 |
+| **禁止條款** | 刪除「禁止使用『我』『你』字」（從 5 條精簡為 3 條） | 移除與獨白語感對撞的硬規則 |
+| **寫作技巧** | 刪除「將日記分成段節」（從 8 條精簡為 7 條） | 解除與「300 字」的字數衝突 |
+| **輸出格式** | 從中段移到所有設定之後，並改為兩行示範 | 讓 AI 更清楚輸出邊界 |
+| **指令強化** | 「請撰寫今天 …」改為「**你的唯一任務是**撰寫今天 …」 | 避免模型分心做延伸創作 |
+
+### 提示詞設計通則（後續新增規則前必檢查）
+
+1. **避免主詞限制 × 視角限制併用**（例：禁用「我」+ 第一人稱獨白）。
+2. **避免結構限制 × 字數限制併用**（例：分段節 + 300 字）。
+3. **規則總數壓在 10 條以內**（寫作技巧 + 禁止條款合計）。
+4. **對推理模型，在核心指令最後加上「無須思考，直接輸出」**。
+5. **創意寫作首選非推理模型**（推理模型會把創作變成解題，反而更差）。
+
+### 推薦模型搭配
+**4060** ⭕建議使用 huihui_ai/gemma-4-abliterated:e4b 9.6GB 文圖提示詞皆能生成，日記16384，速度正常。
+⭕使用 VladimirGav/gemma4-26b-16GB-VRAM-Uncensored:latest 13GB 較有變化，但偶爾卡住無輸出，文圖提示詞皆能生成，日記16384，速度較慢點。
+⭕gemma4:e4b 日記16384，速度正常，無破解，只能測試用。
+
+**4090** 尚未測試
+
+| 任務 | 推薦模型 |
+| :--- | :--- |
+| 日記生成 / 小說創作 / LoveLine 聊天 | `qwen2.5:14b`、`qwen2.5:32b`、`gemma2:27b` |
+| 圖片分析 / 生圖提示詞 | `qwen2.5-vl`、`llava`、`minicpm-v`（**不可用 Qwen3.5 / Qwen3.6**） |
+| JSON 修復 / 結構化輸出 | `qwen2.5:7b` 以上即可 |
+
+---
+
 ## 🚀 使用流程
 
 1.  **愛情人格評量產生基本角色卡**
@@ -83,6 +137,7 @@
 
 | 版本 | 日期 | 更新亮點 |
 | :--- | :--- | :--- |
+| **V0.9.7.0** | 2026-06-29 | 優化prompt_utils.py 關於日記，減少 system_prompt 的 【核心指令】、【寫作技巧】、【禁止】，並避免互相干擾，造成開源AI大模型過度thinking而卡住或進入無窮迴圈。 |
 | **V0.9.6.0** | 2026-06-28 | 撰寫LoveIsABitMessy_簡報_2026-07.html，重新整理 LPAS愛情人格特質評量表企劃書_V3.md、LoveIsABitMessy系統說明_v2026-06.md |
 | **V0.9.5.0** | 2026-06-22 | **演員／劇本角色名稱分離 + 三頁面備註欄 + 角色照片 + 多項雲端載入改進**。① `debug_server.py` 改讀 `OLLAMA_HOST` 環境變數（預設 `127.0.0.1:11434`），支援非預設埠的 Ollama。② `novel_generator.html` 登場角色欄新增「角色名稱」文字輸入欄：角色卡＝演員，角色名稱＝劇本中的角色名（如：角色卡「惠茹」演出劇本中的「寶蓮」）；`state.characters` 改為 `{id, roleName}` 結構並自動相容舊資料；`prompt_utils._enrich_char_data` 統一將 `role_name` 蓋過 `name`，所有 prompt（女主角姓名／配角姓名／scenario 比對）自動使用劇本角色名。③ `novel_generator` / `daily_run` / `loveline` 三頁面載入雲端／本機資料後，於 LOG 欄顯示「雲端原始 AI 設定值」（模型／模型參數／寫作風格／寫作範本），即使該模型已被刪除仍可看到原始字串（如 `gemma4:latest`）方便重新拉模型。④ `novel_generator.html` 新增「📝 作者備註」按鈕（位於儲存小說左側）：彈窗大型 textarea，存進 `state.authorNotes` 隨小說一同儲存／讀取，不會提供給 AI。⑤ `daily_run.html` 新增「6. 專案備註」textarea，寫入 `project_data.project_notes`，不會傳給 AI。⑥ `loveline.html` 編輯使用者資料彈窗改為 1600px 兩欄版型：左欄=暱稱／登入密碼／關聯角色卡，右欄=覆蓋設定／額外補充／**使用者備註**（新增欄位 `love_line_users.notes`，不會傳給 AI）。⑦ `characters_editor.html` 在「角色設定 JSON」上方新增「角色照片」區塊：160×160 縮圖框（深灰底＋淺灰虛線框），支援拖曳上傳或點擊開啟檔案選擇，自動縮放成最長邊 256（縮圖）與 1024（原圖）兩種 JPEG（80% 壓縮），儲存至 `characters.photo_thumb` 與 `characters.photo_full` 兩個新欄位。⑧ `novel_generator` 讀取雲端小說清單由 `.limit(30)` 改為 `.limit(1000)`，解決 30 筆以上看不到後續紀錄的問題。⑨ Supabase 需新增欄位：`love_line_users.notes text`、`characters.photo_thumb text`、`characters.photo_full text`。 |
 | **V0.9.4.0** | 2026-06-22 | **角色卡格式統一 + LPAS V1→V3 自動轉換 + LoveLine／結果頁優化**。①角色卡 `lpas_v3` 格式統一去除連字號（`AFOL`）、`intimacy` 去除結尾「型」字（如「深情專一」）；`personality_type` 新格式 `PFOL_AFOL_PSOL_深情專一`（提供 `supabase/schema_v3_strip_intimacy_type.sql` 一次性遷移既有資料）。②新增 `web/js/lpas_v1_to_v3.js` V1→V3 16 型對照轉換器，characters_editor / loveline / daily_run / novel_generator 載入舊角色卡時自動就地補上 `lpas_v3`。③ characters_editor 必填欄位驗證：未填欄位即時套用紅框、儲存前列出缺漏並中斷；V1 轉 V3 後 intimacy 為空時自動補預設。④ `build_analyze_text_character_prompt` 改輸出 V3 規格（`lpas_v3: {ambiguity, love, breakup, intimacy}`、16 天候型 + 4 性象限）。⑤四個頁面的角色下拉統一顯示「角色名稱-`full_name`」。⑥ loveline / novel_generator 新增「從雲端重新下載角色卡」🔄 按鈕，loveline 同步刷新使用者清單。⑦ novel_generator 新增「📋 文檔轉條列」：依起承轉合輸出條列式粗綱，每個關鍵事件含原劇情走向 + 兩條 AI 替代戲劇化走向。⑧ lpas_v3.html 結果頁雷達圖改用各階段專屬色（紫 / 粉橘 / 藍），同色相區分主／從焦點。⑨ LoveLine 對話次選單：刪除前後改為「自訂則數」（彈窗預設 10）、選單定位夾住在聊天區內避免溢出、字級放大 150%。 |
