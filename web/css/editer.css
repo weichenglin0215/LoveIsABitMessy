@@ -152,7 +152,258 @@ body {
 ───────────────────────────────────────────────────────────── */
 
 /* ─────────────────────────────────────────────────────────────
-   4. 頂部導覽列（.app-topbar）左邊是app名稱，右邊是按鈕
+   4. .col 欄位（兩頁共用）
+───────────────────────────────────────────────────────────── */
+.col {
+  background: var(--c-bg-panel);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--c-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  min-height: 0;
+}
+
+.col-header {
+  padding: var(--gap-sm) var(--pad-both-md);
+  border-bottom: 1px solid var(--c-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+  gap: var(--gap-sm);
+}
+
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--pad-both-md);
+  font-size: var(--font-size-lg);
+  min-height: 0;
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   5. characters_editor ── editor-container / editor-panel
+───────────────────────────────────────────────────────────── */
+.editor-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+}
+
+.editor-panel {
+  background: var(--c-bg-card);
+  border-radius: var(--radius-md);
+  padding: var(--gap-sm) var(--pad-both-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   6. 輔助版型類別（layout-fullscreen / layout-scroll）
+───────────────────────────────────────────────────────────── */
+body.layout-fullscreen {
+  overflow: hidden;
+}
+
+.layout-fullscreen .app-wrap {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: var(--gap-md);
+  gap: var(--gap-md);
+}
+
+.layout-fullscreen .col-area {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: var(--gap-md);
+}
+
+body.layout-scroll {
+  overflow-y: auto;
+}
+
+.layout-scroll .app-wrap {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: var(--gap-md);
+  gap: var(--gap-md);
+}
+
+.layout-scroll .page-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+  padding-bottom: 2rem;
+}
+
+.layout-scroll .section-block {
+  background: var(--c-bg-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  padding: var(--pad-md);
+  backdrop-filter: blur(4px);
+}
+
+.block-header {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  margin-bottom: var(--pad-both-md);
+  padding-bottom: var(--gap-sm);
+  border-bottom: 1px solid var(--c-border);
+}
+
+/* 通用 grid 輔助 */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap-md);
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--gap-md);
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--gap-md);
+}
+
+.grid-auto {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--gap-md);
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+
+
+
+
+/* ─────────────────────────────────────────────────────────────
+   7. 主欄位拖拉網格 & 分隔條 Resizer
+───────────────────────────────────────────────────────────── */
+#main-columns-grid {
+  display: grid;
+  grid-template-columns: 1fr 4px 1fr 4px 1fr 4px 1fr;
+  grid-column: 1 / -1;
+  height: calc(100vh - var(--ll-topbar-h));
+  width: 100%;
+  min-height: 0;
+}
+
+.resizer {
+  width: 4px;
+  cursor: col-resize;
+  background: rgba(255, 255, 255, 0.05);
+  transition: background 0.2s;
+  z-index: 10;
+  position: relative;
+}
+
+.resizer:hover,
+.resizer.resizing {
+  background: var(--c-accent-light);
+}
+
+.resizing-active {
+  cursor: col-resize;
+  user-select: none;
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   8. 可收合欄位（char-col）
+───────────────────────────────────────────────────────────── */
+#char-col-container.collapsed {
+  width: 30px !important;
+  min-width: 30px !important;
+  overflow: hidden;
+}
+
+#char-col-container.collapsed .col-header h3,
+#char-col-container.collapsed .scroll-area-char-card,
+#char-col-container.collapsed .server-status-row,
+#char-col-container.collapsed #log-output,
+#char-col-container.collapsed .cloud-status,
+#char-col-container.collapsed .toolbox,
+#char-col-container.collapsed div[onclick] {
+  display: none;
+}
+
+
+
+
+/* ─────────────────────────────────────────────────────────────
+   9. characters_editor ── .debug-panel 主版型 (2 欄 grid)
+───────────────────────────────────────────────────────────── */
+.debug-panel {
+  max-width: 1800px;
+  width: 100%;
+  height: 100%;
+  margin: 0 auto;
+  /*auto可以讓區塊左右置中*/
+  background: var(--c-bg-root);
+  padding: var(--pad-both-lg);
+  border-radius: var(--radius-md);
+  border: 1px solid #444;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+  box-sizing: border-box;
+  /*文字太多時可以上下捲動*/
+  overflow-y: scroll;
+}
+
+.col-left {
+  background: var(--c-bg-root);
+  border-right: 1px solid #444;
+  padding: var(--pad-both-md);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.col-right {
+  background: var(--c-bg-root);
+  border-right: 1px solid #444;
+  padding: var(--pad-both-md);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   10. 頂部導覽列（.app-topbar）左邊是app名稱，右邊是按鈕
 ───────────────────────────────────────────────────────────── */
 .app-topbar {
   position: relative;
@@ -169,7 +420,7 @@ body {
 
 
 /* ─────────────────────────────────────────────────────────────
-   5. Logo
+   11. Logo
 ───────────────────────────────────────────────────────────── */
 .app-logo {
   font-size: var(--font-size-xl);
@@ -186,7 +437,7 @@ body {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   6. novel_generator ── 頁首導覽列元素
+   12. novel_generator ── 頁首導覽列元素
 ───────────────────────────────────────────────────────────── */
 .nav-version {
   font-size: var(--font-size-lg);
@@ -257,153 +508,6 @@ body {
 
 
 
-
-
-/* ─────────────────────────────────────────────────────────────
-   7. .col 欄位（兩頁共用）
-───────────────────────────────────────────────────────────── */
-.col {
-  background: var(--c-bg-panel);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--c-border);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  min-height: 0;
-}
-
-.col-header {
-  padding: var(--gap-sm) var(--pad-both-md);
-  border-bottom: 1px solid var(--c-border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.05);
-  flex-shrink: 0;
-  gap: var(--gap-sm);
-}
-
-.scroll-area {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--pad-both-md);
-  font-size: var(--font-size-lg);
-  min-height: 0;
-}
-
-
-/* ─────────────────────────────────────────────────────────────
-   8. characters_editor ── .debug-panel 主版型 (2 欄 grid)
-───────────────────────────────────────────────────────────── */
-.debug-panel {
-  max-width: 1800px;
-  width: 100%;
-  height: 100%;
-  margin: 0 auto;
-  /*auto可以讓區塊左右置中*/
-  background: var(--c-bg-root);
-  padding: var(--pad-both-lg);
-  border-radius: var(--radius-md);
-  border: 1px solid #444;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  flex: 1;
-  min-height: 0;
-  box-sizing: border-box;
-  /*文字太多時可以上下捲動*/
-  overflow-y: scroll;
-}
-
-.col-left {
-  background: var(--c-bg-root);
-  border-right: 1px solid #444;
-  padding: var(--pad-both-md);
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.col-right {
-  background: var(--c-bg-root);
-  border-right: 1px solid #444;
-  padding: var(--pad-both-md);
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-
-/* ─────────────────────────────────────────────────────────────
-   9. characters_editor ── 頁首標題
-───────────────────────────────────────────────────────────── */
-.editor-header {
-  max-width: 1200px;
-  margin: 0 auto var(--gap-md);
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.editor-header h1 {
-  font-weight: 500;
-  font-size: 2rem;
-  margin-bottom: var(--gap-sm);
-  color: var(--c-text-main);
-}
-
-
-/* ─────────────────────────────────────────────────────────────
-   10. 連線狀態面板
-───────────────────────────────────────────────────────────── */
-.conn-panel {
-  background: var(--c-bg-card);
-  border-radius: var(--radius-md);
-  padding: var(--gap-sm) var(--pad-both-md);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--pad-both-md);
-}
-
-
-/* ─────────────────────────────────────────────────────────────
-   11. characters_editor ── editor-container / editor-panel
-───────────────────────────────────────────────────────────── */
-.editor-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  width: 100%;
-}
-
-.editor-panel {
-  background: var(--c-bg-card);
-  border-radius: var(--radius-md);
-  padding: var(--gap-sm) var(--pad-both-md);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-
-
-/* ─────────────────────────────────────────────────────────────
-   12. Toolbar / Toolbox
-───────────────────────────────────────────────────────────── */
-
-.toolbox {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-md);
-  flex-wrap: wrap;
-  margin-top: var(--gap-sm);
-}
 
 
 /* ─────────────────────────────────────────────────────────────
@@ -684,7 +788,20 @@ body.daily-page textarea {
 
 
 /* ─────────────────────────────────────────────────────────────
-   15. 按鈕
+   15. Toolbar / Toolbox
+───────────────────────────────────────────────────────────── */
+
+.toolbox {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-md);
+  flex-wrap: wrap;
+  margin-top: var(--gap-sm);
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   16. 按鈕
 ───────────────────────────────────────────────────────────── */
 
 /* ── 基底 .btn ── */
@@ -988,29 +1105,53 @@ body.daily-page .ai-btn {
 
 
 /* ─────────────────────────────────────────────────────────────
-   16. novel_generator ── 故事粗綱欄（可收合）
+   17. characters_editor ── 頁首標題
 ───────────────────────────────────────────────────────────── */
-#story-premise-container {
-  min-width: 0;
-  position: relative;
+.editor-header {
+  max-width: 1200px;
+  margin: 0 auto var(--gap-md);
+  text-align: center;
+  flex-shrink: 0;
 }
 
-#story-premise-container.collapsed {
-  width: 30px !important;
-  min-width: 30px !important;
-  overflow: hidden;
+.editor-header h1 {
+  font-weight: 500;
+  font-size: 2rem;
+  margin-bottom: var(--gap-sm);
+  color: var(--c-text-main);
 }
-
-#story-premise-container.collapsed .col-header h3,
-#story-premise-container.collapsed .scroll-area {
-  display: none;
-}
-
-
 
 
 /* ─────────────────────────────────────────────────────────────
-   17. novel_generator ── 伺服器狀態列
+   18. 連線狀態面板
+───────────────────────────────────────────────────────────── */
+.conn-panel {
+  background: var(--c-bg-card);
+  border-radius: var(--radius-md);
+  padding: var(--gap-sm) var(--pad-both-md);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--pad-both-md);
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   19. 將幾個設定格包起來有外框 (.status-row )
+───────────────────────────────────────────────────────────── */
+.status-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--gap-md);
+  background: rgba(255, 255, 255, 0.05);
+  padding: var(--pad-both-md);
+  border-radius: var(--radius-md);
+  border: 1px solid #444;
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   20. novel_generator ── 伺服器狀態列
 ───────────────────────────────────────────────────────────── */
 .server-status-row {
   margin: 0 var(--gap-md) var(--gap-md);
@@ -1058,43 +1199,7 @@ body.daily-page .ai-btn {
 
 
 /* ─────────────────────────────────────────────────────────────
-   18. 將幾個設定格包起來有外框 (.status-row )
-───────────────────────────────────────────────────────────── */
-.status-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: var(--gap-md);
-  background: rgba(255, 255, 255, 0.05);
-  padding: var(--pad-both-md);
-  border-radius: var(--radius-md);
-  border: 1px solid #444;
-}
-
-
-/* ─────────────────────────────────────────────────────────────
-   19. LOG 區 novel_generator
-───────────────────────────────────────────────────────────── */
-.log-area {
-  flex: 1;
-  display: flex;
-  height: 6rem;
-  min-height: 3rem;
-  background: #000;
-  color: var(--c-log-text);
-  font-family: 'Courier New', monospace;
-  font-size: var(--font-size-md);
-  line-height: 1.5;
-  padding: var(--gap-md);
-  border-radius: var(--radius-sm);
-  overflow-y: scroll;
-  white-space: pre-wrap;
-  word-break: break-word;
-  border: 1px solid #333;
-}
-
-
-/* ─────────────────────────────────────────────────────────────
-   20. novel_generator ── 章節 / 小節卡片
+   21. novel_generator ── 章節 / 小節卡片
 ───────────────────────────────────────────────────────────── */
 .chapter-card {
   background: var(--c-accent-subtle);
@@ -1170,7 +1275,29 @@ body.daily-page .ai-btn {
 
 
 /* ─────────────────────────────────────────────────────────────
-   21. 彈窗 Modal
+   22. novel_generator ── 故事粗綱欄（可收合）
+───────────────────────────────────────────────────────────── */
+#story-premise-container {
+  min-width: 0;
+  position: relative;
+}
+
+#story-premise-container.collapsed {
+  width: 30px !important;
+  min-width: 30px !important;
+  overflow: hidden;
+}
+
+#story-premise-container.collapsed .col-header h3,
+#story-premise-container.collapsed .scroll-area {
+  display: none;
+}
+
+
+
+
+/* ─────────────────────────────────────────────────────────────
+   23. 彈窗 Modal
 ───────────────────────────────────────────────────────────── */
 
 .modal-box {
@@ -1336,7 +1463,41 @@ body.daily-page .ai-btn {
 
 
 /* ─────────────────────────────────────────────────────────────
-   22. 捲動條
+   24. LOG 區 novel_generator
+───────────────────────────────────────────────────────────── */
+.log-area {
+  flex: 1;
+  display: flex;
+  height: 6rem;
+  min-height: 3rem;
+  background: #000;
+  color: var(--c-log-text);
+  font-family: 'Courier New', monospace;
+  font-size: var(--font-size-md);
+  line-height: 1.5;
+  padding: var(--gap-md);
+  border-radius: var(--radius-sm);
+  overflow-y: scroll;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border: 1px solid #333;
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   25. novel_generator ── LOG 操作列
+───────────────────────────────────────────────────────────── */
+.log-actions {
+  display: flex;
+  gap: var(--gap-md);
+  margin-top: var(--gap-sm);
+  justify-content: flex-end;
+}
+
+
+
+/* ─────────────────────────────────────────────────────────────
+   26. 捲動條
 ───────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 6px;
@@ -1358,156 +1519,7 @@ body.daily-page .ai-btn {
 
 
 /* ─────────────────────────────────────────────────────────────
-   23. 輔助版型類別（layout-fullscreen / layout-scroll）
-───────────────────────────────────────────────────────────── */
-body.layout-fullscreen {
-  overflow: hidden;
-}
-
-.layout-fullscreen .app-wrap {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  padding: var(--gap-md);
-  gap: var(--gap-md);
-}
-
-.layout-fullscreen .col-area {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  gap: var(--gap-md);
-}
-
-body.layout-scroll {
-  overflow-y: auto;
-}
-
-.layout-scroll .app-wrap {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  padding: var(--gap-md);
-  gap: var(--gap-md);
-}
-
-.layout-scroll .page-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-md);
-  padding-bottom: 2rem;
-}
-
-.layout-scroll .section-block {
-  background: var(--c-bg-card);
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-md);
-  padding: var(--pad-md);
-  backdrop-filter: blur(4px);
-}
-
-.block-header {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-sm);
-  margin-bottom: var(--pad-both-md);
-  padding-bottom: var(--gap-sm);
-  border-bottom: 1px solid var(--c-border);
-}
-
-/* 通用 grid 輔助 */
-.grid-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--gap-md);
-}
-
-.grid-3 {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: var(--gap-md);
-}
-
-.grid-4 {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--gap-md);
-}
-
-.grid-auto {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: var(--gap-md);
-}
-
-.flex-1 {
-  flex: 1;
-}
-
-
-
-
-
-/* ─────────────────────────────────────────────────────────────
-   24. 主欄位拖拉網格 & 分隔條 Resizer
-───────────────────────────────────────────────────────────── */
-#main-columns-grid {
-  display: grid;
-  grid-template-columns: 1fr 4px 1fr 4px 1fr 4px 1fr;
-  grid-column: 1 / -1;
-  height: calc(100vh - var(--ll-topbar-h));
-  width: 100%;
-  min-height: 0;
-}
-
-.resizer {
-  width: 4px;
-  cursor: col-resize;
-  background: rgba(255, 255, 255, 0.05);
-  transition: background 0.2s;
-  z-index: 10;
-  position: relative;
-}
-
-.resizer:hover,
-.resizer.resizing {
-  background: var(--c-accent-light);
-}
-
-.resizing-active {
-  cursor: col-resize;
-  user-select: none;
-}
-
-
-/* ─────────────────────────────────────────────────────────────
-   25. 可收合欄位（char-col）
-───────────────────────────────────────────────────────────── */
-#char-col-container.collapsed {
-  width: 30px !important;
-  min-width: 30px !important;
-  overflow: hidden;
-}
-
-#char-col-container.collapsed .col-header h3,
-#char-col-container.collapsed .scroll-area-char-card,
-#char-col-container.collapsed .server-status-row,
-#char-col-container.collapsed #log-output,
-#char-col-container.collapsed .cloud-status,
-#char-col-container.collapsed .toolbox,
-#char-col-container.collapsed div[onclick] {
-  display: none;
-}
-
-
-
-
-/* ─────────────────────────────────────────────────────────────
-   26. novel_generator ── 角色欄捲動區
+   27. novel_generator ── 角色欄捲動區
 ───────────────────────────────────────────────────────────── */
 .scroll-area-char-card {
   flex: 1;
@@ -1518,7 +1530,7 @@ body.layout-scroll {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   27. novel_generator ── 角色欄元件
+   28. novel_generator ── 角色欄元件
 ───────────────────────────────────────────────────────────── */
 
 .char-mode-toggle {
@@ -1546,7 +1558,7 @@ body.layout-scroll {
 
 
 /* ─────────────────────────────────────────────────────────────
-   28. novel_generator ── AI 設定組 (模型 / 風格 / 範本)
+   29. novel_generator ── AI 設定組 (模型 / 風格 / 範本)
 ───────────────────────────────────────────────────────────── */
 .settings-group {
   margin-left: auto;
@@ -1584,18 +1596,6 @@ body.layout-scroll {
   gap: var(--gap-xs);
 }
 
-
-
-
-/* ─────────────────────────────────────────────────────────────
-   29. novel_generator ── LOG 操作列
-───────────────────────────────────────────────────────────── */
-.log-actions {
-  display: flex;
-  gap: var(--gap-md);
-  margin-top: var(--gap-sm);
-  justify-content: flex-end;
-}
 
 
 
@@ -1902,7 +1902,7 @@ body.daily-page {
 
 /* ─────────────────────────────────────────────────────────────
    37. 收合按鈕（.collapse-btn）
-        ── 聚合 editer Section 15 的 .collapse-btn，
+        ── 聚合 editer Section 16 的 .collapse-btn，
            loveline 版 font-size 較小，此處以選擇器加權覆蓋 ──
 ───────────────────────────────────────────────────────────── */
 
@@ -2038,7 +2038,7 @@ body.daily-page {
 }
 
 /* 伺服器狀態圓點（loveline 版）
-   ── 聚合 .server-status-dot（Section 17），僅尺寸不同 ──    */
+   ── 聚合 .server-status-dot（Section 20），僅尺寸不同 ──    */
 .dot,
 .server-status-dot {
   border-radius: var(--radius-circle);
@@ -2094,7 +2094,7 @@ body.daily-page {
 
 /* ─────────────────────────────────────────────────────────────
    40. LOG 區（.log-box）
-        ── 聚合 Section 19），僅 font-size 略小 ──
+        ── 聚合 Section 24），僅 font-size 略小 ──
 ───────────────────────────────────────────────────────────── */
 .log-box {
   background: #000;
@@ -2520,7 +2520,7 @@ body.daily-page {
   margin-top: 0;
 }
 
-/* Modal 內標籤，聚合 .modal-label（Section 21）*/
+/* Modal 內標籤，聚合 .modal-label（Section 23）*/
 .modal label,
 .modal-label {
   display: block;
@@ -2554,7 +2554,7 @@ body.daily-page {
   resize: vertical;
 }
 
-/* Modal 按鈕列，聚合 .modal-actions（Section 21）*/
+/* Modal 按鈕列，聚合 .modal-actions（Section 23）*/
 .modal-actions {
   display: flex;
   gap: var(--gap-md);
@@ -2715,7 +2715,7 @@ body.daily-page {
 
 /* ─────────────────────────────────────────────────────────────
    49. 捲動條覆蓋（loveline 用較細的 4px）
-        ── 聚合 Section 22，此處覆蓋 width ──
+        ── 聚合 Section 26，此處覆蓋 width ──
 ───────────────────────────────────────────────────────────── */
 .panel ::-webkit-scrollbar,
 #chat-messages::-webkit-scrollbar {
