@@ -3,7 +3,6 @@
    涵蓋 novel_generator / characters_editor / daily_run 全部樣式
    ============================================================ */
 
-
 /* ─────────────────────────────────────────────────────────────
    1. CSS 變數（唯一來源，統一在此調整）
 ───────────────────────────────────────────────────────────── */
@@ -146,7 +145,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-
 /* ─────────────────────────────────────────────────────────────
    3. 背景層
 ───────────────────────────────────────────────────────────── */
@@ -185,7 +183,6 @@ body {
   min-height: 0;
 }
 
-
 /* ─────────────────────────────────────────────────────────────
    5. characters_editor ── editor-container / editor-panel
 ───────────────────────────────────────────────────────────── */
@@ -208,68 +205,9 @@ body {
   min-height: 0;
 }
 
-
 /* ─────────────────────────────────────────────────────────────
    6. 輔助版型類別（layout-fullscreen / layout-scroll）
 ───────────────────────────────────────────────────────────── */
-body.layout-fullscreen {
-  overflow: hidden;
-}
-
-.layout-fullscreen .app-wrap {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  padding: var(--gap-md);
-  gap: var(--gap-md);
-}
-
-.layout-fullscreen .col-area {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  gap: var(--gap-md);
-}
-
-body.layout-scroll {
-  overflow-y: auto;
-}
-
-.layout-scroll .app-wrap {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  padding: var(--gap-md);
-  gap: var(--gap-md);
-}
-
-.layout-scroll .page-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-md);
-  padding-bottom: 2rem;
-}
-
-.layout-scroll .section-block {
-  background: var(--c-bg-card);
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-md);
-  padding: var(--pad-md);
-  backdrop-filter: blur(4px);
-}
-
-.block-header {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-sm);
-  margin-bottom: var(--pad-both-md);
-  padding-bottom: var(--gap-sm);
-  border-bottom: 1px solid var(--c-border);
-}
 
 /* 通用 grid 輔助 */
 .grid-2 {
@@ -278,31 +216,9 @@ body.layout-scroll {
   gap: var(--gap-md);
 }
 
-.grid-3 {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: var(--gap-md);
-}
-
-.grid-4 {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--gap-md);
-}
-
-.grid-auto {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: var(--gap-md);
-}
-
 .flex-1 {
   flex: 1;
 }
-
-
-
-
 
 /* ─────────────────────────────────────────────────────────────
    7. 主欄位拖拉網格 & 分隔條 Resizer
@@ -330,33 +246,16 @@ body.layout-scroll {
   background: var(--c-accent-light);
 }
 
-.resizing-active {
-  cursor: col-resize;
-  user-select: none;
-}
-
-
 /* ─────────────────────────────────────────────────────────────
    8. 可收合欄位（char-col）
 ───────────────────────────────────────────────────────────── */
-#char-col-container.collapsed {
-  width: 30px !important;
-  min-width: 30px !important;
-  overflow: hidden;
-}
 
 #char-col-container.collapsed .col-header h3,
 #char-col-container.collapsed .scroll-area-char-card,
 #char-col-container.collapsed .server-status-row,
-#char-col-container.collapsed #log-output,
-#char-col-container.collapsed .cloud-status,
-#char-col-container.collapsed .toolbox,
-#char-col-container.collapsed div[onclick] {
+#char-col-container.collapsed .toolbox{
   display: none;
 }
-
-
-
 
 /* ─────────────────────────────────────────────────────────────
    9. characters_editor ── .debug-panel 主版型 (2 欄 grid)
@@ -401,7 +300,6 @@ body.layout-scroll {
   overflow-y: auto;
 }
 
-
 /* ─────────────────────────────────────────────────────────────
    10. 頂部導覽列（.app-topbar）左邊是app名稱，右邊是按鈕
 ───────────────────────────────────────────────────────────── */
@@ -418,23 +316,9 @@ body.layout-scroll {
   flex-shrink: 0;
 }
 
-
 /* ─────────────────────────────────────────────────────────────
    11. Logo
 ───────────────────────────────────────────────────────────── */
-.app-logo {
-  font-size: var(--font-size-xl);
-  font-weight: 700;
-  background: linear-gradient(45deg, #a78bfa, var(--c-pink));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  display: flex;
-  align-items: center;
-  gap: var(--gap-md);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
 
 /* ─────────────────────────────────────────────────────────────
    12. novel_generator ── 頁首導覽列元素
@@ -506,10 +390,6 @@ body.layout-scroll {
   background: rgba(162, 89, 255, 0.5);
 }
 
-
-
-
-
 /* ─────────────────────────────────────────────────────────────
    13. 標籤 / 說明文字 / 標題
 ───────────────────────────────────────────────────────────── */
@@ -555,18 +435,13 @@ body.layout-scroll {
 }
 
 /* ── 舊類別保留為別名（待 HTML 完全遷移後於批 4 移除）── */
-.app-title { font-size: var(--font-size-2xl); font-weight: 500; color: var(--c-text-main); display: block; }
-.app-title-small { font-size: var(--font-size-lg); font-weight: 500; color: var(--c-text-main); display: block; }
-.hint, .cloud-status, .conn-status, .conn-desc, .section-desc, .server-status-text {
+
+ .server-status-text {
   color: var(--c-text-sec); font-size: var(--font-size-md); line-height: 1.4;
 }
-.form-label { color: var(--c-accent-light); font-size: var(--font-size-lg); display: block; font-weight: var(--heading-weight); margin-top: var(--pad-both-sm); margin-bottom: var(--pad-both-xs); }
-.field-label { color: var(--c-accent-field-label); font-size: var(--font-size-md); display: block; font-weight: var(--heading-weight); margin: var(--pad-both-xs); }
-
 
 /* ── 設定組 / 模型列 小標籤 ── */
 label,
-.settings-label,
 .model-label,
 .nav-label {
   font-size: var(--font-size-md);
@@ -589,8 +464,7 @@ label,
   flex: 1;
 }
 
-.editor-panel h2,
-.section-h2 {
+.editor-panel h2{
   margin: 0 0 6px;
   font-size: var(--heading-lg);
   font-weight: var(--heading-weight);
@@ -598,15 +472,6 @@ label,
   display: flex;
   align-items: center;
   gap: var(--gap-sm);
-}
-
-.block-header h2,
-.block-header h3 {
-  margin: 0;
-  font-size: var(--heading-sm);
-  font-weight: var(--heading-weight);
-  color: var(--c-accent-light);
-  flex: 1;
 }
 
 /* ── 欄位群組容器 ── */
@@ -620,7 +485,6 @@ label,
   flex-direction: column;
 }
 
-
 /* ─────────────────────────────────────────────────────────────
    14. 表單元件（輸入欄 / 選單 / 文字區）
 ───────────────────────────────────────────────────────────── */
@@ -632,7 +496,6 @@ input[type="date"],
 input[type="password"],
 input[type="email"],
 select,
-.select-wide,
 .select-narrow,
 .editor-input-text,
 .editor-input {
@@ -650,30 +513,30 @@ select,
   transition: border-color 0.2s;
 }
 
-.select-wide {
-  max-width: 500px;
-}
-
 .select-narrow {
   max-width: 200px;
 }
 
-/* ── 寬度修飾（input / select / textarea 共用，覆寫基底 width:100%）── */
+/* ── 寬度修飾（input / select / textarea 共用，覆寫基底 width:100%）──
+   提供完整的 .w-NN API；目前 HTML 用到的：fill, half, 60, 70, 72, 80, 240, 400 */
 .w-fill { width: 100%; }
 .w-half { width: 50%; }
 .w-60p  { width: 60%; }
 .w-80p  { width: 80%; }
+
 .w-60   { width: 60px; }
 .w-70   { width: 70px; }
 .w-72   { width: 72px; }
 .w-80   { width: 80px; }
 .w-160  { width: 160px; }
 .w-200  { width: 200px; }
-.w-240  { width: 240px; }
 .w-300  { width: 300px; }
-.w-400  { width: 400px; }
 .w-500  { width: 500px; }
 .w-600  { width: 600px; }
+
+.w-240  { width: 240px; }
+
+.w-400  { width: 400px; }
 
 input[type="text"]:focus,
 input[type="number"]:focus,
@@ -694,8 +557,6 @@ textarea[readonly] {
   opacity: 0.8;
   cursor: default;
 }
-
-
 
 /* ── 多行文字區 (標準深色底) ── */
 /*故事粗綱 .story-premise-textarea*/
@@ -756,7 +617,6 @@ textarea#main-editor:focus {
   resize: vertical;
 }
 
-
 /* .story-premise-textarea：故事粗綱，撐滿 */
 .story-premise-textarea {
   height: 100%;
@@ -772,9 +632,6 @@ textarea#main-editor {
   color: hsl(0, 0%, 94%);
 }
 
-
-
-
 /* ── 唯讀提示詞預覽框 ── */
 .prompt-preview {
   background: hsl(0, 0%, 10%);
@@ -785,28 +642,8 @@ textarea#main-editor {
 }
 
 /* ── daily_run 輸入欄覆蓋（純黑底） ── */
-body.daily-page input[type="text"],
-body.daily-page input[type="number"],
-body.daily-page input[type="date"],
-body.daily-page input[type="password"],
-body.daily-page input[type="email"],
-body.daily-page select {
-  background: var(--c-bg-input-dark);
-  border-color: var(--c-border-dark);
-  color: #fff;
-}
 
 /* 日記的 textarea */
-body.daily-page textarea {
-  background: var(--c-bg-input-dark);
-  border-color: var(--c-border-dark);
-  color: #fff;
-  font-size: var(--font-size-xl);
-  font-family: var(--font-kai);
-  line-height: 1.6;
-  padding: var(--pad-both-md);
-}
-
 
 /* ─────────────────────────────────────────────────────────────
    15. Toolbar / Toolbox
@@ -819,7 +656,6 @@ body.daily-page textarea {
   flex-wrap: wrap;
   margin-top: var(--gap-sm);
 }
-
 
 /* ─────────────────────────────────────────────────────────────
    16. 按鈕
@@ -996,14 +832,11 @@ body.daily-page .ai-btn {
   user-select: none;
 }
 
-
-
 .btn-lock-ch,
 .sec-lock {
   color: var(--c-text-sec);
   padding: 0 var(--gap-sm);
 }
-
 
 /* ── 刪除按鈕（透明底，hover 變紅）── */
 .btn-del-sec {
@@ -1023,7 +856,6 @@ body.daily-page .ai-btn {
 
 /* ── 淡色半透明按鈕（收合 / 複製 / 重新整理）── */
 .collapse-btn,
-.copy-btn,
 .reload-btn {
   background: rgba(255, 255, 255, 0.10);
   border: 1px solid rgba(255, 255, 255, 0.20);
@@ -1042,18 +874,6 @@ body.daily-page .ai-btn {
   background: rgba(255, 255, 255, 0.20);
 }
 
-.copy-btn {
-  float: right;
-  color: #ddd;
-  padding: 2px 10px;
-  margin-bottom: var(--gap-sm);
-}
-
-.copy-btn:hover {
-  background: var(--c-accent-light);
-  color: var(--c-text-dark);
-}
-
 .reload-btn {
   margin-left: var(--gap-md);
 }
@@ -1061,7 +881,6 @@ body.daily-page .ai-btn {
 /* ── 中型操作按鈕（黑底紫框，自帶中等尺寸）──
    .small-btn / .load-btn / .btn-today 共用基底               */
 .small-btn,
-.load-btn,
 .btn-today {
   font-size: var(--font-size-md);
   padding: var(--btn-padding-xs);
@@ -1085,18 +904,11 @@ body.daily-page .ai-btn {
   color: var(--c-text-dark);
 }
 
-.load-btn {
-  flex: 1;
-  font-size: var(--font-size-xl);
-  padding: var(--gap-sm);
-}
-
 .btn-today {
   height: var(--input-height);
   padding: 0 var(--gap-md);
   margin: 0 4rem 0 var(--gap-md);
 }
-
 
 /* ── 伺服器啟動按鈕 ── */
 #start-server-btn {
@@ -1136,7 +948,6 @@ body.daily-page .ai-btn {
   line-height: 1;
 }
 
-
 /* ─────────────────────────────────────────────────────────────
    17. characters_editor ── 頁首標題
 ───────────────────────────────────────────────────────────── */
@@ -1154,7 +965,6 @@ body.daily-page .ai-btn {
   color: var(--c-text-main);
 }
 
-
 /* ─────────────────────────────────────────────────────────────
    18. 連線狀態面板
 ───────────────────────────────────────────────────────────── */
@@ -1168,7 +978,6 @@ body.daily-page .ai-btn {
   gap: var(--pad-both-md);
 }
 
-
 /* ─────────────────────────────────────────────────────────────
    19. 將幾個設定格包起來有外框 (.status-row )
 ───────────────────────────────────────────────────────────── */
@@ -1181,7 +990,6 @@ body.daily-page .ai-btn {
   border-radius: var(--radius-md);
   border: 1px solid #444;
 }
-
 
 /* ─────────────────────────────────────────────────────────────
    20. novel_generator ── 伺服器狀態列
@@ -1230,7 +1038,6 @@ body.daily-page .ai-btn {
   }
 }
 
-
 /* ─────────────────────────────────────────────────────────────
    21. novel_generator ── 章節 / 小節卡片
 ───────────────────────────────────────────────────────────── */
@@ -1249,7 +1056,6 @@ body.daily-page .ai-btn {
   margin-bottom: var(--gap-sm);
   align-items: left;
 }
-
 
 /* ── 章節標題chapter-title-row input / novel-generator（透明底、只有下底線）── */
 .chapter-title-row input,
@@ -1276,13 +1082,6 @@ body.daily-page .ai-btn {
   border-bottom-color: var(--c-accent-light);
 }
 
-
-
-
-
-
-
-
 .section-list {
   margin-left: 20px;
   display: flex;
@@ -1306,7 +1105,6 @@ body.daily-page .ai-btn {
   background: rgba(156, 111, 214, 0.10);
 }
 
-
 /* ─────────────────────────────────────────────────────────────
    22. novel_generator ── 故事粗綱欄（可收合）
 ───────────────────────────────────────────────────────────── */
@@ -1315,19 +1113,10 @@ body.daily-page .ai-btn {
   position: relative;
 }
 
-#story-premise-container.collapsed {
-  width: 30px !important;
-  min-width: 30px !important;
-  overflow: hidden;
-}
-
 #story-premise-container.collapsed .col-header h3,
 #story-premise-container.collapsed .scroll-area {
   display: none;
 }
-
-
-
 
 /* ─────────────────────────────────────────────────────────────
    23. 彈窗 Modal
@@ -1494,7 +1283,6 @@ body.daily-page .ai-btn {
   color: #fff;
 }
 
-
 /* ─────────────────────────────────────────────────────────────
    24. LOG 區 novel_generator
 ───────────────────────────────────────────────────────────── */
@@ -1516,7 +1304,6 @@ body.daily-page .ai-btn {
   border: 1px solid #333;
 }
 
-
 /* ─────────────────────────────────────────────────────────────
    25. novel_generator ── LOG 操作列
 ───────────────────────────────────────────────────────────── */
@@ -1526,8 +1313,6 @@ body.daily-page .ai-btn {
   margin-top: var(--gap-sm);
   justify-content: flex-end;
 }
-
-
 
 /* ─────────────────────────────────────────────────────────────
    26. 捲動條
@@ -1549,7 +1334,6 @@ body.daily-page .ai-btn {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--c-accent-glow);
 }
-
 
 /* ─────────────────────────────────────────────────────────────
    27. novel_generator ── 角色欄捲動區
@@ -1576,7 +1360,6 @@ body.daily-page .ai-btn {
   flex-shrink: 0;
 }
 
-
 .checkbox-label {
   display: flex;
   align-items: center;
@@ -1589,48 +1372,15 @@ body.daily-page .ai-btn {
   color: var(--c-text-muted);
 }
 
-
 /* ─────────────────────────────────────────────────────────────
    29. novel_generator ── AI 設定組 (模型 / 風格 / 範本)
 ───────────────────────────────────────────────────────────── */
-.settings-group {
-  margin-left: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--gap-sm);
-}
-
-.settings-select {
-  background: #111;
-  color: #fff;
-  border: 1px solid #444;
-  border-radius: var(--radius-2xs);
-  padding: var(--gap-sm) var(--gap-md);
-  font-size: var(--font-size-md);
-  width: 100%;
-  height: auto;
-}
-
-.settings-row-inline {
-  display: flex;
-  gap: var(--gap-sm);
-  width: 100%;
-}
-
-.settings-row-inline .settings-select {
-  flex: 1;
-  width: auto;
-}
 
 .model-container-row {
   display: flex;
   align-items: center;
   gap: var(--gap-xs);
 }
-
-
-
 
 /* ─────────────────────────────────────────────────────────────
    30. novel_generator ── 章節 / 小節 JS 動態元素
@@ -1661,7 +1411,6 @@ body.daily-page .ai-btn {
   height: 300px;
 }
 
-
 /* ─────────────────────────────────────────────────────────────
    31. characters_editor ── 特定版型，勿取消或合併，因為每個ROW的內容物個數皆不同
 ───────────────────────────────────────────────────────────── */
@@ -1674,18 +1423,9 @@ body.daily-page .ai-btn {
   border-radius: var(--radius-xs);
 }
 
-
 /* ─────────────────────────────────────────────────────────────
    32. daily_run 頁面
 ───────────────────────────────────────────────────────────── */
-body.daily-page {
-  display: block;
-  height: auto !important;
-  overflow: auto !important;
-  background-color: var(--c-bg-main);
-  padding: 20px;
-  color: #fff;
-}
 
 /* ── 表單區塊 ── */
 .form-section {
@@ -1741,8 +1481,6 @@ body.daily-page {
   transform: scale(1.3);
   cursor: pointer;
 }
-
-
 
 /* ── 性格類型標籤 ── */
 .personality-type-tag {
@@ -1846,13 +1584,6 @@ body.daily-page {
 }
 
 /* ── 日記下拉選單 ── */
-.diary-select-dropdown {
-  transition: opacity 0.3s;
-}
-
-
-
-
 
 /* ─────────────────────────────────────────────────────────────
    33. 三欄 App Shell（.app-shell）
@@ -1873,7 +1604,6 @@ body.daily-page {
 .app-shell.left-collapsed #panel-left .left-content {
   display: none;
 }
-
 
 /* ─────────────────────────────────────────────────────────────
    34. Panel 基底（.panel）
@@ -1897,25 +1627,11 @@ body.daily-page {
   border-right: none;
 }
 
-
 /* ─────────────────────────────────────────────────────────────
    35. Panel 頭部（.panel-header）
         ── 聚合 editer .col-header 的 flex 結構，
            但此頁 font-size / bg 不同，以 .panel-header 覆蓋 ──
 ───────────────────────────────────────────────────────────── */
-.panel-header {
-  padding: var(--gap-md) var(--pad-both-md);
-  font-size: var(--font-size-md);
-  font-weight: 600;
-  color: var(--c-accent-light);
-  letter-spacing: 0.1em;
-  border-bottom: 1px solid var(--c-border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-}
-
 
 /* ─────────────────────────────────────────────────────────────
    36. Panel 可捲動區（.panel-scroll）
@@ -1932,7 +1648,6 @@ body.daily-page {
   padding: var(--gap-sm);
 }
 
-
 /* ─────────────────────────────────────────────────────────────
    37. 收合按鈕（.collapse-btn）
         ── 聚合 editer Section 16 的 .collapse-btn，
@@ -1948,12 +1663,6 @@ body.daily-page {
   gap: var(--gap-sm);
   writing-mode: vertical-rl;
 }
-
-.collapsed-icon-label {
-  font-size: var(--font-size-xs);
-  color: var(--c-text-sec);
-}
-
 
 /* ─────────────────────────────────────────────────────────────
    38. 左欄：使用者區塊（.user-section）
@@ -2012,44 +1721,12 @@ body.daily-page {
 }
 
 /* 使用者小標籤（"目前使用者"） */
-.user-meta-label {
-  font-size: var(--font-size-xs);
-  color: var(--c-text-sec);
-}
 
 /* 使用者新增列 */
-.user-add-row {
-  margin-top: var(--gap-md);
-  display: flex;
-  gap: var(--gap-sm);
-}
 
 /* 新增使用者按鈕 */
-.btn-add-user {
-  background: var(--c-accent);
-  border: none;
-  color: #fff;
-  border-radius: var(--radius-xs);
-  padding: var(--gap-sm) var(--gap-md);
-  cursor: pointer;
-  font-size: var(--font-size-sm);
-}
-
-.btn-add-user:hover {
-  background: var(--c-accent-hover);
-}
 
 /* 編輯使用者（⚙️）小按鈕，聚合 .btn-icon 的無背景風格 */
-.btn-edit-user {
-  background: none;
-  border: none;
-  color: var(--c-accent-light);
-  cursor: pointer;
-  font-size: var(--font-size-xl);
-  padding: 0;
-  line-height: 1;
-}
-
 
 /* ─────────────────────────────────────────────────────────────
    39. 左欄：伺服器 / 模型區塊（.server-section）
@@ -2096,7 +1773,6 @@ body.daily-page {
   animation: dot-flash 0.5s ease-out;
 }
 
-
 /* 模型選取列，容器寬度太窄就需要包這一層來換行（select + 編輯按鈕）*/
 .model-wrap-row {
   display: flex;
@@ -2107,82 +1783,18 @@ body.daily-page {
   flex: 1;
 }
 
-
 /* 模型內的編輯按鈕（小紫色按鈕）*/
-.btn-model-edit {
-  background: var(--c-accent);
-  border: none;
-  color: #fff;
-  border-radius: var(--radius-2xs);
-  padding: 2px var(--gap-sm);
-  cursor: pointer;
-  font-size: var(--font-size-md);
-  white-space: nowrap;
-}
-
-.btn-model-edit:hover {
-  background: var(--c-accent-hover);
-}
-
 
 /* ─────────────────────────────────────────────────────────────
    40. LOG 區（.log-box）
         ── 聚合 Section 24），僅 font-size 略小 ──
 ───────────────────────────────────────────────────────────── */
-.log-box {
-  background: #000;
-  color: var(--c-log-text);
-  font-family: monospace;
-  padding: var(--gap-sm);
-  border-radius: var(--radius-xs);
-  border: 1px solid #333;
-  overflow-y: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
-  line-height: 1.5;
-  font-size: var(--font-size-lg);
-  flex: 1;
-  margin-top: var(--gap-sm);
-}
-
-
-
 
 /* ─────────────────────────────────────────────────────────────
    41. 中欄：聊天列表（.list-section-title / .chat-item）
 ───────────────────────────────────────────────────────────── */
-.list-section-title {
-  font-size: var(--font-size-lg);
-  font-weight: 700;
-  color: var(--c-text-sec);
-  padding: var(--gap-sm) var(--gap-md);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.list-section-title button {
-  background: none;
-  border: none;
-  color: var(--c-accent-light);
-  font-size: var(--font-size-lg);
-  cursor: pointer;
-  padding: 0 var(--gap-xs);
-  transition: color 0.2s;
-}
-
-.list-section-title button:hover {
-  color: #fff;
-}
 
 /* 空清單提示文字 */
-.list-empty-hint {
-  font-size: var(--font-size-xs);
-  color: #555;
-  padding: var(--gap-sm) var(--gap-md);
-}
 
 .chat-item {
   display: flex;
@@ -2264,7 +1876,6 @@ body.daily-page {
   color: var(--c-accent-light);
 }
 
-
 /* ─────────────────────────────────────────────────────────────
    42. 右欄：聊天室頭部（#chat-header）
 ───────────────────────────────────────────────────────────── */
@@ -2290,33 +1901,8 @@ body.daily-page {
 }
 
 /* 清空按鈕（頭部右側），聚合 .btn-icon 風格 */
-.btn-clear-chat {
-  background: none;
-  border: none;
-  color: #666;
-  cursor: pointer;
-  font-size: var(--font-size-lg);
-  padding: var(--pad-icon);
-  border-radius: var(--radius-xs);
-  transition: color 0.2s;
-}
-
-.btn-clear-chat:hover {
-  color: var(--c-accent-light);
-}
-
-.btn-clear-chat:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
 
 /* 頭部右側按鈕群 */
-.chat-header-actions {
-  margin-left: auto;
-  display: flex;
-  gap: var(--gap-sm);
-}
-
 
 /* ─────────────────────────────────────────────────────────────
    43. 訊息區（#chat-messages / .msg-*）
@@ -2407,13 +1993,6 @@ body.daily-page {
 }
 
 /* 訊息區輔助文字（載入中 / 空白提示）*/
-.msg-center-hint {
-  text-align: center;
-  padding: 20px;
-  color: #666;
-  font-size: 0.8rem;
-}
-
 
 /* ─────────────────────────────────────────────────────────────
    44. 右欄：訊息輸入列（#chat-input-area）
@@ -2481,7 +2060,6 @@ body.daily-page {
   cursor: not-allowed;
 }
 
-
 /* ─────────────────────────────────────────────────────────────
    45. 空白狀態（.empty-chat）
 ───────────────────────────────────────────────────────────── */
@@ -2502,7 +2080,6 @@ body.daily-page {
 .empty-chat p {
   font-size: var(--font-size-md);
 }
-
 
 /* ─────────────────────────────────────────────────────────────
    46. Modal（.modal-overlay / .modal）
@@ -2537,17 +2114,6 @@ body.daily-page {
 }
 
 /* Modal 寬度修飾類（由 HTML style 改 class 後用）*/
-.modal-w-sm {
-  width: 360px;
-}
-
-.modal-w-md {
-  width: 480px;
-}
-
-.modal-w-lg {
-  width: 640px;
-}
 
 .modal h3 {
   font-size: 1.05rem;
@@ -2636,24 +2202,10 @@ body.daily-page {
 }
 
 /* 刪除按鈕（modal 左側紅色）*/
-.btn-modal-delete {
-  background: rgba(244, 67, 54, 0.2);
-  color: var(--c-err);
-  margin-right: auto;
-}
 
 /* 密碼確認 modal 說明文字 */
-.modal-password-msg {
-  font-size: var(--font-size-md);
-  color: var(--c-text-sec);
-  margin-bottom: var(--pad-both-md);
-}
 
 /* 密碼輸入框底部間距 */
-.modal-input-mb {
-  margin-bottom: 20px;
-}
-
 
 /* ─────────────────────────────────────────────────────────────
    47. 角色多選清單（.char-check-list / .char-check-item）
@@ -2695,7 +2247,6 @@ body.daily-page {
   color: #666;
   font-size: 0.8rem;
 }
-
 
 /* ─────────────────────────────────────────────────────────────
    48. 訊息泡泡：選取狀態 & 操作選單
