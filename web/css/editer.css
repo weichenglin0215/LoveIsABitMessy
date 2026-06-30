@@ -848,7 +848,7 @@ body.daily-page textarea {
   background: var(--c-bg-ghost-hover);
 }
 
-/* ── AI 粉色按鈕 ── */
+/* ── AI 粉色按鈕（黑底粉框）── */
 .ai-btn {
   display: inline-flex;
   align-items: center;
@@ -880,6 +880,47 @@ body.daily-page textarea {
 body.daily-page .ai-btn {
   padding: 0 var(--pad-both-md);
   font-size: var(--font-size-2xl);
+}
+
+/* ── AI 藍粉漸層按鈕（全自動鈕）── */
+.ai-btn-bluepink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-sm);
+  padding: var(--btn-padding-xs-wild);
+  border-radius: 15px;
+  border: 1px solid transparent;
+  background: linear-gradient(135deg, #7c3aed, #f472b6);
+  color: #fff;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-lg);
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+
+.ai-btn-bluepink:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.ai-btn-bluepink:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── 尺寸修飾（套用於 .primary-btn / .secondary-btn / .ai-btn / .ai-btn-bluepink）── */
+.size-md {
+  font-size: var(--font-size-md);
+  padding: var(--btn-padding-xs);
+  border-radius: var(--radius-md);
+}
+
+.size-sm {
+  font-size: var(--font-size-sm);
+  padding: 2px var(--gap-sm);
+  border-radius: var(--radius-2xs);
 }
 
 /* ── 圓形按鈕（.btn-circle 大 / .btn-circle-sm 小）── */
@@ -996,13 +1037,11 @@ body.daily-page .ai-btn {
   margin-left: var(--gap-md);
 }
 
-/* ── 小型操作按鈕（日誌操作 / 載入清單 / 今天 / AI編輯）──
-   共用：小尺寸字體、小 padding、圓角、flex 對齊                 */
+/* ── 中型操作按鈕（黑底紫框，自帶中等尺寸）──
+   .small-btn / .load-btn / .btn-today 共用基底               */
 .small-btn,
 .load-btn,
-.btn-today,
-.ai-btn-sm,
-.btn-edit-sm {
+.btn-today {
   font-size: var(--font-size-md);
   padding: var(--btn-padding-xs);
   border-radius: var(--radius-md);
@@ -1025,7 +1064,6 @@ body.daily-page .ai-btn {
   color: var(--c-text-dark);
 }
 
-
 .load-btn {
   flex: 1;
   font-size: var(--font-size-xl);
@@ -1036,13 +1074,6 @@ body.daily-page .ai-btn {
   height: var(--input-height);
   padding: 0 var(--gap-md);
   margin: 0 4rem 0 var(--gap-md);
-}
-
-.ai-btn-sm {
-  font-size: 0.8rem;
-  border-radius: var(--radius-2xs);
-  margin: 0;
-  padding: 2px var(--gap-sm);
 }
 
 
@@ -1069,27 +1100,8 @@ body.daily-page .ai-btn {
   cursor: not-allowed;
 }
 
-/* ── Modal 按鈕 ── */
-.btn-modal-cancel,
-.btn-modal-confirm {
-  padding: var(--gap-sm) 20px;
-  border: none;
-  border-radius: var(--radius-xs);
-  cursor: pointer;
-  font-size: var(--font-size-lg);
-}
-
-.btn-modal-cancel {
-  background: #444;
-  color: #fff;
-}
-
-.btn-modal-confirm {
-  padding: var(--gap-sm) 24px;
-  background: var(--c-pink);
-  color: #fff;
-  font-weight: bold;
-}
+/* Modal 按鈕：統一使用 .btn-modal + .primary / .cancel / .delete
+   定義集中在 Section 46（Modal）。此處不重複宣告。 */
 
 /* ── Modal 關閉 ✕ 按鈕 ── */
 .modal-close-btn {
@@ -2418,8 +2430,9 @@ body.daily-page {
   color: var(--c-text-muted);
 }
 
-/* 送出按鈕（圓形紫色）──
-   聚合 .btn-circle 的圓形概念，但固定尺寸 & 無 border */
+/* 圓形紫底送出按鈕（中按鈕家族）──
+   .btn-send-circle：可重用的 class；#btn-send 為向後相容別名 */
+.btn-send-circle,
 #btn-send {
   background: var(--c-accent);
   border: none;
@@ -2436,10 +2449,12 @@ body.daily-page {
   flex-shrink: 0;
 }
 
+.btn-send-circle:hover:not(:disabled),
 #btn-send:hover:not(:disabled) {
   background: var(--c-accent-hover);
 }
 
+.btn-send-circle:disabled,
 #btn-send:disabled {
   background: #333;
   cursor: not-allowed;
@@ -2592,6 +2607,7 @@ body.daily-page {
   background: rgba(255, 255, 255, 0.15);
 }
 
+.btn-modal.delete,
 .btn-modal.btn-del-sec {
   background: rgba(244, 67, 54, 0.2);
   color: var(--c-err);

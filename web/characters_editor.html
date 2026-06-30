@@ -201,14 +201,14 @@
               <select id="model-options-select" class="select-narrow">
                 <option value="">預設</option>
               </select>
-              <button id="btn-add-model-option" class="ai-btn btn-edit-sm">+編輯</button>
+              <button id="btn-add-model-option" class="ai-btn size-md">+編輯</button>
             </div>
             <div class="model-container-row">
               <label class="model-label">🖋️ 寫作風格：</label>
               <select id="writer-style-select" class="ws-style-dropdown select-narrow">
                 <option value="">無</option>
               </select>
-              <button id="btn-edit-writer-style" class="ai-btn btn-edit-sm"
+              <button id="btn-edit-writer-style" class="ai-btn size-md"
                 onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select').value)">+編輯</button>
             </div>
             <div class="model-container-row">
@@ -216,7 +216,7 @@
               <select id="writer-sample-select" class="ws-sample-dropdown select-narrow">
                 <option value="">無</option>
               </select>
-              <button id="btn-edit-writer-sample" class="ai-btn btn-edit-sm"
+              <button id="btn-edit-writer-sample" class="ai-btn size-md"
                 onclick="WriterSettingsApp.openSampleModal(document.getElementById('writer-sample-select').value)">+編輯</button>
             </div>
           </div>
@@ -270,8 +270,8 @@
           autocomplete="off" style="width:100%; box-sizing:border-box;">
       </div>
       <div class="modal-actions" style="margin-top:16px;">
-        <button id="btn-target-char-cancel" class="btn-modal-cancel">取消</button>
-        <button id="btn-target-char-confirm" class="btn-modal-confirm">開始分析</button>
+        <button id="btn-target-char-cancel" class="btn-modal cancel">取消</button>
+        <button id="btn-target-char-confirm" class="btn-modal primary">開始分析</button>
       </div>
     </div>
   </div>

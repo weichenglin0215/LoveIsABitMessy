@@ -36,8 +36,7 @@
       <button class="btn secondary-btn" id="btn-author-notes" title="撰寫作者備註，不會提供給 AI，但會隨小說一起儲存／讀取">📝 作者備註</button>
       <button class="btn primary-btn" id="btn-save">💾 儲存小說</button>
       <button class="btn secondary-btn" id="btn-compare-novels" title="並排比對四本雲端小說的內容">📚 比對多本小說</button>
-      <button class="ai-btn" id="btn-ai-gen-full-auto" title=" AI全自動生成所有文字：依粗綱生成章節→節大綱→節內文（跳過已鎖定）"
-        style="color: #FFFFFF; background:linear-gradient(135deg,#7c3aed,#f472b6); font-weight:bold;">🚀
+      <button class="ai-btn-bluepink" id="btn-ai-gen-full-auto" title=" AI全自動生成所有文字：依粗綱生成章節→節大綱→節內文（跳過已鎖定）">🚀
         全自動(根據粗綱產生多本小說)</button>
     </nav>
   </div>
@@ -79,14 +78,14 @@
           <select id="model-options-select" class="ws-style-dropdown">
             <option value="">預設</option>
           </select>
-          <button id="btn-add-model-option" class="ai-btn btn-edit-sm">+編輯</button>
+          <button id="btn-add-model-option" class="ai-btn size-md">+編輯</button>
         </div>
         <div class="model-container-row">
           <label class="model-label">🖋️ 寫作風格一：</label>
           <select id="writer-style-select-1" class="ws-style-dropdown">
             <option value="">無</option>
           </select>
-          <button id="btn-edit-writer-style" class="ai-btn btn-edit-sm"
+          <button id="btn-edit-writer-style" class="ai-btn size-md"
             onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select-1').value)">+編輯</button>
         </div>
         <div class="model-container-row">
@@ -94,7 +93,7 @@
           <select id="writer-style-select-2" class="ws-style-dropdown">
             <option value="">無</option>
           </select>
-          <button class="ai-btn btn-edit-sm"
+          <button class="ai-btn size-md"
             onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select-2').value)">+編輯</button>
         </div>
         <div class="model-container-row">
@@ -102,7 +101,7 @@
           <select id="writer-style-select-3" class="ws-style-dropdown">
             <option value="">無</option>
           </select>
-          <button class="ai-btn btn-edit-sm"
+          <button class="ai-btn size-md"
             onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select-3').value)">+編輯</button>
         </div>
         <div class="model-container-row">
@@ -110,7 +109,7 @@
           <select id="writer-sample-select" class="ws-sample-dropdown">
             <option value="">無</option>
           </select>
-          <button id="btn-edit-writer-sample" class="ai-btn btn-edit-sm"
+          <button id="btn-edit-writer-sample" class="ai-btn size-md"
             onclick="WriterSettingsApp.openSampleModal(document.getElementById('writer-sample-select').value)">+編輯</button>
         </div>
       </div>
@@ -194,8 +193,8 @@
         <input type="password" id="save-novel-password" style="color:red; border-color:red;">
       </div>
       <div class="modal-actions">
-        <button id="btn-save-cancel" class="btn-modal-cancel">取消</button>
-        <button id="btn-save-confirm" class="btn-modal-confirm">確定儲存</button>
+        <button id="btn-save-cancel" class="btn-modal cancel">取消</button>
+        <button id="btn-save-confirm" class="btn-modal primary">確定儲存</button>
       </div>
     </div>
   </div>
@@ -210,8 +209,8 @@
       <textarea id="author-notes-text" placeholder="在此撰寫作者備註..."
         style="width:100%; min-height:400px; box-sizing:border-box; padding:10px; font-size:15px; resize:vertical;"></textarea>
       <div class="modal-actions">
-        <button id="btn-author-notes-cancel" class="btn-modal-cancel">取消</button>
-        <button id="btn-author-notes-ok" class="btn-modal-confirm">確定</button>
+        <button id="btn-author-notes-cancel" class="btn-modal cancel">取消</button>
+        <button id="btn-author-notes-ok" class="btn-modal primary">確定</button>
       </div>
     </div>
   </div>
@@ -291,8 +290,8 @@
         檔名格式：小說名稱-001、小說名稱-002 …　已鎖定章節 / 節不會被更動。
       </p>
       <div class="modal-actions">
-        <button id="btn-multibook-cancel" class="btn-modal-cancel">取消</button>
-        <button id="btn-multibook-confirm" class="btn-modal-confirm">開始生成</button>
+        <button id="btn-multibook-cancel" class="btn-modal cancel">取消</button>
+        <button id="btn-multibook-confirm" class="btn-modal primary">開始生成</button>
       </div>
     </div>
   </div>
@@ -312,8 +311,8 @@
           style="width:80px; font-size:16px; text-align:center; padding:4px 8px;">
       </div>
       <div class="modal-actions">
-        <button id="btn-stb-params-cancel" class="btn-modal-cancel">取消</button>
-        <button id="btn-stb-params-confirm" class="btn-modal-confirm">確定</button>
+        <button id="btn-stb-params-cancel" class="btn-modal cancel">取消</button>
+        <button id="btn-stb-params-confirm" class="btn-modal primary">確定</button>
       </div>
     </div>
   </div>
@@ -333,8 +332,8 @@
           style="width:80px; font-size:16px; text-align:center; padding:4px 8px;">
       </div>
       <div class="modal-actions">
-        <button id="btn-stp-params-cancel" class="btn-modal-cancel">取消</button>
-        <button id="btn-stp-params-confirm" class="btn-modal-confirm">確定</button>
+        <button id="btn-stp-params-cancel" class="btn-modal cancel">取消</button>
+        <button id="btn-stp-params-confirm" class="btn-modal primary">確定</button>
       </div>
     </div>
   </div>
@@ -354,8 +353,8 @@
           style="width:80px; font-size:16px; text-align:center; padding:4px 8px;">
       </div>
       <div class="modal-actions">
-        <button id="btn-cfp-params-cancel" class="btn-modal-cancel">取消</button>
-        <button id="btn-cfp-params-confirm" class="btn-modal-confirm">確定</button>
+        <button id="btn-cfp-params-cancel" class="btn-modal cancel">取消</button>
+        <button id="btn-cfp-params-confirm" class="btn-modal primary">確定</button>
       </div>
     </div>
   </div>
@@ -375,8 +374,8 @@
           style="width:80px; font-size:16px; text-align:center; padding:4px 8px;">
       </div>
       <div class="modal-actions">
-        <button id="btn-co-params-cancel" class="btn-modal-cancel">取消</button>
-        <button id="btn-co-params-confirm" class="btn-modal-confirm">確定</button>
+        <button id="btn-co-params-cancel" class="btn-modal cancel">取消</button>
+        <button id="btn-co-params-confirm" class="btn-modal primary">確定</button>
       </div>
     </div>
   </div>
@@ -391,8 +390,8 @@
           style="width:80px; font-size:16px; text-align:center; padding:4px 8px;">
       </div>
       <div class="modal-actions">
-        <button id="btn-sc-params-cancel" class="btn-modal-cancel">取消</button>
-        <button id="btn-sc-params-confirm" class="btn-modal-confirm">確定</button>
+        <button id="btn-sc-params-cancel" class="btn-modal cancel">取消</button>
+        <button id="btn-sc-params-confirm" class="btn-modal primary">確定</button>
       </div>
     </div>
   </div>
@@ -404,8 +403,8 @@
       <p class="modal-desc">請輸入此小說專案的讀取密碼：</p>
       <input type="password" id="novel-password-input" placeholder="輸入密碼..." style="margin-bottom:20px; color:red;">
       <div class="modal-actions">
-        <button id="btn-password-cancel" class="btn-modal-cancel">取消</button>
-        <button id="btn-password-ok" class="btn-modal-confirm">確定</button>
+        <button id="btn-password-cancel" class="btn-modal cancel">取消</button>
+        <button id="btn-password-ok" class="btn-modal primary">確定</button>
       </div>
     </div>
   </div>
@@ -699,8 +698,8 @@
       <p class="modal-desc" id="compare-pwd-desc">請輸入此小說的讀取密碼：</p>
       <input type="password" id="compare-pwd-input" placeholder="輸入密碼..." style="margin-bottom:20px; color:red;">
       <div class="modal-actions">
-        <button id="btn-compare-pwd-cancel" class="btn-modal-cancel">取消</button>
-        <button id="btn-compare-pwd-ok" class="btn-modal-confirm">確定</button>
+        <button id="btn-compare-pwd-cancel" class="btn-modal cancel">取消</button>
+        <button id="btn-compare-pwd-ok" class="btn-modal primary">確定</button>
       </div>
     </div>
   </div>
