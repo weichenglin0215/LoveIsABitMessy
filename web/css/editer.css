@@ -654,6 +654,23 @@ select,
   max-width: 200px;
 }
 
+/* ── 寬度修飾（input / select / textarea 共用，覆寫基底 width:100%）── */
+.w-fill { width: 100%; }
+.w-half { width: 50%; }
+.w-60p  { width: 60%; }
+.w-80p  { width: 80%; }
+.w-60   { width: 60px; }
+.w-70   { width: 70px; }
+.w-72   { width: 72px; }
+.w-80   { width: 80px; }
+.w-160  { width: 160px; }
+.w-200  { width: 200px; }
+.w-240  { width: 240px; }
+.w-300  { width: 300px; }
+.w-400  { width: 400px; }
+.w-500  { width: 500px; }
+.w-600  { width: 600px; }
+
 input[type="text"]:focus,
 input[type="number"]:focus,
 input[type="date"]:focus,

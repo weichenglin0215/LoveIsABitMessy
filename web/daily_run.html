@@ -1257,17 +1257,17 @@
             <h2 style="margin-top:0; color:var(--c-accent-light);">生成日記-設定篇數與日期範圍</h2>
             <div class="form-group" style="margin-top:20px;">
                 <label>每日的篇數：</label>
-                <input type="number" id="modal-daily-count" class="input-flat" min="1" max="32" value="1"
-                    style="width:100%;">
+                <input type="number" id="modal-daily-count" class="input-flat w-fill" min="1" max="32" value="1"
+ >
             </div>
             <div style="display:flex; gap:10px; margin-top:15px;">
                 <div class="form-group" style="flex:1;">
                     <label>起始日期：</label>
-                    <input type="date" id="modal-start-date" class="input-flat" style="width:100%;">
+                    <input type="date" id="modal-start-date" class="input-flat w-fill" >
                 </div>
                 <div class="form-group" style="flex:1;">
                     <label>結束日期：</label>
-                    <input type="date" id="modal-end-date" class="input-flat" style="width:100%;">
+                    <input type="date" id="modal-end-date" class="input-flat w-fill" >
                 </div>
             </div>
             <div style="margin-top:25px; display:flex; justify-content:flex-end; gap:10px;">
@@ -1294,9 +1294,9 @@
                 <span id="cd-search-count" class="log-search-count" style="min-width:70px; flex-shrink:0;"></span>
                 <button class="log-search-nav-btn" id="cd-search-prev" title="上一個">▲</button>
                 <button class="log-search-nav-btn" id="cd-search-next" title="下一個">▼</button>
-                <input type="text" id="cd-search-input" class="log-search-input"
-                    style="font-size:20px; width:50%; min-width:160px; max-width:900px;"
-                    placeholder="搜尋四欄文字（Enter 執行）...">
+                <input type="text" id="cd-search-input" class="log-search-input w-half"
+ style="font-size:20px; min-width:160px; max-width:900px"
+ placeholder="搜尋四欄文字（Enter 執行）...">
                 <button class="modal-close-btn"
                     onclick="document.getElementById('modal-compare-diaries').classList.add('hidden')"
                     style="flex-shrink:0; margin-left:auto;">&times;</button>
@@ -1320,18 +1320,18 @@
                         <div
                             style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-bottom:1px solid var(--c-border); flex-shrink:0;">
                             日記文字內容 (Story)</div>
-                        <textarea class="cd-story" data-col="0"
-                            style="width:100%; height:400px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                        <textarea class="cd-story w-fill" data-col="0"
+ style="height:400px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box"></textarea>
                         <div
                             style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-top:1px solid var(--c-border); border-bottom:1px solid var(--c-border); flex-shrink:0;">
                             生圖提示詞 (Image Prompt)</div>
-                        <textarea class="cd-image-prompt" data-col="0"
-                            style="width:100%; height:200px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                        <textarea class="cd-image-prompt w-fill" data-col="0"
+ style="height:200px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box"></textarea>
                         <div
                             style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-top:1px solid var(--c-border); border-bottom:1px solid var(--c-border); flex-shrink:0;">
                             AI 參數 (AISetup)</div>
-                        <textarea class="cd-ai-setup" data-col="0"
-                            style="width:100%; height:150px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                        <textarea class="cd-ai-setup w-fill" data-col="0"
+ style="height:150px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box"></textarea>
                     </div>
                 </div>
                 <!-- Col 1 -->
@@ -1351,18 +1351,18 @@
                         <div
                             style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-bottom:1px solid var(--c-border); flex-shrink:0;">
                             日記文字內容 (Story)</div>
-                        <textarea class="cd-story" data-col="1"
-                            style="width:100%; height:400px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                        <textarea class="cd-story w-fill" data-col="1"
+ style="height:400px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box"></textarea>
                         <div
                             style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-top:1px solid var(--c-border); border-bottom:1px solid var(--c-border); flex-shrink:0;">
                             生圖提示詞 (Image Prompt)</div>
-                        <textarea class="cd-image-prompt" data-col="1"
-                            style="width:100%; height:200px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                        <textarea class="cd-image-prompt w-fill" data-col="1"
+ style="height:200px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box"></textarea>
                         <div
                             style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-top:1px solid var(--c-border); border-bottom:1px solid var(--c-border); flex-shrink:0;">
                             AI 參數 (AISetup)</div>
-                        <textarea class="cd-ai-setup" data-col="1"
-                            style="width:100%; height:150px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                        <textarea class="cd-ai-setup w-fill" data-col="1"
+ style="height:150px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box"></textarea>
                     </div>
                 </div>
                 <!-- Col 2 -->
@@ -1382,18 +1382,18 @@
                         <div
                             style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-bottom:1px solid var(--c-border); flex-shrink:0;">
                             日記文字內容 (Story)</div>
-                        <textarea class="cd-story" data-col="2"
-                            style="width:100%; height:400px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                        <textarea class="cd-story w-fill" data-col="2"
+ style="height:400px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box"></textarea>
                         <div
                             style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-top:1px solid var(--c-border); border-bottom:1px solid var(--c-border); flex-shrink:0;">
                             生圖提示詞 (Image Prompt)</div>
-                        <textarea class="cd-image-prompt" data-col="2"
-                            style="width:100%; height:200px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                        <textarea class="cd-image-prompt w-fill" data-col="2"
+ style="height:200px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box"></textarea>
                         <div
                             style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-top:1px solid var(--c-border); border-bottom:1px solid var(--c-border); flex-shrink:0;">
                             AI 參數 (AISetup)</div>
-                        <textarea class="cd-ai-setup" data-col="2"
-                            style="width:100%; height:150px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                        <textarea class="cd-ai-setup w-fill" data-col="2"
+ style="height:150px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box"></textarea>
                     </div>
                 </div>
                 <!-- Col 3 -->
@@ -1412,18 +1412,18 @@
                         <div
                             style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-bottom:1px solid var(--c-border); flex-shrink:0;">
                             日記文字內容 (Story)</div>
-                        <textarea class="cd-story" data-col="3"
-                            style="width:100%; height:400px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                        <textarea class="cd-story w-fill" data-col="3"
+ style="height:400px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box"></textarea>
                         <div
                             style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-top:1px solid var(--c-border); border-bottom:1px solid var(--c-border); flex-shrink:0;">
                             生圖提示詞 (Image Prompt)</div>
-                        <textarea class="cd-image-prompt" data-col="3"
-                            style="width:100%; height:200px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                        <textarea class="cd-image-prompt w-fill" data-col="3"
+ style="height:200px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box"></textarea>
                         <div
                             style="padding:2px 8px; font-size:16px; color:var(--c-text-sec); background:var(--c-bg-card); border-top:1px solid var(--c-border); border-bottom:1px solid var(--c-border); flex-shrink:0;">
                             AI 參數 (AISetup)</div>
-                        <textarea class="cd-ai-setup" data-col="3"
-                            style="width:100%; height:150px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box;"></textarea>
+                        <textarea class="cd-ai-setup w-fill" data-col="3"
+ style="height:150px; resize:vertical; border:none; border-radius:0; margin:0; box-sizing:border-box"></textarea>
                     </div>
                 </div>
             </div>
