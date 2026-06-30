@@ -473,9 +473,9 @@ function renderSessionLists() {
   const grp = state.sessions.filter(s => s.session_type === 'group');
 
   qs('#list-1on1').innerHTML = one.length ? one.map(s => sessionItem(s)).join('') :
-    '<div class="form-label">尚無對話</div>';
+    '<div class="title-md">尚無對話</div>';
   qs('#list-group').innerHTML = grp.length ? grp.map(s => sessionItem(s)).join('') :
-    '<div class="form-label">尚無聊天室</div>';
+    '<div class="title-md">尚無聊天室</div>';
 
   // 使用事件委託來處理齒輪點擊，解決動態渲染失效問題
 }

@@ -514,35 +514,24 @@ body.layout-scroll {
    13. 標籤 / 說明文字 / 標題
 ───────────────────────────────────────────────────────────── */
 
-/* ── 欄位標籤 ──
-    .form-label ：強調色（主表單標籤） 
-    .field-label：次要色（次要欄位標籤）
-    盡量讓表單都使用這兩個標籤。*/
-.app-title,
-.app-title-small {
+/* ── 5 級標題系統（統一替代 .app-title / .form-label / .field-label / .hint 等） ──
+   超大 / 大 / 中 / 小 / 註解。h2/h3 的視覺仍由下方 .col-header / .editor-panel
+   等上下文選擇器負責，這 5 個 class 用於 div / label / span 等通用元素。       */
+.title-xl {
   font-size: var(--font-size-2xl);
   font-weight: 500;
   color: var(--c-text-main);
   display: block;
 }
 
-.app-title-small {
+.title-lg {
   font-size: var(--font-size-lg);
+  font-weight: 500;
+  color: var(--c-text-main);
+  display: block;
 }
 
-/* ── 次要 / 狀態說明文字 ── */
-.hint,
-.cloud-status,
-.conn-status,
-.conn-desc,
-.section-desc,
-.server-status-text {
-  color: var(--c-text-sec);
-  font-size: var(--font-size-md);
-  line-height: 1.4;
-}
-
-.form-label {
+.title-md {
   color: var(--c-accent-light);
   font-size: var(--font-size-lg);
   display: block;
@@ -551,13 +540,28 @@ body.layout-scroll {
   margin-bottom: var(--pad-both-xs);
 }
 
-.field-label {
+.title-sm {
   color: var(--c-accent-field-label);
   font-size: var(--font-size-md);
   display: block;
   font-weight: var(--heading-weight);
   margin: var(--pad-both-xs);
 }
+
+.title-hint {
+  color: var(--c-text-sec);
+  font-size: var(--font-size-md);
+  line-height: 1.4;
+}
+
+/* ── 舊類別保留為別名（待 HTML 完全遷移後於批 4 移除）── */
+.app-title { font-size: var(--font-size-2xl); font-weight: 500; color: var(--c-text-main); display: block; }
+.app-title-small { font-size: var(--font-size-lg); font-weight: 500; color: var(--c-text-main); display: block; }
+.hint, .cloud-status, .conn-status, .conn-desc, .section-desc, .server-status-text {
+  color: var(--c-text-sec); font-size: var(--font-size-md); line-height: 1.4;
+}
+.form-label { color: var(--c-accent-light); font-size: var(--font-size-lg); display: block; font-weight: var(--heading-weight); margin-top: var(--pad-both-sm); margin-bottom: var(--pad-both-xs); }
+.field-label { color: var(--c-accent-field-label); font-size: var(--font-size-md); display: block; font-weight: var(--heading-weight); margin: var(--pad-both-xs); }
 
 
 /* ── 設定組 / 模型列 小標籤 ── */

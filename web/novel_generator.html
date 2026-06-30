@@ -19,7 +19,7 @@
 
 <body>
   <div class="app-topbar">
-    <div class="app-title-small">📖 開心花園AI小說自動產生器 <small class="nav-version">v0.3.0</small></div>
+    <div class="title-lg">📖 開心花園AI小說自動產生器 <small class="nav-version">v0.3.0</small></div>
     <nav class="app-topbar-nav">
       <label class="nav-label">小說名稱：</label>
       <div class="book-title">
@@ -65,7 +65,7 @@
       <!--LOG狀態欄-->
       <div class="server-status-row server-settings-row">
         <span class="server-status-dot offline" id="server-dot"></span>
-        <span class="server-status-text" id="server-status-text">偵測中…</span>
+        <span class="title-hint" id="server-status-text">偵測中…</span>
         <button id="start-server-btn" disabled>🚀 請自行啟動伺服器</button>
         <div id="model-container" class="model-container-row">
           <label class="model-label">🤖 AI 模型：</label>
@@ -122,7 +122,7 @@
         <button class="small-btn" onclick="copyLogOutput()" title="複製LOG欄的所有文字到剪貼簿">📋複製</button>
         <button class="small-btn" onclick="showLogModal()" title="將LOG欄的所有文字顯示在大型LOG彈窗">🔲大型彈窗</button>
       </div>
-      <div id="diary-cloud-status" class="cloud-status">雲端狀態</div>
+      <div id="diary-cloud-status" class="title-hint">雲端狀態</div>
     </div>
 
     <div class="resizer" data-index="1"></div>

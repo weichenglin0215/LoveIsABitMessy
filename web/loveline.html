@@ -22,7 +22,7 @@
 <body>
   <!-- Top Bar -->
   <div class="app-topbar">
-    <span class="app-title-small">💌 LoveLine</span>
+    <span class="title-lg">💌 LoveLine</span>
     <nav class="app-topbar-nav">
       <a href="index.html">🏠 首頁</a>
       <a href="characters_editor.html">🎭 角色編輯</a>
@@ -50,12 +50,12 @@
             <div class="user-avatar" id="user-avatar-icon">👤</div>
             <div style="flex:1;">
               <div class="user-name" id="current-user-name">— 請選擇 —</div>
-              <div class="hint">目前使用者</div>
+              <div class="title-hint">目前使用者</div>
             </div>
             <button id="btn-refresh-cloud" title="從雲端重新下載角色卡與使用者清單" class="btn-icon">🔄</button>
             <button id="btn-edit-user-profile" title="編輯使用者資料" class="btn-icon">⚙️</button>
           </div>
-          <div class="field-label">選擇使用者</div>
+          <div class="title-sm">選擇使用者</div>
           <select id="user-select">
             <option value="">— 請選擇 —</option>
           </select>
@@ -142,20 +142,20 @@
       </div>
       <div class="panel-scroll">
         <!-- 1-on-1 -->
-        <div class="field-label">
+        <div class="title-sm">
           <span>👤 好友</span>
           <button id="btn-new-1on1" title="加入好友" class="small-btn">＋</button>
         </div>
         <div id="list-1on1">
-          <div class="form-label">尚無好友</div>
+          <div class="title-md">尚無好友</div>
         </div>
         <!-- Group -->
-        <div class="field-label" style="margin-top:10px;">
+        <div class="title-sm" style="margin-top:10px;">
           <span>👥 聊天室</span>
           <button id="btn-new-group" title="建立多人聊天室" class="small-btn">＋</button>
         </div>
         <div id="list-group">
-          <div class="form-label">尚無聊天室</div>
+          <div class="title-md">尚無聊天室</div>
         </div>
       </div>
     </div>
@@ -166,7 +166,7 @@
         <div class="chat-avatar" id="chat-header-avatar">💬</div>
         <div>
           <div id="chat-title">請選擇一個對話</div>
-          <div id="chat-subtitle" class="field-label"></div>
+          <div id="chat-subtitle" class="title-sm"></div>
         </div>
         <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
           <input class="w-400" type="text" id="auto-chat-topic" placeholder="自動聊天主題…" disabled
@@ -312,7 +312,7 @@
   <div class="modal-overlay hidden" id="modal-password-check">
     <div class="modal" style="width: 600px;">
       <h2 id="password-check-title">🔐 安全驗證</h2>
-      <p id="password-check-msg" class="form-label">請輸入該使用者的登入密碼以載入資料：</p>
+      <p id="password-check-msg" class="title-md">請輸入該使用者的登入密碼以載入資料：</p>
       <input type="password" id="password-input-val" placeholder="輸入密碼..." style="margin-bottom: 20px;">
       <div class="modal-actions" style="display: flex; justify-content: flex-end; gap: 10px;">
         <button class="btn-modal cancel" id="btn-password-cancel">取消</button>
