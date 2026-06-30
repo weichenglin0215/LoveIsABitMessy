@@ -42,7 +42,15 @@
       "Bash(python -c \"import ast; ast.parse\\(open\\('prompt_utils.py',encoding='utf-8'\\).read\\(\\)\\); print\\('prompt_utils OK'\\)\")",
       "Bash(git checkout *)",
       "Bash(python -c \"import ast; ast.parse\\(open\\('prompt_utils.py',encoding='utf-8'\\).read\\(\\)\\); print\\('Python OK'\\)\")",
-      "Bash(grep -rn \"深情專一型\\\\|_深情專一\\\\|intimacy.*型\\\\|型'\\\\$\" web/js prompt_utils.py debug_server.py)"
+      "Bash(grep -rn \"深情專一型\\\\|_深情專一\\\\|intimacy.*型\\\\|型'\\\\$\" web/js prompt_utils.py debug_server.py)",
+      "Bash(python -)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(ls .claude/launch.json)",
+      "Bash(cat .claude/launch.json)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(python \"C:/Users/joey/AppData/Local/Temp/claude/C--3D-prj-VS-2022-prj-LoveIsABitMessy/3dd6c903-4396-4417-bd35-98c1920d8240/scratchpad/reorder.py\")",
+      "Bash(git commit -q -m ' *)"
     ]
   }
 }

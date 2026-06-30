@@ -12,18 +12,24 @@
   --c-bg-root: hsl(240, 16%, 5%);
   --c-bg-main: hsl(240, 18%, 10%);
   --c-bg-card: hsla(240, 15%, 15%, 0.66);
-  --c-bg-card-light: hsla(240, 33%, 60%, 0.66);   /* 外部頁面 modal 引用，勿刪 */
+  --c-bg-card-light: hsla(240, 33%, 60%, 0.66);
+  /* 外部頁面 modal 引用，勿刪 */
   --c-bg-panel: hsla(240, 10%, 10%, 0.85);
-  --c-bg-input: hsl(0, 0%, 0%);                    /* 標準輸入框底色 */
-  --c-bg-input-dark: hsl(0, 0%, 0%);               /* daily_run 純黑底色 */
-  --c-bg-ghost-hover: hsla(0, 0%, 100%, 0.14);     /* secondary 按鈕 hover 底色 */
+  --c-bg-input: hsl(0, 0%, 0%);
+  /* 標準輸入框底色 */
+  --c-bg-input-dark: hsl(0, 0%, 0%);
+  /* daily_run 純黑底色 */
+  --c-bg-ghost-hover: hsla(0, 0%, 100%, 0.14);
+  /* secondary 按鈕 hover 底色 */
 
   /* ── 邊框 ── */
   --c-border: hsla(266, 0%, 64%, 0.3);
   --c-border-focus: hsla(266, 60%, 70%, 0.7);
   --c-border-input: hsla(266, 0%, 64%, 0.3);
-  --c-border-dark: hsl(0, 0%, 33%);                /* daily_run 深色邊框 */
-  --c-scale-empty: var(--c-border-input);          /* admin/index/template 頁引用，勿刪 */
+  --c-border-dark: hsl(0, 0%, 33%);
+  /* daily_run 深色邊框 */
+  --c-scale-empty: var(--c-border-input);
+  /* admin/index/template 頁引用，勿刪 */
 
   /* ── 主色 (紫) ── */
   --c-accent: hsl(266, 55%, 55%);
@@ -32,7 +38,8 @@
   --c-accent-field-label: hsl(266, 40%, 76%);
   --c-accent-light: hsl(266, 80%, 70%);
   --c-accent-glow: hsla(266, 0%, 64%, 0.6);
-  --c-accent-subtle: rgba(156, 111, 214, 0.20);    /* 圓形按鈕、active 背景 */
+  --c-accent-subtle: rgba(156, 111, 214, 0.20);
+  /* 圓形按鈕、active 背景 */
 
   /* ── 輔色 (secondary 藍 / 粉) ── */
   --c-secondary: hsl(220, 50%, 40%);
@@ -41,10 +48,12 @@
   --c-pink-bg: rgba(244, 114, 182, 0.10);
 
   /* ── 文字 ── */
-  --c-text-main: hsl(0, 0%, 88%);
-  --c-text-sec: hsl(240, 17%, 63%);
-  --c-text-muted: hsl(0, 0%, 67%);                 /* 更暗的次要文字 */
-  --c-text-dark: #000;                             /* hover 反色文字 */
+  --c-text-main: hsl(0, 0%, 92%);
+  --c-text-sec: hsl(240, 17%, 70%);
+  --c-text-muted: hsl(0, 0%, 80%);
+  /* 更暗的次要文字 */
+  --c-text-dark: #000;
+  /* hover 反色文字 */
 
   /* ── 狀態色 ── */
   --c-ok: #4caf50;
@@ -54,8 +63,10 @@
   /* ── 訊息氣泡（loveline）── */
   --c-msg-user-bg: linear-gradient(135deg, hsl(262, 60%, 35%), hsl(290, 50%, 28%));
   --c-msg-ai-bg: hsla(240, 20%, 16%, 0.9);
-  --c-item-hover: rgba(255, 255, 255, 0.06);       /* 聊天列表 hover */
-  --c-item-active: rgba(162, 89, 255, 0.18);       /* 聊天列表 active */
+  --c-item-hover: rgba(255, 255, 255, 0.06);
+  /* 聊天列表 hover */
+  --c-item-active: rgba(162, 89, 255, 0.18);
+  /* 聊天列表 active */
 
   /* ── 間距 ── */
   --gap-xl: 24px;
@@ -64,20 +75,25 @@
   --gap-xs: 4px;
 
   /* ── 內距 ── */
-  --pad-both-lg: 14px;        /* 兩值通用 padding */
+  --pad-both-lg: 14px;
+  /* 兩值通用 padding */
   --pad-both-md: 10px;
   --pad-both-sm: 7px;
   --pad-both-xs: 4px;
-  --pad-md: 10px 20px;        /* .col / .editor-panel 單值 padding */
-  --pad-icon: 4px 4px;        /* 圖示按鈕 padding */
+  --pad-md: 10px 20px;
+  /* .col / .editor-panel 單值 padding */
+  --pad-icon: 4px 4px;
+  /* 圖示按鈕 padding */
 
   /* ── 圓角 ── */
   --radius-md: 10px;
   --radius-sm: 8px;
   --radius-xs: 6px;
   --radius-2xs: 4px;
-  --radius-pill: 15px;        /* 膠囊按鈕 */
-  --radius-circle: 50%;       /* 圓形按鈕 */
+  --radius-pill: 15px;
+  /* 膠囊按鈕 */
+  --radius-circle: 50%;
+  /* 圓形按鈕 */
 
   /* ── 按鈕 / 輸入欄尺寸 ── */
   --input-height: 2rem;
@@ -88,8 +104,10 @@
   --btn-circle-size-sm: 24px;
 
   /* ── 標題 ── */
-  --heading-lg: 1.2rem;       /* col-header / editor-panel / section h2 */
-  --heading-sm: 1.1rem;       /* block-header */
+  --heading-lg: 1.2rem;
+  /* col-header / editor-panel / section h2 */
+  --heading-sm: 1.1rem;
+  /* block-header */
   --heading-weight: 500;
 
   /* ── 字體 ── */
@@ -108,14 +126,22 @@
   --font-size-3xl: 2.2rem;
 
   /* ── loveline 聊天介面尺寸（--ll 開頭，將來整頁移除時一併清掉）── */
-  --ll-topbar-h: 46px;        /* 頂部導覽列高度 */
-  --ll-panel-l-w: 600px;      /* 左欄寬 */
-  --ll-panel-mid-w: 300px;    /* 中欄寬 */
-  --ll-avatar-user: 36px;     /* 使用者頭像 */
-  --ll-avatar-chat: 38px;     /* 聊天列表頭像 / 送出鈕 */
-  --ll-avatar-msg: 32px;      /* 訊息頭像 */
-  --ll-dot-size: 10px;        /* 伺服器狀態圓點 */
-  --ll-bubble-radius: 14px;   /* 氣泡圓角 */
+  --ll-topbar-h: 46px;
+  /* 頂部導覽列高度 */
+  --ll-panel-l-w: 600px;
+  /* 左欄寬 */
+  --ll-panel-mid-w: 300px;
+  /* 中欄寬 */
+  --ll-avatar-user: 36px;
+  /* 使用者頭像 */
+  --ll-avatar-chat: 38px;
+  /* 聊天列表頭像 / 送出鈕 */
+  --ll-avatar-msg: 32px;
+  /* 訊息頭像 */
+  --ll-dot-size: 10px;
+  /* 伺服器狀態圓點 */
+  --ll-bubble-radius: 14px;
+  /* 氣泡圓角 */
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -253,7 +279,7 @@ body {
 #char-col-container.collapsed .col-header h3,
 #char-col-container.collapsed .scroll-area-char-card,
 #char-col-container.collapsed .server-status-row,
-#char-col-container.collapsed .toolbox{
+#char-col-container.collapsed .toolbox {
   display: none;
 }
 
@@ -436,8 +462,10 @@ body {
 
 /* ── 舊類別保留為別名（待 HTML 完全遷移後於批 4 移除）── */
 
- .server-status-text {
-  color: var(--c-text-sec); font-size: var(--font-size-md); line-height: 1.4;
+.server-status-text {
+  color: var(--c-text-sec);
+  font-size: var(--font-size-md);
+  line-height: 1.4;
 }
 
 /* ── 設定組 / 模型列 小標籤 ── */
@@ -464,7 +492,7 @@ label,
   flex: 1;
 }
 
-.editor-panel h2{
+.editor-panel h2 {
   margin: 0 0 6px;
   font-size: var(--heading-lg);
   font-weight: var(--heading-weight);
@@ -519,24 +547,65 @@ select,
 
 /* ── 寬度修飾（input / select / textarea 共用，覆寫基底 width:100%）──
    提供完整的 .w-NN API；目前 HTML 用到的：fill, half, 60, 70, 72, 80, 240, 400 */
-.w-fill { width: 100%; }
-.w-half { width: 50%; }
-.w-60p  { width: 60%; }
-.w-80p  { width: 80%; }
+.w-fill {
+  width: 100%;
+}
 
-.w-60   { width: 60px; }
-.w-70   { width: 70px; }
-.w-72   { width: 72px; }
-.w-80   { width: 80px; }
-.w-160  { width: 160px; }
-.w-200  { width: 200px; }
-.w-300  { width: 300px; }
-.w-500  { width: 500px; }
-.w-600  { width: 600px; }
+.w-half {
+  width: 50%;
+}
 
-.w-240  { width: 240px; }
+.w-60p {
+  width: 60%;
+}
 
-.w-400  { width: 400px; }
+.w-80p {
+  width: 80%;
+}
+
+.w-60 {
+  width: 60px;
+}
+
+.w-70 {
+  width: 70px;
+}
+
+.w-72 {
+  width: 72px;
+}
+
+.w-80 {
+  width: 80px;
+}
+
+.w-160 {
+  width: 160px;
+}
+
+.w-200 {
+  width: 200px;
+}
+
+.w-300 {
+  width: 300px;
+}
+
+.w-500 {
+  width: 500px;
+}
+
+.w-600 {
+  width: 600px;
+}
+
+.w-240 {
+  width: 240px;
+}
+
+.w-400 {
+  width: 400px;
+}
 
 input[type="text"]:focus,
 input[type="number"]:focus,
@@ -2279,7 +2348,8 @@ body.daily-page .ai-btn {
   padding: 5px 12px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 1.17rem; /* 原 0.78rem，放大 150% */
+  font-size: 1.17rem;
+  /* 原 0.78rem，放大 150% */
   white-space: nowrap;
   font-family: var(--font-ui);
 }
