@@ -158,12 +158,12 @@
                 上傳圖片</button>
               <button type="button" class="btn secondary-btn" id="btn-char-photo-clear" title="清除目前的角色照片">🗑️
                 清除照片</button>
-              <span id="char-photo-status" style="font-size:12px; color:#888;">尚未上傳照片</span>
+              <span class="text-muted-sm" id="char-photo-status">尚未上傳照片</span>
               <input type="file" id="char-photo-file-input" accept="image/*" style="display:none;">
             </div>
-            <div id="char-photo-dropzone"
-              style="width:160px; height:160px; background:#333; border:2px dashed #888; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#888; font-size:13px; text-align:center; cursor:pointer; user-select:none; overflow:hidden; position:relative;"
-              title="點擊或拖曳圖片至此上傳">
+            <div class="text-center" id="char-photo-dropzone"
+ style="width: 160px; height: 160px; background: #333; border: 2px dashed #888; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #888; font-size: 13px; cursor: pointer; user-select: none; overflow: hidden; position: relative"
+ title="點擊或拖曳圖片至此上傳">
               <span id="char-photo-placeholder" style="padding:6px;">將圖片拖曳<br>至此或點擊上傳</span>
               <img id="char-photo-thumb" src="" alt=""
                 style="display:none; max-width:100%; max-height:100%; object-fit:contain;">
@@ -289,7 +289,7 @@
         <!-- 左直排 50% -->
         <div id="char-stats-col-left" class="char-stats-col"
           style="flex:0 0 50%; min-width:0; overflow-y:auto; background:#222; border:1px solid #444; border-radius:10px; padding:10px;">
-          <h3 style="color: var(--c-pink); margin:0 0 8px;">角色卡欄位統計</h3>
+          <h3 class="text-pink" style="margin: 0 0 8px">角色卡欄位統計</h3>
           <div id="char-stats-section-A" class="char-stats-section"></div>
           <div id="char-stats-section-B" class="char-stats-section"></div>
           <div id="char-stats-section-C" class="char-stats-section"></div>
@@ -299,7 +299,7 @@
         <!-- 中間直排 20% -->
         <div id="char-stats-col-mid" class="char-stats-col"
           style="flex:0 0 20%; min-width:0; overflow-y:auto; background:#222; border:1px solid #444; border-radius:10px; padding:10px;">
-          <h3 style="color: var(--c-pink); margin:0 0 8px;">LPAS_評價分數分析</h3>
+          <h3 class="text-pink" style="margin: 0 0 8px">LPAS_評價分數分析</h3>
           <div id="char-stats-section-G" class="char-stats-section"></div>
           <div id="char-stats-section-H" class="char-stats-section"></div>
           <div id="char-stats-section-I" class="char-stats-section"></div>
@@ -307,7 +307,7 @@
         <!-- 右直排 30% -->
         <div id="char-stats-col-right" class="char-stats-col"
           style="flex:0 0 30%; min-width:0; overflow-y:auto; background:#222; border:1px solid #444; border-radius:10px; padding:10px;">
-          <h3 id="char-stats-detail-title" style="color: var(--c-pink); margin:0 0 8px;">細節列表</h3>
+          <h3 class="text-pink" id="char-stats-detail-title" style="margin: 0 0 8px">細節列表</h3>
           <div id="char-stats-detail-body" style="color:#ccc; font-size:1.2rem;">
             👈 請點擊左方或中間的 A~I 項目以顯示對應的角色卡列表。
           </div>

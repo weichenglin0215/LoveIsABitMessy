@@ -438,7 +438,7 @@ async function openSession(id) {
   if (!sess) return;
 
   // 立即清空目前畫面，給使用者載入中的感覺
-  qs('#chat-messages').innerHTML = '<div style="text-align:center;padding:20px;color:#666;">載入對話中...</div>';
+  qs('#chat-messages').innerHTML = '<div class="text-center" style="padding: 20px; color: #666">載入對話中...</div>';
   qs('#chat-title').textContent = sess.title || '載入中...';
 
   // 標記選中狀態
@@ -546,7 +546,7 @@ function renderMessages() {
   const container = qs('#chat-messages');
   const msgs = sess.messages || [];
 
-  container.innerHTML = msgs.length ? '' : '<div style="text-align:center;color:#444;font-size:0.8rem;padding:20px;">開始你的第一則訊息吧！</div>';
+  container.innerHTML = msgs.length ? '' : '<div class="text-center" style="color: #444; font-size: 0.8rem; padding: 20px">開始你的第一則訊息吧！</div>';
 
   msgs.forEach(m => {
     const isUser = m.sender_type === 'user';

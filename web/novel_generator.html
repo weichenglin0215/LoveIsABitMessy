@@ -189,8 +189,8 @@
         <input type="text" id="save-novel-name">
       </div>
       <div class="modal-field-last">
-        <label class="modal-label" style="color:red;">密碼 (雲端存取用)：</label>
-        <input type="password" id="save-novel-password" style="color:red; border-color:red;">
+        <label class="modal-label text-warn">密碼 (雲端存取用)：</label>
+        <input class="text-warn" type="password" id="save-novel-password" style="border-color: red">
       </div>
       <div class="modal-actions">
         <button id="btn-save-cancel" class="btn-modal cancel">取消</button>
@@ -224,8 +224,8 @@
         <div style="flex:1; min-width:0;">
           <div class="modal-field">
             <label class="modal-label">產生數量：</label>
-            <input class="w-72" type="number" id="multibook-count" min="1" max="99" value="1"
-              style="font-size:16px; text-align:center; padding:4px 8px">
+            <input class="w-72 input-num" type="number" id="multibook-count" min="1" max="99" value="1"
+ >
           </div>
           <div class="modal-field">
             <label class="modal-label">生成階段：</label>
@@ -246,8 +246,8 @@
           </div>
           <div class="modal-field-last">
             <label class="modal-label">雲端儲存密碼：</label>
-            <input class="w-fill" type="password" id="multibook-password" placeholder="一定要輸入，留空無法雲端儲存"
-              style="font-size: 24px; box-sizing:border-box; color:red; border: 2px solid red">
+            <input class="w-fill text-warn" type="password" id="multibook-password" placeholder="一定要輸入，留空無法雲端儲存"
+ style="font-size: 24px; box-sizing: border-box; border: 2px solid red">
           </div>
         </div>
         <!-- 右側：AI 生成參數 -->
@@ -257,32 +257,32 @@
           <label class="modal-label">📝 章描述（Phase 1）</label>
           <div class="modal-field" style="gap:6px;">
             <label class="checkbox-label">建議章數：</label>
-            <input class="w-60" type="number" id="mb-cfp-chapter-count" min="1" max="99" value="16"
-              style="text-align:center; padding:2px 6px">
+            <input class="w-60 text-center" type="number" id="mb-cfp-chapter-count" min="1" max="99" value="16"
+ style="padding: 2px 6px">
           </div>
           <div class="modal-field" style="gap:6px; margin-bottom:10px;">
             <label class="checkbox-label">每章描述字數：</label>
-            <input class="w-70" type="number" id="mb-cfp-words" min="50" max="2000" value="400"
-              style="font-size:14px; text-align:center; padding:2px 6px">
+            <input class="w-70 input-num-sm" type="number" id="mb-cfp-words" min="50" max="2000" value="400"
+ >
           </div>
           <!-- Phase 2 params -->
           <label class="modal-label">📖 小節大綱（Phase 2）</label>
           <div class="modal-field" style="gap:6px;">
             <label class="checkbox-label">建議小節數：</label>
-            <input class="w-60" type="number" id="mb-co-section-count" min="1" max="20" value="4"
-              style="font-size:14px; text-align:center; padding:2px 6px">
+            <input class="w-60 input-num-sm" type="number" id="mb-co-section-count" min="1" max="20" value="4"
+ >
           </div>
           <div class="modal-field" style="gap:6px; margin-bottom:10px;">
             <label class="checkbox-label">每節描述字數：</label>
-            <input class="w-70" type="number" id="mb-co-words" min="50" max="2000" value="500"
-              style="font-size:14px; text-align:center; padding:2px 6px">
+            <input class="w-70 input-num-sm" type="number" id="mb-co-words" min="50" max="2000" value="500"
+ >
           </div>
           <!-- Phase 3 params -->
           <label class="modal-label">🖋️📙 內文（Phase 3）</label>
           <div class="modal-field-last" style="gap:6px;">
             <label class="checkbox-label">每節內文字數：</label>
-            <input class="w-70" type="number" id="mb-sc-words" min="500" max="10000" value="3000"
-              style="font-size:14px; text-align:center; padding:2px 6px">
+            <input class="w-70 input-num-sm" type="number" id="mb-sc-words" min="500" max="10000" value="3000"
+ >
           </div>
         </div>
       </div>
@@ -302,13 +302,13 @@
       <h3 class="modal-title">📋 文檔轉條列 — 生成參數</h3>
       <div class="modal-field">
         <label class="modal-label">建議章數：</label>
-        <input class="w-72" type="number" id="stb-chapter-count" min="1" max="99" value="8"
-          style="font-size:16px; text-align:center; padding:4px 8px">
+        <input class="w-72 input-num" type="number" id="stb-chapter-count" min="1" max="99" value="8"
+ >
       </div>
       <div class="modal-field-last">
         <label class="modal-label">每章條列式粗綱建議字數：</label>
-        <input class="w-80" type="number" id="stb-words-per-chapter" min="50" max="2000" value="400"
-          style="font-size:16px; text-align:center; padding:4px 8px">
+        <input class="w-80 input-num" type="number" id="stb-words-per-chapter" min="50" max="2000" value="400"
+ >
       </div>
       <div class="modal-actions">
         <button id="btn-stb-params-cancel" class="btn-modal cancel">取消</button>
@@ -323,13 +323,13 @@
       <h3 class="modal-title">📄 文檔轉粗綱 — 生成參數</h3>
       <div class="modal-field">
         <label class="modal-label">建議章數：</label>
-        <input class="w-72" type="number" id="stp-chapter-count" min="1" max="99" value="8"
-          style="font-size:16px; text-align:center; padding:4px 8px">
+        <input class="w-72 input-num" type="number" id="stp-chapter-count" min="1" max="99" value="8"
+ >
       </div>
       <div class="modal-field-last">
         <label class="modal-label">每章粗綱建議字數：</label>
-        <input class="w-80" type="number" id="stp-words-per-chapter" min="50" max="2000" value="200"
-          style="font-size:16px; text-align:center; padding:4px 8px">
+        <input class="w-80 input-num" type="number" id="stp-words-per-chapter" min="50" max="2000" value="200"
+ >
       </div>
       <div class="modal-actions">
         <button id="btn-stp-params-cancel" class="btn-modal cancel">取消</button>
@@ -344,13 +344,13 @@
       <h3 class="modal-title">🤖 章描述 — 生成參數</h3>
       <div class="modal-field">
         <label class="modal-label">建議章數：</label>
-        <input class="w-72" type="number" id="cfp-chapter-count" min="1" max="99" value="16"
-          style="font-size:16px; text-align:center; padding:4px 8px">
+        <input class="w-72 input-num" type="number" id="cfp-chapter-count" min="1" max="99" value="16"
+ >
       </div>
       <div class="modal-field-last">
         <label class="modal-label">每章描述建議字數：</label>
-        <input class="w-80" type="number" id="cfp-words-per-chapter" min="50" max="2000" value="400"
-          style="font-size:16px; text-align:center; padding:4px 8px">
+        <input class="w-80 input-num" type="number" id="cfp-words-per-chapter" min="50" max="2000" value="400"
+ >
       </div>
       <div class="modal-actions">
         <button id="btn-cfp-params-cancel" class="btn-modal cancel">取消</button>
@@ -365,13 +365,13 @@
       <h3 class="modal-title">🤖 AI 大綱 — 生成參數</h3>
       <div class="modal-field">
         <label class="modal-label">建議小節數量：</label>
-        <input class="w-72" type="number" id="co-section-count" min="1" max="20" value="4"
-          style="font-size:16px; text-align:center; padding:4px 8px">
+        <input class="w-72 input-num" type="number" id="co-section-count" min="1" max="20" value="4"
+ >
       </div>
       <div class="modal-field-last">
         <label class="modal-label">每小節描述建議字數：</label>
-        <input class="w-80" type="number" id="co-words-per-section" min="50" max="2000" value="500"
-          style="font-size:16px; text-align:center; padding:4px 8px">
+        <input class="w-80 input-num" type="number" id="co-words-per-section" min="50" max="2000" value="500"
+ >
       </div>
       <div class="modal-actions">
         <button id="btn-co-params-cancel" class="btn-modal cancel">取消</button>
@@ -386,8 +386,8 @@
       <h3 class="modal-title">🤖 AI 內文 — 生成參數</h3>
       <div class="modal-field-last">
         <label class="modal-label">每小節內文建議字數：</label>
-        <input class="w-80" type="number" id="sc-words" min="500" max="10000" value="3000"
-          style="font-size:16px; text-align:center; padding:4px 8px">
+        <input class="w-80 input-num" type="number" id="sc-words" min="500" max="10000" value="3000"
+ >
       </div>
       <div class="modal-actions">
         <button id="btn-sc-params-cancel" class="btn-modal cancel">取消</button>
@@ -401,7 +401,7 @@
     <div class="modal-box modal-box-sm">
       <h3 class="modal-title">🔐 雲端專案驗證</h3>
       <p class="modal-desc">請輸入此小說專案的讀取密碼：</p>
-      <input type="password" id="novel-password-input" placeholder="輸入密碼..." style="margin-bottom:20px; color:red;">
+      <input class="text-warn" type="password" id="novel-password-input" placeholder="輸入密碼..." style="margin-bottom: 20px">
       <div class="modal-actions">
         <button id="btn-password-cancel" class="btn-modal cancel">取消</button>
         <button id="btn-password-ok" class="btn-modal primary">確定</button>
@@ -696,7 +696,7 @@
     <div class="modal-box modal-box-sm">
       <h3 class="modal-title">🔐 小說密碼驗證</h3>
       <p class="modal-desc" id="compare-pwd-desc">請輸入此小說的讀取密碼：</p>
-      <input type="password" id="compare-pwd-input" placeholder="輸入密碼..." style="margin-bottom:20px; color:red;">
+      <input class="text-warn" type="password" id="compare-pwd-input" placeholder="輸入密碼..." style="margin-bottom: 20px">
       <div class="modal-actions">
         <button id="btn-compare-pwd-cancel" class="btn-modal cancel">取消</button>
         <button id="btn-compare-pwd-ok" class="btn-modal primary">確定</button>
