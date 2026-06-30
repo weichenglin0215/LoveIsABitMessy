@@ -546,15 +546,40 @@ select,
 }
 
 /* ── 通用文字 / 對齊工具類（取代散落於 HTML/JS 的 inline 樣式）── */
-.text-center  { text-align: center; }
-.text-warn    { color: var(--c-err); }                         /* 警示紅 */
-.text-pink    { color: var(--c-pink); }                         /* 小節強調粉 */
-.text-muted-sm { color: #888; font-size: var(--font-size-sm); } /* 灰色小註解 */
+.text-center {
+  text-align: center;
+}
+
+.text-warn {
+  color: var(--c-err);
+}
+
+/* 警示紅 */
+.text-pink {
+  color: var(--c-pink);
+}
+
+/* 小節強調粉 */
+.text-muted-sm {
+  color: #888;
+  font-size: var(--font-size-sm);
+}
+
+/* 灰色小註解 */
 
 /* 數字輸入欄：置中對齊，適用於章節數／字數等表單欄位
    用 input.X 選擇器以匹配基底 input[type=…] 的優先序，確保 padding 等覆寫生效 */
-input.input-num    { text-align: center; font-size: var(--font-size-md); padding: 4px 8px; }
-input.input-num-sm { text-align: center; font-size: var(--font-size-sm); padding: 2px 6px; }
+input.input-num {
+  text-align: center;
+  font-size: var(--font-size-md);
+  padding: 4px 8px;
+}
+
+input.input-num-sm {
+  text-align: center;
+  font-size: var(--font-size-sm);
+  padding: 2px 6px;
+}
 
 /* ── daily_run「比對日記」彈窗：欄內標籤列 + 平面 textarea ── */
 .cd-col-label {
@@ -565,14 +590,121 @@ input.input-num-sm { text-align: center; font-size: var(--font-size-sm); padding
   border-bottom: 1px solid var(--c-border);
   flex-shrink: 0;
 }
+
 .cd-col-label.with-top {
   border-top: 1px solid var(--c-border);
 }
+
 .cd-col-textarea {
   resize: vertical;
   border: none;
   border-radius: 0;
   margin: 0;
+  box-sizing: border-box;
+}
+
+/* ── 比對彈窗共用版型（Compare Novels / Compare Diaries）── */
+.cmp-modal {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-bg-root);
+  border-radius: 0;
+}
+
+.cmp-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  padding: 6px var(--pad-both-md);
+  background: var(--c-bg-card);
+  border-bottom: 1px solid var(--c-border);
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.cmp-title {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: bold;
+  color: var(--c-accent-light);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cmp-label {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  color: var(--c-text-sec);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cmp-icon {
+  font-size: var(--font-size-xl);
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+/* 比對彈窗用的扁平下拉選單（覆寫基底 input/select 樣式）*/
+select.cmp-select {
+  width: auto;
+  height: 28px;
+  padding: 0 6px;
+  font-size: var(--font-size-lg);
+  background: #2a2a2a;
+  color: #eee;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-2xs);
+  flex-shrink: 0;
+}
+
+/* 比對彈窗主體 4 欄容器 */
+.cmp-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.cmp-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--c-border);
+  overflow: hidden;
+  min-width: 0;
+}
+
+.cmp-col:last-child {
+  border-right: none;
+}
+
+.cmp-col-header {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-xs);
+  padding: 6px var(--pad-both-sm);
+  background: var(--c-bg-card);
+  border-bottom: 1px solid var(--c-border);
+  flex-shrink: 0;
+}
+
+/* 欄內 select 撐滿剩餘空間 */
+.cmp-col-header select.cmp-select {
+  flex: 1;
+  padding: 0 4px;
+}
+
+/* 欄內主 textarea（compare-novels：撐滿、無框、不可拖縮放）*/
+.cmp-content {
+  flex: 1;
+  resize: none;
+  border: none;
+  border-radius: 0;
+  margin: 0;
+  height: 100%;
   box-sizing: border-box;
 }
 
@@ -1268,7 +1400,7 @@ body.daily-page .ai-btn {
 }
 
 .modal-desc {
-  font-size: 0.9rem;
+  font-size: 1.0rem;
   color: #ccc;
   margin-bottom: 15px;
 }
