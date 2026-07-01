@@ -1816,13 +1816,17 @@ function getCompareText(novelState, mode) {
                 return `═══ 第${i + 1}章：${ch.title || ''} ═══\n\n${secContent}`;
             }).join('\n\n━━━━━━━━━━━━━━━━━\n\n');
 
-        case 'all':
-            return chapters.map((ch, i) => {
+        case 'all': {
+            // 全部 = 粗綱 + 章標題 + 章描述 + 節標題 + 節描述 + 內文
+            const premisePart = `【故事粗綱】\n${novelState.storyPremise || '（無粗綱）'}`;
+            const chaptersPart = chapters.map((ch, i) => {
                 const secs = ch.sections.map((sec, j) =>
                     `【第${j + 1}節】${sec.title || '（未命名）'}\n${sec.content || '（無內文）'}`
                 ).join('\n\n');
                 return `═══ 第${i + 1}章：${ch.title || ''} ═══\n${ch.description || ''}\n\n${secs}`;
             }).join('\n\n━━━━━━━━━━━━━━━━━\n\n');
+            return `${premisePart}\n\n━━━━━━━━━━━━━━━━━\n\n${chaptersPart}`;
+        }
 
         default:
             return '';
@@ -1865,10 +1869,35 @@ async function deleteCompareNovel(colIdx) {
     }
 }
 
+// 切換該欄的「大模型訊息欄」顯示／隱藏。
+// 隱藏時（display:none）該 textarea 不佔高度，剩餘空間自動由 .cmp-content（flex:1）吃掉。
+function toggleCompareModelInfo(colIdx) {
+    const info = document.querySelectorAll('.compare-model-info')[colIdx];
+    if (!info) return;
+    info.style.display = (info.style.display === 'none') ? '' : 'none';
+}
+
 function updateCompareColContent(colIdx) {
     const ta = document.querySelectorAll('.compare-content')[colIdx];
     if (!ta) return;
     ta.value = getCompareText(compareLoadedNovels[colIdx], qs('#compare-mode-select').value);
+    // 同步更新上方的 currentModel + modelOptions + writerStyle × 3 + writerSample 資訊欄
+    const info = document.querySelectorAll('.compare-model-info')[colIdx];
+    if (info) {
+        const st = compareLoadedNovels[colIdx];
+        if (!st) {
+            info.value = '';
+        } else {
+            const jf = (v) => JSON.stringify(v ?? '');
+            info.value =
+                `"currentModel": ${jf(st.currentModel || st.aiModel)}\n` +
+                `"modelOptions": ${jf(st.modelOptions)}\n` +
+                `"writerStyle1": ${jf(st.writerStyle1)}\n` +
+                `"writerStyle2": ${jf(st.writerStyle2)}\n` +
+                `"writerStyle3": ${jf(st.writerStyle3)}\n` +
+                `"writerSample": ${jf(st.writerSample)}`;
+        }
+    }
     compareSearchMatches = [];
     compareCurrentMatch = -1;
     qs('#compare-search-count').textContent = '';

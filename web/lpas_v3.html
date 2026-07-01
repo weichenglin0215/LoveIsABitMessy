@@ -552,6 +552,8 @@
     <!-- Supabase JS (UMD) + Client -->
     <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
     <script src="js/supabaseClient.js" defer></script>
+    <!-- 公用使用說明彈窗（讀寫官方 note/*.md + 雲端 manual_custom_history） -->
+    <script src="js/help_modal.js" defer></script>
 
     <!-- 共用 -->
     <script src="js/screen_adaptive.js" defer></script>
@@ -571,6 +573,10 @@
             <button class="hamburger-btn" id="hamburger-btn" aria-label="選單">
                 <span></span><span></span><span></span>
             </button>
+            <!-- 使用說明按鈕（先隱藏，日後開放） -->
+            <button id="btn-help-manual" title="開啟使用說明"
+                onclick="HelpModal.open('lpas', '💜 LPAS 愛情人格評量 使用說明')"
+                style="display:none; position:absolute; top:16px; right:64px; width:36px; height:36px; border-radius:50%; border:2px solid #f472b6; background:rgba(51,51,51,0.85); color:#f472b6; font-size:18px; font-weight:bold; cursor:pointer; z-index:10;">?</button>
             <div class="hamburger-dropdown hd-hidden" id="hamburger-menu">
                 <button class="hd-item" id="menu-qrcode">📱 顯示QR Code</button>
                 <button class="hd-item" id="menu-result-viewer">📊 觀看評量結果</button>

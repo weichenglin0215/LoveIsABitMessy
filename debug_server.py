@@ -1479,6 +1479,36 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
             files = [f for f in os.listdir('diaries') if f.endswith('.json')]
             self.wfile.write(json.dumps(files).encode())
 
+        elif parsed_path.path == '/api/note':
+            # 讀取 note/ 目錄下的 .md 檔（使用手冊等公用文件）
+            qs_params = parse_qs(parsed_path.query)
+            name = (qs_params.get('name', ['']) or [''])[0]
+            # 安全檢查：只允許簡單檔名，禁止 .. 與路徑分隔符
+            if not name or '..' in name or '/' in name or '\\' in name:
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "invalid name"}, ensure_ascii=False).encode('utf-8'))
+                return
+            note_dir = os.path.join(os.path.dirname(__file__), 'note')
+            os.makedirs(note_dir, exist_ok=True)
+            file_path = os.path.join(note_dir, name)
+            content = ''
+            if os.path.exists(file_path):
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                except Exception as e:
+                    self.send_response(500)
+                    self.send_header('Content-type', 'application/json; charset=utf-8')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": str(e)}, ensure_ascii=False).encode('utf-8'))
+                    return
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(json.dumps({"name": name, "content": content}, ensure_ascii=False).encode('utf-8'))
+
         elif parsed_path.path == '/api/job':
             qs_params = parse_qs(parsed_path.query)
             job_id = (qs_params.get('id', ['']) or [''])[0]

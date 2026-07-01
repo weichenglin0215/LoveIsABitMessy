@@ -1483,7 +1483,7 @@ body.daily-page .ai-btn {
   color: #eee;
   padding: 4px 10px;
   font-size: var(--font-size-lg);
-  min-width: 0;
+  min-width: 600px;
 }
 
 .log-search-input:focus {

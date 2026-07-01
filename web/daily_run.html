@@ -16,13 +16,20 @@
     <script src="js/supabaseClient.js"></script>
     <script src="js/model_options_app.js" defer></script>
     <script src="js/writer_settings_app.js" defer></script>
+    <!-- 公用使用說明彈窗（讀寫官方 note/*.md + 雲端 manual_custom_history） -->
+    <script src="js/help_modal.js" defer></script>
 
 </head>
 
 <body>
     <div class="debug-panel">
         <div class="col-left">
-            <div class="title-xl">🎭 AI 生成日記</div>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div class="title-xl">🎭 AI 生成日記</div>
+                <button id="btn-help-manual" title="開啟使用說明"
+                    onclick="HelpModal.open('diary', '📅 AI 生成日記 使用說明')"
+                    style="margin-left:auto; width:36px; height:36px; border-radius:50%; border:2px solid #f472b6; background:#333; color:#f472b6; font-size:18px; font-weight:bold; cursor:pointer; flex-shrink:0;">?</button>
+            </div>
             <p class="title-hint">
                 挑選角色，填寫情境 (Scenario)，點擊【AI生成：日記與插圖】按鈕，自動生成日記，ComfyUI 繪製專屬插圖。
             </p>

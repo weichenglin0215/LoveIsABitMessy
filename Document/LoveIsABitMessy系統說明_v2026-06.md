@@ -251,6 +251,7 @@ AI 會根據這份角色卡＋這段重點，自動發展成完整的日記文�
 | 問題 | 解法 |
 |---|---|
 | `debug_server.py` 無法讀取 Ollama 模型列表 | `pip install requests`，或設定 `OLLAMA_HOST` 環境變數 |
+| `debug_server.py` 啟動時出現 `PermissionError: [WinError 10013] 存取權限不足` | 8081 埠被 Windows Hyper-V／WinNAT 保留範圍占走（不是被程式佔用，是核心層保留）。執行 `reserve_port_8081.bat`（會自動請求管理員權限）永久把 8081 從保留範圍中排除。內容為：`net stop winnat` → `netsh int ipv4 add excludedportrange protocol=tcp startport=8081 numberofports=1` → `net start winnat`。之後重開機也不會再被搶走。可用 `netsh int ipv4 show excludedportrange protocol=tcp` 檢查 8081 是否已在表中（後面有 `*` 表示 admin-managed）。 |
 | 角色卡格式不一致（V1 / V3 混存） | 系統會自動透過 `lpas_v1_to_v3.js` 在載入時補上 V3 欄位 |
 | 角色照片在編輯器看不到 | 確認 Supabase `characters` 表已新增 `photo_thumb` 與 `photo_full` 欄位 |
 | LoveLine 載入雲端記錄時模型已被刪除 | LOG 欄會顯示原始字串，方便重新拉模型 |

@@ -13,6 +13,8 @@
   <script src="js/supabaseClient.js" defer></script>
   <script src="js/model_options_app.js" defer></script>
   <script src="js/writer_settings_app.js" defer></script>
+  <!-- 公用使用說明彈窗（讀寫 note/*.md，右上角 ? 按鈕呼叫） -->
+  <script src="js/help_modal.js" defer></script>
   <!-- 編輯器共用css/editer.css -->
   <link rel="stylesheet" href="css/editer.css">
 </head>
@@ -38,6 +40,8 @@
       <button class="btn secondary-btn" id="btn-compare-novels" title="並排比對四本雲端小說的內容">📚 比對多本小說</button>
       <button class="ai-btn-bluepink" id="btn-ai-gen-full-auto" title=" AI全自動生成所有文字：依粗綱生成章節→節大綱→節內文（跳過已鎖定）">🚀
         全自動(根據粗綱產生多本小說)</button>
+      <button id="btn-help-manual" title="開啟使用說明" onclick="HelpModal.open('novel', '📖 小說產生器 使用說明')"
+        style="margin-left:auto; width:36px; height:36px; border-radius:50%; border:2px solid #f472b6; background:#333; color:#f472b6; font-size:18px; font-weight:bold; cursor:pointer; flex-shrink:0;">?</button>
     </nav>
   </div>
   <div id="main-columns-grid" class="main-columns-grid">
@@ -616,41 +620,53 @@
         <!-- Col 0 -->
         <div class="cmp-col">
           <div class="cmp-col-header">
-            <select class="cmp-select compare-novel-select" data-col="0">
+            <select class="cmp-select compare-novel-select" style="width: 60%;" data-col="0">
               <option value="">-- 請選擇小說 --</option>
             </select>
             <button class="btn-del-sec" onclick="deleteCompareNovel(0)" title="刪除此雲端小說專案">🗑️</button>
+            <button class="btn-del-sec" onclick="toggleCompareModelInfo(0)" title="顯示或隱藏大模型訊息欄">👁️‍🗨️</button>
           </div>
+          <textarea class="compare-model-info" data-col="0" readonly
+            style="font-size: 18px; flex-shrink:0; max-height:calc(1.4em * 8); border:1px solid #7ac0ff; background:transparent; color:#7ac0ff; resize:none; padding:4px 8px; margin:0; border-radius:10px;"></textarea>
           <textarea class="cmp-content compare-content story-premise-textarea" data-col="0" readonly></textarea>
         </div>
         <!-- Col 1 -->
         <div class="cmp-col">
           <div class="cmp-col-header">
-            <select class="cmp-select compare-novel-select" data-col="1">
+            <select class="cmp-select compare-novel-select" style="width: 60%;" data-col="1">
               <option value="">-- 請選擇小說 --</option>
             </select>
             <button class="btn-del-sec" onclick="deleteCompareNovel(1)" title="刪除此雲端小說專案">🗑️</button>
+            <button class="btn-del-sec" onclick="toggleCompareModelInfo(1)" title="顯示或隱藏大模型訊息欄">👁️‍🗨️</button>
           </div>
+          <textarea class="compare-model-info" data-col="1" readonly
+            style="font-size: 18px; flex-shrink:0; max-height:calc(1.4em * 8); border:1px solid #7ac0ff; background:transparent; color:#7ac0ff; resize:none; padding:4px 8px; margin:0; border-radius:10px;"></textarea>
           <textarea class="cmp-content compare-content story-premise-textarea" data-col="1" readonly></textarea>
         </div>
         <!-- Col 2 -->
         <div class="cmp-col">
           <div class="cmp-col-header">
-            <select class="cmp-select compare-novel-select" data-col="2">
+            <select class="cmp-select compare-novel-select" style="width: 60%;" data-col="2">
               <option value="">-- 請選擇小說 --</option>
             </select>
             <button class="btn-del-sec" onclick="deleteCompareNovel(2)" title="刪除此雲端小說專案">🗑️</button>
+            <button class="btn-del-sec" onclick="toggleCompareModelInfo(2)" title="顯示或隱藏大模型訊息欄">👁️‍🗨️</button>
           </div>
+          <textarea class="compare-model-info" data-col="2" readonly
+            style="font-size: 18px; flex-shrink:0; max-height:calc(1.4em * 8); border:1px solid #7ac0ff; background:transparent; color:#7ac0ff; resize:none; padding:4px 8px; margin:0; border-radius:10px;"></textarea>
           <textarea class="cmp-content compare-content story-premise-textarea" data-col="2" readonly></textarea>
         </div>
         <!-- Col 3 -->
         <div class="cmp-col">
           <div class="cmp-col-header">
-            <select class="cmp-select compare-novel-select" data-col="3">
+            <select class="cmp-select compare-novel-select" style="width: 60%;" data-col="3">
               <option value="">-- 請選擇小說 --</option>
             </select>
             <button class="btn-del-sec" onclick="deleteCompareNovel(3)" title="刪除此雲端小說專案">🗑️</button>
+            <button class="btn-del-sec" onclick="toggleCompareModelInfo(3)" title="顯示或隱藏大模型訊息欄">👁️‍🗨️</button>
           </div>
+          <textarea class="compare-model-info" data-col="3" readonly
+            style="font-size: 18px; flex-shrink:0; max-height:calc(1.4em * 8); border:1px solid #7ac0ff; background:transparent; color:#7ac0ff; resize:none; padding:4px 8px; margin:0; border-radius:10px;"></textarea>
           <textarea class="cmp-content compare-content story-premise-textarea" data-col="3" readonly></textarea>
         </div>
       </div>

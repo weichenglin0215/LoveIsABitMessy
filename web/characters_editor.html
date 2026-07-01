@@ -34,13 +34,20 @@
   <script src="js/characters_editor_app.js"></script>
   <!-- 角色卡類型分析統計邏輯 -->
   <script src="js/character_stats_app.js" defer></script>
+  <!-- 公用使用說明彈窗（讀寫官方 note/*.md + 雲端 manual_custom_history） -->
+  <script src="js/help_modal.js" defer></script>
 </head>
 
 <body>
   <div class="debug-panel">
     <div class="col-left">
       <div class="editor-header">
-        <div class="title-xl">🎭 角色資料編輯器</div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div class="title-xl">🎭 角色資料編輯器</div>
+          <button id="btn-help-manual" title="開啟使用說明"
+            onclick="HelpModal.open('character_editor', '🎭 角色資料編輯器 使用說明')"
+            style="margin-left:auto; width:36px; height:36px; border-radius:50%; border:2px solid #f472b6; background:#333; color:#f472b6; font-size:18px; font-weight:bold; cursor:pointer; flex-shrink:0;">?</button>
+        </div>
         <div class="conn-panel">
           <div class="title-hint">管理 Supabase 雲端角色卡、生日、血型與人格特質</div>
           <div class="title-hint" id="conn-status">🔄 正在自動連線至 Supabase…</div>
