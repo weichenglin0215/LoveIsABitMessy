@@ -272,6 +272,21 @@ body {
   background: var(--c-accent-light);
 }
 
+/* 評論小說彈窗：上下兩欄之間的橫向 resizer（上下拖動高度） */
+.review-resizer {
+  height: 6px;
+  cursor: row-resize;
+  background: rgba(255, 255, 255, 0.08);
+  transition: background 0.2s;
+  flex-shrink: 0;
+  margin: 4px 0;
+  border-radius: 3px;
+}
+.review-resizer:hover,
+.review-resizer.resizing {
+  background: var(--c-accent-light);
+}
+
 /* ─────────────────────────────────────────────────────────────
    8. 可收合欄位（char-col）
 ───────────────────────────────────────────────────────────── */

@@ -64,9 +64,12 @@
 | 📝 寫作範本 | 提供 AI 一段參考文字，作為口吻／節奏的模板 |
 
 - 4090顯卡 推薦 🤖 **qwen3.6:27b** 或 🤖 **gemma4:31b** ，
-- 暴力情色 **Agen/gemma-4-26B-A4B-it-uncensored-heretic:latest，17GB**。
+- 暴力情色 **Agen/gemma-4-26B-A4B-it-uncensored-heretic:latest** 17GB。
 
-- 4060顯卡 推薦 🤖 **VladimirGav/gemma4-26b-16GB-VRAM-Uncensored:latest，13 GB** 或 🤖 **sorc/qwen3.5-instruct-uncensored:9b 9.5GB** 
+- 4060顯卡 推薦 🤖 **VladimirGav/gemma4-26b-16GB-VRAM-Uncensored:latest** 13 GB，上下文最高`32768`。
+- 或 🤖 **fredrezones55/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive:IQ2_M** 12GB，上下文最高`32768`。
+- 測試可用 🤖 **gemma4:e4b** 或 **huihui_ai/gemma-4-abliterated:e4b** 都是9.6GB，上下文最高`32768`。
+- ❌不要用 🤖 **sorc/qwen3.5-instruct-uncensored:9b 9.5GB** 一直出現英文分析過程。
 
 ### 4090 24GB 上下文限制
 - 雖然gemma4跟Qwen3.6都支援256k(262144)上下文，但是過多的上下文會耗費大量VRAM導致速度變很慢且亂回答。

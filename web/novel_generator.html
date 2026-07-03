@@ -15,6 +15,7 @@
   <script src="js/writer_settings_app.js" defer></script>
   <!-- 公用使用說明彈窗（讀寫 note/*.md，右上角 ? 按鈕呼叫） -->
   <script src="js/help_modal.js" defer></script>
+  <script src="js/modal_focus_helper.js" defer></script>
   <!-- 編輯器共用css/editer.css -->
   <link rel="stylesheet" href="css/editer.css">
 </head>
@@ -27,19 +28,20 @@
       <div class="book-title">
         <input type="text" id="book-title" placeholder="請輸入小說名稱...">
       </div>
-      <button class="btn secondary-btn" id="btn-export">📤 匯出小說</button>
       <div class="cloud-load-wrapper">
         <button class="btn secondary-btn" id="btn-load-cloud">☁️ 讀取雲端小說</button>
         <select id="cloud-novel-select" style="display:none; height: 32px;">
           <option value="">-- 請選擇小說 --</option>
         </select>
       </div>
+      <button class="btn primary-btn" id="btn-save">💾 儲存雲端小說</button>
       <button class="btn secondary-btn" id="btn-load">📂 讀取小說</button>
+      <button class="btn primary-btn" id="btn-export">📤 匯出小說</button>
       <button class="btn secondary-btn" id="btn-author-notes" title="撰寫作者備註，不會提供給 AI，但會隨小說一起儲存／讀取">📝 作者備註</button>
-      <button class="btn primary-btn" id="btn-save">💾 儲存小說</button>
       <button class="btn secondary-btn" id="btn-compare-novels" title="並排比對四本雲端小說的內容">📚 比對多本小說</button>
+      <button class="btn secondary-btn" id="btn-review-novel" title="以最嚴格的專業編輯身分審評小說，提前獲得真切的讀者/編輯回應">🎯 評論小說</button>
       <button class="ai-btn-bluepink" id="btn-ai-gen-full-auto" title=" AI全自動生成所有文字：依粗綱生成章節→節大綱→節內文（跳過已鎖定）">🚀
-        全自動(根據粗綱產生多本小說)</button>
+        全自動</button>
       <button id="btn-help-manual" title="開啟使用說明" onclick="HelpModal.open('novel', '📖 小說產生器 使用說明')"
         style="margin-left:auto; width:36px; height:36px; border-radius:50%; border:2px solid #f472b6; background:#333; color:#f472b6; font-size:18px; font-weight:bold; cursor:pointer; flex-shrink:0;">?</button>
     </nav>
@@ -607,6 +609,8 @@
           <option value="all">全部</option>
         </select>
         <button onclick="loadCompareNovelList()" class="btn secondary-btn" title="重新從雲端載入小說列表">🔄 更新雲端列表</button>
+        <button id="btn-toggle-all-model-info" onclick="toggleAllCompareModelInfo()" class="btn secondary-btn"
+          title="同時隱藏／顯示下方四個 AI 訊息藍框">👁️‍🗨️ 隱藏AI訊息</button>
         <span class="cmp-icon">🔍</span>
         <span id="compare-search-count" class="log-search-count"></span>
         <button class="log-search-nav-btn" id="compare-search-prev" title="上一個">▲</button>
@@ -682,6 +686,50 @@
       <div class="modal-actions">
         <button id="btn-compare-pwd-cancel" class="btn-modal cancel">取消</button>
         <button id="btn-compare-pwd-ok" class="btn-modal primary">確定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Review Novel（評論小說） ── -->
+  <div id="modal-review" class="modal-overlay hidden">
+    <div class="cmp-modal">
+      <!-- Top bar -->
+      <div class="cmp-toolbar">
+        <h2 class="cmp-title">🎯 評論小說</h2>
+        <span class="cmp-icon">🔍</span>
+        <span id="review-search-count" class="log-search-count"></span>
+        <button class="log-search-nav-btn" id="review-search-prev" title="上一個">▲</button>
+        <button class="log-search-nav-btn" id="review-search-next" title="下一個">▼</button>
+        <input type="text" id="review-search-input" class="log-search-input w-300" placeholder="搜尋雙欄文字（Enter 執行）...">
+        <label class="cmp-label">文件名稱：</label>
+        <input type="text" id="review-doc-name" class="w-300" placeholder="預設為目前小說名稱">
+        <button class="btn secondary-btn" id="btn-review-current-novel" title="以最嚴格的標準評審目前編輯中的小說">🎯 評審目前小說</button>
+        <button class="btn secondary-btn" id="btn-review-external-file" title="選擇本地端 .txt / .md 檔案來評審">📂
+          評審外部文檔</button>
+        <input type="file" id="review-file-input" accept=".txt,.md" style="display:none;">
+        <button class="modal-close-btn" style="margin-left:auto;"
+          onclick="document.getElementById('modal-review').classList.add('hidden')">&times;</button>
+      </div>
+      <!-- Body: 上下兩欄，中間夾一條可拖動高度的橫向 resizer -->
+      <div class="cmp-body" id="review-body" style="flex-direction:column;">
+        <div class="cmp-col" id="review-col-request" style="flex:1 1 0; min-height:40px;">
+          <div class="cmp-col-header">
+            <span class="title-md">✏️ 使用者要求（送給 AI 的指令，可自行改寫以加強特定段落的批評）</span>
+            <button class="btn secondary-btn" id="btn-toggle-review-request" style="margin-left:auto;"
+              title="隱藏／顯示使用者要求文字輸入框">👁️‍🗨️ 隱藏</button>
+          </div>
+          <textarea class="cmp-content" id="review-user-request" placeholder="在此撰寫要求 AI 評審的重點與角度..."></textarea>
+        </div>
+        <div class="review-resizer" id="review-resizer" title="拖曳調整上下欄高度"></div>
+        <div class="cmp-col" id="review-col-feedback" style="flex:1 1 0; min-height:40px;">
+          <div class="cmp-col-header">
+            <span class="title-md">🖋️ AI 編輯的評審建議</span>
+            <button class="btn secondary-btn" id="btn-toggle-review-feedback" title="隱藏／顯示 AI 評審建議文字輸入框">👁️‍🗨️
+              隱藏</button>
+            <button class="btn secondary-btn" id="btn-review-export" title="匯出「使用者要求」+「AI 評審建議」為 .md 檔">📤 匯出</button>
+          </div>
+          <textarea class="cmp-content" id="review-ai-feedback" placeholder="AI 評審結果將顯示於此..."></textarea>
+        </div>
       </div>
     </div>
   </div>

@@ -27,6 +27,7 @@ from prompt_utils import (
     build_analyze_image_prompt_text,     #從圖片生成 AI 生圖提示詞
     build_story_to_premise_prompt,       #將故事原文濃縮成故事粗綱
     build_story_to_bullet_premise_prompt, #將故事原文轉成條列式故事粗綱
+    build_novel_review_prompt,           #以嚴格編輯身分評審小說
     build_json_repair_chapters_prompt,   #JSON格式修復：章標題與描述
     build_json_repair_sections_prompt,   #JSON格式修復：各小節大綱
     build_diary_image_prompt_text        #生成日記動態生圖提示詞
@@ -611,7 +612,8 @@ def _ollama_generate_direct(model, prompt, options=None, images=None, on_chunk=N
         "top_k": 40,
         "top_p": 0.9,
         "num_gpu": 999, #強制所有資料放入GPU跟VRAM。
-        #"think": False #不顯示運算過程，沒作用。
+        "think": False, #不顯示運算過程，沒作用。
+        "thinking": False #不顯示運算過程，沒作用。
     }
     
     # 合併外部傳入的 options（不修改原始 dict）
@@ -1107,6 +1109,61 @@ def _run_story_to_premise_job(job_id: str, params: dict):
             if job_id in JOBS:
                 JOBS[job_id]["status"]     = "error"
                 JOBS[job_id]["updated_at"] = time.time()
+
+def _run_review_novel_job(job_id: str, params: dict):
+    """非同步執行「以嚴格編輯身分評審小說」任務。
+
+    ⚠️ 評審立場與規則由前端 user_request 主導，後端不寫死。
+    """
+    #####################################################################################
+    # 非同步執行「小說評審」任務：由前端 user_request 主導評審立場
+    #####################################################################################
+    try:
+        text_content = params.get('text_content', '')
+        user_request = params.get('user_request', '') or ''
+        doc_name     = params.get('doc_name', '') or ''
+        model_name   = params.get('model', 'gemma4')
+        prompt = build_novel_review_prompt(text_content, user_request, doc_name=doc_name)
+
+        opts = dict(params.get('model_options') or {})
+        opts.setdefault('num_predict', 4096)
+        opts.setdefault('temperature', 0.5)  # 評審要冷靜、務實
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        _log_print(job_id, "=" * 50)
+        _log_print(job_id, f"[{timestamp}] debug_server.py：【非同步】小說評審 —「{doc_name}」")
+        _log_print(job_id, f">> 稿件長度：{len(text_content)} 字，模型：{model_name}，num_predict：{opts['num_predict']}")
+        _log_print(job_id, "=" * 20 + " 以下是送給 AI 的完整提示詞 " + "=" * 20)
+        _log_print(job_id, prompt)
+        _log_print(job_id, "=" * 20 + " 提示詞結束 " + "=" * 20)
+        _log_print(job_id, ">> 正在呼叫 Ollama 進行小說評審中（請稍候）...")
+
+        timeStartSec = time.time()
+        response_text = _ollama_with_heartbeat(
+            job_id, model_name, prompt, options=opts, time_start=timeStartSec
+        )
+        duration = int(time.time() - timeStartSec)
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        _log_print(job_id, "=" * 20 + " 以下是 AI 完整回傳評審 " + "=" * 20)
+        _log_print(job_id, response_text if response_text.strip() else "（空字串，模型未回傳任何內容）")
+        _log_print(job_id, "=" * 20 + " AI 回傳結束 " + "=" * 20)
+        _log_print(job_id, f"[{timestamp}] 總共花費 {duration} 秒，小說評審完成，回傳長度：{len(response_text)} 字元")
+        if not response_text.strip():
+            _log_print(job_id, ">> [警告] 模型回傳空字串！")
+
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["result"]     = {"review": response_text.strip(), "debug_prompt": prompt}
+                JOBS[job_id]["status"]     = "done"
+                JOBS[job_id]["updated_at"] = time.time()
+    except Exception as e:
+        import traceback
+        _log_print(job_id, f"[ERROR] _run_review_novel_job failed: {e}\n{traceback.format_exc()}")
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["status"]     = "error"
+                JOBS[job_id]["updated_at"] = time.time()
+
 
 def _run_novel_chapters_job(job_id: str, params: dict):
     """非同步執行「根據粗綱生成各章標題與描述」任務"""
@@ -2207,6 +2264,30 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                     }
                 threading.Thread(
                     target=_run_story_to_premise_job,
+                    args=(job_id, params),
+                    daemon=True
+                ).start()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"job_id": job_id, "status": "running"}, ensure_ascii=False).encode('utf-8'))
+
+            elif self.path == '/api/review_novel_async':
+                ############################################################################
+                # 非同步：以嚴格編輯身分評審小說（前端可透過 /api/job 輪詢 Log）
+                ############################################################################
+                job_id = str(uuid.uuid4())
+                with JOBS_LOCK:
+                    JOBS[job_id] = {
+                        "status": "running",
+                        "logs": [">> 任務啟動：正在以嚴格編輯身分評審小說..."],
+                        "result": None,
+                        "created_at": time.time(),
+                        "last_activity": time.time(),
+                        "updated_at": time.time()
+                    }
+                threading.Thread(
+                    target=_run_review_novel_job,
                     args=(job_id, params),
                     daemon=True
                 ).start()

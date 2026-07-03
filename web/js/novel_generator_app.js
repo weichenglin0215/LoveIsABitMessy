@@ -640,30 +640,30 @@ function setupEventListeners() {
         if (ok) aiGenChaptersFromPremise();
     });
     qs('#btn-ai-gen-full-auto').addEventListener('click', aiGenFullAuto);
-    qs('#btn-story-to-premise').addEventListener('click', async () => {
-        const ok = await openParamsModal({
-            modalId: 'modal-params-stp', confirmBtnId: 'btn-stp-params-confirm', cancelBtnId: 'btn-stp-params-cancel',
-            fields: [
-                { inputId: 'stp-chapter-count', paramKey: 'storyToPremiseChapters', defaultValue: 8 },
-                { inputId: 'stp-words-per-chapter', paramKey: 'storyToPremiseWordsPerChapter', defaultValue: 200 }
-            ]
-        });
-        if (ok) qs('#story-file-input').click();
-    });
+    // 文檔轉粗綱：先開檔案選擇（Windows 內建對話框），選檔完成後再跳參數彈窗
+    qs('#btn-story-to-premise').addEventListener('click', () => qs('#story-file-input').click());
     qs('#story-file-input').addEventListener('change', storyFileToPremise);
 
-    // 文檔轉條列：先跳參數彈窗，再開檔案選擇
-    qs('#btn-story-to-bullet').addEventListener('click', async () => {
-        const ok = await openParamsModal({
-            modalId: 'modal-params-stb', confirmBtnId: 'btn-stb-params-confirm', cancelBtnId: 'btn-stb-params-cancel',
-            fields: [
-                { inputId: 'stb-chapter-count', paramKey: 'storyToBulletChapters', defaultValue: 8 },
-                { inputId: 'stb-words-per-chapter', paramKey: 'storyToBulletWordsPerChapter', defaultValue: 400 }
-            ]
-        });
-        if (ok) qs('#story-bullet-file-input').click();
-    });
+    // 文檔轉條列：先開檔案選擇，選檔完成後再跳參數彈窗
+    qs('#btn-story-to-bullet').addEventListener('click', () => qs('#story-bullet-file-input').click());
     qs('#story-bullet-file-input').addEventListener('change', storyFileToBulletPremise);
+
+    // 評論小說：按鈕與彈窗事件
+    qs('#btn-review-novel').addEventListener('click', openReviewModal);
+    qs('#btn-review-current-novel').addEventListener('click', reviewCurrentNovel);
+    qs('#btn-review-external-file').addEventListener('click', () => qs('#review-file-input').click());
+    qs('#review-file-input').addEventListener('change', reviewExternalFile);
+    qs('#btn-review-export').addEventListener('click', exportReviewResult);
+    qs('#btn-toggle-review-request').addEventListener('click',
+        () => toggleReviewSection('review-col-request', 'btn-toggle-review-request'));
+    qs('#btn-toggle-review-feedback').addEventListener('click',
+        () => toggleReviewSection('review-col-feedback', 'btn-toggle-review-feedback'));
+    initReviewResizer();
+    qs('#review-search-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); doReviewSearch(); }
+    });
+    qs('#review-search-prev').addEventListener('click', () => goToReviewMatch(reviewCurrentMatch - 1));
+    qs('#review-search-next').addEventListener('click', () => goToReviewMatch(reviewCurrentMatch + 1));
 
     qs('#btn-compare-novels').addEventListener('click', openCompareModal);
     qs('#compare-mode-select').addEventListener('change', updateAllCompareContent);
@@ -1077,7 +1077,7 @@ async function aiGenMultiBook(totalCount, opts = {}) {
                     if (existingNums.length > 0) {
                         const maxNum = Math.max(...existingNums);
                         startNum = maxNum + 1;
-                        appendLog(`☁️ 雲端已有同名小說（最大序號：${String(maxNum).padStart(3,'0')}），本次從 ${String(startNum).padStart(3,'0')} 開始。`);
+                        appendLog(`☁️ 雲端已有同名小說（最大序號：${String(maxNum).padStart(3, '0')}），本次從 ${String(startNum).padStart(3, '0')} 開始。`);
                     }
                 }
             }
@@ -1469,6 +1469,19 @@ async function storyFileToPremise(event) {
         return;
     }
 
+    // 讀檔成功後才彈出「生成參數」彈窗
+    btn.disabled = false;
+    btn.textContent = origText;
+    const okParams = await openParamsModal({
+        modalId: 'modal-params-stp', confirmBtnId: 'btn-stp-params-confirm', cancelBtnId: 'btn-stp-params-cancel',
+        fields: [
+            { inputId: 'stp-chapter-count', paramKey: 'storyToPremiseChapters', defaultValue: 8 },
+            { inputId: 'stp-words-per-chapter', paramKey: 'storyToPremiseWordsPerChapter', defaultValue: 200 }
+        ]
+    });
+    if (!okParams) { appendLog('>> 已取消文檔轉粗綱。'); return; }
+    btn.disabled = true;
+
     appendLog(`📄 已讀取「${file.name}」，共 ${textContent.length} 字。`);
     appendLog('🤖 正在呼叫 AI 依起承轉合濃縮成故事粗綱（請稍候）...');
     btn.textContent = '⏳ AI 分析中…';
@@ -1534,6 +1547,19 @@ async function storyFileToBulletPremise(event) {
         btn.textContent = origText;
         return;
     }
+
+    // 讀檔成功後才彈出「生成參數」彈窗
+    btn.disabled = false;
+    btn.textContent = origText;
+    const okParams = await openParamsModal({
+        modalId: 'modal-params-stb', confirmBtnId: 'btn-stb-params-confirm', cancelBtnId: 'btn-stb-params-cancel',
+        fields: [
+            { inputId: 'stb-chapter-count', paramKey: 'storyToBulletChapters', defaultValue: 8 },
+            { inputId: 'stb-words-per-chapter', paramKey: 'storyToBulletWordsPerChapter', defaultValue: 400 }
+        ]
+    });
+    if (!okParams) { appendLog('>> 已取消文檔轉條列。'); return; }
+    btn.disabled = true;
 
     appendLog(`📋 已讀取「${file.name}」，共 ${textContent.length} 字。`);
     appendLog('🤖 正在呼叫 AI 依起承轉合轉成條列式故事粗綱（請稍候）...');
@@ -1785,47 +1811,47 @@ function getCompareText(novelState, mode) {
 
     switch (mode) {
         case 'premise':
-            return novelState.storyPremise || '（無粗綱）';
+            return `《故事粗綱》\n\n${novelState.storyPremise || '（無粗綱）'}`;
 
         case 'chapters':
             return chapters.map((ch, i) =>
-                `【第${i + 1}章】${ch.title || '（未命名）'}\n${ch.description || '（無章描述）'}`
-            ).join('\n\n──────────\n\n');
+                `【第${i + 1}章】${ch.title || '（未命名）'}\n\n${ch.description || '（無章描述）'}`
+            ).join('\n\n≡≡≡≡≡≡≡≡≡≡\n\n');
 
         case 'sections':
             return chapters.map((ch, i) => {
                 const secList = ch.sections.map((sec, j) =>
-                    `  第${j + 1}節：${sec.title || '（未命名）'}`
-                ).join('\n');
+                    `＜第${j + 1}節＞：${sec.title || '（未命名）'}`
+                ).join('\n\n──────────\n\n');
                 return `【第${i + 1}章】${ch.title || '（未命名）'}\n${secList}`;
-            }).join('\n\n──────────\n\n');
+            }).join('\n\n≡≡≡≡≡≡≡≡≡≡\n\n');
 
         case 'all_outlines':
             return chapters.map((ch, i) => {
                 const secList = ch.sections.map((sec, j) =>
-                    `  第${j + 1}節：${sec.title || '（未命名）'}`
-                ).join('\n');
+                    `＜第${j + 1}節＞：${sec.title || '（未命名）'}`
+                ).join('\n\n──────────\n\n');
                 return `【第${i + 1}章】${ch.title || '（未命名）'}\n${ch.description || ''}\n\n${secList}`;
-            }).join('\n\n══════════\n\n');
+            }).join('\n\n≡≡≡≡≡≡≡≡≡≡\n\n');
 
         case 'content':
             return chapters.map((ch, i) => {
                 const secContent = ch.sections.map((sec, j) =>
-                    `【第${j + 1}節】${sec.title || '（未命名）'}\n${sec.content || '（無內文）'}`
-                ).join('\n\n');
-                return `═══ 第${i + 1}章：${ch.title || ''} ═══\n\n${secContent}`;
-            }).join('\n\n━━━━━━━━━━━━━━━━━\n\n');
+                    `＜第${j + 1}節＞：${sec.title || '（未命名）'}\n\n（內文）：\n${sec.content || '（無內文）'}`
+                ).join('\n\n──────────\n\n');
+                return `【第${i + 1}章】：${ch.title || ''} \n\n${secContent}`;
+            }).join('\n\n≡≡≡≡≡≡≡≡≡≡\n\n');
 
         case 'all': {
             // 全部 = 粗綱 + 章標題 + 章描述 + 節標題 + 節描述 + 內文
-            const premisePart = `【故事粗綱】\n${novelState.storyPremise || '（無粗綱）'}`;
+            const premisePart = `《故事粗綱》\n${novelState.storyPremise || '（無粗綱）'}`;
             const chaptersPart = chapters.map((ch, i) => {
                 const secs = ch.sections.map((sec, j) =>
-                    `【第${j + 1}節】${sec.title || '（未命名）'}\n${sec.content || '（無內文）'}`
-                ).join('\n\n');
-                return `═══ 第${i + 1}章：${ch.title || ''} ═══\n${ch.description || ''}\n\n${secs}`;
-            }).join('\n\n━━━━━━━━━━━━━━━━━\n\n');
-            return `${premisePart}\n\n━━━━━━━━━━━━━━━━━\n\n${chaptersPart}`;
+                    `＜第${j + 1}節＞：${sec.title || '（未命名）'}\n\n（內文）：\n${sec.content || '（無內文）'}`
+                ).join('\n\n──────────\n\n');
+                return `【第${i + 1}章】：${ch.title || ''}\n${ch.description || ''}\n\n${secs}`;
+            }).join('\n\n≡≡≡≡≡≡≡≡≡≡\n\n');
+            return `${premisePart}\n\n********************\n\n${chaptersPart}`;
         }
 
         default:
@@ -1875,6 +1901,18 @@ function toggleCompareModelInfo(colIdx) {
     const info = document.querySelectorAll('.compare-model-info')[colIdx];
     if (!info) return;
     info.style.display = (info.style.display === 'none') ? '' : 'none';
+}
+
+// 同時隱藏/顯示比對彈窗四欄的「AI 訊息藍框」
+// 依照目前按鈕文字狀態切換：若處於「隱藏」狀態則全部顯示，反之則全部隱藏
+function toggleAllCompareModelInfo() {
+    const btn = document.getElementById('btn-toggle-all-model-info');
+    const infos = document.querySelectorAll('.compare-model-info');
+    if (!infos.length) return;
+    // 以按鈕目前文字判斷下一步動作
+    const shouldHide = !btn || btn.textContent.includes('隱藏');
+    infos.forEach(el => { el.style.display = shouldHide ? 'none' : ''; });
+    if (btn) btn.textContent = shouldHide ? '👁️‍🗨️ 顯示AI訊息' : '👁️‍🗨️ 隱藏AI訊息';
 }
 
 function updateCompareColContent(colIdx) {
@@ -2253,3 +2291,255 @@ async function loadProject() {
 }
 
 
+
+
+// ============================================================================
+// 🎯 評論小說（Review Novel）功能
+// ============================================================================
+// 預設「使用者要求」提示詞：以最嚴格的專業編輯身分要求 AI
+const REVIEW_DEFAULT_USER_REQUEST = `你是一位有 30 年資歷、鐵面無私的資深出版社主編兼書評人，經手過數百部暢銷與退稿作品，見過所有新人常犯的毛病。
+請以你「最嚴格、絲毫不留情面、直言不諱」的高標準，審讀下方這份小說稿件，並寫下你的評審意見。
+
+【審讀立場】
+- 假設你正在替出版社決定「是否簽下這本書」，錯過爛稿的成本很高，你必須挑毛病。
+- 假設讀者付了錢、時間有限、耐心稀薄，凡是拖沓、假掰、老套、邏輯崩塌之處都要立刻點名。
+- 不要客套、不要鼓勵性廢話、不要「整體來說還不錯」這種話。有問題就直接說出來。
+
+【評審面向（每項都要有具體引文或段落定位）】
+1. 故事結構與節奏：起承轉合是否成立？哪幾章拖戲？哪幾章崩掉？懸念是否有效？
+2. 人物塑造：主角動機是否可信？角色行為是否前後矛盾？配角有沒有存在的必要？
+3. 對白：像不像真人在說話？有沒有作者跳出來替角色說教？
+4. 情感真實度：戀愛／衝突／情慾／背叛的張力夠不夠？哪裡讓人尷尬出戲？
+5. 語言與文字：贅字、陳腔濫調、比喻是否老套？段落節奏是否單調？
+6. 邏輯與世界觀：因果是否成立？有無 bug、時間線錯亂、常識錯誤？
+7. 市場與讀者觀感：這本書若上市，讀者最可能在哪一章棄書？書評星等大概幾顆星？
+
+【輸出格式】
+- 開頭給出「一句話總評」（不超過 30 字，語氣可以毒辣）。
+- 接著給出「總體評分」：故事 / 人物 / 文筆 / 節奏 / 市場潛力，各項 1–10 分並附一句理由。
+- 然後條列具體問題，每條格式為：【問題類型】章節或段落定位 — 問題描述 — 修改建議。
+- 最後給出「若要出版必須先修好的三大致命傷」與「值得保留的兩個亮點（若真的有）」。
+- 全部使用繁體中文。禁止使用中文簡體字。禁止安慰性語言。`;
+
+let reviewMatches = [];
+let reviewCurrentMatch = -1;
+let reviewSearchLastCol = 0; // 0=user request, 1=ai feedback
+
+function openReviewModal() {
+    // 預設文件名稱為目前小說名稱
+    const bookTitle = (state.bookTitle || '').trim() || '未命名小說';
+    const docNameEl = qs('#review-doc-name');
+    if (!docNameEl.value) docNameEl.value = bookTitle;
+
+    const userReqEl = qs('#review-user-request');
+    if (!userReqEl.value) userReqEl.value = REVIEW_DEFAULT_USER_REQUEST;
+
+    qs('#modal-review').classList.remove('hidden');
+}
+
+/**
+ * 把目前編輯中的小說（粗綱 + 章 + 節 + 內文）串成一段長文字，送給 AI 評審
+ */
+function assembleCurrentNovelText() {
+    let text = `《${(state.bookTitle || '未命名小說').trim()}》\n\n`;
+    text += `【故事粗綱】\n${(state.storyPremise || '').trim() || '（未撰寫）'}\n\n`;
+    (state.chapters || []).forEach((ch, ci) => {
+        text += `\n===== 第${ci + 1}章：${ch.title || ''} =====\n`;
+        text += `【章描述】${ch.description || ''}\n`;
+        (ch.sections || []).forEach((sec, si) => {
+            text += `\n--- 第${ci + 1}章 第${si + 1}節：${sec.title || ''} ---\n`;
+            text += `${sec.content || '（未生成內容）'}\n`;
+        });
+    });
+    return text;
+}
+
+async function reviewCurrentNovel() {
+    const bookTitle = (state.bookTitle || '').trim() || '未命名小說';
+    qs('#review-doc-name').value = bookTitle;
+    const fullText = assembleCurrentNovelText();
+    await runReviewJob(fullText, bookTitle);
+}
+
+async function reviewExternalFile(event) {
+    const file = event.target.files[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!file.name.match(/\.(txt|md)$/i)) {
+        alert('❌ 僅支援 .txt 或 .md 文字檔案。');
+        return;
+    }
+    let textContent = '';
+    try {
+        textContent = await file.text();
+    } catch (e) {
+        alert('❌ 無法讀取檔案：' + e.message);
+        return;
+    }
+    if (!textContent || textContent.trim().length < 50) {
+        alert('❌ 檔案內容太短（少於 50 字）。');
+        return;
+    }
+    // 覆寫文件名稱為外部檔名（去掉副檔名）
+    const baseName = file.name.replace(/\.(txt|md)$/i, '');
+    qs('#review-doc-name').value = baseName;
+    await runReviewJob(textContent, baseName);
+}
+
+async function runReviewJob(fullText, docName) {
+    const userRequest = qs('#review-user-request').value.trim() || REVIEW_DEFAULT_USER_REQUEST;
+    const aiFeedbackEl = qs('#review-ai-feedback');
+
+    // 若原文過長，截斷並在 LOG 標註
+    const MAX_LEN = 100000;
+    let sendText = fullText;
+    if (fullText.length > MAX_LEN) {
+        sendText = fullText.slice(0, MAX_LEN);
+        appendLog(`⚠️ 原文長度 ${fullText.length} 字，超過 ${MAX_LEN} 字，已截斷。`);
+    }
+
+    aiFeedbackEl.value = '⏳ AI 評審中，請稍候...\n（過程 LOG 顯示在主 LOG 欄）';
+    appendLog(`🎯 開始評審「${docName}」，共 ${sendText.length} 字。`);
+
+    try {
+        const payload = {
+            text_content: sendText,
+            user_request: userRequest,
+            doc_name: docName,
+            model: state.currentModel || 'gemma4',
+            model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null
+        };
+        const result = await callDebugServerAsync('/api/review_novel_async', payload);
+        if (result && result.review) {
+            aiFeedbackEl.value = result.review;
+            appendLog('✅ 評審結果已生成，顯示於評論小說彈窗。');
+        } else {
+            aiFeedbackEl.value = '❌ AI 未回傳有效評審內容，請查看 LOG 或重試。';
+            appendLog('❌ AI 未回傳有效評審內容。');
+        }
+    } catch (e) {
+        aiFeedbackEl.value = '❌ 發生錯誤：' + e.message;
+        appendLog('❌ 評審發生錯誤：' + e.message);
+    }
+}
+
+function exportReviewResult() {
+    const docName = (qs('#review-doc-name').value || '未命名').trim();
+    const userReq = qs('#review-user-request').value || '';
+    const aiFb = qs('#review-ai-feedback').value || '';
+    const md = `# 🎯 小說評審報告：${docName}\n\n` +
+        `## ✏️ 使用者要求\n\n${userReq}\n\n` +
+        `---\n\n## 🖋️ AI 編輯的評審建議\n\n${aiFb}\n`;
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${docName}_評審報告.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    appendLog('📤 已匯出評審報告 Markdown。');
+}
+
+// 評論小說彈窗搜尋：跨兩欄 textarea 搜尋
+function doReviewSearch() {
+    const query = qs('#review-search-input').value;
+    const countEl = qs('#review-search-count');
+    reviewMatches = [];
+    reviewCurrentMatch = -1;
+    if (!query) { countEl.textContent = ''; return; }
+    const textareas = [qs('#review-user-request'), qs('#review-ai-feedback')];
+    const lq = query.toLowerCase();
+    textareas.forEach((ta, colIdx) => {
+        const lo = ta.value.toLowerCase();
+        let i = 0;
+        while ((i = lo.indexOf(lq, i)) !== -1) {
+            reviewMatches.push({ colIdx, start: i });
+            i += lq.length;
+        }
+    });
+    if (reviewMatches.length) goToReviewMatch(0);
+    else countEl.textContent = '找不到';
+}
+
+function goToReviewMatch(idx) {
+    if (!reviewMatches.length) return;
+    const query = qs('#review-search-input').value;
+    reviewCurrentMatch = ((idx % reviewMatches.length) + reviewMatches.length) % reviewMatches.length;
+    const m = reviewMatches[reviewCurrentMatch];
+    const ta = m.colIdx === 0 ? qs('#review-user-request') : qs('#review-ai-feedback');
+    const start = m.start, end = start + query.length;
+    const fullText = ta.value;
+    ta.value = fullText.substring(0, start);
+    const pixelPos = ta.scrollHeight;
+    ta.value = fullText;
+    ta.focus();
+    ta.setSelectionRange(start, end);
+    requestAnimationFrame(() => {
+        ta.scrollTop = Math.max(0, pixelPos - ta.clientHeight / 2);
+    });
+    qs('#review-search-count').textContent = `${reviewCurrentMatch + 1} / ${reviewMatches.length}`;
+}
+
+// 評論小說彈窗：切換上/下欄的 textarea 顯示與否
+// colId = 'review-col-request' 或 'review-col-feedback'
+// 隱藏時只藏 textarea（保留標題列），並暫停 flex 使該欄縮到最小
+function toggleReviewSection(colId, btnId) {
+    const col = document.getElementById(colId);
+    const btn = document.getElementById(btnId);
+    if (!col || !btn) return;
+    const ta = col.querySelector('textarea');
+    if (!ta) return;
+    const nowHidden = ta.style.display === 'none';
+    if (nowHidden) {
+        // 恢復顯示
+        ta.style.display = '';
+        col.style.flex = col.dataset.prevFlex || '1 1 0';
+        btn.textContent = '👁️‍🗨️ 隱藏';
+    } else {
+        // 隱藏 textarea：欄位縮到只剩標題列
+        col.dataset.prevFlex = col.style.flex || '1 1 0';
+        ta.style.display = 'none';
+        col.style.flex = '0 0 auto';
+        btn.textContent = '👁️‍🗨️ 顯示';
+    }
+}
+
+// 評論小說彈窗：初始化上下兩欄之間的橫向拖動 resizer
+function initReviewResizer() {
+    const resizer = document.getElementById('review-resizer');
+    const body = document.getElementById('review-body');
+    const topCol = document.getElementById('review-col-request');
+    const botCol = document.getElementById('review-col-feedback');
+    if (!resizer || !body || !topCol || !botCol) return;
+
+    resizer.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        resizer.classList.add('resizing');
+        document.body.style.userSelect = 'none';
+
+        const bodyRect = body.getBoundingClientRect();
+        const resizerH = resizer.offsetHeight;
+
+        const onMove = (ev) => {
+            // 依滑鼠 Y 位置計算上欄新高度
+            const relY = ev.clientY - bodyRect.top;
+            const total = bodyRect.height - resizerH;
+            const minH = 40;
+            let topH = Math.max(minH, Math.min(relY, total - minH));
+            let botH = total - topH;
+            // 用 flex-basis 固定像素高度，兩欄不再自動平分
+            topCol.style.flex = `0 0 ${topH}px`;
+            botCol.style.flex = `0 0 ${botH}px`;
+        };
+        const onUp = () => {
+            resizer.classList.remove('resizing');
+            document.body.style.userSelect = '';
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+}

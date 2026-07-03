@@ -822,6 +822,32 @@ def build_story_to_bullet_premise_prompt(text_content: str, chapter_count: int =
     return prompt
 
 
+def build_novel_review_prompt(text_content: str, user_request: str, doc_name: str = "") -> str:
+    """建立「小說評審」提示詞。
+
+    ⚠️ 設計原則：本函式盡量不在後端寫死評審規則，
+    評審立場與細節由前端「使用者要求」多行文字框傳入的 user_request 主導，
+    以便使用者可自由改寫成不同流派、不同嚴格程度的評審請求。
+    這裡只組合最少量的骨架：使用者要求 + 待審稿件（含截斷保護）。
+    """
+    #####################################################################################
+    # 小說評審提示詞：使用者要求主導 + 待審稿件內容
+    # 後端不寫死評審面向，讓使用者可在前端自行改寫「使用者要求」。
+    #####################################################################################
+    # 文字長度上限（避免 num_ctx 爆掉），與前端 MAX_LEN 對齊
+    MAX_LEN = 100000
+    body = text_content if len(text_content) <= MAX_LEN else (text_content[:MAX_LEN] + "\n\n【注意：原文過長，已於此處截斷】")
+    header = f"待審稿件名稱：{doc_name}\n" if doc_name else ""
+    return (
+        f"{user_request.strip()}\n\n"
+        f"━━━━━━━━━━ 以下為待審稿件全文 ━━━━━━━━━━\n"
+        f"{header}"
+        f"{body}\n"
+        f"━━━━━━━━━━ 待審稿件結束 ━━━━━━━━━━\n\n"
+        f"請根據上方【使用者要求】的立場與格式，開始撰寫評審意見（繁體中文）："
+    )
+
+
 def build_chat_reply_prompt(char_data, char_name, user_name, user_message, history,
                             persona_override="", session_extra="", 
                             user_char_data=None, user_persona_override="", user_extra="",
