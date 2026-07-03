@@ -848,6 +848,32 @@ def build_novel_review_prompt(text_content: str, user_request: str, doc_name: st
     )
 
 
+def build_rewrite_content_prompt(text_content: str, user_request: str, doc_name: str = "") -> str:
+    """建立「多文改寫」提示詞（例如：翻譯成英文、改寫成小紅書風、擴寫、濃縮…等）。
+
+    ⚠️ 設計原則：本函式盡量不在後端寫死改寫規則，
+    改寫任務與細節由前端「使用者指令」多行文字框傳入的 user_request 主導，
+    以便使用者可自由改寫成不同語言、不同文體、不同長度的改寫請求。
+    這裡只組合最少量的骨架：使用者指令 + 待改寫原文（含截斷保護）。
+    """
+    #####################################################################################
+    # 多文改寫提示詞：使用者指令主導 + 待改寫原文
+    # 後端不寫死改寫方向，讓使用者可在前端自行改寫「使用者指令」。
+    #####################################################################################
+    # 文字長度上限（避免 num_ctx 爆掉），與前端對齊
+    MAX_LEN = 100000
+    body = text_content if len(text_content) <= MAX_LEN else (text_content[:MAX_LEN] + "\n\n【注意：原文過長，已於此處截斷】")
+    header = f"原始檔名：{doc_name}\n" if doc_name else ""
+    return (
+        f"{user_request.strip()}\n\n"
+        f"━━━━━━━━━━ 以下為待改寫原文 ━━━━━━━━━━\n"
+        f"{header}"
+        f"{body}\n"
+        f"━━━━━━━━━━ 待改寫原文結束 ━━━━━━━━━━\n\n"
+        f"請根據上方【使用者指令】的規則，直接輸出改寫後的完整內容，不要輸出任何前言、後記或說明文字："
+    )
+
+
 def build_chat_reply_prompt(char_data, char_name, user_name, user_message, history,
                             persona_override="", session_extra="", 
                             user_char_data=None, user_persona_override="", user_extra="",

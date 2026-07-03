@@ -665,6 +665,22 @@ function setupEventListeners() {
     qs('#review-search-prev').addEventListener('click', () => goToReviewMatch(reviewCurrentMatch - 1));
     qs('#review-search-next').addEventListener('click', () => goToReviewMatch(reviewCurrentMatch + 1));
 
+    // 多文改寫：按鈕與彈窗事件
+    qs('#btn-multi-rewrite').addEventListener('click', openRewriteModal);
+    qs('#btn-rewrite-pick-files').addEventListener('click', () => qs('#rewrite-file-input').click());
+    qs('#rewrite-file-input').addEventListener('change', onRewriteFilesPicked);
+    qs('#btn-rewrite-start').addEventListener('click', startMultiRewrite);
+    qs('#btn-rewrite-select-all').addEventListener('click', () => setAllRewriteFilesChecked(true));
+    qs('#btn-rewrite-deselect-all').addEventListener('click', () => setAllRewriteFilesChecked(false));
+    qs('#btn-rewrite-invert').addEventListener('click', invertRewriteFilesChecked);
+    qs('#btn-rewrite-clear-files').addEventListener('click', clearRewriteFiles);
+    qs('#rewrite-search-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); doRewriteSearch(); }
+    });
+    qs('#rewrite-search-prev').addEventListener('click', () => goToRewriteMatch(rewriteCurrentMatch - 1));
+    qs('#rewrite-search-next').addEventListener('click', () => goToRewriteMatch(rewriteCurrentMatch + 1));
+    initRewriteResizer();
+
     qs('#btn-compare-novels').addEventListener('click', openCompareModal);
     qs('#compare-mode-select').addEventListener('change', updateAllCompareContent);
     document.querySelectorAll('.compare-novel-select').forEach(sel => {
@@ -2530,6 +2546,316 @@ function initReviewResizer() {
             let topH = Math.max(minH, Math.min(relY, total - minH));
             let botH = total - topH;
             // 用 flex-basis 固定像素高度，兩欄不再自動平分
+            topCol.style.flex = `0 0 ${topH}px`;
+            botCol.style.flex = `0 0 ${botH}px`;
+        };
+        const onUp = () => {
+            resizer.classList.remove('resizing');
+            document.body.style.userSelect = '';
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+}
+
+
+// ============================================================================
+// 📝 多文改寫（Multi-File Rewrite）功能
+// ----------------------------------------------------------------------------
+// 使用者選擇多個 .txt / .md 檔 → 於「使用者指令」中撰寫改寫規則（如：翻譯成英文）
+// → 依序逐一送給 AI 改寫 → 每完成一個檔案自動匯出成 {原檔名}_改寫.{原副檔名}
+// 與「🎯 評論小說」共用彈窗版型（cmp-modal / cmp-toolbar / cmp-body / cmp-col）
+// ============================================================================
+
+// 預設「使用者指令」提示詞：改寫最常見的情境是翻譯，先給個範例讓使用者參考
+const REWRITE_DEFAULT_USER_REQUEST = `你是一位小說視角轉換的機械式改寫工具。
+請把下方【待改寫原文】從第三人稱或男性觀點，改寫為以女主角為觀點的版本。
+
+【女主角設定】
+以與男主角關係最密切、情感戲份最重的女性角色為女主角。
+
+【唯一允許的改動：稱謂替換】
+1. 原文指稱女主角的所有詞語 → 一律改為「我」。
+   包含但不限於：她、女主角的名字（如「可歆」）、其他角色對女主角的稱呼在敘述句中出現時（如「這女人」、「那女孩」）、代稱（如「她的」→「我的」）。
+2. 原文中女主角自己的對白，維持原樣（對白內的「我」不變）。
+3. 對白中其他角色對女主角的稱呼（如叫她的名字、「妳」、「小姐」…）維持原樣，不要動對白內容。
+4. 其餘所有文字（男主角的名字、他、其他配角、動作、場景、對白、標點、段落、章節標題、時間戳）全部一字不改。
+
+【嚴格禁止】
+1. 禁止增加任何原文沒有的字、詞、句子，包含但不限於：內心戲、情感描述、感受、心跳、聯想、推測、旁白、譯註。
+2. 禁止刪除原文任何字、詞、句子、段落。
+3. 禁止改寫、潤飾、重組原文的句子順序或用詞。
+4. 禁止改變原文的時態、語氣、風格。
+5. 禁止把原本描寫女主角外表（如「她的長髮飄動」）改成她的身體感受，僅做代名詞替換（改為「我的長髮飄動」）。
+6. 禁止把「他心想」、「他覺得」這類男主角或第三人稱視角的內心描寫改成女主角的推測；維持原文不變。
+7. 若原文有女主角完全不在場的場景，維持原文不變，不要刪除也不要改視角。
+8. 禁止使用括號補述、影視術語、作者旁白。
+9. 禁止使用中文簡體字。
+10. 禁止輸出任何前言、後記、標題說明；直接輸出改寫後的原文。
+
+【驗證原則】
+改寫後的字數應與原文接近相同（誤差 ±5% 內），若明顯增加或減少，代表你違反了規則，請重新處理。
+
+請直接開始改寫，全篇使用繁體中文。
+
+（若要改成其他改寫任務，直接改掉上面這段指令即可，例如：翻譯成日文、改寫成小紅書貼文、改寫成兒童讀物、改寫成正式公文、改寫成台語口語、擴寫成 3 倍字數、濃縮成 1/3 字數 …等。）`;
+
+let rewriteFiles = [];          // [{ id, file, name, size, checked, status }]
+let rewriteFileIdSeq = 0;
+let rewriteMatches = [];
+let rewriteCurrentMatch = -1;
+let rewriteRunning = false;
+
+function openRewriteModal() {
+    const userReqEl = qs('#rewrite-user-request');
+    if (!userReqEl.value) userReqEl.value = REWRITE_DEFAULT_USER_REQUEST;
+    qs('#modal-rewrite').classList.remove('hidden');
+}
+
+// 使用者從對話框挑了一批檔案 → 加入清單（不覆蓋，累加，同名檔案跳過）
+function onRewriteFilesPicked(event) {
+    const files = Array.from(event.target.files || []);
+    event.target.value = ''; // 讓下次選同一批也能觸發 change
+    if (!files.length) return;
+
+    let added = 0;
+    for (const f of files) {
+        if (!f.name.match(/\.(txt|md)$/i)) continue;
+        // 依「檔名+size」避免重複加入相同檔案
+        const dupKey = `${f.name}|${f.size}`;
+        if (rewriteFiles.some(x => `${x.name}|${x.size}` === dupKey)) continue;
+        rewriteFiles.push({
+            id: ++rewriteFileIdSeq,
+            file: f,
+            name: f.name,
+            size: f.size,
+            checked: true,
+            status: ''
+        });
+        added++;
+    }
+    renderRewriteFileList();
+    // 若文件名稱欄空的，帶入第一個檔案作為預覽
+    if (!qs('#rewrite-doc-name').value && rewriteFiles.length) {
+        qs('#rewrite-doc-name').value = buildRewrittenName(rewriteFiles[0].name);
+    }
+    if (added === 0) alert('沒有加入任何新檔案（可能全為重複或非 .txt/.md 格式）。');
+}
+
+function buildRewrittenName(origName) {
+    // 保留原副檔名，主檔名末尾補 _改寫
+    const m = origName.match(/^(.*)\.(txt|md)$/i);
+    if (!m) return origName + '_改寫';
+    return `${m[1]}_改寫.${m[2]}`;
+}
+
+function renderRewriteFileList() {
+    const box = qs('#rewrite-file-list');
+    const emptyHint = qs('#rewrite-file-empty-hint');
+    box.querySelectorAll('.rewrite-file-item').forEach(n => n.remove());
+    if (!rewriteFiles.length) {
+        if (emptyHint) emptyHint.style.display = '';
+        return;
+    }
+    if (emptyHint) emptyHint.style.display = 'none';
+
+    rewriteFiles.forEach((item, idx) => {
+        const row = document.createElement('label');
+        row.className = 'rewrite-file-item';
+        row.style.cssText = 'display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:4px; cursor:pointer;';
+        row.innerHTML = `
+            <input type="checkbox" ${item.checked ? 'checked' : ''} data-id="${item.id}">
+            <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${item.name}">
+                ${idx + 1}. ${item.name}
+            </span>
+            <span class="title-hint" style="min-width:80px; text-align:right;">${item.status || ''}</span>
+        `;
+        row.querySelector('input').addEventListener('change', (e) => {
+            item.checked = e.target.checked;
+        });
+        box.appendChild(row);
+    });
+}
+
+function setAllRewriteFilesChecked(v) {
+    rewriteFiles.forEach(x => x.checked = !!v);
+    renderRewriteFileList();
+}
+function invertRewriteFilesChecked() {
+    rewriteFiles.forEach(x => x.checked = !x.checked);
+    renderRewriteFileList();
+}
+function clearRewriteFiles() {
+    if (rewriteRunning) { alert('目前正在改寫中，請等改寫完成後再清空。'); return; }
+    if (!rewriteFiles.length) return;
+    if (!confirm(`確定要清空清單中的 ${rewriteFiles.length} 個檔案嗎？`)) return;
+    rewriteFiles = [];
+    renderRewriteFileList();
+}
+
+async function startMultiRewrite() {
+    if (rewriteRunning) { alert('已有改寫任務進行中。'); return; }
+    const targets = rewriteFiles.filter(x => x.checked);
+    if (!targets.length) { alert('請先在右側清單勾選要改寫的檔案。'); return; }
+
+    const userRequest = qs('#rewrite-user-request').value.trim();
+    if (!userRequest) { alert('請先在「使用者指令」欄位填寫改寫要求。'); return; }
+
+    rewriteRunning = true;
+    const startBtn = qs('#btn-rewrite-start');
+    const origBtnText = startBtn.textContent;
+    startBtn.disabled = true;
+    startBtn.textContent = '⏳ 改寫中…';
+
+    appendLog(`📝 開始多文改寫，共 ${targets.length} 個檔案。`);
+
+    let successCount = 0, failCount = 0;
+    for (let i = 0; i < targets.length; i++) {
+        const item = targets[i];
+        const outName = buildRewrittenName(item.name);
+        qs('#rewrite-doc-name').value = outName;
+        item.status = '⏳ 讀取中';
+        renderRewriteFileList();
+
+        // 讀檔
+        let textContent = '';
+        try {
+            textContent = await item.file.text();
+        } catch (e) {
+            item.status = '❌ 讀檔失敗';
+            renderRewriteFileList();
+            appendLog(`❌ [${i + 1}/${targets.length}] 讀取「${item.name}」失敗：${e.message}`);
+            failCount++;
+            continue;
+        }
+        if (!textContent || !textContent.trim()) {
+            item.status = '❌ 內容為空';
+            renderRewriteFileList();
+            appendLog(`❌ [${i + 1}/${targets.length}]「${item.name}」內容為空，跳過。`);
+            failCount++;
+            continue;
+        }
+
+        item.status = '🤖 改寫中';
+        renderRewriteFileList();
+        qs('#rewrite-ai-output').value = `⏳ 正在改寫 [${i + 1}/${targets.length}]「${item.name}」...\n（過程 LOG 顯示在主 LOG 欄）`;
+        appendLog(`🤖 [${i + 1}/${targets.length}] 改寫「${item.name}」，共 ${textContent.length} 字。`);
+
+        try {
+            const payload = {
+                text_content: textContent,
+                user_request: userRequest,
+                doc_name: item.name,
+                model: state.currentModel || 'gemma4',
+                model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null
+            };
+            const result = await callDebugServerAsync('/api/rewrite_content_async', payload);
+            if (result && result.rewritten) {
+                qs('#rewrite-ai-output').value = result.rewritten;
+                // 每完成一個檔案 → 自動匯出
+                autoExportRewritten(outName, result.rewritten);
+                item.status = '✅ 已完成';
+                successCount++;
+                appendLog(`✅ [${i + 1}/${targets.length}]「${item.name}」改寫完成，已匯出為「${outName}」。`);
+            } else {
+                item.status = '❌ 無內容';
+                failCount++;
+                appendLog(`❌ [${i + 1}/${targets.length}]「${item.name}」AI 未回傳有效內容。`);
+            }
+        } catch (e) {
+            item.status = '❌ 失敗';
+            failCount++;
+            appendLog(`❌ [${i + 1}/${targets.length}]「${item.name}」發生錯誤：${e.message}`);
+        }
+        renderRewriteFileList();
+    }
+
+    rewriteRunning = false;
+    startBtn.disabled = false;
+    startBtn.textContent = origBtnText;
+    appendLog(`📝 多文改寫結束：成功 ${successCount} 個，失敗 ${failCount} 個。`);
+    alert(`多文改寫完成！\n成功：${successCount}\n失敗：${failCount}`);
+}
+
+// 自動匯出改寫後的檔案：以 Blob + 隱藏 a 元素觸發下載
+function autoExportRewritten(fileName, content) {
+    const isMarkdown = /\.md$/i.test(fileName);
+    const mime = isMarkdown ? 'text/markdown;charset=utf-8' : 'text/plain;charset=utf-8';
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// 多文改寫彈窗雙欄搜尋（使用者指令 + AI 改寫內容）
+function doRewriteSearch() {
+    const query = qs('#rewrite-search-input').value;
+    const countEl = qs('#rewrite-search-count');
+    rewriteMatches = [];
+    rewriteCurrentMatch = -1;
+    if (!query) { countEl.textContent = ''; return; }
+    const textareas = [qs('#rewrite-user-request'), qs('#rewrite-ai-output')];
+    const lq = query.toLowerCase();
+    textareas.forEach((ta, colIdx) => {
+        const lo = ta.value.toLowerCase();
+        let i = 0;
+        while ((i = lo.indexOf(lq, i)) !== -1) {
+            rewriteMatches.push({ colIdx, start: i });
+            i += lq.length;
+        }
+    });
+    if (rewriteMatches.length) goToRewriteMatch(0);
+    else countEl.textContent = '找不到';
+}
+
+function goToRewriteMatch(idx) {
+    if (!rewriteMatches.length) return;
+    const query = qs('#rewrite-search-input').value;
+    rewriteCurrentMatch = ((idx % rewriteMatches.length) + rewriteMatches.length) % rewriteMatches.length;
+    const m = rewriteMatches[rewriteCurrentMatch];
+    const ta = m.colIdx === 0 ? qs('#rewrite-user-request') : qs('#rewrite-ai-output');
+    const start = m.start, end = start + query.length;
+    const fullText = ta.value;
+    ta.value = fullText.substring(0, start);
+    const pixelPos = ta.scrollHeight;
+    ta.value = fullText;
+    ta.focus();
+    ta.setSelectionRange(start, end);
+    requestAnimationFrame(() => {
+        ta.scrollTop = Math.max(0, pixelPos - ta.clientHeight / 2);
+    });
+    qs('#rewrite-search-count').textContent = `${rewriteCurrentMatch + 1} / ${rewriteMatches.length}`;
+}
+
+// 多文改寫：左欄上下兩欄之間的橫向 resizer
+function initRewriteResizer() {
+    const resizer = document.getElementById('rewrite-resizer');
+    const leftCol = document.getElementById('rewrite-left-col');
+    const topCol = document.getElementById('rewrite-col-instruction');
+    const botCol = document.getElementById('rewrite-col-output');
+    if (!resizer || !leftCol || !topCol || !botCol) return;
+
+    resizer.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        resizer.classList.add('resizing');
+        document.body.style.userSelect = 'none';
+
+        const boxRect = leftCol.getBoundingClientRect();
+        const resizerH = resizer.offsetHeight;
+
+        const onMove = (ev) => {
+            const relY = ev.clientY - boxRect.top;
+            const total = boxRect.height - resizerH;
+            const minH = 40;
+            let topH = Math.max(minH, Math.min(relY, total - minH));
+            let botH = total - topH;
             topCol.style.flex = `0 0 ${topH}px`;
             botCol.style.flex = `0 0 ${botH}px`;
         };

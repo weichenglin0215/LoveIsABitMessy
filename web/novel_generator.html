@@ -22,7 +22,7 @@
 
 <body>
   <div class="app-topbar">
-    <div class="title-lg">📖 開心花園AI小說自動產生器 <small class="nav-version">v0.3.0</small></div>
+    <div class="title-lg">📖 開心花園AI小說產生器</div>
     <nav class="app-topbar-nav">
       <label class="nav-label">小說名稱：</label>
       <div class="book-title">
@@ -40,6 +40,8 @@
       <button class="btn secondary-btn" id="btn-author-notes" title="撰寫作者備註，不會提供給 AI，但會隨小說一起儲存／讀取">📝 作者備註</button>
       <button class="btn secondary-btn" id="btn-compare-novels" title="並排比對四本雲端小說的內容">📚 比對多本小說</button>
       <button class="btn secondary-btn" id="btn-review-novel" title="以最嚴格的專業編輯身分審評小說，提前獲得真切的讀者/編輯回應">🎯 評論小說</button>
+      <button class="btn secondary-btn" id="btn-multi-rewrite" title="批次改寫多個外部文檔（例如：翻譯成英文），依照勾選順序逐一交由 AI 改寫並自動匯出">📝
+        多文改寫</button>
       <button class="ai-btn-bluepink" id="btn-ai-gen-full-auto" title=" AI全自動生成所有文字：依粗綱生成章節→節大綱→節內文（跳過已鎖定）">🚀
         全自動</button>
       <button id="btn-help-manual" title="開啟使用說明" onclick="HelpModal.open('novel', '📖 小說產生器 使用說明')"
@@ -729,6 +731,61 @@
             <button class="btn secondary-btn" id="btn-review-export" title="匯出「使用者要求」+「AI 評審建議」為 .md 檔">📤 匯出</button>
           </div>
           <textarea class="cmp-content" id="review-ai-feedback" placeholder="AI 評審結果將顯示於此..."></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Multi-File Rewrite（多文改寫） ── -->
+  <div id="modal-rewrite" class="modal-overlay hidden">
+    <div class="cmp-modal">
+      <!-- Top bar -->
+      <div class="cmp-toolbar">
+        <h2 class="cmp-title">📝 多文改寫</h2>
+        <span class="cmp-icon">🔍</span>
+        <span id="rewrite-search-count" class="log-search-count"></span>
+        <button class="log-search-nav-btn" id="rewrite-search-prev" title="上一個">▲</button>
+        <button class="log-search-nav-btn" id="rewrite-search-next" title="下一個">▼</button>
+        <input type="text" id="rewrite-search-input" class="log-search-input w-300" placeholder="搜尋雙欄文字（Enter 執行）...">
+        <label class="cmp-label">文件名稱：</label>
+        <input type="text" id="rewrite-doc-name" class="w-300" placeholder="改寫時自動帶入為「原檔名_改寫」">
+        <button class="btn primary-btn" id="btn-rewrite-start" title="依照右側勾選的檔案順序，逐一送給 AI 改寫並自動匯出">🚀 開始改寫</button>
+        <button class="btn secondary-btn" id="btn-rewrite-pick-files" title="選擇多個本地端 .txt / .md 檔案">📂 選擇外部文檔</button>
+        <input type="file" id="rewrite-file-input" accept=".txt,.md" multiple style="display:none;">
+        <button class="modal-close-btn" style="margin-left:auto;"
+          onclick="document.getElementById('modal-rewrite').classList.add('hidden')">&times;</button>
+      </div>
+      <!-- Body: 左右兩欄；左欄再分上下 -->
+      <div class="cmp-body" style="flex-direction:row;">
+        <!-- 左欄：使用者指令 / AI 改寫內容 -->
+        <div class="cmp-col" id="rewrite-left-col" style="flex:2 1 0; display:flex; flex-direction:column;">
+          <div class="cmp-col" id="rewrite-col-instruction" style="flex:1 1 0; min-height:40px;">
+            <div class="cmp-col-header">
+              <span class="title-md">✏️ 使用者指令（送給 AI 的提示詞，例如：翻譯成英文、改寫成小紅書貼文、改寫成兒童讀物…）</span>
+            </div>
+            <textarea class="cmp-content" id="rewrite-user-request" placeholder="在此撰寫要求 AI 改寫的方向與規則..."></textarea>
+          </div>
+          <div class="review-resizer" id="rewrite-resizer" title="拖曳調整上下欄高度"></div>
+          <div class="cmp-col" id="rewrite-col-output" style="flex:1 1 0; min-height:40px;">
+            <div class="cmp-col-header">
+              <span class="title-md">🖋️ AI 改寫內容（每完成一個檔案會自動匯出）</span>
+            </div>
+            <textarea class="cmp-content" id="rewrite-ai-output" placeholder="AI 改寫結果將顯示於此..."></textarea>
+          </div>
+        </div>
+        <!-- 右欄：檔案清單工具列 + 清單 -->
+        <div class="cmp-col" id="rewrite-right-col" style="flex:1 1 0; display:flex; flex-direction:column;">
+          <div class="cmp-col-header">
+            <button class="btn secondary-btn" id="btn-rewrite-select-all" title="全部勾選">✅ 全選</button>
+            <button class="btn secondary-btn" id="btn-rewrite-deselect-all" title="全部取消勾選">☐ 全放棄</button>
+            <button class="btn secondary-btn" id="btn-rewrite-invert" title="反向勾選">🔁 反選</button>
+            <button class="btn secondary-btn" id="btn-rewrite-clear-files" title="清空整份檔案清單"
+              style="margin-left:auto;">🗑️</button>
+          </div>
+          <div class="cmp-content" id="rewrite-file-list"
+            style="overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:4px;">
+            <div class="title-hint" id="rewrite-file-empty-hint">尚未選擇任何檔案 — 點右上「📂 選擇外部文檔」加入 .txt / .md 檔。</div>
+          </div>
         </div>
       </div>
     </div>

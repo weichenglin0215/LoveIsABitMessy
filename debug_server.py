@@ -28,6 +28,7 @@ from prompt_utils import (
     build_story_to_premise_prompt,       #將故事原文濃縮成故事粗綱
     build_story_to_bullet_premise_prompt, #將故事原文轉成條列式故事粗綱
     build_novel_review_prompt,           #以嚴格編輯身分評審小說
+    build_rewrite_content_prompt,        #批次改寫外部文檔（翻譯 / 改寫等）
     build_json_repair_chapters_prompt,   #JSON格式修復：章標題與描述
     build_json_repair_sections_prompt,   #JSON格式修復：各小節大綱
     build_diary_image_prompt_text        #生成日記動態生圖提示詞
@@ -1109,6 +1110,63 @@ def _run_story_to_premise_job(job_id: str, params: dict):
             if job_id in JOBS:
                 JOBS[job_id]["status"]     = "error"
                 JOBS[job_id]["updated_at"] = time.time()
+
+def _run_rewrite_content_job(job_id: str, params: dict):
+    """非同步執行「多文改寫」任務（翻譯 / 風格改寫 / 擴寫 / 濃縮 …等）。
+
+    ⚠️ 改寫規則與方向由前端 user_request 主導，後端不寫死。
+    完整遵循 Ollama 呼叫規範：讀取 model_options、經 _ollama_with_heartbeat 執行、
+    LOG 印出完整提示詞與模型參數（L649-659）。
+    """
+    #####################################################################################
+    # 非同步執行「多文改寫」任務：由前端 user_request 主導改寫規則
+    #####################################################################################
+    try:
+        text_content = params.get('text_content', '')
+        user_request = params.get('user_request', '') or ''
+        doc_name     = params.get('doc_name', '') or ''
+        model_name   = params.get('model', 'gemma4')
+        prompt = build_rewrite_content_prompt(text_content, user_request, doc_name=doc_name)
+
+        opts = dict(params.get('model_options') or {})
+        opts.setdefault('num_predict', 4096)
+        opts.setdefault('temperature', 0.6)  # 改寫需保留原意，溫度略低於創作
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        _log_print(job_id, "=" * 50)
+        _log_print(job_id, f"[{timestamp}] debug_server.py：【非同步】多文改寫 —「{doc_name}」")
+        _log_print(job_id, f">> 原文長度：{len(text_content)} 字，模型：{model_name}，num_predict：{opts['num_predict']}")
+        _log_print(job_id, "=" * 20 + " 以下是送給 AI 的完整提示詞 " + "=" * 20)
+        _log_print(job_id, prompt)
+        _log_print(job_id, "=" * 20 + " 提示詞結束 " + "=" * 20)
+        _log_print(job_id, ">> 正在呼叫 Ollama 執行文檔改寫中（請稍候）...")
+
+        timeStartSec = time.time()
+        response_text = _ollama_with_heartbeat(
+            job_id, model_name, prompt, options=opts, time_start=timeStartSec
+        )
+        duration = int(time.time() - timeStartSec)
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        _log_print(job_id, "=" * 20 + " 以下是 AI 完整回傳改寫內容 " + "=" * 20)
+        _log_print(job_id, response_text if response_text.strip() else "（空字串，模型未回傳任何內容）")
+        _log_print(job_id, "=" * 20 + " AI 回傳結束 " + "=" * 20)
+        _log_print(job_id, f"[{timestamp}] 總共花費 {duration} 秒，多文改寫完成，回傳長度：{len(response_text)} 字元")
+        if not response_text.strip():
+            _log_print(job_id, ">> [警告] 模型回傳空字串！")
+
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["result"]     = {"rewritten": response_text.strip(), "debug_prompt": prompt}
+                JOBS[job_id]["status"]     = "done"
+                JOBS[job_id]["updated_at"] = time.time()
+    except Exception as e:
+        import traceback
+        _log_print(job_id, f"[ERROR] _run_rewrite_content_job failed: {e}\n{traceback.format_exc()}")
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["status"]     = "error"
+                JOBS[job_id]["updated_at"] = time.time()
+
 
 def _run_review_novel_job(job_id: str, params: dict):
     """非同步執行「以嚴格編輯身分評審小說」任務。
@@ -2288,6 +2346,31 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                     }
                 threading.Thread(
                     target=_run_review_novel_job,
+                    args=(job_id, params),
+                    daemon=True
+                ).start()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"job_id": job_id, "status": "running"}, ensure_ascii=False).encode('utf-8'))
+
+            elif self.path == '/api/rewrite_content_async':
+                ############################################################################
+                # 非同步：多文改寫（翻譯 / 改寫外部文檔），前端可透過 /api/job 輪詢 Log
+                # 改寫方向由前端 user_request 主導，後端不寫死；沿用既有 Ollama 呼叫規範。
+                ############################################################################
+                job_id = str(uuid.uuid4())
+                with JOBS_LOCK:
+                    JOBS[job_id] = {
+                        "status": "running",
+                        "logs": [">> 任務啟動：正在依照使用者指令改寫外部文檔..."],
+                        "result": None,
+                        "created_at": time.time(),
+                        "last_activity": time.time(),
+                        "updated_at": time.time()
+                    }
+                threading.Thread(
+                    target=_run_rewrite_content_job,
                     args=(job_id, params),
                     daemon=True
                 ).start()
