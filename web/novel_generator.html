@@ -716,7 +716,18 @@
       <div class="cmp-body" id="review-body" style="flex-direction:column;">
         <div class="cmp-col" id="review-col-request" style="flex:1 1 0; min-height:40px;">
           <div class="cmp-col-header">
-            <span class="title-md">✏️ 使用者要求（送給 AI 的指令，可自行改寫以加強特定段落的批評）</span>
+            <span class="title-md">✏️ AI評審的提示詞（送給 AI 的指令，可自行改寫以加強特定段落的批評）</span>
+            <label class="model-label" style="margin-left:12px;">選擇評論的立場</label>
+            <select id="review-role-select" title="切換不同評論立場，會覆寫下方要求文字" style="width:400px;">
+              <option value="A">A. 出版社老闆（極度嚴厲，預設）</option>
+              <option value="B">B. 出版社編輯（嚴格但提供實質建議）</option>
+              <option value="C">C. 中文系老師（挖掘優點並補強缺點）</option>
+              <option value="D">D. 愛心家教（發掘特點與可行方向）</option>
+              <option value="E">E. 空白架構（自行填寫）</option>
+              <option value="F">F. 依序執行以上所有選項評論</option>
+            </select>
+            <button class="btn secondary-btn" id="btn-reset-review-prompt" title="將目前選項的評論提示詞重置為程式預設值">♻️
+              重置評論提示詞</button>
             <button class="btn secondary-btn" id="btn-toggle-review-request" style="margin-left:auto;"
               title="隱藏／顯示使用者要求文字輸入框">👁️‍🗨️ 隱藏</button>
           </div>

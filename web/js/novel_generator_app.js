@@ -654,6 +654,9 @@ function setupEventListeners() {
     qs('#btn-review-external-file').addEventListener('click', () => qs('#review-file-input').click());
     qs('#review-file-input').addEventListener('change', reviewExternalFile);
     qs('#btn-review-export').addEventListener('click', exportReviewResult);
+    qs('#review-role-select').addEventListener('change', onReviewRoleChange);
+    qs('#review-user-request').addEventListener('input', onReviewRequestInput);
+    qs('#btn-reset-review-prompt').addEventListener('click', resetReviewPrompt);
     qs('#btn-toggle-review-request').addEventListener('click',
         () => toggleReviewSection('review-col-request', 'btn-toggle-review-request'));
     qs('#btn-toggle-review-feedback').addEventListener('click',
@@ -2313,7 +2316,7 @@ async function loadProject() {
 // 🎯 評論小說（Review Novel）功能
 // ============================================================================
 // 預設「使用者要求」提示詞：以最嚴格的專業編輯身分要求 AI
-const REVIEW_DEFAULT_USER_REQUEST = `你是一位有 30 年資歷、鐵面無私的資深出版社主編兼書評人，經手過數百部暢銷與退稿作品，見過所有新人常犯的毛病。
+const REVIEW_PROMPT_A = `你是一位有 30 年資歷、鐵面無私的資深出版社主編兼書評人，經手過數百部暢銷與退稿作品，見過所有新人常犯的毛病。
 請以你「最嚴格、絲毫不留情面、直言不諱」的高標準，審讀下方這份小說稿件，並寫下你的評審意見。
 
 【審讀立場】
@@ -2321,25 +2324,159 @@ const REVIEW_DEFAULT_USER_REQUEST = `你是一位有 30 年資歷、鐵面無私
 - 假設讀者付了錢、時間有限、耐心稀薄，凡是拖沓、假掰、老套、邏輯崩塌之處都要立刻點名。
 - 不要客套、不要鼓勵性廢話、不要「整體來說還不錯」這種話。有問題就直接說出來。
 
-【評審面向（每項都要有具體引文或段落定位）】
-1. 故事結構與節奏：起承轉合是否成立？哪幾章拖戲？哪幾章崩掉？懸念是否有效？
-2. 人物塑造：主角動機是否可信？角色行為是否前後矛盾？配角有沒有存在的必要？
-3. 對白：像不像真人在說話？有沒有作者跳出來替角色說教？
-4. 情感真實度：戀愛／衝突／情慾／背叛的張力夠不夠？哪裡讓人尷尬出戲？
-5. 語言與文字：贅字、陳腔濫調、比喻是否老套？段落節奏是否單調？
-6. 邏輯與世界觀：因果是否成立？有無 bug、時間線錯亂、常識錯誤？
-7. 市場與讀者觀感：這本書若上市，讀者最可能在哪一章棄書？書評星等大概幾顆星？
+【評審面向(每項都要有具體引文或段落定位)】
+1. 故事結構與節奏:起承轉合是否成立?哪幾章拖戲?哪幾章崩掉?懸念是否有效?
+2. 人物塑造:主角動機是否可信?角色行為是否前後矛盾?配角有沒有存在的必要?
+3. 對白:像不像真人在說話?有沒有作者跳出來替角色說教?
+4. 情感真實度:戀愛/衝突/情慾/背叛的張力夠不夠?哪裡讓人尷尬出戲?
+5. 語言與文字:贅字、陳腔濫調、比喻是否老套?段落節奏是否單調?
+6. 邏輯與世界觀:因果是否成立?有無 bug、時間線錯亂、常識錯誤?
+7. 市場與讀者觀感:這本書若上市,讀者最可能在哪一章棄書?書評星等大概幾顆星?
 
 【輸出格式】
-- 開頭給出「一句話總評」（不超過 30 字，語氣可以毒辣）。
-- 接著給出「總體評分」：故事 / 人物 / 文筆 / 節奏 / 市場潛力，各項 1–10 分並附一句理由。
-- 然後條列具體問題，每條格式為：【問題類型】章節或段落定位 — 問題描述 — 修改建議。
-- 最後給出「若要出版必須先修好的三大致命傷」與「值得保留的兩個亮點（若真的有）」。
+- 開頭給出「一句話總評」(不超過 30 字,語氣可以毒辣)。
+- 接著給出「總體評分」:故事 / 人物 / 文筆 / 節奏 / 市場潛力,各項 1–10 分並附一句理由。
+- 然後條列具體問題,每條格式為:【問題類型】章節或段落定位 — 問題描述 — 修改建議。
+- 最後給出「若要出版必須先修好的三大致命傷」與「值得保留的兩個亮點(若真的有)」。
 - 全部使用繁體中文。禁止使用中文簡體字。禁止安慰性語言。`;
+
+const REVIEW_PROMPT_B = `你是一位有 20 年資歷的資深出版社編輯,經手過數十部暢銷書與退稿作品。
+你以「標準嚴格但願意陪作者把稿子養大」聞名——不放水、不客套,但每個缺點都會附上以你的專業經驗為基礎的、實質可行的修改建議。
+即使作品仍未完成或章節缺漏,你也能針對現有內容與缺漏之處,提出具體的補寫方向;除了指出缺點,你更會清楚點出作品的優點與獨特之處,讓作者知道哪些是應該保留並繼續發揮的資產。
+
+【審讀立場】
+- 假設你已經決定「陪這位作者把這本書修到能簽」,但前提是作者必須知道自己錯在哪裡、又對在哪裡。
+- 針對缺漏或未完成處,不以「等寫完再說」推託,而是以現有素材推測意圖並提出可行的補寫路徑。
+- 專業誠實優先於情緒安撫,但絕不做無意義的貶低。
+
+【評審面向(每項都要有具體引文或段落定位,並附「修改建議」)】
+1. 故事結構與節奏:哪些段落成立?哪些拖戲、哪些崩盤?若要修,先從哪一章下手?
+2. 人物塑造:主角動機是否清楚?配角是否可有可無?哪個角色其實有潛力被放大?
+3. 對白:語氣、資訊密度、是否符合人物立場?哪一段對白最好,可作為全書語感基準?
+4. 情感真實度:戀愛/衝突/情慾/背叛的層次與轉折是否鋪陳到位?
+5. 語言與文字:贅字、陳腔濫調、節奏單調處在哪?哪些文字是作者的個人特色,值得保留?
+6. 邏輯與世界觀:因果、時間線、設定是否自洽?缺漏之處建議如何補足?
+7. 市場定位:作品現在的樣子最接近哪一個既有市場區隔?讀者輪廓是誰?
+
+【輸出格式】
+- 開頭給出「一句話總評」(30 字內,誠實但不刻薄)。
+- 接著「總體評分」:故事 / 人物 / 文筆 / 節奏 / 市場潛力,各項 1–10 分並附一句理由。
+- 【必須保留的亮點】列出 3 個具體優點及其可繼續發揮的方向。
+- 【必須修補的問題】每條格式為:【問題類型】章節或段落定位 — 問題描述 — 具體可行的修改建議 (至少一條落地作法)。
+- 【缺漏處補寫建議】針對明顯未完成/未展開之處,提出可以順延既有素材的補寫路徑。
+- 【下一步優先順序】列出作者應該最先動手修改的三件事。
+- 全部使用繁體中文。禁止使用中文簡體字。`;
+
+const REVIEW_PROMPT_C = `你是一位資深的中文系老師,長年批改學生的小說創作作業。
+你相信「每一份作業裡都藏著沙子中的金塊」——即使作品尚未完整,你也能從稚拙的段落中辨識出獨到的想像力、觀察力或語感,並清楚點出這些難得的優異點。
+針對缺點,你會以老師的角度,對每個問題提出多個可行的補強路徑,協助學生自行判斷選用;對於作品的優點與獨特之處,你能提出讓這些亮點延續、串接、進一步發揮的具體方向。
+
+【審讀立場】
+- 把稿件當成一份「有潛力但仍待琢磨」的作業,以教育者而非市場評審的立場出發。
+- 缺點必說,但要說得清楚、可操作;並且盡量給「不只一條」的補強路徑,讓作者能依自身取向選擇。
+- 特別留意那些「作者自己可能沒發現、但很珍貴」的細節、意象、句法或人物瞬間。
+
+【評審面向(每項都要有具體引文或段落定位)】
+1. 敘事結構:章節之間的敘事推進是否成立?哪裡是結構性的斷裂?
+2. 人物與內心:角色的心理層次是否被寫出來?哪個瞬間最能看出作者的觀察力?
+3. 語言與意象:找出「藏在沙裡的金塊」——特別出色的句子、意象或譬喻,並說明其可貴之處。
+4. 對白與聲口:每個人物的說話方式是否具識別度?
+5. 邏輯與細節:因果、時序、常識層面的疏漏。
+6. 主題與思想:作品想說什麼?這個主題有沒有被寫透?
+
+【輸出格式】
+- 開頭給出「一句話總評」(30 字內,語氣如批改作業般溫和但誠實)。
+- 【本作亮點】列出至少 3 個具體的優點,附引文並說明「這裡難得在哪」。
+- 【延續與串接建議】針對上述亮點,提出如何讓它們貫穿全書、彼此呼應的具體方向。
+- 【需要補強的地方】每條格式為:【問題類型】章節或段落定位 — 問題描述 — 【補強路徑一】... 【補強路徑二】... (每個問題至少兩條可行路徑,讓作者選擇)。
+- 【給作者的一段話】以老師身分,寫一段鼓勵且務實的整體回饋(150 字內)。
+- 全部使用繁體中文。禁止使用中文簡體字。`;
+
+const REVIEW_PROMPT_D = `你是一位極富耐心與洞察力的「愛心家教」型創作導師。
+你深信:每一份作品——不論篇幅長短、完整與否、風格為何——都必然有其獨到之處,而你的職責是「找到它、命名它、讓它發光」。
+你能接受各式各樣的可能性,不預設「什麼才叫好小說」的框架;每一種創意、每一種風格、每一種偏執,對你來說都是極其珍貴的、值得深入挖掘的材料。
+
+【審讀立場】
+- 你的第一任務是「深度分析並辨識出這份作品的特點」——哪怕特點只有一個,也要說清楚它為何獨特。
+- 分析特點的可行性:這個特點若繼續往下寫,能夠支撐一部什麼樣的作品?可能的未來發展方向有哪些?
+- 提出讓「作品既有的優點彼此串聯」的建議,讓每一份作品最難得的創意與風格能被凸顯、被放大。
+- 完全不需要挑毛病式的批評;必要提到弱點時,只以「若要讓這個特點更立體,或許可以...」的建設性語氣。
+
+【分析面向(每項都要有具體引文或段落定位)】
+1. 這份作品最獨特的一個(或幾個)特點是什麼?為什麼它獨特?
+2. 這個特點的可行性:它在什麼樣的敘事類型/題材/受眾中最能發揮?
+3. 未來發展方向:延續這個特點,故事可以往哪些方向走?各自的可能性為何?
+4. 優點串聯:作品內部的哪些元素(人物、意象、節奏、主題)其實可以彼此呼應?如何串起來?
+5. 讓創意與風格被凸顯:作者應該如何在後續章節中「更大膽地」使用自己的特色?
+
+【輸出格式】
+- 開頭給出「一句話總評」(30 字內,溫暖且具體地指出作品的獨到之處)。
+- 【本作最珍貴的特點】具體命名 1–3 個特點,並以引文說明其獨特性。
+- 【特點的可行性分析】針對每個特點,說明它適合的敘事類型與受眾。
+- 【未來發展方向】針對每個特點,提出 2–3 條可行的延伸方向。
+- 【優點串聯建議】具體指出哪些元素應該被互相串接,以及串接後可能產生的化學反應。
+- 【給作者的鼓勵】以家教身分寫一段溫暖而誠實的話(150 字內),讓作者相信自己的獨特值得被繼續發揮。
+- 全部使用繁體中文。禁止使用中文簡體字。禁止任何形式的貶低或酸言酸語。`;
+
+const REVIEW_PROMPT_E = `【審讀立場】
+（在此撰寫你希望 AI 採取的立場）
+
+【評審面向】
+1.
+2.
+3.
+
+【輸出格式】
+-
+-
+`;
+
+const REVIEW_PROMPTS = {
+    A: REVIEW_PROMPT_A,
+    B: REVIEW_PROMPT_B,
+    C: REVIEW_PROMPT_C,
+    D: REVIEW_PROMPT_D,
+    E: REVIEW_PROMPT_E
+};
+const REVIEW_ROLE_LABELS = {
+    A: 'A. 出版社老闆（極度嚴厲，預設）',
+    B: 'B. 出版社編輯（嚴格但提供實質建議）',
+    C: 'C. 中文系老師（挖掘優點並補強缺點）',
+    D: 'D. 愛心家教（發掘特點與可行方向）',
+    E: 'E. 空白架構（自行填寫）'
+};
+const REVIEW_DEFAULT_USER_REQUEST = REVIEW_PROMPT_A;
 
 let reviewMatches = [];
 let reviewCurrentMatch = -1;
 let reviewSearchLastCol = 0; // 0=user request, 1=ai feedback
+
+// 目前「使用者要求」欄位對應的立場（A~E；F 不對應單一欄位內容）
+let currentReviewRole = 'A';
+
+/**
+ * 取得某立場目前應顯示的內容：
+ * 優先使用「使用者已改寫並保存」的版本，沒有才回退到預設提示詞。
+ * A~E 皆保存在 state.reviewPrompts（會隨專案儲存至雲端）。
+ */
+function getReviewPrompt(role) {
+    if (state.reviewPrompts && typeof state.reviewPrompts[role] === 'string') {
+        return state.reviewPrompts[role];
+    }
+    return REVIEW_PROMPTS[role] || REVIEW_DEFAULT_USER_REQUEST;
+}
+
+/**
+ * 把「使用者要求」欄位目前的內容，保存到對應立場的儲存位置。
+ * F 沒有單一對應內容，直接略過。
+ */
+function saveCurrentReviewPrompt(role) {
+    if (!role || role === 'F') return;
+    const userReqEl = qs('#review-user-request');
+    if (!userReqEl) return;
+    if (!state.reviewPrompts) state.reviewPrompts = {};
+    state.reviewPrompts[role] = userReqEl.value;
+}
 
 function openReviewModal() {
     // 預設文件名稱為目前小說名稱
@@ -2347,10 +2484,72 @@ function openReviewModal() {
     const docNameEl = qs('#review-doc-name');
     if (!docNameEl.value) docNameEl.value = bookTitle;
 
+    const roleSel = qs('#review-role-select');
     const userReqEl = qs('#review-user-request');
-    if (!userReqEl.value) userReqEl.value = REVIEW_DEFAULT_USER_REQUEST;
+    let role = state.reviewRole || 'A';
+    if (role === 'F') {
+        // F 模式：下拉維持 F，但欄位載入目前記憶中的立場（預設 A）內容供參考
+        if (roleSel) roleSel.value = 'F';
+        currentReviewRole = 'A';
+        if (userReqEl) userReqEl.value = getReviewPrompt('A');
+    } else {
+        if (roleSel) roleSel.value = role;
+        currentReviewRole = role;
+        if (userReqEl) userReqEl.value = getReviewPrompt(role);
+    }
 
     qs('#modal-review').classList.remove('hidden');
+}
+
+function onReviewRoleChange() {
+    const roleSel = qs('#review-role-select');
+    const userReqEl = qs('#review-user-request');
+    if (!roleSel || !userReqEl) return;
+    const role = roleSel.value || 'A';
+
+    // 切換前，先把目前欄位內容保存回「切換前」的立場，避免修改遺失
+    saveCurrentReviewPrompt(currentReviewRole);
+
+    // F 為「依序執行所有選項」，不覆寫使用者要求欄位
+    if (role === 'F') {
+        state.reviewRole = 'F';
+        return;
+    }
+
+    // 載入新立場「已保存或預設」的內容（不再覆寫掉使用者的修改）
+    userReqEl.value = getReviewPrompt(role);
+    currentReviewRole = role;
+    state.reviewRole = role;
+}
+
+/**
+ * 「重置評論提示詞」：把目前選項的內容還原為程式預設值。
+ * 若目前選 F，則詢問是否一次重置 A~E 全部立場。
+ */
+function resetReviewPrompt() {
+    const roleSel = qs('#review-role-select');
+    const userReqEl = qs('#review-user-request');
+    if (!roleSel || !userReqEl) return;
+    const role = roleSel.value || 'A';
+
+    if (role === 'F') {
+        if (!confirm('目前為 F 模式，確定將 A~E 全部立場的評論提示詞都重置為程式預設值？')) return;
+        if (!state.reviewPrompts) state.reviewPrompts = {};
+        ['A', 'B', 'C', 'D', 'E'].forEach(r => { state.reviewPrompts[r] = REVIEW_PROMPTS[r]; });
+        appendLog('♻️ 已將 A~E 全部立場的評論提示詞重置為預設值。');
+        return;
+    }
+
+    const label = REVIEW_ROLE_LABELS[role] || role;
+    if (!confirm(`確定將【${label}】的評論提示詞重置為程式預設值？目前的修改將被覆蓋。`)) return;
+    userReqEl.value = REVIEW_PROMPTS[role] || '';
+    saveCurrentReviewPrompt(role);
+    appendLog(`♻️ 已將【${label}】的評論提示詞重置為預設值。`);
+}
+
+// 使用者在「使用者要求」欄位輸入時，即時保存到目前立場，確保不遺失
+function onReviewRequestInput() {
+    saveCurrentReviewPrompt(currentReviewRole);
 }
 
 /**
@@ -2402,20 +2601,61 @@ async function reviewExternalFile(event) {
     await runReviewJob(textContent, baseName);
 }
 
-async function runReviewJob(fullText, docName) {
-    const userRequest = qs('#review-user-request').value.trim() || REVIEW_DEFAULT_USER_REQUEST;
-    const aiFeedbackEl = qs('#review-ai-feedback');
+function appendReviewFeedback(text) {
+    const el = qs('#review-ai-feedback');
+    if (!el) return;
+    if (el.value && !el.value.endsWith('\n')) el.value += '\n';
+    el.value += text;
+    el.scrollTop = el.scrollHeight;
+}
 
-    // 若原文過長，截斷並在 LOG 標註
+async function runReviewJob(fullText, docName) {
+    const roleSel = qs('#review-role-select');
+    const role = (roleSel && roleSel.value) || 'A';
+
+    // 先把欄位目前內容保存回目前立場，確保用到的是最新修改
+    saveCurrentReviewPrompt(currentReviewRole);
+
+    // 若選 F,依序執行 A~E（使用各立場「已保存或預設」的內容）
+    if (role === 'F') {
+        appendLog(`🎯 F 模式:依序執行 A~E 五種評論立場。`);
+        const seq = ['A', 'B', 'C', 'D', 'E'];
+        for (const r of seq) {
+            const prompt = getReviewPrompt(r) || '';
+            const label = REVIEW_ROLE_LABELS[r] || r;
+            if (!prompt.trim()) {
+                appendLog(`⚠️ 略過 ${label}(提示詞為空)。`);
+                continue;
+            }
+            await runSingleReview(fullText, docName, prompt, label);
+        }
+        appendLog('✅ F 模式所有立場評論完畢。');
+        return;
+    }
+
+    // 單一立場
+    const userRequest = qs('#review-user-request').value.trim() || getReviewPrompt(role);
+    const label = REVIEW_ROLE_LABELS[role] || `自訂立場 (${role})`;
+    await runSingleReview(fullText, docName, userRequest, label);
+}
+
+async function runSingleReview(fullText, docName, userRequest, roleLabel) {
+    // 若原文過長,截斷並在 LOG 標註
     const MAX_LEN = 100000;
     let sendText = fullText;
     if (fullText.length > MAX_LEN) {
         sendText = fullText.slice(0, MAX_LEN);
-        appendLog(`⚠️ 原文長度 ${fullText.length} 字，超過 ${MAX_LEN} 字，已截斷。`);
+        appendLog(`⚠️ 原文長度 ${fullText.length} 字,超過 ${MAX_LEN} 字,已截斷。`);
     }
 
-    aiFeedbackEl.value = '⏳ AI 評審中，請稍候...\n（過程 LOG 顯示在主 LOG 欄）';
-    appendLog(`🎯 開始評審「${docName}」，共 ${sendText.length} 字。`);
+    appendLog(`🎯 開始評審「${docName}」【${roleLabel}】,共 ${sendText.length} 字。`);
+    const timestamp = new Date().toLocaleString('zh-TW', { hour12: false });
+    const header = `\n\n===== 【${roleLabel}】 ${timestamp} =====\n`;
+    appendReviewFeedback(header + '⏳ AI 評審中,請稍候...(過程 LOG 顯示在主 LOG 欄)');
+
+    // 記住這次待覆寫的佔位符位置
+    const el = qs('#review-ai-feedback');
+    const placeholderStart = el.value.lastIndexOf('⏳ AI 評審中');
 
     try {
         const payload = {
@@ -2426,16 +2666,20 @@ async function runReviewJob(fullText, docName) {
             model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null
         };
         const result = await callDebugServerAsync('/api/review_novel_async', payload);
+        // 移除佔位符,寫入實際結果
+        if (placeholderStart >= 0) el.value = el.value.slice(0, placeholderStart);
         if (result && result.review) {
-            aiFeedbackEl.value = result.review;
-            appendLog('✅ 評審結果已生成，顯示於評論小說彈窗。');
+            el.value += result.review;
+            appendLog(`✅ 【${roleLabel}】評審結果已附加。`);
         } else {
-            aiFeedbackEl.value = '❌ AI 未回傳有效評審內容，請查看 LOG 或重試。';
-            appendLog('❌ AI 未回傳有效評審內容。');
+            el.value += '❌ AI 未回傳有效評審內容,請查看 LOG 或重試。';
+            appendLog(`❌ 【${roleLabel}】AI 未回傳有效評審內容。`);
         }
+        el.scrollTop = el.scrollHeight;
     } catch (e) {
-        aiFeedbackEl.value = '❌ 發生錯誤：' + e.message;
-        appendLog('❌ 評審發生錯誤：' + e.message);
+        if (placeholderStart >= 0) el.value = el.value.slice(0, placeholderStart);
+        el.value += '❌ 發生錯誤:' + e.message;
+        appendLog(`❌ 【${roleLabel}】評審發生錯誤:` + e.message);
     }
 }
 
@@ -2444,7 +2688,7 @@ function exportReviewResult() {
     const userReq = qs('#review-user-request').value || '';
     const aiFb = qs('#review-ai-feedback').value || '';
     const md = `# 🎯 小說評審報告：${docName}\n\n` +
-        `## ✏️ 使用者要求\n\n${userReq}\n\n` +
+        `## ✏️ AI評審的提示詞\n\n${userReq}\n\n` +
         `---\n\n## 🖋️ AI 編輯的評審建議\n\n${aiFb}\n`;
     const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
     const url = URL.createObjectURL(blob);
