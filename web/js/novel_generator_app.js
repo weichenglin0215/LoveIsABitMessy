@@ -468,10 +468,16 @@ function renderChapters() {
     state.chapters.forEach((ch, chIdx) => {
         const div = document.createElement('div');
         div.className = "chapter-card";
+        // 整章可拖曳：以標題列的把手（⠿）作為拖曳來源，chapter-card 作為放置目標
+        div.setAttribute('ondragover', 'event.preventDefault()');
+        div.setAttribute('ondrop', `handleChapterDrop(event, ${chIdx})`);
         div.innerHTML = `
             <div class="chapter-title-row">
-                <span class="lock-btn btn-lock-ch" title="鎖定後將不會被 AI 覆蓋章標題、章描述、小節大綱"
-                      style="opacity: ${ch.locked ? '1' : '0.5'}" 
+                <span class="chapter-drag-handle" title="拖曳以調整章的順序"
+                      draggable="true" ondragstart="handleChapterDragStart(event, ${chIdx})"
+                      style="cursor:grab; user-select:none; padding:0 4px;">⠿</span>
+                <span class="lock-btn btn-lock-ch" title="鎖定後將不會被 AI 覆蓋章標題、章描述、小節大綱（並會一併鎖定/解鎖本章所有小節）"
+                      style="opacity: ${ch.locked ? '1' : '0.5'}"
                       onclick="toggleChapterLock(${chIdx})">
                     ${ch.locked ? '🔒' : '🔓'}
                 </span>
@@ -824,8 +830,56 @@ function toggleLock(chIdx, secIdx) {
 }
 
 function toggleChapterLock(chIdx) {
-    state.chapters[chIdx].locked = !state.chapters[chIdx].locked;
+    const ch = state.chapters[chIdx];
+    ch.locked = !ch.locked;
+    // 章上鎖/解鎖時，一併將本章所有小節設為相同狀態
+    ch.sections.forEach(sec => { sec.locked = ch.locked; });
     renderChapters();
+}
+
+// 一次上鎖所有章與所有小節；若目前全部已上鎖則改為全部解鎖
+function toggleAllLocks() {
+    const allLocked = state.chapters.length > 0 &&
+        state.chapters.every(ch => ch.locked && ch.sections.every(sec => sec.locked));
+    const target = !allLocked;
+    state.chapters.forEach(ch => {
+        ch.locked = target;
+        ch.sections.forEach(sec => { sec.locked = target; });
+    });
+    renderChapters();
+}
+
+// ── 整章拖曳排序 ──
+let chapterDragData = null;
+function handleChapterDragStart(e, chIdx) {
+    chapterDragData = { chIdx };
+    e.dataTransfer.setData('text/plain', ''); // 必需
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleChapterDrop(e, targetChIdx) {
+    if (!chapterDragData) return; // 若是拖曳小節則忽略
+    e.preventDefault();
+    const from = chapterDragData.chIdx;
+    chapterDragData = null;
+    if (from === targetChIdx) return;
+
+    const chapters = state.chapters;
+    const item = chapters.splice(from, 1)[0];
+    chapters.splice(targetChIdx, 0, item);
+
+    // 更新目前選取章的索引
+    const act = state.activeIndex.chapter;
+    if (act === from) {
+        state.activeIndex.chapter = targetChIdx;
+    } else if (from < act && targetChIdx >= act) {
+        state.activeIndex.chapter--;
+    } else if (from > act && targetChIdx <= act) {
+        state.activeIndex.chapter++;
+    }
+
+    renderChapters();
+    renderEditor();
 }
 
 let dragData = null;
@@ -835,8 +889,9 @@ function handleDragStart(e, chIdx, secIdx) {
 }
 
 function handleDrop(e, chIdx, targetSecIdx) {
+    if (!dragData) return; // 若是拖曳整章則交由 chapter-card 的 handleChapterDrop 處理
     e.preventDefault();
-    if (!dragData) return;
+    e.stopPropagation(); // 小節拖放時避免同時觸發整章的放置處理
     if (dragData.chIdx !== chIdx) {
         alert("目前僅支援在同一個章節內移動小節位置。");
         return;
