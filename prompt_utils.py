@@ -1006,7 +1006,7 @@ def build_novel_review_prompt(text_content: str, user_request: str, doc_name: st
     )
 
 
-def build_rewrite_content_prompt(text_content: str, user_request: str, doc_name: str = "") -> str:
+def build_rewrite_content_prompt(text_content: str, user_request: str, doc_name: str = "", search_context: str = "") -> str:
     """建立「多文改寫」提示詞（例如：翻譯成英文、改寫成小紅書風、擴寫、濃縮…等）。
 
     ⚠️ 設計原則：本函式盡量不在後端寫死改寫規則，
@@ -1022,13 +1022,24 @@ def build_rewrite_content_prompt(text_content: str, user_request: str, doc_name:
     MAX_LEN = 100000
     body = text_content if len(text_content) <= MAX_LEN else (text_content[:MAX_LEN] + "\n\n【注意：原文過長，已於此處截斷】")
     header = f"原始檔名：{doc_name}\n" if doc_name else ""
+    # 網路搜尋參考資料區塊（可選）：由 web_search_utils.build_search_context 產生
+    search_block = ""
+    tail_hint = "請根據上方【使用者指令】的規則，直接輸出改寫後的完整內容，不要輸出任何前言、後記或說明文字："
+    if search_context and search_context.strip():
+        search_block = (
+            f"━━━━━━━━━━ 網路搜尋參考資料 ━━━━━━━━━━\n"
+            f"{search_context.strip()}\n"
+            f"━━━━━━━━━━ 參考資料結束 ━━━━━━━━━━\n\n"
+        )
+        tail_hint = "請根據上方【使用者指令】的規則，並在必要時引用【網路搜尋參考資料】的事實與細節，直接輸出改寫後的完整內容，不要輸出任何前言、後記或說明文字："
     return (
         f"{user_request.strip()}\n\n"
+        f"{search_block}"
         f"━━━━━━━━━━ 以下為待改寫原文 ━━━━━━━━━━\n"
         f"{header}"
         f"{body}\n"
         f"━━━━━━━━━━ 待改寫原文結束 ━━━━━━━━━━\n\n"
-        f"請根據上方【使用者指令】的規則，直接輸出改寫後的完整內容，不要輸出任何前言、後記或說明文字："
+        f"{tail_hint}"
     )
 
 

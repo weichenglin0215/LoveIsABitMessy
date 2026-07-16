@@ -690,6 +690,31 @@ function setupEventListeners() {
     qs('#rewrite-search-next').addEventListener('click', () => goToRewriteMatch(rewriteCurrentMatch + 1));
     initRewriteResizer();
 
+    // 🧰 額外功能：預設關閉；點主按鈕開啟／再點主按鈕或點選單項目才會關閉
+    const extraBtn = qs('#btn-extra-features');
+    const extraMenu = qs('#extra-features-menu');
+    if (extraBtn && extraMenu) {
+        // 本專案的 .hidden class 只針對 .modal-overlay 生效，改用 inline display 直接切換
+        extraBtn.addEventListener('click', () => {
+            const open = extraMenu.style.display === 'flex';
+            extraMenu.style.display = open ? 'none' : 'flex';
+        });
+        // 點下拉選單裡任一按鈕後也自動收合
+        extraMenu.querySelectorAll('button').forEach(b => {
+            b.addEventListener('click', () => { extraMenu.style.display = 'none'; });
+        });
+    }
+
+    // 🌐 網路搜尋並依序改寫：按鈕與彈窗事件
+    qs('#btn-web-rewrite').addEventListener('click', openWebRewriteModal);
+    qs('#btn-webre-start').addEventListener('click', startWebRewrite);
+    qs('#webre-search-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); doWebRewriteSearch(); }
+    });
+    qs('#webre-search-prev').addEventListener('click', () => goToWebRewriteMatch(webRewriteCurrentMatch - 1));
+    qs('#webre-search-next').addEventListener('click', () => goToWebRewriteMatch(webRewriteCurrentMatch + 1));
+    initWebRewriteResizer();
+
     qs('#btn-compare-novels').addEventListener('click', openCompareModal);
     qs('#compare-mode-select').addEventListener('change', updateAllCompareContent);
     document.querySelectorAll('.compare-novel-select').forEach(sel => {
@@ -3002,6 +3027,41 @@ async function startMultiRewrite() {
     const userRequest = qs('#rewrite-user-request').value.trim();
     if (!userRequest) { alert('請先在「使用者指令」欄位填寫改寫要求。'); return; }
 
+    // 🌐 網路搜尋設定：兩個引擎皆可選（可同時勾選、可都不勾選）
+    // 未勾選任何引擎且未提供指定網址 → 走原本純改寫流程，不呼叫搜尋
+    const useDDG = qs('#rewrite-use-ddg').checked;
+    let useTavily = qs('#rewrite-use-tavily').checked;
+    const suggestedUrls = (qs('#rewrite-suggest-urls').value || '')
+        .split(/\r?\n/)
+        .map(s => s.trim())
+        .filter(s => /^https?:\/\//i.test(s));
+    // 🔎 使用者手動輸入的搜尋關鍵字：勾選任一引擎時必填，後端不再自動從檔名推斷
+    const searchQuery = (qs('#rewrite-search-query').value || '').trim();
+    if ((useDDG || useTavily) && !searchQuery) {
+        alert('已勾選網路搜尋引擎，請在「🔎 搜尋關鍵字」欄位輸入要搜尋的關鍵字。');
+        return;
+    }
+
+    // Tavily 需要 API Key：優先讀 localStorage；沒有就彈窗詢問並保存
+    let tavilyApiKey = '';
+    if (useTavily) {
+        tavilyApiKey = localStorage.getItem('tavily_api_key') || '';
+        if (!tavilyApiKey) {
+            const inputKey = prompt('請輸入你的 Tavily API Key\n（會保存在瀏覽器 localStorage，供之後改寫任務重複使用）：');
+            if (inputKey && inputKey.trim()) {
+                tavilyApiKey = inputKey.trim();
+                localStorage.setItem('tavily_api_key', tavilyApiKey);
+            } else {
+                alert('未提供 Tavily API Key，本次將不啟用 Tavily 搜尋。');
+                useTavily = false;
+            }
+        }
+    }
+    const searchEnabled = useDDG || useTavily || suggestedUrls.length > 0;
+    if (searchEnabled) {
+        appendLog(`🌐 網路搜尋已啟用：DuckDuckGo=${useDDG}, Tavily=${useTavily}, 指定網址=${suggestedUrls.length} 個`);
+    }
+
     rewriteRunning = true;
     const startBtn = qs('#btn-rewrite-start');
     const origBtnText = startBtn.textContent;
@@ -3048,7 +3108,13 @@ async function startMultiRewrite() {
                 user_request: userRequest,
                 doc_name: item.name,
                 model: state.currentModel || 'gemma4',
-                model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null
+                model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
+                // 🌐 網路搜尋參數：後端會依旗標決定是否呼叫 DDG / Tavily / 抓取指定網址
+                use_duckduckgo: useDDG,
+                use_tavily: useTavily,
+                tavily_api_key: useTavily ? tavilyApiKey : '',
+                suggested_urls: suggestedUrls,
+                search_query: searchQuery
             };
             const result = await callDebugServerAsync('/api/rewrite_content_async', payload);
             if (result && result.rewritten) {
@@ -3154,6 +3220,260 @@ function initRewriteResizer() {
             const total = boxRect.height - resizerH;
             const minH = 40;
             let topH = Math.max(minH, Math.min(relY, total - minH));
+            let botH = total - topH;
+            topCol.style.flex = `0 0 ${topH}px`;
+            botCol.style.flex = `0 0 ${botH}px`;
+        };
+        const onUp = () => {
+            resizer.classList.remove('resizing');
+            document.body.style.userSelect = '';
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+}
+
+/* ================================================================================
+ * 🌐 網路搜尋並依序改寫（Web Search & Sequential Rewrite）
+ * -------------------------------------------------------------------------------
+ * 使用者在「工作項目區」以類 JSON 格式輸入多個項目（topic / keyword /
+ * specific_urls），對每個項目依序：
+ *   1) 呼叫既有 /api/rewrite_content_async
+ *   2) payload 帶入該項目的 keyword、specific_urls 與勾選的搜尋引擎
+ *   3) user_request 中的 {topic}／{context} 佔位符自動替換
+ * AI 回傳的內容累加顯示在左下「🖋️ AI 改寫內容」欄位，不匯出檔案。
+ * ============================================================================== */
+
+// 預設使用者指令：{topic} 於執行時被替換為當前 task 的 topic
+const WEB_REWRITE_DEFAULT_INSTRUCTION =
+`請以當時在場人士的第一人稱視角，寫一篇混合真實歷史與合理想像的感人短篇故事。
+
+主題：{topic}
+
+可用資料：
+{context}
+
+寫作要求：
+
+1. 選擇最適合的「在場人士」視角（例如：詩詞中的主角、好友、船夫、侍女、同行友人、目擊者等），讓敘述者真正身處事件現場。
+2. 先找出這首詩的「詩眼」或最動人的金句，以此作為故事的情感核心與高潮。
+3. 深入分析詩中「人事時地物」的關聯性，找出合理的交集點。
+4. 以具體的畫面與情境描寫作為故事開頭。
+5. 融合真實歷史與想像，營造強烈情感。
+6. 包含自然生動的對話。
+7. 字數約 1000~1800 字。
+8. 最後自然列出主要參考來源。
+
+請直接開始撰寫故事，不要加入任何解說或分析。`;
+
+const WEB_REWRITE_DEFAULT_TASKS =
+`{
+    "topic": "李白《早發白帝城》背後的故事",
+    "keyword": "李白 早發白帝城 流放",
+    "specific_urls": [
+        "https://zh.wikipedia.org/wiki/早發白帝城",
+        "https://zh.wikipedia.org/wiki/李白",
+        "https://baike.baidu.com/item/早发白帝城"
+    ]
+},
+{
+    "topic": "白居易《琵琶行》背後的故事",
+    "keyword": "白居易 琵琶行 長安 江州司馬",
+    "specific_urls": [
+        "https://zh.wikipedia.org/wiki/琵琶行",
+        "https://zh.wikipedia.org/wiki/白居易",
+        "https://baike.baidu.com/item/琵琶行"
+    ]
+}`;
+
+let webRewriteRunning = false;
+let webRewriteMatches = [];
+let webRewriteCurrentMatch = -1;
+
+// 開啟彈窗；首次開啟時自動填入預設指令與範本
+function openWebRewriteModal() {
+    const instr = qs('#webre-user-request');
+    if (!instr.value.trim()) instr.value = WEB_REWRITE_DEFAULT_INSTRUCTION;
+    const tasksBox = qs('#webre-tasks-json');
+    if (!tasksBox.value.trim()) tasksBox.value = WEB_REWRITE_DEFAULT_TASKS;
+    qs('#modal-web-rewrite').classList.remove('hidden');
+}
+
+// 容錯解析：允許 # / // 註解、無外層 []、缺漏逗號、尾端多餘逗號
+function parseWebRewriteTasks(raw) {
+    let s = (raw || '').trim();
+    if (!s) throw new Error('工作項目區為空');
+    s = s.replace(/^\s*#.*$/gm, '');
+    s = s.replace(/^\s*\/\/.*$/gm, '');
+    if (!s.trim().startsWith('[')) s = '[\n' + s + '\n]';
+    // 補上物件內兩個鍵值對之間漏掉的逗號
+    s = s.replace(/("[^"\\]*(?:\\.[^"\\]*)*"|\]|\})\s*\n(\s*")/g, '$1,\n$2');
+    // 去除 ,] 或 ,} 的尾端逗號
+    s = s.replace(/,(\s*[}\]])/g, '$1');
+    let arr;
+    try {
+        arr = JSON.parse(s);
+    } catch (e) {
+        throw new Error(`JSON 解析失敗：${e.message}\n\n清洗後內容前 500 字：\n${s.slice(0, 500)}`);
+    }
+    if (!Array.isArray(arr)) throw new Error('解析結果不是陣列');
+    arr.forEach((it, i) => {
+        if (!it || typeof it !== 'object') throw new Error(`第 ${i + 1} 筆項目不是物件`);
+        if (!it.topic || !String(it.topic).trim()) throw new Error(`第 ${i + 1} 筆項目缺少 topic`);
+    });
+    return arr;
+}
+
+// 主流程：依序處理每個工作項目
+async function startWebRewrite() {
+    if (webRewriteRunning) { alert('已有網路搜尋改寫任務進行中。'); return; }
+
+    let tasks;
+    try {
+        tasks = parseWebRewriteTasks(qs('#webre-tasks-json').value);
+    } catch (e) {
+        alert(e.message);
+        return;
+    }
+    const instructionTpl = qs('#webre-user-request').value.trim();
+    if (!instructionTpl) { alert('請先在「使用者指令」欄位填寫改寫要求。'); return; }
+
+    const useDDG = qs('#webre-use-ddg').checked;
+    let useTavily = qs('#webre-use-tavily').checked;
+    if (!useDDG && !useTavily) {
+        if (!confirm('未勾選任何搜尋引擎（僅使用工作項目提供的 specific_urls）。要繼續嗎？')) return;
+    }
+
+    let tavilyApiKey = '';
+    if (useTavily) {
+        tavilyApiKey = localStorage.getItem('tavily_api_key') || '';
+        if (!tavilyApiKey) {
+            const inputKey = prompt('請輸入你的 Tavily API Key（會保存在瀏覽器 localStorage）：');
+            if (inputKey && inputKey.trim()) {
+                tavilyApiKey = inputKey.trim();
+                localStorage.setItem('tavily_api_key', tavilyApiKey);
+            } else {
+                alert('未提供 Tavily API Key，本次將不啟用 Tavily 搜尋。');
+                useTavily = false;
+            }
+        }
+    }
+
+    webRewriteRunning = true;
+    const startBtn = qs('#btn-webre-start');
+    const origBtnText = startBtn.textContent;
+    startBtn.disabled = true;
+    startBtn.textContent = '⏳ 執行中…';
+
+    const outputEl = qs('#webre-ai-output');
+    outputEl.value = '';
+    appendLog(`🌐 開始網路搜尋並依序改寫，共 ${tasks.length} 個項目。`);
+
+    let successCount = 0, failCount = 0;
+    for (let i = 0; i < tasks.length; i++) {
+        const task = tasks[i];
+        const topic = String(task.topic || '').trim();
+        const keyword = String(task.keyword || '').trim() || topic;
+        const urls = Array.isArray(task.specific_urls)
+            ? task.specific_urls.filter(u => /^https?:\/\//i.test(u)) : [];
+
+        const userRequest = instructionTpl
+            .replaceAll('{topic}', topic)
+            .replaceAll('{context}', '（詳見下方【網路搜尋參考資料】區塊）');
+
+        const header = `\n\n${'='.repeat(60)}\n【${i + 1}/${tasks.length}】${topic}\n${'='.repeat(60)}\n`;
+        outputEl.value += header + `⏳ 正在搜尋並生成中...`;
+        outputEl.scrollTop = outputEl.scrollHeight;
+        appendLog(`🤖 [${i + 1}/${tasks.length}]「${topic}」  搜尋關鍵字：${keyword}  指定網址：${urls.length} 個`);
+
+        try {
+            const payload = {
+                text_content: `本項目主題：${topic}\n關鍵字：${keyword}`,
+                user_request: userRequest,
+                doc_name: topic,
+                model: state.currentModel || 'gemma4',
+                model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
+                use_duckduckgo: useDDG,
+                use_tavily: useTavily,
+                tavily_api_key: useTavily ? tavilyApiKey : '',
+                suggested_urls: urls,
+                search_query: keyword
+            };
+            const result = await callDebugServerAsync('/api/rewrite_content_async', payload);
+            const text = (result && result.rewritten) ? result.rewritten : '';
+            outputEl.value = outputEl.value.replace(/⏳ 正在搜尋並生成中\.\.\.$/, text || '（AI 未回傳有效內容）');
+            outputEl.scrollTop = outputEl.scrollHeight;
+            if (text) {
+                successCount++;
+                appendLog(`✅ [${i + 1}/${tasks.length}]「${topic}」完成，共 ${text.length} 字。`);
+            } else {
+                failCount++;
+                appendLog(`❌ [${i + 1}/${tasks.length}]「${topic}」AI 未回傳有效內容。`);
+            }
+        } catch (e) {
+            failCount++;
+            outputEl.value = outputEl.value.replace(/⏳ 正在搜尋並生成中\.\.\.$/, `❌ 錯誤：${e.message}`);
+            appendLog(`❌ [${i + 1}/${tasks.length}]「${topic}」發生錯誤：${e.message}`);
+        }
+    }
+
+    webRewriteRunning = false;
+    startBtn.disabled = false;
+    startBtn.textContent = origBtnText;
+    appendLog(`🌐 網路搜尋改寫結束：成功 ${successCount} 個，失敗 ${failCount} 個。`);
+    alert(`網路搜尋改寫完成！\n成功：${successCount}\n失敗：${failCount}`);
+}
+
+// 雙欄搜尋（使用者指令 + AI 改寫內容）
+function doWebRewriteSearch() {
+    const query = qs('#webre-search-input').value;
+    const countEl = qs('#webre-search-count');
+    webRewriteMatches = [];
+    webRewriteCurrentMatch = -1;
+    if (!query) { countEl.textContent = ''; return; }
+    const textareas = [qs('#webre-user-request'), qs('#webre-ai-output')];
+    textareas.forEach((ta, colIdx) => {
+        const src = ta.value;
+        let i = 0;
+        while ((i = src.indexOf(query, i)) !== -1) {
+            webRewriteMatches.push({ colIdx, start: i });
+            i += query.length;
+        }
+    });
+    countEl.textContent = webRewriteMatches.length ? `1/${webRewriteMatches.length}` : '無';
+    if (webRewriteMatches.length) goToWebRewriteMatch(0);
+}
+function goToWebRewriteMatch(idx) {
+    if (!webRewriteMatches.length) return;
+    const query = qs('#webre-search-input').value;
+    idx = (idx + webRewriteMatches.length) % webRewriteMatches.length;
+    webRewriteCurrentMatch = idx;
+    const m = webRewriteMatches[idx];
+    const ta = [qs('#webre-user-request'), qs('#webre-ai-output')][m.colIdx];
+    ta.focus();
+    ta.setSelectionRange(m.start, m.start + query.length);
+    qs('#webre-search-count').textContent = `${idx + 1}/${webRewriteMatches.length}`;
+}
+
+// 上下欄拖曳分隔
+function initWebRewriteResizer() {
+    const resizer = qs('#webre-resizer');
+    const topCol = qs('#webre-col-instruction');
+    const botCol = qs('#webre-col-output');
+    if (!resizer || !topCol || !botCol) return;
+    resizer.addEventListener('mousedown', e => {
+        e.preventDefault();
+        const startY = e.clientY;
+        const startTopH = topCol.getBoundingClientRect().height;
+        const startBotH = botCol.getBoundingClientRect().height;
+        const total = startTopH + startBotH;
+        resizer.classList.add('resizing');
+        document.body.style.userSelect = 'none';
+        const onMove = (ev) => {
+            const dy = ev.clientY - startY;
+            let topH = Math.max(40, Math.min(total - 40, startTopH + dy));
             let botH = total - topH;
             topCol.style.flex = `0 0 ${topH}px`;
             botCol.style.flex = `0 0 ${botH}px`;

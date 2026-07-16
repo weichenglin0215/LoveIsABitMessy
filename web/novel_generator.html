@@ -37,11 +37,21 @@
       <button class="btn primary-btn" id="btn-save">💾 儲存雲端小說</button>
       <button class="btn secondary-btn" id="btn-load">📂 讀取小說</button>
       <button class="btn primary-btn" id="btn-export">📤 匯出小說</button>
-      <button class="btn secondary-btn" id="btn-author-notes" title="撰寫作者備註，不會提供給 AI，但會隨小說一起儲存／讀取">📝 作者備註</button>
-      <button class="btn secondary-btn" id="btn-compare-novels" title="並排比對四本雲端小說的內容">📚 比對多本小說</button>
-      <button class="btn secondary-btn" id="btn-review-novel" title="以最嚴格的專業編輯身分審評小說，提前獲得真切的讀者/編輯回應">🎯 評論小說</button>
-      <button class="btn secondary-btn" id="btn-multi-rewrite" title="批次改寫多個外部文檔（例如：翻譯成英文），依照勾選順序逐一交由 AI 改寫並自動匯出">📝
-        多文改寫</button>
+      <!-- 🧰 額外功能：點擊展開下方選單 -->
+      <div class="extra-features-wrapper" style="position:relative; display:inline-block;">
+        <button class="btn secondary-btn" id="btn-extra-features" title="展開額外功能選單">🧰 額外功能 ▾</button>
+        <div id="extra-features-menu"
+          style="display:none; position:absolute; top:100%; left:0; margin-top:4px; padding:8px; flex-direction:column; gap:6px; background:var(--c-bg-panel, hsla(240, 10%, 10%, 0.85)); border:2px solid var(--c-border, #555); border-bottom:5px solid var(--c-border, #555); border-radius:var(--radius-lg, 10px); z-index:100; white-space:nowrap; box-shadow:0 4px 12px rgba(0,0,0,0.3);">
+          <button class="btn secondary-btn" id="btn-author-notes" title="撰寫作者備註，不會提供給 AI，但會隨小說一起儲存／讀取">📝 作者備註</button>
+          <button class="btn secondary-btn" id="btn-compare-novels" title="並排比對四本雲端小說的內容">📚 比對多本小說</button>
+          <button class="btn secondary-btn" id="btn-review-novel" title="以最嚴格的專業編輯身分審評小說，提前獲得真切的讀者/編輯回應">🎯
+            評論小說</button>
+          <button class="btn secondary-btn" id="btn-multi-rewrite" title="批次改寫多個外部文檔（例如：翻譯成英文），依照勾選順序逐一交由 AI 改寫並自動匯出">📝
+            多文改寫</button>
+          <button class="btn secondary-btn" id="btn-web-rewrite" title="依工作項目自動上網搜尋資料，並依序讓 AI 產生對應的內容">🌐
+            網路搜尋並依序改寫</button>
+        </div>
+      </div>
       <button class="ai-btn-bluepink" id="btn-ai-gen-full-auto" title=" AI全自動生成所有文字：依粗綱生成章節→節大綱→節內文（跳過已鎖定）">🚀
         全自動</button>
       <button id="btn-help-manual" title="開啟使用說明" onclick="HelpModal.open('novel', '📖 小說產生器 使用說明')"
@@ -763,7 +773,6 @@
         <label class="cmp-label">文件名稱：</label>
         <input type="text" id="rewrite-doc-name" class="w-300" placeholder="改寫時自動帶入為「原檔名_改寫」">
         <button class="btn primary-btn" id="btn-rewrite-start" title="依照右側勾選的檔案順序，逐一送給 AI 改寫並自動匯出">🚀 開始改寫</button>
-        <button class="btn secondary-btn" id="btn-rewrite-pick-files" title="選擇多個本地端 .txt / .md 檔案">📂 選擇外部文檔</button>
         <input type="file" id="rewrite-file-input" accept=".txt,.md" multiple style="display:none;">
         <button class="modal-close-btn" style="margin-left:auto;"
           onclick="document.getElementById('modal-rewrite').classList.add('hidden')">&times;</button>
@@ -786,12 +795,36 @@
             <textarea class="cmp-content" id="rewrite-ai-output" placeholder="AI 改寫結果將顯示於此..."></textarea>
           </div>
         </div>
-        <!-- 右欄：檔案清單工具列 + 清單 -->
+        <!-- 右欄：建議搜尋網址 + 檔案清單工具列 + 清單 -->
         <div class="cmp-col" id="rewrite-right-col" style="flex:1 1 0; display:flex; flex-direction:column;">
+          <!-- 建議搜尋網址區：勾選搜尋引擎 + 多行網址輸入 -->
+          <div class="cmp-col-header" style="flex-direction:column; align-items:stretch; gap:6px;">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+              <span class="title-md">🌐 建議搜尋網址</span>
+              <label class="checkbox-label" title="使用 DuckDuckGo HTML 版做免費搜尋（不需 API Key）">
+                <input type="checkbox" id="rewrite-use-ddg">
+                <span>DuckDuckGo 免費搜尋</span>
+              </label>
+              <label class="checkbox-label" title="呼叫 Tavily Search API（需要 API Key，首次使用會提示輸入並保存至瀏覽器）">
+                <input type="checkbox" id="rewrite-use-tavily">
+                <span>tavily API搜尋</span>
+              </label>
+            </div>
+            <textarea id="rewrite-suggest-urls" class="w-fill" style="min-height:80px; resize:vertical;"
+              placeholder="每行一個網址（選填，優先抓取內容作為 AI 參考資料）。例如：&#10;https://zh.wikipedia.org/wiki/李白"></textarea>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="title-md">🔎 搜尋關鍵字</span>
+              <input type="text" id="rewrite-search-query" class="w-fill"
+                placeholder="輸入送給 DuckDuckGo / Tavily 的搜尋關鍵字（勾選任一引擎時必填）">
+            </div>
+          </div>
+          <!-- 檔案清單工具列 -->
           <div class="cmp-col-header">
             <button class="btn secondary-btn" id="btn-rewrite-select-all" title="全部勾選">✅ 全選</button>
             <button class="btn secondary-btn" id="btn-rewrite-deselect-all" title="全部取消勾選">☐ 全放棄</button>
             <button class="btn secondary-btn" id="btn-rewrite-invert" title="反向勾選">🔁 反選</button>
+            <button class="btn secondary-btn" id="btn-rewrite-pick-files" title="選擇多個本地端 .txt / .md 檔案">📂
+              選擇外部文檔</button>
             <button class="btn secondary-btn" id="btn-rewrite-clear-files" title="清空整份檔案清單"
               style="margin-left:auto;">🗑️</button>
           </div>
@@ -799,6 +832,65 @@
             style="overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:4px;">
             <div class="title-hint" id="rewrite-file-empty-hint">尚未選擇任何檔案 — 點右上「📂 選擇外部文檔」加入 .txt / .md 檔。</div>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Web Search & Sequential Rewrite（🌐 網路搜尋並依序改寫） ── -->
+  <div id="modal-web-rewrite" class="modal-overlay hidden">
+    <div class="cmp-modal">
+      <!-- Top bar -->
+      <div class="cmp-toolbar">
+        <h2 class="cmp-title">🌐 網路搜尋並依序改寫</h2>
+        <span class="cmp-icon">🔍</span>
+        <span id="webre-search-count" class="log-search-count"></span>
+        <button class="log-search-nav-btn" id="webre-search-prev" title="上一個">▲</button>
+        <button class="log-search-nav-btn" id="webre-search-next" title="下一個">▼</button>
+        <input type="text" id="webre-search-input" class="log-search-input w-300" placeholder="搜尋雙欄文字（Enter 執行）...">
+        <button class="btn primary-btn" id="btn-webre-start" title="依照右側工作項目順序，逐一上網搜尋並送給 AI 改寫">🚀 開始改寫</button>
+        <button class="modal-close-btn" style="margin-left:auto;"
+          onclick="document.getElementById('modal-web-rewrite').classList.add('hidden')">&times;</button>
+      </div>
+      <!-- Body: 左右兩欄；左欄再分上下 -->
+      <div class="cmp-body" style="flex-direction:row;">
+        <!-- 左欄：使用者指令 / AI 改寫內容 -->
+        <div class="cmp-col" id="webre-left-col" style="flex:2 1 0; display:flex; flex-direction:column;">
+          <div class="cmp-col" id="webre-col-instruction" style="flex:1 1 0; min-height:40px;">
+            <div class="cmp-col-header">
+              <span class="title-md">✏️ 使用者指令（{topic} 會自動替換成每個工作項目的主題）</span>
+            </div>
+            <textarea class="cmp-content" id="webre-user-request" placeholder="送給 AI 的完整改寫規則..."></textarea>
+          </div>
+          <div class="review-resizer" id="webre-resizer" title="拖曳調整上下欄高度"></div>
+          <div class="cmp-col" id="webre-col-output" style="flex:1 1 0; min-height:40px;">
+            <div class="cmp-col-header">
+              <span class="title-md">🖋️ AI 改寫內容（每完成一個項目會追加在此，可複製後另行儲存）</span>
+            </div>
+            <textarea class="cmp-content" id="webre-ai-output" placeholder="AI 改寫結果將依序顯示於此..."></textarea>
+          </div>
+        </div>
+        <!-- 右欄：搜尋引擎選擇 + 工作項目 JSON -->
+        <div class="cmp-col" id="webre-right-col" style="flex:1 1 0; display:flex; flex-direction:column;">
+          <div class="cmp-col-header" style="flex-direction:column; align-items:stretch; gap:6px;">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+              <span class="title-md">🌐 搜尋引擎</span>
+              <label class="checkbox-label" title="使用 DuckDuckGo HTML 版做免費搜尋（不需 API Key）">
+                <input type="checkbox" id="webre-use-ddg" checked>
+                <span>DuckDuckGo 免費搜尋</span>
+              </label>
+              <label class="checkbox-label" title="呼叫 Tavily Search API（需要 API Key）">
+                <input type="checkbox" id="webre-use-tavily">
+                <span>tavily API搜尋</span>
+              </label>
+            </div>
+          </div>
+          <div class="cmp-col-header">
+            <span class="title-md">📋 工作項目區（JSON 格式，允許 # 或 // 註解、允許無外層 [ ]）</span>
+          </div>
+          <textarea class="cmp-content" id="webre-tasks-json"
+            style="flex:1 1 0; min-height:120px; font-family:monospace; white-space:pre;"
+            placeholder="每個項目至少含 topic 與 keyword，可選 specific_urls..."></textarea>
         </div>
       </div>
     </div>

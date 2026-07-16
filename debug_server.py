@@ -1126,7 +1126,41 @@ def _run_rewrite_content_job(job_id: str, params: dict):
         user_request = params.get('user_request', '') or ''
         doc_name     = params.get('doc_name', '') or ''
         model_name   = params.get('model', 'gemma4')
-        prompt = build_rewrite_content_prompt(text_content, user_request, doc_name=doc_name)
+
+        # ── 🌐 網路搜尋（可選）：三個來源任意組合 ─────────────────────────────
+        # 前端 payload 會帶：use_duckduckgo / use_tavily / tavily_api_key / suggested_urls
+        # 三者皆關閉時等同原本流程，不做任何額外請求。
+        use_ddg        = bool(params.get('use_duckduckgo'))
+        use_tavily     = bool(params.get('use_tavily'))
+        tavily_api_key = params.get('tavily_api_key', '') or ''
+        suggested_urls = params.get('suggested_urls') or []
+        search_context = ""
+        if use_ddg or use_tavily or suggested_urls:
+            try:
+                from web_search_utils import build_search_context
+                # 搜尋關鍵字完全來自前端「🔎 搜尋關鍵字」欄位，後端不再從檔名 / 原文推斷
+                query = (params.get('search_query') or '').strip()
+                _log_print(job_id, f">> 啟用網路搜尋：DDG={use_ddg}, Tavily={use_tavily}, 指定URL={len(suggested_urls)} 個")
+                _log_print(job_id, f">> 搜尋關鍵字（使用者輸入）：{query or '（未提供）'}")
+                search_context = build_search_context(
+                    query=query,
+                    use_duckduckgo=use_ddg,
+                    use_tavily=use_tavily,
+                    tavily_api_key=tavily_api_key,
+                    suggested_urls=suggested_urls,
+                    log_fn=lambda m, _jid=job_id: _log_print(_jid, m),
+                )
+                if search_context:
+                    _log_print(job_id, f">> 已組合搜尋參考資料 {len(search_context)} 字，將塞入提示詞")
+                else:
+                    _log_print(job_id, ">> 搜尋未取得任何資料，僅使用原文改寫")
+            except Exception as e:
+                _log_print(job_id, f">> [警告] 網路搜尋流程失敗，改走無搜尋改寫：{e}")
+                search_context = ""
+
+        prompt = build_rewrite_content_prompt(
+            text_content, user_request, doc_name=doc_name, search_context=search_context
+        )
 
         opts = dict(params.get('model_options') or {})
         opts.setdefault('num_predict', 4096)
