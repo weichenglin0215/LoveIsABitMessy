@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LoveIsABitMessy — 想寫小說，所以先讓 AI 認識人</title>
+    <title>LoveIsABitMessy — 想請AI幫忙寫小說，所以先讓 AI 認識人</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&family=Noto+Serif+TC:wght@400;700;900&display=swap"
         rel="stylesheet">
@@ -30,6 +30,8 @@
             --c-text-main: hsl(245, 60%, 90%);
             --c-text-sec: hsl(245, 60%, 70%);
             --c-text-dim: hsl(245, 60%, 55%);
+            --c-text-pink: hsl(0, 100%, 80%);
+            --c-text-red: hsl(0, 60%, 55%);
             --c-divider: hsl(245, 30%, 18%);
 
             /* 三階段色彩 */
@@ -171,9 +173,19 @@
             font-weight: 700;
         }
 
+        .title-l-w400 {
+            font-size: clamp(4rem, 8vw, 6.4rem);
+            font-weight: 400;
+        }
+
         .title-m {
             font-size: clamp(3.2rem, 6vw, 4.8rem);
             font-weight: 700;
+        }
+
+        .title-m-w400 {
+            font-size: clamp(3.2rem, 6vw, 4.8rem);
+            font-weight: 400;
         }
 
         .title-s {
@@ -208,6 +220,14 @@
 
         .accent {
             color: var(--c-accent-light);
+        }
+
+        .pink {
+            color: var(--c-text-pink);
+        }
+
+        .red {
+            color: var(--c-text-red);
         }
 
         .muted {
@@ -257,10 +277,10 @@
             border: 1px solid var(--c-accent-dim);
             border-bottom: 5px solid var(--c-accent-dim);
             border-radius: 999px;
-            font-size: clamp(1.6rem, 2vw, 2rem);
+            font-size: clamp(1.2rem, 1.6vw, 1.6rem);
             color: var(--c-accent-light);
             letter-spacing: 0.1em;
-            margin-bottom: 2rem;
+            margin-bottom: 0.25rem;
         }
 
         /*引言框*/
@@ -281,21 +301,21 @@
             border: 1px solid var(--c-accent-light);
             border-radius: 12px;
             border-left: 10px solid var(--c-accent);
-            padding: 1.2rem 1.4rem;
-            margin: 1rem 0;
+            padding: 0.6rem 0.7rem;
+            margin: 0.6rem 0;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
         }
 
         .example-card h4 {
             color: var(--c-accent-light);
-            font-size: clamp(1.9rem, 2.6vw, 2.3rem);
+            font-size: clamp(2.2rem, 2.6vw, 2.6rem);
             margin-bottom: 0.8rem;
             letter-spacing: 0.05em;
         }
 
         .example-card p {
             font-family: var(--font-serif);
-            font-size: clamp(1.9rem, 2.6vw, 2.3rem);
+            font-size: clamp(2.0rem, 2.6vw, 2.4rem);
             line-height: 1.9;
             color: var(--c-text-main);
         }
@@ -307,7 +327,7 @@
         .chat-bubble,
         .type-detail-card .section-body,
         .quote-block {
-            font-size: clamp(1.3rem, 1.8vw, 1.6rem) !important;
+            font-size: clamp(1.4rem, 1.8vw, 1.8rem) !important;
             line-height: 1.4 !important;
         }
 
@@ -807,8 +827,8 @@
             top: 1rem;
             right: 1rem;
             z-index: 100;
-            font-size: 0.8rem;
-            color: var(--c-text-dim);
+            font-size: 1.0rem;
+            color: var(--c-text-sec);
             text-align: right;
             line-height: 1.6;
         }
@@ -829,8 +849,8 @@
             top: 1rem;
             left: 1rem;
             z-index: 100;
-            font-size: 0.8rem;
-            color: var(--c-text-dim);
+            font-size: 1.rem;
+            color: var(--c-text-sec);
             letter-spacing: 0.15em;
             padding: 0.3rem 0.8rem;
             background: rgba(15, 10, 30, 0.7);
@@ -1012,7 +1032,7 @@
         <section class="slide active center title-slide" data-section="PART 0 ‧ 開場"
             data-notes="開場保持低音量。從『想寫小說』停頓兩秒，再接『然後發現一件事』自然進入下一張。觀察觀眾的反應，建立對話的初始連結。">
             <div class="slide-inner">
-                <div class="title-xl">想寫小說，<br>所以先讓 AI 認識人</div>
+                <div class="title-xl">想請AI幫忙寫小說，<br>所以先讓 AI 認識人</div>
                 <div class="subtitle">一個業餘小說家的兩個半月 AI 實驗</div>
                 <div class="meta">LoveIsABitMessy · 2026.07</div>
             </div>
@@ -1023,9 +1043,9 @@
             data-notes="刻意強調『不是工程師』，建立與一般觀眾的連結，降低『這場簡報會很技術』的預期。可以加入一兩句你的職業/興趣背景。">
             <div class="slide-inner">
                 <div class="kicker">關於講者</div>
-                <h1 class="title-l mb-3">不是 AI 工程師。<br><span class="accent">只是一個想寫小說的人。</span></h1>
+                <h1 class="title-l mb-3">不是 AI 工程師。<br><span class="accent">是一位想寫小說的人。</span></h1>
                 <div class="mt-3">
-                    <p class="text-l mb-2">最近兩個半月，用 AI 蓋了一套工具來幫自己寫小說。</p>
+                    <p class="text-l mb-2">最近兩個半月，用 AI 組了一套工具來幫自己寫小說。</p>
                     <p class="text-l mb-2">這套工具叫 <span class="accent serif">LoveIsABitMessy（愛是有點亂）</span>。</p>
                     <p class="text-l mt-3 dim">今天兩小時，把這個過程分享給你們。</p>
                 </div>
@@ -1064,12 +1084,12 @@
             data-notes="這個情境會在接下來的簡報重複出現好幾次，現在先讓它『存在』。停頓 3 秒讓觀眾消化。">
             <div class="slide-inner">
                 <div class="kicker">起點</div>
-                <h1 class="title-l mb-4 dim">想寫一篇短篇小說。</h1>
+                <h1 class="title-l mb-1 dim">以前寫得不好，期待有了AI會更好</h1>
+                <h1 class="title-l mb-1 dim">以為寫個梗概，AI會搞定一切。</h1>
                 <div class="quote-block mt-3">
-                    學生時代的舊情人，<br>
-                    在 40 歲那年於台北重逢。
+                    學生時代的舊情人，在 40 歲那年於台北重逢..........從此過著幸福快樂的日子。總共1.2萬字，繁體中文。(Enter)
                 </div>
-                <p class="text-l mt-3 accent">⋯⋯想寫這個故事。</p>
+                <p class="text-l mt-3 accent">經過一分鐘⋯⋯寫完了，交稿，出版。</p>
             </div>
         </section>
 
@@ -1078,18 +1098,20 @@
             data-notes="這張投影片建議 stop and ask。一般人通常記得人物，不記得情節，這個共識會成為整場簡報的基礎。預期會有 3-5 分鐘討論。">
             <div class="slide-inner">
                 <div class="kicker">第一層洞察</div>
-                <h1 class="title-l mb-3">小說寫的不是情節。<br><span class="accent">小說寫的是人。</span></h1>
+                <h1 class="title-l-w400 mb-3">小說寫的不是情節。<br><span class="title-l accent">小說寫的是「人」或「甲蟲」。</span></h1>
                 <div class="two-col mt-3">
-                    <div class="example-card" style="opacity: 0.55;">
-                        <h4>情節（人人會寫）</h4>
+                    <div class="example-card">
+                        <h4>情節（容易無趣、瞎掰或卡住）</h4>
                         <p class="serif">「兩人重逢 → 一起吃了一頓飯 → 各自回家。」</p>
                     </div>
                     <div class="example-card" style="border-color: var(--c-accent);">
-                        <h4>人（必須是「那個人」）</h4>
+                        <h4>人（讓「角色」去驅動劇情）</h4>
                         <p class="serif">「兩個 40 歲的人在咖啡廳坐下，咖啡涼了一半，誰先開口？開口說什麼？」</p>
                     </div>
                 </div>
                 <div class="audience-q">你最近讀過的小說，你還記得情節嗎？還是記得人物？</div>
+                <div class="audience-q">註：法蘭茲·卡夫卡（奧地利作家）1915年寫的《變形記》</div>
+
             </div>
         </section>
 
@@ -1098,7 +1120,7 @@
             data-notes="這張投影片是整場簡報的『核心鉤子』，要慢、要讓觀眾感受到兩段範例的差異。讀完之後可以問：『你覺得這兩個故事接下來會怎麼發展？』邀請觀眾發想 1-2 分鐘。">
             <div class="slide-inner">
                 <div class="kicker">第二層洞察</div>
-                <h1 class="title-m mb-3">好的故事，作者不能硬推。<br><span class="accent">是角色的個性，決定故事怎麼走。</span></h1>
+                <h1 class="title-m-w400 mb-3">好的故事，作者不能硬推。<br><span class="title-m accent">是角色的個性，決定故事怎麼走。</span></h1>
                 <div class="two-col mt-2">
                     <div class="example-card">
                         <h4>範例 A：兩位台北土生土長的人</h4>
@@ -1123,9 +1145,9 @@
             <div class="slide-inner">
                 <div class="kicker">所以問題變成⋯⋯</div>
                 <h1 class="title-m serif mt-4" style="line-height: 1.8;">
-                    怎麼讓 AI 真的理解一個「<span class="accent">人</span>」——<br>
+                    怎麼讓 AI 真的理解一個「<span class="pink">人</span>」——<br>
                     理解到它寫出來的角色，<br>
-                    會自己<span class="accent">推動劇情</span>？
+                    會自己<span class="pink">推動劇情</span>？
                 </h1>
                 <p class="dim text-m mt-4">這就是整個專案要回答的唯一問題。</p>
             </div>
@@ -1139,16 +1161,13 @@
                 <h1 class="title-m mb-3">三個預先回答</h1>
                 <div class="three-col mt-2">
                     <div class="example-card">
-                        <h4>Q：為什麼不直接餵 AI 角色設定？</h4>
-                        <p class="text-s mt-2">A：試過了。<br>AI 寫出來還是紙片人。<br>我們等下會看為什麼。</p>
+                        <h4>Q：如何讓AI了解一個人的個性？</h4>
                     </div>
                     <div class="example-card">
-                        <h4>Q：為什麼要做這麼複雜的東西？</h4>
-                        <p class="text-s mt-2">A：因為希望 AI 寫出覺得「對」的角色，<br>不是「OK」的角色。</p>
+                        <h4>Q：創造一個靈魂比寫一本小說還難？</h4>
                     </div>
                     <div class="example-card">
-                        <h4>Q：這能解決別人的問題嗎？</h4>
-                        <p class="text-s mt-2">A：不知道。只知道它解決了的問題。<br>然後發現可能也能解決別人的。</p>
+                        <h4>Q：這真的能解決問題嗎？或是帶來更大的問題？</h4>
                     </div>
                 </div>
                 <div class="audience-q">你們現在用 AI 寫過東西嗎？覺得它寫得怎麼樣？</div>
@@ -1165,14 +1184,17 @@
             <div class="slide-inner">
                 <div class="kicker">實驗一</div>
                 <h1 class="title-m mb-3">給 AI 一個簡單 Prompt</h1>
-                <div class="example-card" style="background: var(--c-bg-deep);">
-                    <h4>Prompt</h4>
-                    <p class="serif">「寫一段 30 歲女性主管在會議室對下屬說話的場景，要有個性。」</p>
-                </div>
-                <div class="example-card mt-2" style="opacity: 0.7;">
-                    <h4>AI 寫出來</h4>
-                    <p class="serif text-s">
-                        「李經理走進會議室，臉色嚴肅。她環視在場每一位員工，緩緩開口：『各位，我們的業績不能再這樣下去了。希望大家從這個月開始全力以赴。』她的眼神堅定，語氣不容置疑，散發著主管應有的氣場。」</p>
+                <div class="two-col mt-2">
+                    <div class="example-card" style="background: var(--c-bg-deep);">
+                        <h4>Prompt</h4>
+                        <h4 class="serif" style="color: white;">「寫一段 30 歲女性主管在會議室對下屬說話的場景，要有個性。」</h4>
+                    </div>
+                    <div class="example-card mt-2">
+                        <h4>AI 寫出來</h4>
+                        <p class="serif text-s">
+                            「李經理走進會議室，臉色嚴肅。她環視在場每一位員工，緩緩開口：『各位，我們的業績不能再這樣下去了。希望大家從這個月開始全力以赴。』她的眼神堅定，語氣不容置疑，散發著主管應有的氣場。」
+                        </p>
+                    </div>
                 </div>
                 <p class="text-l mt-3 dim">⋯⋯讀起來怎麼樣？</p>
                 <div class="audience-q">你會記得這個角色嗎？她跟你看過的多少個 AI 寫的女主管很像？</div>
@@ -1188,9 +1210,9 @@
                 <div class="two-col mt-2">
                     <div class="example-card">
                         <h4>角色卡片段</h4>
-                        <p class="text-s">林沛雯，34 歲，行銷部副總。<br>離婚一年，獨自帶 7
-                            歲女兒。<br><br>個性：表面冷靜、內裡焦躁，<br>對「失控」極度敏感。<br><br>口頭禪：「不是在質疑，<br>是在確認。」<br><br>動作特徵：說話前會先把馬克杯轉半圈。
-                        </p>
+                        <h4 class="serif" style="color: white;">林沛雯，34 歲，行銷部副總。<br>離婚一年，獨自帶 7
+                            歲女兒。<br><br>個性：表面冷靜、內裡焦躁，<br>對「失控」極度敏感。<br><br>口頭禪：「不是在質疑，是在確認。」<br>特徵：說話前會先把馬克杯轉半圈。
+                        </h4>
                     </div>
                     <div class="example-card" style="border-color: var(--c-accent);">
                         <h4>AI 寫出來</h4>
@@ -1210,11 +1232,11 @@
             <div class="slide-inner">
                 <h1 class="title-l mb-3">差別在哪裡？</h1>
                 <ol class="numbered-list">
-                    <li>左邊只知道「30 歲女主管」這個<span class="dim">標籤</span>。<br>右邊知道一個有名字、有故事、有特定動作的<span
-                            class="accent">人</span>。</li>
-                    <li>左邊寫「散發氣場」這種<span class="dim">抽象詞</span>。<br>右邊寫「把咖啡杯往右轉了半圈」這種<span class="accent">具體行為</span>。
+                    <li>只知道「30 歲女主管」這個<span class="dim">標籤</span>。<br>角色卡一個有名字、有故事、有特定動作的<span class="accent">人</span>。
                     </li>
-                    <li>左邊你看完五分鐘就<span class="dim">忘了她</span>。<br>右邊你會記得她<span class="accent">至少今晚</span>。</li>
+                    <li>寫「散發氣場」這種<span class="dim">抽象詞</span>。<br>角色卡寫「把咖啡杯往右轉了半圈」這種<span class="accent">具體行為</span>。
+                    </li>
+                    <li>看完五分鐘就<span class="dim">忘了她</span>。<br>角色卡讓你會記得她<span class="accent">至少今晚</span>。</li>
                 </ol>
                 <div class="quote-block mt-3" style="border-color: var(--c-accent-light);">
                     AI 不是寫不出人。<br>
@@ -1254,7 +1276,7 @@
                 <ul class="bullet-list">
                     <li>為什麼愛情？因為它是人最不受控、最會把「真實的你」逼出來的情境</li>
                     <li>在工作場合，你還可以裝；在愛情裡，幾乎裝不下去</li>
-                    <li>而且愛情<span class="accent">天然分成三個階段</span>——這給了我們一個天然的觀察實驗室</li>
+                    <li>而且愛情<span class="accent">分成三個階段</span>——這給了我們一個天然的觀察實驗室</li>
                 </ul>
                 <div class="quote-block mt-3" style="border-color: var(--c-accent-light); text-align: center;">
                     <span class="accent">同一個人</span>，<br>
@@ -1864,7 +1886,7 @@
                 </div>
                 <p class="text-l mt-3 center" style="text-align: center;">這張卡，AI 就會寫出我們在 PART 2 看到的那個<span
                         class="accent">林沛雯</span>。</p>
-                <div class="demo-tag">Demo：characters_editor 操作影片</div>
+                <!--<div class="demo-tag">Demo：characters_editor 操作影片</div>-->
             </div>
         </section>
 
@@ -1872,9 +1894,9 @@
         <section class="slide" data-section="PART 5 ‧ 五工具流水線" data-notes="展示角色卡編輯器的實際操作畫面。">
             <div class="slide-inner">
                 <div class="kicker">工具 ②</div>
-                <h1 class="title-m mb-3">角色卡編輯器 <span class="accent">實際畫面</span></h1>
+                <!--<h1 class="title-m mb-3">角色卡編輯器 <span class="accent">實際畫面</span></h1>-->
                 <img src="../images/簡報_2026-07/characters_editor-02.png" alt="角色卡編輯器截圖"
-                    style="max-width: 80%; max-height: 65vh; margin: 24px auto 0; display: block; border-radius: 8px; border: 1px solid var(--c-divider);">
+                    style="max-width: 100%; max-height: 100%; margin: 12px auto 0; display: block; border-radius: 8px; border: 1px solid var(--c-divider);">
             </div>
         </section>
 
@@ -1902,7 +1924,7 @@
                 </div>
                 <p class="text-l mt-3 center" style="text-align: center;"><span
                         class="accent">你過去的小說人物，可以重新進入這個系統，繼續被使用。</span></p>
-                <div class="demo-tag">Demo：characters_editor 文字反推角色卡</div>
+                <!--<div class="demo-tag">Demo：characters_editor 文字反推角色卡</div>-->
             </div>
         </section>
 
@@ -1933,13 +1955,14 @@
         <section class="slide" data-section="PART 5 ‧ 五工具流水線" data-notes="展示 LoveLine 的實際操作畫面。">
             <div class="slide-inner">
                 <div class="kicker">工具 ③</div>
-                <h1 class="title-m mb-3">LoveLine <span class="accent">實際畫面</span></h1>
+                <!--<h1 class="title-m mb-3">LoveLine <span class="accent">實際畫面</span></h1>-->
                 <img src="../images/簡報_2026-07/LoveLine-01.png" alt="LoveLine 截圖"
-                    style="max-width: 80%; max-height: 65vh; margin: 24px auto 0; display: block; border-radius: 8px; border: 1px solid var(--c-divider);">
+                    style="max-width: 100%; max-height: 100%; margin: 12px auto 0; display: block; border-radius: 8px; border: 1px solid var(--c-divider);">
             </div>
         </section>
 
         <!-- 投影片 37 — LoveLine 範例對話 -->
+        <!--
         <section class="slide" data-section="PART 5 ‧ 五工具流水線"
             data-notes="Demo 影片是這張投影片的關鍵。錄一段真實的 LoveLine 對話，會比靜態截圖有說服力得多。">
             <div class="slide-inner">
@@ -1968,6 +1991,7 @@
                 <div class="demo-tag">Demo：真實 LoveLine 對話錄影</div>
             </div>
         </section>
+        -->
 
         <!-- 投影片 38 — 不同模型不同演法 -->
         <section class="slide" data-section="PART 5 ‧ 五工具流水線" data-notes="這張投影片揭露『AI 模型不是萬能、各有風格』這件事，對一般觀眾來說是個有趣的觀察。">
@@ -2016,18 +2040,17 @@
                     <div class="example-card" style="border-color: var(--c-accent);">
                         <h4>AI 自動展開的（一千字）</h4>
                         <p class="serif text-s mt-2" style="font-size: 0.85em;">
-                            「6/28（六）多雲偶雨<br><br>
+                            「6/28（六）多雲偶雨<br>
                             早上開會的時候被主管當著全部人糾正了一次。她沒有特別兇，就是那種『林沛雯妳這個版本還是再想一下吧』的語氣，但話說出口的瞬間，感覺到旁邊張哲在看。<br><br>
-                            說：『好。』<br><br>
-                            回座位之後，把咖啡杯轉了半圈，又轉了半圈。手指有點抖。<br><br>
-                            不是因為被糾正。是因為被糾正的時候，第一個念頭是『不要讓張哲覺得很弱』——居然在乎這件事。<br><br>
-                            主任今晚一直繞著的腳走⋯⋯」
+                            說：『好。』<br>
+                            回座位之後，手指有點抖。<br>
+                            不是因為被糾正。是因為被糾正的時候，第一個念頭是『不要讓張哲覺得很弱』——居然在乎這件事。<br>
                         </p>
                     </div>
                 </div>
                 <p class="text-l mt-3 center" style="text-align: center;"><span class="accent">作者寫一行，AI 寫一千字。</span>
                     但每一字都是這個角色會寫出來的。</p>
-                <div class="demo-tag">Demo：daily_run.html 生成過程</div>
+                <!--<div class="demo-tag">Demo：daily_run.html 生成過程</div>-->
             </div>
         </section>
 
@@ -2035,9 +2058,11 @@
         <section class="slide" data-section="PART 5 ‧ 五工具流水線" data-notes="展示日記工具的實際操作畫面（一）。">
             <div class="slide-inner">
                 <div class="kicker">工具 ④</div>
-                <h1 class="title-m mb-3">日記工具 <span class="accent">實際畫面</span> 1</h1>
+                <!--<h1 class="title-m mb-3">日記工具 <span class="accent">實際畫面</span> 1</h1>-->
                 <img src="../images/簡報_2026-07/daily_run-01.png" alt="日記工具截圖 1"
-                    style="max-width: 80%; max-height: 65vh; margin: 24px auto 0; display: block; border-radius: 8px; border: 1px solid var(--c-divider);">
+                    style="max-width: 100%; max-height: 100%; margin: 12px auto 0; display: block; border-radius: 8px; border: 1px solid var(--c-divider);">
+
+
             </div>
         </section>
 
@@ -2045,9 +2070,9 @@
         <section class="slide" data-section="PART 5 ‧ 五工具流水線" data-notes="展示日記工具的實際操作畫面（二）。">
             <div class="slide-inner">
                 <div class="kicker">工具 ④</div>
-                <h1 class="title-m mb-3">日記工具 <span class="accent">實際畫面</span> 2</h1>
+                <!--<h1 class="title-m mb-3">日記工具 <span class="accent">實際畫面</span> 2</h1>-->
                 <img src="../images/簡報_2026-07/daily_run-02.png" alt="日記工具截圖 2"
-                    style="max-width: 80%; max-height: 65vh; margin: 24px auto 0; display: block; border-radius: 8px; border: 1px solid var(--c-divider);">
+                    style="max-width: 100%; max-height: 100%; margin: 12px auto 0; display: block; border-radius: 8px; border: 1px solid var(--c-divider);">
             </div>
         </section>
 
@@ -2055,27 +2080,27 @@
         <section class="slide" data-section="PART 5 ‧ 五工具流水線" data-notes="這張可以強調『作者每一層都可以介入』這件事，避免觀眾誤以為『AI 全自動寫一本』。">
             <div class="slide-inner">
                 <div class="kicker">工具 ⑤</div>
-                <h1 class="title-m mb-3">小說產生器：<span class="accent">四個粒度</span></h1>
+                <h1 class="title-m mb-3">小說產生器：<span class="accent">四個階段</span></h1>
                 <div class="two-col">
                     <div>
                         <div class="example-card">
-                            <h4 class="dim" style="font-size: 0.85em;">粒度 1</h4>
-                            <p class="serif"><span class="accent">粗綱</span>：整本小說的梗概（一段）</p>
+                            <!--<h4 class="dim" style="font-size: 0.85em;">粒度 1</h4>-->
+                            <h4 class="serif" style="font-size: 3rem;"><span class="accent">粗綱</span>：整本小說的梗概（一段）</h4>
                         </div>
                         <p class="text-s dim center mt-1" style="text-align:center;">↓ AI 展開</p>
                         <div class="example-card">
-                            <h4 class="dim" style="font-size: 0.85em;">粒度 2</h4>
-                            <p class="serif"><span class="accent">章</span>：章節大綱（每章一段）</p>
+                            <!--<h4 class="dim" style="font-size: 0.85em;">粒度 2</h4>-->
+                            <h4 class="serif" style="font-size: 3rem;"><span class="accent">章</span>：章節大綱（每章一段）</h4>
                         </div>
                         <p class="text-s dim center mt-1" style="text-align:center;">↓ AI 展開</p>
                         <div class="example-card">
-                            <h4 class="dim" style="font-size: 0.85em;">粒度 3</h4>
-                            <p class="serif"><span class="accent">節</span>：每節細綱（每節數段）</p>
+                            <!--<h4 class="dim" style="font-size: 0.85em;">粒度 3</h4>-->
+                            <h4 class="serif" style="font-size: 3rem;"><span class="accent">節</span>：每節細綱（每節數段）</h4>
                         </div>
                         <p class="text-s dim center mt-1" style="text-align:center;">↓ AI 展開</p>
                         <div class="example-card">
-                            <h4 class="dim" style="font-size: 0.85em;">粒度 4</h4>
-                            <p class="serif"><span class="accent">內文</span>：實際小說文字</p>
+                            <!--<h4 class="dim" style="font-size: 0.85em;">粒度 4</h4>-->
+                            <h4 class="serif" style="font-size: 3rem;"><span class="accent">內文</span>：實際小說文字</h4>
                         </div>
                     </div>
                     <div>
@@ -2094,7 +2119,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="demo-tag">Demo：novel_generator.html 四階段展開</div>
+                <!--<div class="demo-tag">Demo：novel_generator.html 四階段展開</div>-->
             </div>
         </section>
 
@@ -2102,9 +2127,9 @@
         <section class="slide" data-section="PART 5 ‧ 五工具流水線" data-notes="展示小說產生器的實際操作畫面（一）。">
             <div class="slide-inner">
                 <div class="kicker">工具 ⑤</div>
-                <h1 class="title-m mb-3">小說產生器 <span class="accent">實際畫面</span> 1</h1>
+                <!--<h1 class="title-m mb-3">小說產生器 <span class="accent">實際畫面</span> 1</h1>-->
                 <img src="../images/簡報_2026-07/novel_generator-01.png" alt="小說產生器截圖 1"
-                    style="max-width: 80%; max-height: 65vh; margin: 24px auto 0; display: block; border-radius: 8px; border: 1px solid var(--c-divider);">
+                    style="max-width: 100%; max-height: 100%; margin: 12px auto 0; display: block; border-radius: 8px; border: 1px solid var(--c-divider);">
             </div>
         </section>
 
@@ -2112,9 +2137,27 @@
         <section class="slide" data-section="PART 5 ‧ 五工具流水線" data-notes="展示小說產生器的實際操作畫面（二）。">
             <div class="slide-inner">
                 <div class="kicker">工具 ⑤</div>
-                <h1 class="title-m mb-3">小說產生器 <span class="accent">實際畫面</span> 2</h1>
+                <!--<h1 class="title-m mb-3">小說產生器 <span class="accent">實際畫面</span> 2</h1>-->
                 <img src="../images/簡報_2026-07/novel_generator-02.png" alt="小說產生器截圖 2"
-                    style="max-width: 80%; max-height: 65vh; margin: 24px auto 0; display: block; border-radius: 8px; border: 1px solid var(--c-divider);">
+                    style="max-width: 100%; max-height: 100%; margin: 12px auto 0; display: block; border-radius: 8px; border: 1px solid var(--c-divider);">
+            </div>
+        </section>
+        <!-- 投影片 44-1 — novel_generator 截圖 3 -->
+        <section class="slide" data-section="PART 5 ‧ 五工具流水線" data-notes="展示小說產生器的實際操作畫面（三）。">
+            <div class="slide-inner">
+                <div class="kicker">工具 ⑤</div>
+                <!--<h1 class="title-m mb-3">小說產生器 <span class="accent">實際畫面</span> 2</h1>-->
+                <img src="../images/簡報_2026-07/評論小說介面.png" alt="小說產生器截圖 3"
+                    style="max-width: 100%; max-height: 100%; margin: 12px auto 0; display: block; border-radius: 8px; border: 1px solid var(--c-divider);">
+            </div>
+        </section>
+        <!-- 投影片 44-2 — novel_generator 截圖 4 -->
+        <section class="slide" data-section="PART 5 ‧ 五工具流水線" data-notes="展示小說產生器的實際操作畫面（四）。">
+            <div class="slide-inner">
+                <div class="kicker">工具 ⑤</div>
+                <!--<h1 class="title-m mb-3">小說產生器 <span class="accent">實際畫面</span> 2</h1>-->
+                <img src="../images/簡報_2026-07/評論小說介面選單.png" alt="小說產生器截圖 4"
+                    style="scale: 150%; image-rendering: pixelated; max-width: 100%; max-height: 100%; margin: 12px auto 0; display: block; border-radius: 8px; border: 1px solid var(--c-divider);">
             </div>
         </section>
 
@@ -2171,7 +2214,7 @@
                 </div>
                 <p class="text-l mt-3 center" style="text-align: center;"><span
                         class="accent">這個功能讓你的舊作可以變成新作的素材庫。</span></p>
-                <div class="demo-tag">Demo：novel_generator 文字檔轉粗綱</div>
+                <!--<div class="demo-tag">Demo：novel_generator 文字檔轉粗綱</div>-->
             </div>
         </section>
 
@@ -2180,38 +2223,38 @@
             data-notes="這張是整套系統的『實際使用故事』。讓觀眾看到五個工具如何在真實的兩週裡被串起來。可以稍微多停留。">
             <div class="slide-inner">
                 <div class="kicker">把五個工具串起來</div>
-                <h1 class="title-m mb-3">一個真實的<span class="accent">兩週工作流</span></h1>
+                <h1 class="title-m mb-3">實際的<span class="accent">工作流程</span></h1>
                 <div class="timeline">
                     <div class="timeline-item">
-                        <div class="date">6/01</div>
+                        <!--<div class="date">6/01</div>-->
                         <div class="desc">想寫一個故事——30 歲在台北一個人住的女生，遇到比她小 5 歲的男生。</div>
                     </div>
                     <div class="timeline-item">
-                        <div class="date">6/02</div>
+                        <!--<div class="date">6/02</div>-->
                         <div class="desc">填 LPAS，把結果當女主角人格地基：<span class="accent">海嘯 ‧ 岩漿 ‧ 深海</span>。</div>
                     </div>
                     <div class="timeline-item">
-                        <div class="date">6/03</div>
-                        <div class="desc">編輯器補完：林沛雯，34 歲，副總，離婚一年，養貓「主任」⋯⋯</div>
+                        <!--<div class="date">6/03</div>-->
+                        <div class="desc">角色編輯器補完：林沛雯，34 歲，副總，離婚一年，養貓「主任」⋯⋯</div>
                     </div>
                     <div class="timeline-item">
-                        <div class="date">6/04</div>
+                        <!--<div class="date">6/04</div>-->
                         <div class="desc">LoveLine 聊半小時。發現她太流暢——應該更冷一點。回去調個性，再聊。對了。</div>
                     </div>
                     <div class="timeline-item">
-                        <div class="date">6/05</div>
+                        <!--<div class="date">6/05</div>-->
                         <div class="desc">建男主角：張哲，29 歲，新進副理，活潑外放，海嘯型。LoveLine 聊。</div>
                     </div>
                     <div class="timeline-item">
-                        <div class="date">6/06 ~ 6/12</div>
+                        <!--<div class="date">6/06 ~ 6/12</div>-->
                         <div class="desc">為兩人各寫一週的日記，建立「小說開始之前」的歷史。</div>
                     </div>
                     <div class="timeline-item">
-                        <div class="date">6/13</div>
+                        <!--<div class="date">6/13</div>-->
                         <div class="desc">小說產生器寫粗綱：「34 歲離婚女主管 × 小 5 歲下屬，男生升職調走，女主角發現自己已經放不下。」</div>
                     </div>
                     <div class="timeline-item">
-                        <div class="date">6/14 ~ 6/19</div>
+                        <!--<div class="date">6/14 ~ 6/19</div>-->
                         <div class="desc">AI 生章 → 調章 → AI 生節 → 調節 → AI 生內文。</div>
                     </div>
                     <div class="timeline-item">
@@ -2238,11 +2281,11 @@
                     <span class="dim">不只是寫文字。</span>
                 </h1>
                 <div class="mt-4" style="display: inline-block; text-align: left;">
-                    <p class="text-m dim">▸ LPAS 給角色人格地基</p>
-                    <p class="text-m dim">▸ 編輯器補完細節</p>
-                    <p class="text-m dim">▸ LoveLine 驗證 AI 接得住</p>
-                    <p class="text-m dim">▸ 日記讓角色活在時間裡</p>
-                    <p class="text-m dim">▸ 小說產生器組裝成完整章節</p>
+                    <p class="text-l dim">▸ LPAS 給角色人格地基</p>
+                    <p class="text-l dim">▸ 角色編輯器補完細節</p>
+                    <p class="text-l dim">▸ LoveLine 透過聊天驗證 AI 接得住</p>
+                    <p class="text-l dim">▸ 日記讓角色活在時間裡，觀察真實感</p>
+                    <p class="text-l dim">▸ 小說產生器組裝成完整章節</p>
                     <p class="text-m accent mt-2">而每一步，作者都可以介入。</p>
                 </div>
             </div>
@@ -2264,12 +2307,12 @@
                     </div>
                     <div class="stat-card">
                         <div class="num">16</div>
-                        <div class="label">個天候型</div>
+                        <div class="label">個天候型愛情人格分析</div>
                     </div>
                 </div>
                 <div class="stat-grid">
                     <div class="stat-card">
-                        <div class="num">30+</div>
+                        <div class="num">50+</div>
                         <div class="label">個版本</div>
                     </div>
                     <div class="stat-card">
