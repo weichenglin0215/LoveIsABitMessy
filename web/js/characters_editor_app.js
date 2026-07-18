@@ -61,7 +61,10 @@ async function refreshCharacterList() {
         alert('角色卡載入失敗: ' + friendlyError(error.message));
         return;
     }
-    (data || []).forEach(row => {
+    const rows = (data || []).slice().sort((a, b) =>
+        String(a.name || '').localeCompare(String(b.name || ''), 'zh-Hant')
+    );
+    rows.forEach(row => {
         const opt = document.createElement('option');
         opt.value = row.id;
         // 統一以「角色名稱-full_name」顯示

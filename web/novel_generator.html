@@ -39,7 +39,7 @@
       <button class="btn primary-btn" id="btn-export">📤 匯出小說</button>
       <!-- 🧰 額外功能：點擊展開下方選單 -->
       <div class="extra-features-wrapper" style="position:relative; display:inline-block;">
-        <button class="btn secondary-btn" id="btn-extra-features" title="展開額外功能選單">🧰 額外功能 ▾</button>
+        <button class="btn secondary-btn" id="btn-extra-features" title="展開額外功能選單">🧰 額外功能🔽</button>
         <div id="extra-features-menu"
           style="display:none; position:absolute; top:100%; left:0; margin-top:4px; padding:8px; flex-direction:column; gap:6px; background:var(--c-bg-panel, hsla(240, 10%, 10%, 0.85)); border:2px solid var(--c-border, #555); border-bottom:5px solid var(--c-border, #555); border-radius:var(--radius-lg, 10px); z-index:100; white-space:nowrap; box-shadow:0 4px 12px rgba(0,0,0,0.3);">
           <button class="btn secondary-btn" id="btn-author-notes" title="撰寫作者備註，不會提供給 AI，但會隨小說一起儲存／讀取">📝 作者備註</button>
@@ -736,7 +736,9 @@
               <option value="C">C. 中文系老師（挖掘優點並補強缺點）</option>
               <option value="D">D. 愛心家教（發掘特點與可行方向）</option>
               <option value="E">E. 空白架構（自行填寫）</option>
-              <option value="F">F. 依序執行以上所有選項評論</option>
+              <option value="F">F. 只說優點的誠實讀者</option>
+              <option value="G">G. 只說缺點的沒耐性讀者</option>
+              <option value="H">H. 依序執行以上所有選項評論</option>
             </select>
             <button class="btn secondary-btn" id="btn-reset-review-prompt" title="將目前選項的評論提示詞重置為程式預設值">♻️
               重置評論提示詞</button>

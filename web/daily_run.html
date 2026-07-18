@@ -642,8 +642,10 @@
                 if (typeof window.convertCardJsonV1ToV3 === 'function') {
                     data.forEach(c => { if (c.card_json) window.convertCardJsonV1ToV3(c.card_json); });
                 }
-                cloudCharacters = data;
-                const charOptions = data.map(c => {
+                cloudCharacters = data.slice().sort((a, b) =>
+                    String(a.name || '').localeCompare(String(b.name || ''), 'zh-Hant')
+                );
+                const charOptions = cloudCharacters.map(c => {
                     // 統一以「角色名稱-full_name」顯示
                     return `<option value="${c.id}">${charDropdownLabel(c)}</option>`;
                 }).join('');

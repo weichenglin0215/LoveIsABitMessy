@@ -146,7 +146,8 @@ def _enrich_char_data(char_data: dict, relationship_params: dict = None) -> dict
     # 確保基本屬性有預設值
     if not c.get('height'): c['height'] = "165"
     if not c.get('weight'): c['weight'] = "55"
-    if not c.get('bust'): c['bust'] = "C"
+    if not c.get('bust'):
+        c['bust'] = "無" if c.get('gender') == "男" else "C"
     
     return c
 
@@ -251,10 +252,10 @@ def build_analyze_text_character_prompt(text_content: str, target_name: str = ""
 【必須輸出標準 JSON，不含任何額外說明文字或 markdown 標記，直接以 {{ 開頭】
 {{
   "name": "角色名稱，若無則設「未命名角色」",
-  "gender": "女",
+  "gender": "根據文字判斷性別，填『男』或『女』，若無明確線索則預設『女』",
   "height": "身高(cm)字串，根據身材描述來判斷，若無則設164",
   "weight": "體重(kg)字串，根據身材描述來判斷，若無則設50",
-  "bust": "罩杯字母，根據身材描述來判斷，若無則設C",
+  "bust": "罩杯字母（A/B/C/D/E/F/G），根據身材描述來判斷，若無則設C；但若角色性別為『男』則必須填『無』",
   "birthday": "YYYY-MM-DD，依推斷星座設定合理日期",
   "zodiac": "XX座",
   "blood_type": "X型",
@@ -595,6 +596,7 @@ AI建議的多位配角：與主角的關係、動機、目標、核心信念、
 每章字數約 {words_per_chapter} 字。格式如下：
 
 第X章：（章節標題）
+* 本章粗綱內容。(至少150字)
 * 男主角XXX：動機、目標、核心信念、行為與情緒描述。
 * 女主角XXX：動機、目標、核心信念、行為與情緒描述。
 * 配角XXX：動機、目標、核心信念、行為與情緒描述。（其他角色一一條列；若無可省略）
@@ -666,7 +668,7 @@ def build_story_to_premise_prompt(text_content: str, chapter_count: int = 8, wor
 
 第一章：（章節標題）
 （本章粗綱，約{words_per_chapter}字）
-本章粗綱內容。
+本章粗綱內容。(至少三個要點，每個要點至少100字)
 關鍵情節中的角色們的動機與目標。
 關鍵情節中的角色們的關係分析。
 關鍵的物品或時間點對主角們的影響分析。
@@ -674,7 +676,7 @@ AI建議的劇情轉變或補充分析。
 
 第二章：（章節標題）
 （本章粗綱，約{words_per_chapter}字）
-本章粗綱內容。
+本章粗綱內容。(至少三個要點，每個要點至少100字)
 關鍵情節中的角色關係。
 關鍵的物品或時間點對主角們的影響。
 AI建議的劇情轉變或補充。

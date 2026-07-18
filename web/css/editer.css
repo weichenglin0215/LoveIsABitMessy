@@ -282,6 +282,7 @@ body {
   margin: 4px 0;
   border-radius: 3px;
 }
+
 .review-resizer:hover,
 .review-resizer.resizing {
   background: var(--c-accent-light);
@@ -387,10 +388,12 @@ body {
   height: auto;
 }
 
+/*小說名稱，左右與長度設訂*/
 .book-title {
   display: flex;
   align-items: center;
   gap: 0.3rem;
+  width: 36rem;
 }
 
 .book-title input {
@@ -399,7 +402,6 @@ body {
   color: #fff;
   padding: 3px 0.3rem;
   border-radius: var(--radius-2xs);
-  width: 15rem;
   font-size: var(--font-size-md);
   height: auto;
 }
