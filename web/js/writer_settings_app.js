@@ -3,22 +3,32 @@
  */
 'use strict';
 
-(function() {
+(function () {
     const WriterSettingsApp = {
         styleList: [],
         sampleList: [],
 
         init() {
+            this.injectCSS();
             this.injectHTML();
             this.setupListeners();
             this.refreshData();
+        },
+
+        injectCSS() {
+            if (!document.querySelector('link[href="/css/editer.css"]')) {
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = '/css/editer.css';
+                document.head.appendChild(link);
+            }
         },
 
         injectHTML() {
             const html = `
             <!-- 寫作風格彈窗 -->
             <div id="ws-style-modal" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; justify-content:center; align-items:center;">
-                <div class="modal" style="background:#222; color:#eee; padding:20px; border-radius:8px; width:600px; max-width:90%; border:1px solid #444;">
+                <div class="modal" style="background:#222; color:#eee; padding:20px; border-radius:8px; height: 90%; width:60%; max-width:90%; border:1px solid #444; display: flex; flex-direction: column; box-sizing: border-box;">
                     <h3 style="margin-top:0;">知名作家寫作風格</h3>
                     <div style="margin-bottom:10px;">
                         <label>選取雲端項目：</label>
@@ -31,9 +41,9 @@
                         <label>名稱：</label>
                         <input type="text" id="ws-style-name" style="width:100%; padding:8px; box-sizing:border-box; background:#333; color:white; border:1px solid #555;">
                     </div>
-                    <div style="margin-bottom:15px;">
+                    <div style="margin-bottom:15px; flex: 1; display: flex; flex-direction: column;">
                         <label>內容 (Markdown 格式)：</label>
-                        <textarea id="ws-style-content" style="width:100%; height:300px; padding:8px; box-sizing:border-box; background:#333; color:white; border:1px solid #555; font-family:monospace; resize:vertical;"></textarea>
+                        <textarea class="editor-textarea" id="ws-style-content" style="font-size: var(--font-size-xl); line-height: 1.4; resize: vertical; font-family: var(--font-kai);"></textarea>
                     </div>
                     <div style="display:flex; justify-content:flex-end; gap:10px;">
                         <button id="ws-style-cancel" style="padding:8px 20px; background:#555; color:white; border:none; cursor:pointer; border-radius:4px;">取消</button>
@@ -44,7 +54,7 @@
 
             <!-- 寫作範本彈窗 -->
             <div id="ws-sample-modal" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; justify-content:center; align-items:center;">
-                <div class="modal" style="background:#222; color:#eee; padding:20px; border-radius:8px; width:600px; max-width:90%; border:1px solid #444;">
+                <div class="modal" style="background:#222; color:#eee; padding:20px; border-radius:8px; height: 90%; width:60%; max-width:90%; border:1px solid #444; display: flex; flex-direction: column; box-sizing: border-box;">
                     <h3 style="margin-top:0;">知名作家寫作範本</h3>
                     <div style="margin-bottom:10px;">
                         <label>選取雲端項目：</label>
@@ -57,9 +67,9 @@
                         <label>名稱：</label>
                         <input type="text" id="ws-sample-name" style="width:100%; padding:8px; box-sizing:border-box; background:#333; color:white; border:1px solid #555;">
                     </div>
-                    <div style="margin-bottom:15px;">
+                    <div style="margin-bottom:15px; flex: 1; display: flex; flex-direction: column;">
                         <label>內容：</label>
-                        <textarea id="ws-sample-content" style="width:100%; height:300px; padding:8px; box-sizing:border-box; background:#333; color:white; border:1px solid #555; font-family:monospace; resize:vertical;"></textarea>
+                        <textarea class="editor-textarea" id="ws-sample-content" style="font-size: var(--font-size-xl); line-height: 1.4; resize: vertical; font-family: var(--font-kai);"></textarea>
                     </div>
                     <div style="display:flex; justify-content:flex-end; gap:10px;">
                         <button id="ws-sample-cancel" style="padding:8px 20px; background:#555; color:white; border:none; cursor:pointer; border-radius:4px;">取消</button>

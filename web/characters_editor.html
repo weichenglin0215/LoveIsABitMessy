@@ -45,8 +45,7 @@
       <div class="editor-header">
         <div style="display:flex; align-items:center; gap:12px;">
           <div class="title-xl">🎭 角色資料編輯器</div>
-          <button id="btn-help-manual" title="開啟使用說明"
-            onclick="HelpModal.open('character_editor', '🎭 角色資料編輯器 使用說明')"
+          <button id="btn-help-manual" title="開啟使用說明" onclick="HelpModal.open('character_editor', '🎭 角色資料編輯器 使用說明')"
             style="margin-left:auto; width:36px; height:36px; border-radius:50%; border:2px solid #f472b6; background:#333; color:#f472b6; font-size:18px; font-weight:bold; cursor:pointer; flex-shrink:0;">?</button>
         </div>
         <div class="conn-panel">
@@ -62,8 +61,8 @@
               <option value="">-- 選擇角色卡 --</option>
             </select>
             <button class="btn-icon" id="btn-char-refresh" title="從雲端重新下載角色卡資料">🔄</button>
-            <button class="btn primary-btn" id="btn-char-save-new" title="新增儲存角色卡資料到雲端">🆕 儲存新角色(新增)...</button>
-            <button class="btn primary-btn" id="btn-char-save" title="注意：覆蓋雲端角色卡資料">💾 儲存角色(覆蓋)</button>
+            <button class="btn primary-btn" id="btn-char-save-new" title="新增儲存角色卡資料到雲端">☁️🆕 儲存新角色(新增)...</button>
+            <button class="btn primary-btn" id="btn-char-save" title="注意：覆蓋雲端角色卡資料">☁️💾 儲存角色(覆蓋)</button>
           </div>
 
           <div class="field-group">
@@ -171,8 +170,8 @@
               <input type="file" id="char-photo-file-input" accept="image/*" style="display:none;">
             </div>
             <div class="text-center" id="char-photo-dropzone"
- style="width: 160px; height: 160px; background: #333; border: 2px dashed #888; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #888; font-size: 13px; cursor: pointer; user-select: none; overflow: hidden; position: relative"
- title="點擊或拖曳圖片至此上傳">
+              style="width: 160px; height: 160px; background: #333; border: 2px dashed #888; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #888; font-size: 13px; cursor: pointer; user-select: none; overflow: hidden; position: relative"
+              title="點擊或拖曳圖片至此上傳">
               <span id="char-photo-placeholder" style="padding:6px;">將圖片拖曳<br>至此或點擊上傳</span>
               <img id="char-photo-thumb" src="" alt=""
                 style="display:none; max-width:100%; max-height:100%; object-fit:contain;">

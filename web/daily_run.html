@@ -27,8 +27,7 @@
         <div class="col-left">
             <div style="display:flex; align-items:center; gap:12px;">
                 <div class="title-xl">🎭 AI 生成日記</div>
-                <button id="btn-help-manual" title="開啟使用說明"
-                    onclick="HelpModal.open('diary', '📅 AI 生成日記 使用說明')"
+                <button id="btn-help-manual" title="開啟使用說明" onclick="HelpModal.open('diary', '📅 AI 生成日記 使用說明')"
                     style="margin-left:auto; width:36px; height:36px; border-radius:50%; border:2px solid #f472b6; background:#333; color:#f472b6; font-size:18px; font-weight:bold; cursor:pointer; flex-shrink:0;">?</button>
             </div>
             <p class="title-hint">
@@ -37,13 +36,13 @@
 
             <!-- 專案管理 -->
             <div class="form-section project-panel">
-                <label class="title-md">📂 日記專案管理 (雲端)</label>
+                <label class="title-md">☁️ 日記專案管理 (雲端)</label>
                 <div class="project-bar">
                     <input type="text" id="project-id" placeholder="專案 ID (唯讀)" readonly
                         class="project-id-input flex-1">
-                    <button class="btn secondary-btn flex-1" id="btn-load-project">讀取專案</button>
-                    <button class="btn primary-btn flex-1" id="btn-save-new-project">儲存新專案...</button>
-                    <button class="btn primary-btn flex-1" id="btn-save-project">儲存專案(更新)</button>
+                    <button class="btn secondary-btn flex-1" id="btn-load-project">☁️讀取專案</button>
+                    <button class="btn primary-btn flex-1" id="btn-save-new-project">☁️儲存新專案...</button>
+                    <button class="btn primary-btn flex-1" id="btn-save-project">☁️儲存專案(更新)</button>
                 </div>
                 <select id="project-select" class="project-select-dropdown"></select>
             </div>
@@ -1267,17 +1266,16 @@
             <h2 style="margin-top:0; color:var(--c-accent-light);">生成日記-設定篇數與日期範圍</h2>
             <div class="form-group" style="margin-top:20px;">
                 <label>每日的篇數：</label>
-                <input type="number" id="modal-daily-count" class="input-flat w-fill" min="1" max="32" value="1"
- >
+                <input type="number" id="modal-daily-count" class="input-flat w-fill" min="1" max="32" value="1">
             </div>
             <div style="display:flex; gap:10px; margin-top:15px;">
                 <div class="form-group" style="flex:1;">
                     <label>起始日期：</label>
-                    <input type="date" id="modal-start-date" class="input-flat w-fill" >
+                    <input type="date" id="modal-start-date" class="input-flat w-fill">
                 </div>
                 <div class="form-group" style="flex:1;">
                     <label>結束日期：</label>
-                    <input type="date" id="modal-end-date" class="input-flat w-fill" >
+                    <input type="date" id="modal-end-date" class="input-flat w-fill">
                 </div>
             </div>
             <div style="margin-top:25px; display:flex; justify-content:flex-end; gap:10px;">
@@ -1293,12 +1291,14 @@
             <!-- Top bar -->
             <div class="cmp-toolbar">
                 <h2 class="cmp-title">📚 多本日記比對</h2>
-                <button onclick="loadCompareDiaryList()" class="btn secondary-btn" title="重新從雲端載入日記列表">🔄 更新雲端列表</button>
+                <button onclick="loadCompareDiaryList()" class="btn secondary-btn" title="重新從雲端載入日記列表">🔄
+                    更新雲端列表</button>
                 <span class="cmp-icon">🔍</span>
                 <span id="cd-search-count" class="log-search-count"></span>
                 <button class="log-search-nav-btn" id="cd-search-prev" title="上一個">▲</button>
                 <button class="log-search-nav-btn" id="cd-search-next" title="下一個">▼</button>
-                <input type="text" id="cd-search-input" class="log-search-input w-half" placeholder="搜尋四欄文字（Enter 執行）...">
+                <input type="text" id="cd-search-input" class="log-search-input w-half"
+                    placeholder="搜尋四欄文字（Enter 執行）...">
                 <button class="modal-close-btn" style="margin-left:auto;"
                     onclick="document.getElementById('modal-compare-diaries').classList.add('hidden')">&times;</button>
             </div>
@@ -1310,16 +1310,19 @@
                         <select class="cmp-select cd-diary-select" data-col="0">
                             <option value="">-- 請選擇日記 --</option>
                         </select>
-                        <button class="btn primary-btn size-md" onclick="saveCompareDiary(0)" title="儲存修改內容">💾 儲存修改內容</button>
+                        <button class="btn primary-btn size-md" onclick="saveCompareDiary(0)" title="儲存修改內容">💾
+                            儲存修改內容</button>
                         <button class="btn-del-sec" onclick="deleteCompareDiary(0)" title="刪除此雲端日記">🗑️</button>
                     </div>
                     <div style="flex:1; overflow-y:auto;">
                         <div class="cd-col-label">日記文字內容 (Story)</div>
                         <textarea class="cd-story w-fill cd-col-textarea" data-col="0" style="height:400px"></textarea>
                         <div class="cd-col-label with-top">生圖提示詞 (Image Prompt)</div>
-                        <textarea class="cd-image-prompt w-fill cd-col-textarea" data-col="0" style="height:200px"></textarea>
+                        <textarea class="cd-image-prompt w-fill cd-col-textarea" data-col="0"
+                            style="height:200px"></textarea>
                         <div class="cd-col-label with-top">AI 參數 (AISetup)</div>
-                        <textarea class="cd-ai-setup w-fill cd-col-textarea" data-col="0" style="height:150px"></textarea>
+                        <textarea class="cd-ai-setup w-fill cd-col-textarea" data-col="0"
+                            style="height:150px"></textarea>
                     </div>
                 </div>
                 <!-- Col 1 -->
@@ -1328,16 +1331,19 @@
                         <select class="cmp-select cd-diary-select" data-col="1">
                             <option value="">-- 請選擇日記 --</option>
                         </select>
-                        <button class="btn primary-btn size-md" onclick="saveCompareDiary(1)" title="儲存修改內容">💾 儲存修改內容</button>
+                        <button class="btn primary-btn size-md" onclick="saveCompareDiary(1)" title="儲存修改內容">💾
+                            儲存修改內容</button>
                         <button class="btn-del-sec" onclick="deleteCompareDiary(1)" title="刪除此雲端日記">🗑️</button>
                     </div>
                     <div style="flex:1; overflow-y:auto;">
                         <div class="cd-col-label">日記文字內容 (Story)</div>
                         <textarea class="cd-story w-fill cd-col-textarea" data-col="1" style="height:400px"></textarea>
                         <div class="cd-col-label with-top">生圖提示詞 (Image Prompt)</div>
-                        <textarea class="cd-image-prompt w-fill cd-col-textarea" data-col="1" style="height:200px"></textarea>
+                        <textarea class="cd-image-prompt w-fill cd-col-textarea" data-col="1"
+                            style="height:200px"></textarea>
                         <div class="cd-col-label with-top">AI 參數 (AISetup)</div>
-                        <textarea class="cd-ai-setup w-fill cd-col-textarea" data-col="1" style="height:150px"></textarea>
+                        <textarea class="cd-ai-setup w-fill cd-col-textarea" data-col="1"
+                            style="height:150px"></textarea>
                     </div>
                 </div>
                 <!-- Col 2 -->
@@ -1346,16 +1352,19 @@
                         <select class="cmp-select cd-diary-select" data-col="2">
                             <option value="">-- 請選擇日記 --</option>
                         </select>
-                        <button class="btn primary-btn size-md" onclick="saveCompareDiary(2)" title="儲存修改內容">💾 儲存修改內容</button>
+                        <button class="btn primary-btn size-md" onclick="saveCompareDiary(2)" title="儲存修改內容">💾
+                            儲存修改內容</button>
                         <button class="btn-del-sec" onclick="deleteCompareDiary(2)" title="刪除此雲端日記">🗑️</button>
                     </div>
                     <div style="flex:1; overflow-y:auto;">
                         <div class="cd-col-label">日記文字內容 (Story)</div>
                         <textarea class="cd-story w-fill cd-col-textarea" data-col="2" style="height:400px"></textarea>
                         <div class="cd-col-label with-top">生圖提示詞 (Image Prompt)</div>
-                        <textarea class="cd-image-prompt w-fill cd-col-textarea" data-col="2" style="height:200px"></textarea>
+                        <textarea class="cd-image-prompt w-fill cd-col-textarea" data-col="2"
+                            style="height:200px"></textarea>
                         <div class="cd-col-label with-top">AI 參數 (AISetup)</div>
-                        <textarea class="cd-ai-setup w-fill cd-col-textarea" data-col="2" style="height:150px"></textarea>
+                        <textarea class="cd-ai-setup w-fill cd-col-textarea" data-col="2"
+                            style="height:150px"></textarea>
                     </div>
                 </div>
                 <!-- Col 3 -->
@@ -1364,16 +1373,19 @@
                         <select class="cmp-select cd-diary-select" data-col="3">
                             <option value="">-- 請選擇日記 --</option>
                         </select>
-                        <button class="btn primary-btn size-md" onclick="saveCompareDiary(3)" title="儲存修改內容">💾 儲存修改內容</button>
+                        <button class="btn primary-btn size-md" onclick="saveCompareDiary(3)" title="儲存修改內容">💾
+                            儲存修改內容</button>
                         <button class="btn-del-sec" onclick="deleteCompareDiary(3)" title="刪除此雲端日記">🗑️</button>
                     </div>
                     <div style="flex:1; overflow-y:auto;">
                         <div class="cd-col-label">日記文字內容 (Story)</div>
                         <textarea class="cd-story w-fill cd-col-textarea" data-col="3" style="height:400px"></textarea>
                         <div class="cd-col-label with-top">生圖提示詞 (Image Prompt)</div>
-                        <textarea class="cd-image-prompt w-fill cd-col-textarea" data-col="3" style="height:200px"></textarea>
+                        <textarea class="cd-image-prompt w-fill cd-col-textarea" data-col="3"
+                            style="height:200px"></textarea>
                         <div class="cd-col-label with-top">AI 參數 (AISetup)</div>
-                        <textarea class="cd-ai-setup w-fill cd-col-textarea" data-col="3" style="height:150px"></textarea>
+                        <textarea class="cd-ai-setup w-fill cd-col-textarea" data-col="3"
+                            style="height:150px"></textarea>
                     </div>
                 </div>
             </div>
