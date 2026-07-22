@@ -2420,6 +2420,10 @@
 
         totalNumEl.textContent = total;
 
+        // showSlide：切換至指定索引的投影片。
+        // 會將索引限制在合法範圍內、更新目前作用中的投影片樣式（.active）、
+        // 更新頁碼與進度條、同步右側章節標籤與講者備註內容，
+        // 並依目前頁碼決定上一頁／下一頁等導航按鈕是否要禁用，最後同步網址 hash 方便分享特定頁碼。
         function showSlide(idx) {
             if (idx < 0) idx = 0;
             if (idx >= total) idx = total - 1;
@@ -2448,16 +2452,20 @@
             history.replaceState(null, '', '#' + (idx + 1));
         }
 
+        // 以下四個為導航輔助函式：分別對應下一張、上一張、第一張、最後一張，
+        // 內部都是呼叫 showSlide() 並傳入目標索引。
         function next() { showSlide(current + 1); }
         function prev() { showSlide(current - 1); }
         function first() { showSlide(0); }
         function last() { showSlide(total - 1); }
 
+        // toggleNotes：切換講者備註面板的顯示／隱藏狀態。
         function toggleNotes() {
             notesVisible = !notesVisible;
             notesPanel.classList.toggle('show', notesVisible);
         }
 
+        // toggleFullscreen：切換瀏覽器全螢幕模式，方便正式簡報時使用。
         function toggleFullscreen() {
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen();
@@ -2466,7 +2474,7 @@
             }
         }
 
-        /* 鍵盤導航 */
+        /* 鍵盤導航：監聽全域按鍵事件，依不同按鍵呼叫對應的導航／面板切換函式 */
         document.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
                 e.preventDefault();
@@ -2494,15 +2502,15 @@
             }
         });
 
-        /* 按鈕點擊 */
+        /* 按鈕點擊：將導航列上的四顆按鈕分別綁定到對應的導航函式 */
         document.getElementById('btnFirst').addEventListener('click', first);
         document.getElementById('btnPrev').addEventListener('click', prev);
         document.getElementById('btnNext').addEventListener('click', next);
         document.getElementById('btnLast').addEventListener('click', last);
 
-        /* 點擊投影片左右半邊切換 */
+        /* 點擊投影片左右半邊切換：點畫面左 30% 區域回上一頁，右 30% 區域到下一頁，方便滑鼠操作 */
         deck.addEventListener('click', (e) => {
-            // 排除互動元素
+            // 排除互動元素（按鈕、連結），避免點擊按鈕時誤觸翻頁
             if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A' || e.target.closest('button')) return;
             const w = window.innerWidth;
             if (e.clientX < w * 0.3) {
@@ -2512,7 +2520,7 @@
             }
         });
 
-        /* 載入時從 URL hash 還原 */
+        /* 載入時從 URL hash 還原：讓使用者可以用「檔名#頁碼」的網址直接開啟指定頁面 */
         window.addEventListener('load', () => {
             const hash = parseInt(window.location.hash.slice(1));
             if (hash && hash >= 1 && hash <= total) {

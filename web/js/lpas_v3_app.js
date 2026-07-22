@@ -53,12 +53,14 @@ let app = {
     radarChartInstance: null,
     testMode: false,  // 🧪 測試模式：略過雲端儲存與角色卡生成
 
+    // 初始化：套用畫面縮放（若有提供）、綁定所有事件、顯示起始畫面（歡迎頁）
     init() {
         if (typeof applyScale === 'function') applyScale();
         this.bindEvents();
         this.showScreen('screen-landing');
     },
 
+    // 統一綁定整個應用程式所需的 DOM 事件（表單送出、選項按鈕、上一題/跳過題、鍵盤 1~7 快速作答等）
     bindEvents() {
         document.querySelector('.submit-info-btn').addEventListener('click', () => {
             this.alias = document.getElementById('input-alias').value;
@@ -113,12 +115,14 @@ let app = {
         });
     },
 
+    // 畫面切換工具：先移除所有畫面的 active 樣式，再啟用指定畫面，並記錄目前畫面 id
     showScreen(screenId) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(screenId).classList.add('active');
         this.currentScreen = screenId;
     },
 
+    // 顯示目前索引對應的作答說明文字，並加上淡出/淡入的過場效果
     showInstruction() {
         const p = document.getElementById('instruction-text');
         p.style.opacity = 0;
@@ -128,6 +132,9 @@ let app = {
         }, 300);
     },
 
+    // 開始正式作答流程：組出前三期（曖昧、熱戀、失戀）的題目佇列，
+    // 重置作答索引與答案陣列，產生本次測驗的 sessionId 與起始時間，
+    // 接著顯示第一題所屬期別的過場文字，再進入第一題
     startQuestions() {
         this.questionQueue = [];
         for (let p = 1; p <= 3; p++) {
@@ -145,6 +152,8 @@ let app = {
         else { this.renderQuestion(); this.showScreen('screen-question'); }
     },
 
+    // 依目前 currentQIndex 渲染題目畫面：更新題目文字、進度顯示、期別標籤，
+    // 並重新產生 1~7 分的圓形量表按鈕（若此題先前已作答過，會回填對應顏色）
     renderQuestion() {
         const q = this.questionQueue[this.currentQIndex];
         document.getElementById('question-text').innerText = q.text;
@@ -175,6 +184,9 @@ let app = {
         }
     },
 
+    // 記錄使用者對目前題目的作答分數（1~7）：
+    // 計算作答花費時間、更新量表按鈕顏色、寫入/覆蓋 answers 陣列中對應的紀錄，
+    // 最後延遲 300ms 讓使用者看到選取效果，再前進到下一題
     recordAnswer(score) {
         if (this.isTransitioning) return;
         this.isTransitioning = true;
@@ -200,6 +212,8 @@ let app = {
         setTimeout(() => this.advanceQuestion(q), 300);
     },
 
+    // 跳過目前題目（僅親密與身體性象限題目提供此按鈕）：
+    // 寫入一筆 score 為 null、skipped 為 true 的紀錄，之後前進到下一題
     skipCurrentQuestion() {
         if (this.isTransitioning) return;
         this.isTransitioning = true;
@@ -217,6 +231,10 @@ let app = {
         setTimeout(() => this.advanceQuestion(q), 200);
     },
 
+    // 前進到下一題：索引 +1 後判斷是否已作答完前 48 題（即 3 期主軸題），
+    // 若是則顯示「是否進行性象限題目」的詢問畫面；
+    // 否則若跨入新的期別就先顯示過場文字，同期別則直接渲染下一題；
+    // 若已無下一題則代表全部作答完畢，進入結算流程
     advanceQuestion(prevQ) {
         this.currentQIndex++;
 
@@ -231,11 +249,15 @@ let app = {
         }
     },
 
+    // 顯示「是否願意作答親密與身體（性象限）題目」的同意畫面
     askSexSection() {
         this.showScreen('screen-sex-consent');
         document.body.setAttribute('data-period', '4');
     },
 
+    // 使用者選擇整段跳過性象限題目：
+    // 將該期所有題目都標記為 skipped（分數為 null）後直接加入 answers，
+    // 接著直接進入結算流程（不會實際顯示這些題目）
     skipEntireSexSection() {
         this.skipSexSection = true;
         const sexQs = window.LPAS_QUESTIONS_V3_PART1.filter(q => q.period === 4);
@@ -249,12 +271,15 @@ let app = {
         this.finishTest();
     },
 
+    // 使用者同意作答性象限題目：取得第 4 期（親密與身體）題目並加入題目佇列，
+    // 接著顯示該期別的過場文字
     proceedToSexQuestions() {
         const sexQs = window.lpasV3GetStageQuestions(4);
         this.questionQueue = this.questionQueue.concat(sexQs);
         this.showTransition(4);
     },
 
+    // 顯示指定期別的過場提示文字（3 秒後自動跳轉到題目畫面）
     showTransition(newPeriod) {
         this.showScreen('screen-transition');
         document.getElementById('transition-text').innerText = V3_TRANSITION_TEXTS[newPeriod] || '';
@@ -265,6 +290,8 @@ let app = {
         }, 3000);
     },
 
+    // 所有題目作答完畢後呼叫：顯示「計算中」畫面，延遲 2 秒模擬運算時間，
+    // 呼叫核心計算函式 calculateScoresV3 取得結果，再渲染結果頁並切換畫面
     finishTest() {
         if (this.currentScreen === 'screen-calculating') return;
         this.showScreen('screen-calculating');
@@ -282,12 +309,15 @@ let app = {
        結果頁 4 階段流程（沿用 V1 邏輯）
        ═══════════════════════════════════════════ */
 
+    // 開始渲染結果頁流程：重置目前顯示步驟與使用者評分，從第一步（曖昧期）開始渲染
     renderResult(resultData) {
         this.currentFeedbackStep = 0;
         this.feedbackScores = {};
         this.renderResultStep(resultData);
     },
 
+    // 渲染目前 currentFeedbackStep 對應的結果步驟畫面（曖昧期/熱戀期/失戀期/親密與身體），
+    // 依期別分派給 renderPhaseStep 或 renderSexStep，並重置星星評分與捲動位置
     renderResultStep(resultData) {
         const step = V3_FEEDBACK_STEPS[this.currentFeedbackStep];
 
@@ -335,6 +365,10 @@ let app = {
         this.initStarRating(resultData);
     },
 
+    // 渲染單一戀愛階段（曖昧期/熱戀期/失戀期）的結果內容：
+    // 顯示型別名稱、代碼、簡短標語，並組合出完整說明 HTML
+    // （主敘述 + 角色扮演指引 + 常見陷阱 + 配對建議 + 成長關鍵字），
+    // 最後更新該階段對應的雷達圖
     renderPhaseStep(resultData, step) {
         const typeName = resultData.phase_types[step.period] || '未知型';
         const code     = resultData.phase_codes[step.period] || '';
@@ -406,6 +440,9 @@ let app = {
         this.updateRadarChart(resultData, this.currentFeedbackStep);
     },
 
+    // 渲染第 4 步「親密與身體」性象限的結果內容：
+    // 顯示象限標籤與標語，並組合主敘述、角色扮演指引、常見陷阱、配對建議、成長關鍵字的 HTML
+    // （此步驟不顯示雷達圖）
     renderSexStep(resultData) {
         const sex = resultData.sex;
         // RV 格式：性象限期 rv-period-lbl 顯示「親密與身體」；rv-line-title 顯示「親密與身體：標籤」
@@ -476,6 +513,9 @@ let app = {
         document.getElementById('result-desc').innerHTML = html;
     },
 
+    // 依目前查看的階段索引（activeIndex）重新繪製結果頁雷達圖：
+    // 把三期資料集複製一份後調整顏色，讓「目前查看的階段」用飽和色凸顯、
+    // 其餘兩期用同色相但低透明度呈現，並把目前階段的資料集移到最上層（後繪製、不被遮住）
     updateRadarChart(resultData, activeIndex) {
         if (activeIndex >= 3) return; // 性象限不顯示雷達
 
@@ -534,6 +574,8 @@ let app = {
         });
     },
 
+    // 初始化星星評分互動：先用 cloneNode 移除舊事件監聽器避免重複綁定，
+    // 再綁定滑鼠移入預覽星數、移出還原、點擊確定評分（並啟用「同意」按鈕）
     initStarRating(resultData) {
         const stars = document.querySelectorAll('.star');
         const confirmBtn = document.getElementById('confirm-feedback-btn');
@@ -569,12 +611,16 @@ let app = {
         });
     },
 
+    // 依傳入分數 val 高亮對應數量的星星（小於等於 val 的星星標記為 active）
     highlightStars(val) {
         document.querySelectorAll('.star').forEach(s => {
             s.classList.toggle('active', parseInt(s.dataset.val) <= val);
         });
     },
 
+    // 使用者確認某一階段的星星評分後呼叫：
+    // 儲存該階段分數，判斷是否為最後一步（第 4 步，或性象限不可顯示時的第 3 步），
+    // 若不是最後一步就前進到下一步的過場畫面，否則進入最終動作（生成角色卡/雲端儲存/分享頁）
     handleFeedback(score, resultData) {
         const step = V3_FEEDBACK_STEPS[this.currentFeedbackStep];
         this.feedbackScores[step.key] = score;
@@ -590,6 +636,7 @@ let app = {
         }
     },
 
+    // 顯示前往下一個結果步驟的過場文字（2.5 秒後自動切回結果頁並渲染下一步）
     showResultTransition(resultData) {
         const nextStep = V3_FEEDBACK_STEPS[this.currentFeedbackStep];
         this.showScreen('screen-transition');
@@ -601,6 +648,9 @@ let app = {
         }, 2500);
     },
 
+    // 所有評分步驟完成後的最終動作：
+    // 測試模式下略過雲端儲存，直接用隨機/預設星數渲染最終分享頁；
+    // 正式模式則產生角色卡與測驗紀錄 JSON、非同步上傳雲端，並在過場後顯示最終分享頁
     showFinalActions() {
         // 🧪 測試模式：略過角色卡生成與雲端儲存，直接渲染最終分享頁
         if (this.testMode) {
@@ -690,6 +740,7 @@ let app = {
         }
     },
 
+    // 渲染最終分享頁的雷達圖（三期資料同時疊圖顯示，並附圖例）
     renderShareRadar(resultData) {
         const canvas = document.getElementById('fs-radar-canvas');
         if (!canvas) return;
@@ -728,6 +779,8 @@ let app = {
         });
     },
 
+    // 渲染最終分享頁的三個「章節迷你卡」（曖昧期/熱戀期/失戀期），
+    // 各卡片顯示期別名稱、使用者評的星數、型別名稱、完整代碼與標語
     renderShareChapters(resultData) {
         const container = document.getElementById('fs-chapters');
         if (!container) return;

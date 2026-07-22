@@ -455,6 +455,7 @@
             logBox.value += '📥 已下載 start_debug_server.bat\n\n請雙擊執行該檔案以啟動伺服器，然後回到此頁面點選「重新整理」。\n\n若已有 start_debug_server.bat 在專案根目錄，也可直接雙擊該檔案。';
         });
 
+        // 依目前網頁路徑，推算專案在本機磁碟上的根目錄路徑（供產生啟動用 bat 檔使用）
         function getProjectRoot() {
             // 嘗試從當前頁面路徑推算專案根目錄
             const loc = window.location.href;
@@ -703,6 +704,7 @@
 
         useLocalCheckbox.addEventListener('change', initCharacters);
 
+        // 將指定 id 文字框的內容複製到剪貼簿，並暫時將按鈕文字改為「已複製」提示使用者
         function copyToClipboard(id, btn) {
             const area = document.getElementById(id);
             area.select();
@@ -807,6 +809,7 @@
             document.getElementById('modal-batch-gen').classList.remove('hidden');
         });
 
+        // ====== 批量生成日記彈窗（modal-batch-gen）事件綁定區塊 ======
         // modal-batch-gen 的按鈕位於 script 標籤之後，需等 DOM 完成才能綁定
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('btn-batch-gen-cancel').addEventListener('click', () => {
@@ -833,10 +836,10 @@
                 }
 
                 for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-                    // Ensure correct local time string for YYYY-MM-DD
+                    // 確保依「本地時區」換算出正確的 YYYY-MM-DD 日期字串（避免UTC轉換造成日期誤差）
                     const currentDateStr = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
                     for (let i = 0; i < dailyCount; i++) {
-                        // Update main UI date so logic can just read it (and user sees progress)
+                        // 更新主畫面上的日期欄位，讓後續生成邏輯直接讀取此欄位即可（同時讓使用者能看到目前進度）
                         document.getElementById('diary-date').value = currentDateStr;
                         logBox.value += `\n\n========================================\n`;
                         logBox.value += `=== 開始生成日期: ${currentDateStr} (第 ${i + 1} / ${dailyCount} 篇) ===\n`;
@@ -848,8 +851,8 @@
                 }
                 logBox.value += `\n\n✅ 所有批量生成任務已完成！\n`;
                 logBox.scrollTop = logBox.scrollHeight;
-            });  // end btn-batch-gen-confirm
-        });  // end DOMContentLoaded
+            });  // btn-batch-gen-confirm 事件結束
+        });  // DOMContentLoaded 事件結束
 
         /**
          * 過濾情境文字：移除以日期格式（YYYY-MM-DD 或 YYYY/MM/DD）開頭，
@@ -873,6 +876,8 @@
             }).join('\n');
         }
 
+        // ====== 執行單次「AI生成：日記與插圖」的完整流程 ======
+        // 包含：檢查伺服器狀態 → 組合提示詞 → 呼叫後端 API 產生日記與插圖 → 輪詢工作進度 → 儲存結果至雲端
         async function runSingleGeneration() {
             // 先確認伺服器在線
             if (!serverOnline) {
@@ -1260,7 +1265,7 @@
         })();
     </script>
 
-    <!-- ── Modal: Batch Generation ── -->
+    <!-- ── 彈窗：批量生成日記 ── -->
     <div id="modal-batch-gen" class="modal-overlay hidden">
         <div class="modal-content" style="max-width:400px;">
             <h2 style="margin-top:0; color:var(--c-accent-light);">生成日記-設定篇數與日期範圍</h2>
@@ -1285,10 +1290,10 @@
         </div>
     </div>
 
-    <!-- ── Modal: Compare Diaries ── -->
+    <!-- ── 彈窗：比對多本日記 ── -->
     <div id="modal-compare-diaries" class="modal-overlay hidden">
         <div class="cmp-modal">
-            <!-- Top bar -->
+            <!-- 頂部工具列 -->
             <div class="cmp-toolbar">
                 <h2 class="cmp-title">📚 多本日記比對</h2>
                 <button onclick="loadCompareDiaryList()" class="btn secondary-btn" title="重新從雲端載入日記列表">🔄
@@ -1302,9 +1307,9 @@
                 <button class="modal-close-btn" style="margin-left:auto;"
                     onclick="document.getElementById('modal-compare-diaries').classList.add('hidden')">&times;</button>
             </div>
-            <!-- 4 columns -->
+            <!-- 四欄並排顯示區 -->
             <div class="cmp-body">
-                <!-- Col 0 -->
+                <!-- 第 0 欄 -->
                 <div class="cmp-col">
                     <div class="cmp-col-header">
                         <select class="cmp-select cd-diary-select" data-col="0">
@@ -1325,7 +1330,7 @@
                             style="height:150px"></textarea>
                     </div>
                 </div>
-                <!-- Col 1 -->
+                <!-- 第 1 欄 -->
                 <div class="cmp-col">
                     <div class="cmp-col-header">
                         <select class="cmp-select cd-diary-select" data-col="1">
@@ -1346,7 +1351,7 @@
                             style="height:150px"></textarea>
                     </div>
                 </div>
-                <!-- Col 2 -->
+                <!-- 第 2 欄 -->
                 <div class="cmp-col">
                     <div class="cmp-col-header">
                         <select class="cmp-select cd-diary-select" data-col="2">
@@ -1367,7 +1372,7 @@
                             style="height:150px"></textarea>
                     </div>
                 </div>
-                <!-- Col 3 -->
+                <!-- 第 3 欄 -->
                 <div class="cmp-col">
                     <div class="cmp-col-header">
                         <select class="cmp-select cd-diary-select" data-col="3">
@@ -1484,7 +1489,7 @@
             function goToMatch(idx) {
                 if (!matches.length) return;
                 currentMatch = ((idx % matches.length) + matches.length) % matches.length;
-                // highlight in the first textarea that contains the match
+                // 在包含此符合結果的第一個文字框中反白標示
                 let offset = 0;
                 const tas = Array.from(document.querySelectorAll('.cd-story, .cd-image-prompt, .cd-ai-setup'));
                 for (const ta of tas) {
@@ -1527,7 +1532,7 @@
         });
     </script>
 
-    <!-- ── Modal: System Message LOG ── -->
+    <!-- ── 彈窗：系統訊息 LOG（大型顯示視窗） ── -->
     <div id="modal-system-log" class="modal-overlay hidden">
         <div class="modal"
             style="background-color: var(--c-bg-card-light); width: 80%; height: 80%; display: flex; flex-direction: column; max-width: none;">

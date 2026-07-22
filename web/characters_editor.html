@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>角色資料編輯器 - LoveIsABitMessy</title>
+  <!-- 預先連線 Google Fonts 伺服器，加快網頁字型（Noto Sans TC）載入速度 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -20,7 +21,7 @@
     }
   </style>
 
-  <!-- Supabase JS (UMD) -->
+  <!-- Supabase JS (UMD) 官方函式庫，用於連線雲端資料庫（帳號/角色卡等資料表） -->
   <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
   <!-- 中央角色資料與邏輯 -->
   <script src="js/character_logic.js"></script>
@@ -28,19 +29,26 @@
   <script src="js/lpas_v3_types.js"></script>
   <!-- LPAS v1 → v3 自動轉換器（載入舊角色卡時就地補上 lpas_v3） -->
   <script src="js/lpas_v1_to_v3.js"></script>
+  <!-- 建立並匯出 Supabase client 物件，供本頁其他 script 呼叫雲端 API -->
   <script src="js/supabaseClient.js"></script>
+  <!-- AI 模型參數（temperature 等）下拉選單與編輯視窗邏輯 -->
   <script src="js/model_options_app.js" defer></script>
+  <!-- 寫作風格 / 寫作範本 下拉選單與編輯視窗邏輯 -->
   <script src="js/writer_settings_app.js" defer></script>
+  <!-- 本頁主要邏輯：角色卡的讀取、編輯、儲存、AI 分析等核心功能 -->
   <script src="js/characters_editor_app.js"></script>
   <!-- 角色卡類型分析統計邏輯 -->
   <script src="js/character_stats_app.js" defer></script>
   <!-- 公用使用說明彈窗（讀寫官方 note/*.md + 雲端 manual_custom_history） -->
   <script src="js/help_modal.js" defer></script>
+  <!-- 彈窗開啟時自動將焦點移入彈窗、關閉時歸還焦點的共用小工具 -->
   <script src="js/modal_focus_helper.js" defer></script>
 </head>
 
 <body>
+  <!-- 整頁主容器：左右兩欄式版面（左：角色編輯表單，右：說明文字唯讀區） -->
   <div class="debug-panel">
+    <!-- 左欄：角色卡選擇、基本資料輸入、AI 分析與 LOG -->
     <div class="col-left">
       <div class="editor-header">
         <div style="display:flex; align-items:center; gap:12px;">
@@ -56,6 +64,7 @@
       <div class="editor-container">
         <div class="editor-panel">
           <h2><span class="icon">🎭</span> 登場角色管理</h2>
+          <!-- 角色卡下拉選單與雲端操作按鈕：重新下載、新增儲存、覆蓋儲存 -->
           <div class="sub-row-group" style="grid-template-columns: 1.5fr auto 1fr 1fr;">
             <select id="char-dropdown">
               <option value="">-- 選擇角色卡 --</option>
@@ -65,11 +74,13 @@
             <button class="btn primary-btn" id="btn-char-save" title="注意：覆蓋雲端角色卡資料">☁️💾 儲存角色(覆蓋)</button>
           </div>
 
+          <!-- 角色唯一識別碼，由系統自動產生，使用者不可編輯 -->
           <div class="field-group">
             <label class="title-sm">角色 ID (ID) - 唯讀</label>
             <input type="text" class="editor-input-text" id="char-id" readonly placeholder="系統自動生成">
           </div>
 
+          <!-- 基本外觀資料：姓名、性別、身高、體重、上圍 -->
           <div class="sub-row-group" style="grid-template-columns: 2fr 1fr 1fr 1fr 1fr;">
             <div class="field-group">
               <label class="title-sm">姓名 (Name)</label>
@@ -105,6 +116,7 @@
             </div>
           </div>
 
+          <!-- 命理相關資料：生日、星座、血型、MBTI 人格類型（下拉選項由 JS 動態產生） -->
           <div class="sub-row-group" style="grid-template-columns: 1fr 1fr 1fr 1fr;">
             <div class="field-group">
               <label class="title-sm" id="lbl-birthday">生日 (Birthday)</label>
@@ -167,8 +179,10 @@
               <button type="button" class="btn secondary-btn" id="btn-char-photo-clear" title="清除目前的角色照片">🗑️
                 清除照片</button>
               <span class="text-muted-sm" id="char-photo-status">尚未上傳照片</span>
+              <!-- 隱藏的檔案選擇 input，由「上傳圖片」按鈕觸發點擊 -->
               <input type="file" id="char-photo-file-input" accept="image/*" style="display:none;">
             </div>
+            <!-- 拖曳/點擊上傳照片的方框：未上傳時顯示提示文字，已上傳時顯示縮圖 -->
             <div class="text-center" id="char-photo-dropzone"
               style="width: 160px; height: 160px; background: #333; border: 2px dashed #888; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #888; font-size: 13px; cursor: pointer; user-select: none; overflow: hidden; position: relative"
               title="點擊或拖曳圖片至此上傳">
@@ -193,8 +207,9 @@
             <textarea class="editor-textarea" style="height: 40px;" id="char-card-json"
               placeholder="JSON 內容會顯示在此。"></textarea>
           </div>
-          <!-- 伺服器狀態 + 模型設定 -->
+          <!-- 伺服器狀態 + 模型設定：顯示本機AI伺服器連線狀態，並可選擇AI模型、模型參數、寫作風格與寫作範本 -->
           <div class="server-status-row server-settings-row">
+            <!-- 綠/紅圓點依伺服器連線狀態切換 online/offline 樣式 -->
             <span class="server-status-dot offline" id="server-dot"></span>
             <span class="title-hint" id="server-status-text">偵測中…</span>
             <button id="start-server-btn" disabled>🚀 請自行啟動伺服器</button>
@@ -241,6 +256,7 @@
         </div>
       </div>
     </div>
+    <!-- 右欄：唯讀說明文字區，依左欄目前選擇的星座/血型/MBTI/LPAS類型顯示對應的詳細說明 -->
     <div class="col-right">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
         <label class="title-sm" style="margin:0;">人格特質與類型說明 (唯讀)</label>
@@ -324,7 +340,7 @@
     </div>
   </div>
 
-  <!-- ── Modal: 角色卡內容 ── -->
+  <!-- ── Modal: 角色卡內容（唯讀彈窗，用於檢視完整角色卡 JSON 文字） ── -->
   <div id="modal-char-card-view" class="modal-overlay hidden">
     <div class="modal-box"
       style="width:60%; max-width:60%; height:90%; display:flex; flex-direction:column; padding:0;">
@@ -338,7 +354,7 @@
     </div>
   </div>
 
-  <!-- ── Modal: Editor AI 分析 LOG ── -->
+  <!-- ── Modal: Editor AI 分析 LOG（大型彈窗，可搜尋左欄LOG欄位的完整內容） ── -->
   <div id="modal-editor-log" class="modal-overlay hidden">
     <div class="modal"
       style="background-color: var(--c-bg-card-light); width: 80%; height: 80%; display: flex; flex-direction: column; max-width: none;">

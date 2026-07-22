@@ -9,33 +9,50 @@
  */
 
 /* global ZODIAC_SIGNS, BLOOD_TYPES, MBTI_TYPES, TYPE_MAPPING_SHORT */
+/* 上面這行是給 ESLint 看的宣告：告訴檢查工具這些變數是「全域變數」，
+   它們定義在別的 .js 檔（例如常數設定檔），本檔案只是引用，不需要另外宣告。 */
 
 (function () {
+    // 使用 IIFE（立即執行函式）把整個檔案包起來，避免這裡宣告的變數/函式
+    // 污染到全域（window）名稱空間，造成與其他 .js 檔案的變數衝突。
     'use strict';
+    // 開啟嚴格模式：禁止一些容易出錯的寫法（例如未宣告就使用變數），有助於提早抓到錯誤。
 
-    // 內部資料快取
-    let charsCache = [];          // characters 全部資料
-    let lpasResultsCache = [];    // lpas_results 全部資料
-    let dataLoaded = false;       // 是否已載入過
+    // 內部資料快取（模組級變數，只有這個 IIFE 內的函式看得到）
+    let charsCache = [];          // characters 資料表的全部資料（角色卡列表）
+    let lpasResultsCache = [];    // lpas_results 資料表的全部資料（LPAS 測驗結果與評分）
+    let dataLoaded = false;       // 是否已經成功載入過一次雲端資料，避免每次開視窗都重新抓取
 
     // ===== DOM 工具 =====
+    // 依 id 取得畫面上的 DOM 元素，等同 document.getElementById 的簡寫，方便後面大量呼叫。
     function $(id) { return document.getElementById(id); }
 
-    // 取得 Supabase client（與 characters_editor_app.js 共用）
+    // 取得 Supabase client（與 characters_editor_app.js 共用同一個連線物件）
+    // Supabase 是本專案用來存取雲端資料庫（角色卡、LPAS 結果等）的服務。
     function getSb() {
         if (window.SupabaseClient && window.SupabaseClient.getClient) {
             return window.SupabaseClient.getClient();
         }
+        // 若尚未初始化，回傳 null，呼叫端需自行處理「無法連線」的情況。
         return null;
     }
 
     // ===== 解析輔助 =====
-    /** 將 card_json 字串/物件統一轉成物件 */
+    /**
+     * 將 card_json 欄位統一轉成 JavaScript 物件。
+     * 資料庫存的 card_json 有時是 JSON 字串、有時已經是物件，這個函式負責「歸一化」，
+     * 讓後面的程式碼不用每次都判斷型別。
+     * @param {string|object|null} card 原始 card_json 值
+     * @returns {object} 轉換後的物件；若輸入為空或解析失敗，回傳空物件 {}
+     */
     function parseCard(card) {
         if (!card) return {};
         if (typeof card === 'string') {
+            // 字串型態需要用 JSON.parse 轉成物件；若格式不合法（例如空字串、壞掉的 JSON）
+            // 則捕捉例外並回傳空物件，避免整個程式因為單一筆壞資料而崩潰。
             try { return JSON.parse(card); } catch { return {}; }
         }
+        // 已經是物件的情況，直接原樣回傳。
         return card;
     }
 
@@ -46,54 +63,74 @@
      */
     function parseLpasCodes(lpasStr) {
         if (!lpasStr) return { t1: '', t2: '', t3: '' };
+        // 字串格式為「代碼部分-中文名稱部分」，用 '-' 分割後只取代碼部分（索引 0）。
         const rawCodes = lpasStr.split('-')[0];
         if (rawCodes.includes('_')) {
+            // 含底線代表已經是「曖昧期_熱戀期_失戀期」三段式代碼，例如 AOCF_AOCS_POCF
             const parts = rawCodes.split('_');
             if (parts.length >= 3 && parts[0].length === 4) {
                 return { t1: parts[0], t2: parts[1], t3: parts[2] };
             }
         }
-        // 單一代碼 (例: AOCF) 視為三期相同
+        // 單一代碼 (例: AOCF) 視為三期相同（代表這筆資料沒有分期記錄，三期都用同一個代碼）
         if (rawCodes.length === 4) {
             return { t1: rawCodes, t2: rawCodes, t3: rawCodes };
         }
+        // 格式不符合預期時，回傳三個空字串，讓呼叫端可以安全地判斷「無資料」。
         return { t1: '', t2: '', t3: '' };
     }
 
-    /** 將 LPAS 4字代碼轉為中文型名稱，例如 AOCF -> 煙火型 */
+    /** 將 LPAS 4字代碼轉為中文型名稱，例如 AOCF -> 煙火型
+     * TYPE_MAPPING_SHORT 這個全域字典的 key 格式是用 '-' 分隔每個字母（例如 "A-O-C-F"），
+     * 所以要先把 4 個字元拆開再用 '-' 重新組合，才能對照到正確的中文名稱。
+     */
     function codeToTypeName(code) {
         if (!code || code.length !== 4) return code || '';
-        const key = code.split('').join('-');
+        const key = code.split('').join('-'); // 例："AOCF" -> "A-O-C-F"
         const m = (window.TYPE_MAPPING_SHORT || {})[key];
-        return m ? m.name : code;
+        return m ? m.name : code; // 對照不到就直接顯示原代碼，避免畫面出現 undefined
     }
 
-    /** 格式化日期 YYYY-MM-DD -> YYYYMMDD */
+    /** 格式化日期 YYYY-MM-DD -> YYYYMMDD（去掉 ISO 時間部分與橫線，方便當作標籤後綴） */
     function fmtDate(iso) {
         if (!iso) return '';
         return iso.split('T')[0].replace(/-/g, '');
     }
 
-    /** 取得角色卡顯示用 label：name-LPAS代碼-LPAS中文-日期 */
+    /**
+     * 取得角色卡在列表中顯示用的文字標籤（label）。
+     * 組合規則：姓名-LPAS三期代碼-LPAS三期中文名稱-更新日期
+     * 例如：「小美-AOCF_AOCS_POCF-煙火_太陽_流星-20260101」
+     * @param {object} row 角色卡資料列（來自 characters 或轉接後的 lpas_results）
+     * @returns {string} 組合後的顯示字串
+     */
     function charLabel(row) {
         const card = parseCard(row.card_json);
+        // 優先使用資料列上的 lpas 欄位，若沒有則退而求其次用 card_json 內的 personality_type
         const lpasStr = row.lpas || card.personality_type || '';
         const codes = parseLpasCodes(lpasStr);
+        // 三期代碼皆存在時才組出代碼字串，否則顯示「無LPAS」
         const codePart = (codes.t1 && codes.t2 && codes.t3)
             ? `${codes.t1}_${codes.t2}_${codes.t3}`
             : '無LPAS';
+        // 同樣地，三期代碼都存在時才轉換出中文型名稱字串（並去掉結尾的「型」字，避免顯示太長）
         const namePart = (codes.t1 && codes.t2 && codes.t3)
             ? `${codeToTypeName(codes.t1).replace(/型$/, '')}_${codeToTypeName(codes.t2).replace(/型$/, '')}_${codeToTypeName(codes.t3).replace(/型$/, '')}`
             : '';
         const dateStr = fmtDate(row.updated_at);
         const name = row.name || card.name || '未命名';
+        // 若有中文名稱部分就多加一段，否則只顯示 姓名-代碼-日期
         return namePart
             ? `${name}-${codePart}-${namePart}-${dateStr}`
             : `${name}-${codePart}-${dateStr}`;
     }
 
     // ===== 統計計算 =====
-    /** 對 characters 進行各維度計次，並分桶角色卡列表 */
+    /**
+     * 對 charsCache（所有角色卡）進行各維度的計次統計，並把每筆角色卡分類到對應的桶（bucket）。
+     * 統計維度包含：星座、血型、MBTI、以及 LPAS 三期（曖昧期/熱戀期/失戀期）代碼。
+     * @returns {object} stats 物件，每個維度是一個 { 代碼: [角色卡陣列] } 的字典
+     */
     function buildCharStats() {
         // 各維度 bucket：key -> 角色卡陣列
         const stats = {
@@ -105,16 +142,19 @@
             lpas3: {}       // F 失戀期
         };
 
+        // 逐一走訪每一筆角色卡資料，依各維度的值把該筆資料 push 進對應的桶陣列中。
         charsCache.forEach(row => {
             const card = parseCard(row.card_json);
             const zodiac = card.zodiac || '';
             const blood = card.blood_type || '';
             const mbtiRaw = card.MBTI_type || '';
-            // MBTI 取前四字代碼
+            // MBTI 取前四字代碼（例如 "INTJ-建築師" 只取 "INTJ"），並統一轉大寫避免大小寫不一致造成分桶錯誤
             const mbti = mbtiRaw ? mbtiRaw.trim().substring(0, 4).toUpperCase() : '';
             const lpasStr = row.lpas || card.personality_type || '';
             const codes = parseLpasCodes(lpasStr);
 
+            // 以下每個 if 區塊都是同一種寫法：
+            // 若該維度的桶（stats.xxx[key]）還不存在就先建立空陣列，再把目前這筆角色卡 push 進去。
             if (zodiac) {
                 (stats.zodiac[zodiac] = stats.zodiac[zodiac] || []).push(row);
             }
@@ -124,6 +164,7 @@
             if (mbti) {
                 (stats.mbti[mbti] = stats.mbti[mbti] || []).push(row);
             }
+            // LPAS 三期：曖昧期(t1)/熱戀期(t2)/失戀期(t3) 各自獨立分桶
             if (codes.t1) (stats.lpas1[codes.t1] = stats.lpas1[codes.t1] || []).push(row);
             if (codes.t2) (stats.lpas2[codes.t2] = stats.lpas2[codes.t2] || []).push(row);
             if (codes.t3) (stats.lpas3[codes.t3] = stats.lpas3[codes.t3] || []).push(row);
@@ -139,21 +180,24 @@
     function buildScoreStats() {
         // 與 renderScoreSection 的 ranges 一致：以 1~5 五個整數分數為桶
         const ranges = ['1', '2', '3', '4', '5'];
+        // 產生一個 { '1': [], '2': [], ..., '5': [] } 的空物件，供三個期別各自使用一份
         const empty = () => ranges.reduce((o, k) => { o[k] = []; return o; }, {});
         const stats = {
-            ambiguity: empty(),
-            love: empty(),
-            breakup: empty()
+            ambiguity: empty(), // 曖昧期分數分桶
+            love: empty(),      // 熱戀期分數分桶
+            breakup: empty()    // 失戀期分數分桶
         };
+        // 把原始分數（可能含小數）轉換成對應的分桶 key（'1'~'5'）
         const bucketOf = (score) => {
-            if (score == null || isNaN(score)) return null;
-            // 四捨五入到最近的整數分數，再夾到 1~5
+            if (score == null || isNaN(score)) return null; // 沒有分數或非數字則不分桶
+            // 四捨五入到最近的整數分數，再夾到 1~5（避免超出範圍的極端值）
             const n = Math.round(Number(score));
             if (n <= 1) return '1';
             if (n >= 5) return '5';
             return String(n);
         };
 
+        // 逐一走訪每筆 LPAS 測驗結果，依 feedback_scores 中三個期別各自的分數分桶
         lpasResultsCache.forEach(row => {
             const fb = row.feedback_scores || {};
             ['ambiguity', 'love', 'breakup'].forEach(phase => {
@@ -174,24 +218,30 @@
     function formatKeyLabel(dictKey, k) {
         if (!k) return '';
         if (dictKey === 'mbti') {
+            // 在 MBTI_TYPES（格式如 "INTJ-建築師"）中找出前四字代碼相符的項目
             const found = (window.MBTI_TYPES || []).find(t => t.substring(0, 4).toUpperCase() === k.toUpperCase());
             if (found) {
                 const parts = found.split('-');
                 if (parts.length >= 2) return `${parts[0]} ${parts.slice(1).join('-')}`;
             }
+            // 找不到對照資料時，直接顯示原始代碼
             return k;
         }
         if (dictKey === 'lpas1' || dictKey === 'lpas2' || dictKey === 'lpas3') {
+            // LPAS 三期共用同一套代碼轉中文名稱的邏輯
             if (k.length === 4) {
                 const cnName = codeToTypeName(k).replace(/型$/, '');
                 if (cnName && cnName !== k) return `${k} ${cnName}`;
             }
             return k;
         }
+        // 其它維度（星座、血型等）不需要額外轉換，直接回傳原值
         return k;
     }
 
     // ===== Tableau 10 經典顏色（每個大項目一色） =====
+    // A~I 對應畫面上九個統計大項目（星座/血型/MBTI/LPAS三期/評價分數三期），
+    // 每個字母固定一種顏色，讓使用者用顏色就能快速分辨是哪個分類。
     const TABLEAU_COLORS = {
         A: '#4E79A7', // 藍
         B: '#F28E2B', // 橘
@@ -208,20 +258,27 @@
     /**
      * 渲染統計區塊 (左/中直排) — 含橫條圖
      * 大項目標題整段可點擊，點擊後右欄顯示該大項目所有細項分組的角色卡列表
+     * @param {string} containerId 要渲染進去的 DOM 容器 id
+     * @param {string} sectionLetter 區塊代號（A~I），用來查對應顏色
+     * @param {string} title 大項目標題文字，例如「A. 星座出現次數」
+     * @param {string} dictKey 對應 statsDict 的維度 key（如 'zodiac'、'mbti'）
+     * @param {object} statsDict buildCharStats() 產生的某一維度分桶結果 { key: [角色卡陣列] }
+     * @param {string[]} [orderedKeys] 想要固定顯示順序的 key 列表（例如星座固定 12 星座順序）
      */
     function renderCharSection(containerId, sectionLetter, title, dictKey, statsDict, orderedKeys) {
         const box = $(containerId);
         if (!box) return;
         const color = TABLEAU_COLORS[sectionLetter] || '#888';
 
-        // 排序：先依指定順序，剩餘 key 附加
+        // 排序：先依指定順序（orderedKeys）排列，statsDict 中若還有未列在指定順序內的 key（例如資料庫出現了非預期值），
+        // 則附加在後面，確保所有資料都有機會顯示，不會被遺漏。
         const keys = (orderedKeys || []).slice();
         Object.keys(statsDict).forEach(k => { if (!keys.includes(k)) keys.push(k); });
 
-        // 找出最大值作為橫條基準
+        // 找出各細項中數量最多的一項，作為橫條圖 100% 寬度的基準值（其餘依比例縮放）
         let maxCount = 0;
         keys.forEach(k => { maxCount = Math.max(maxCount, (statsDict[k] || []).length); });
-        if (maxCount === 0) maxCount = 1;
+        if (maxCount === 0) maxCount = 1; // 避免除以 0
 
         // 大項目標題：整段可點擊
         let html = `<div class="char-stats-section-header"
@@ -263,14 +320,21 @@
         }
     }
 
-    /** 渲染分數統計區塊（含橫條） */
+    /**
+     * 渲染分數統計區塊（含橫條圖），用於畫面上 G/H/I 三個「評價分數」區塊。
+     * @param {string} containerId 目標容器 id
+     * @param {string} sectionLetter 區塊代號（G/H/I），決定顏色
+     * @param {string} title 標題文字
+     * @param {string} phaseKey 對應 scoreStats 的期別 key（ambiguity/love/breakup）
+     * @param {object} scoreStats buildScoreStats() 產生的分數分桶結果
+     */
     function renderScoreSection(containerId, sectionLetter, title, phaseKey, scoreStats) {
         const box = $(containerId);
         if (!box) return;
         const color = TABLEAU_COLORS[sectionLetter] || '#888';
         const ranges = ['1', '2', '3', '4', '5'];
 
-        // 計算最大值
+        // 計算五個分數桶中數量最多者，作為橫條圖的比例基準
         let maxCount = 0;
         ranges.forEach(r => {
             const list = (scoreStats[phaseKey] || {})[r] || [];
@@ -391,11 +455,15 @@
         });
     }
 
-    /** 將所有統計區塊渲染到 modal */
+    /**
+     * 將所有統計區塊（A~I）渲染到統計 modal 視窗中。
+     * 每次開啟視窗或按下「更新」按鈕時都會呼叫，重新計算並重繪畫面。
+     */
     function renderAll() {
         const charStats = buildCharStats();
         const scoreStats = buildScoreStats();
 
+        // 取得 LPAS 代碼的固定顯示順序（依 TYPE_MAPPING_SHORT 字典的 key 順序，去掉 '-' 符號）
         const lpasCodeOrder = Object.keys(window.TYPE_MAPPING_SHORT || {}).map(k => k.replace(/-/g, ''));
 
         renderCharSection('char-stats-section-A', 'A', 'A. 星座出現次數', 'zodiac',
@@ -592,16 +660,22 @@
         });
     }
 
-    /** 開啟角色卡內容彈窗 */
+    /** 開啟角色卡內容彈窗，顯示該筆角色卡完整的 JSON 內容（唯讀文字框） */
     function openCharCardView(row) {
         const card = parseCard(row.card_json);
         const name = row.name || card.name || '未命名';
         $('char-card-view-title').textContent = `角色卡內容 - ${name}`;
+        // 用 JSON.stringify 的第三參數 2 做縮排排版，讓 JSON 內容易於閱讀
         $('char-card-view-textarea').value = JSON.stringify(card, null, 2);
         $('modal-char-card-view').classList.remove('hidden');
     }
 
     // ===== 資料載入 =====
+    /**
+     * 從 Supabase 雲端資料庫載入所有需要的資料，存進模組級快取變數
+     * （charsCache / lpasResultsCache），供後續統計與畫面渲染使用。
+     * @returns {Promise<boolean>} 是否載入成功
+     */
     async function loadAllData() {
         const sb = getSb();
         if (!sb) {
@@ -609,7 +683,7 @@
             return false;
         }
         try {
-            // 角色卡
+            // 角色卡：依最後更新時間新到舊排序，最多抓 2000 筆
             const charsResp = await sb.from('characters')
                 .select('id, name, lpas, card_json, updated_at')
                 .order('updated_at', { ascending: false })
@@ -617,7 +691,7 @@
             if (charsResp.error) throw charsResp.error;
             charsCache = charsResp.data || [];
 
-            // LPAS 結果
+            // LPAS 結果：依建立時間新到舊排序，最多抓 5000 筆
             const resResp = await sb.from('lpas_results')
                 .select('id, type_code, type_name, feedback_scores, character_card, created_at')
                 .order('created_at', { ascending: false })
@@ -628,12 +702,18 @@
             dataLoaded = true;
             return true;
         } catch (e) {
+            // 捕捉任何連線或查詢錯誤，用 alert 通知使用者，並回傳 false 讓呼叫端不要繼續渲染
             alert('資料載入失敗：' + (e.message || e));
             return false;
         }
     }
 
     // ===== HTML escape =====
+    /**
+     * 將字串中會被瀏覽器當作 HTML 標籤解析的特殊字元轉成對應的 HTML 實體，
+     * 避免把使用者輸入或資料庫內容直接塞進 innerHTML 時發生 XSS（跨站腳本攻擊）
+     * 或畫面跑版的問題。
+     */
     function escapeHtml(str) {
         return String(str).replace(/[&<>"']/g, c => ({
             '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -641,6 +721,10 @@
     }
 
     // ===== 事件綁定 =====
+    /**
+     * 初始化畫面上的按鈕事件綁定。頁面載入完成後只會呼叫一次。
+     * 綁定的按鈕包括：開啟統計視窗、關閉統計視窗、更新資料、關閉角色卡內容視窗。
+     */
     function init() {
         const btnOpen = $('btn-open-char-stats');
         const btnClose = $('btn-char-stats-close');
@@ -648,9 +732,11 @@
         const btnCardClose = $('btn-char-card-view-close');
 
         if (btnOpen) {
+            // 點擊「開啟角色卡統計」按鈕：顯示 modal，並視情況載入資料
             btnOpen.addEventListener('click', async () => {
                 $('modal-char-stats').classList.remove('hidden');
                 if (!dataLoaded) {
+                    // 第一次開啟才需要向雲端抓資料，之後重複開啟直接沿用快取，加快開啟速度
                     const ok = await loadAllData();
                     if (ok) renderAll();
                 } else {
@@ -659,13 +745,15 @@
             });
         }
         if (btnClose) {
+            // 點擊關閉按鈕：只是把 modal 隱藏，不清空快取資料
             btnClose.addEventListener('click', () => {
                 $('modal-char-stats').classList.add('hidden');
             });
         }
         if (btnRefresh) {
+            // 點擊「更新雲端角色卡資料」按鈕：強制重新從雲端抓取最新資料並重繪畫面
             btnRefresh.addEventListener('click', async () => {
-                btnRefresh.disabled = true;
+                btnRefresh.disabled = true; // 更新期間先停用按鈕，避免重複點擊
                 btnRefresh.textContent = '⏳ 更新中…';
                 const ok = await loadAllData();
                 if (ok) renderAll();
@@ -674,12 +762,15 @@
             });
         }
         if (btnCardClose) {
+            // 關閉「角色卡內容」彈窗
             btnCardClose.addEventListener('click', () => {
                 $('modal-char-card-view').classList.add('hidden');
             });
         }
     }
 
+    // 程式進入點：若 DOM 尚未載入完成則等待 DOMContentLoaded 事件再初始化，
+    // 若此腳本是在 DOM 已經載入完成後才被載入（例如動態插入 <script>），則立即執行 init()。
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {

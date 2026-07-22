@@ -37,6 +37,7 @@ const AVATAR_COLORS = [
   { label: '灰',   value: '#777777' },
 ];
 
+// 依背景色亮度自動決定頭像文字要用深色或淺色，確保可讀性
 function getAvatarTextColor(hex) {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
@@ -44,6 +45,7 @@ function getAvatarTextColor(hex) {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.5 ? '#333' : '#fff';
 }
 
+// 取得指定對話的頭像顏色（存於 localStorage，找不到時給預設紫色）
 function getSessionColor(sessionId) {
   return localStorage.getItem(`loveline_avatar_color_${sessionId}`) || '#5b5bd6';
 }
@@ -57,6 +59,7 @@ function getCharColor(charId) {
   return sess ? getSessionColor(sess.id) : '#5b5bd6';
 }
 
+// 將色塊元素背景色同步為下拉選單目前選取的顏色值
 function updateColorSwatch(swatchId, selectId) {
   const swatch = qs('#' + swatchId);
   const sel = qs('#' + selectId);
@@ -64,17 +67,19 @@ function updateColorSwatch(swatchId, selectId) {
 }
 
 // ── State ──
+// 全域狀態物件，整個應用共用同一份資料
 const state = {
-  currentUser: null,       // { key, name }
-  users: [],               // [{ key, name }]
-  sessions: [],            // chat_sessions + participants
-  currentSession: null,    // { id, type, title, participants, messages }
-  characters: [],          // cloud characters
-  serverOnline: false,
-  currentModel: 'gemma4',
+  currentUser: null,       // 目前登入的使用者物件 { key, name }
+  users: [],               // 所有使用者清單 [{ key, name }]
+  sessions: [],            // 對話清單（chat_sessions 資料表 + 參與者資料）
+  currentSession: null,    // 目前開啟的對話 { id, type, title, participants, messages }
+  characters: [],          // 雲端角色卡清單
+  serverOnline: false,     // 後端 debug_server.py 是否連線中
+  currentModel: 'gemma4',  // 目前選用的 AI 模型
 };
 
 // ── Supabase ──
+// 取得全域 Supabase client 實例（若尚未初始化則回傳 null）
 function getSB() {
   if (window.SupabaseClient) return window.SupabaseClient.getClient();
   return null;
@@ -159,6 +164,7 @@ async function loadUsersFromCloud() {
   }
 }
 
+// 離線備援：從 localStorage 讀取使用者清單（雲端不可用時使用）
 function loadUsersFromLocal() {
   try {
     const raw = localStorage.getItem('loveline_users');
@@ -168,10 +174,12 @@ function loadUsersFromLocal() {
   } catch (e) { state.users = [{ key: 'user_default', name: '我' }]; }
 }
 
+// 將目前的使用者清單整份寫回 localStorage（做為雲端資料的本地快取）
 function saveUsersToLocal() {
   localStorage.setItem('loveline_users', JSON.stringify(state.users));
 }
 
+// 將單一使用者的個人設定（暱稱/密碼/角色卡/AI設定等）upsert 至雲端 love_line_users 資料表
 async function saveUserProfileToCloud(u) {
   const sb = getSB();
   if (!sb) return;
@@ -187,6 +195,7 @@ async function saveUserProfileToCloud(u) {
   } catch (e) { appendLog('❌ 雲端同步失敗: ' + e.message); }
 }
 
+// 重新渲染使用者下拉選單選項，並在已登入時同步更新頂部使用者顯示
 function renderUserSelect() {
   const sel = qs('#user-select');
   if (!sel) return;
@@ -232,6 +241,8 @@ function logAISettingsFromData(title, u) {
   }
 }
 
+// 使用者登入成功後的主要流程：更新頂部顯示、清空舊對話畫面、
+// 還原此使用者上次選用的 AI 模型／寫作風格，最後載入其對話清單並觸發登入主動發話
 async function updateUserDisplay() {
   const u = state.currentUser;
   if (!u) return;
@@ -265,6 +276,7 @@ async function updateUserDisplay() {
   triggerRandomLoginMessage();
 }
 
+// 開啟「編輯使用者資料」彈窗，並將目前使用者的資料填入表單欄位
 function openUserEditModal() {
   const u = state.currentUser;
   if (!u) return;
@@ -310,6 +322,7 @@ function charDropdownLabel(c) {
   return `${(c && c.name) || '未命名'}-${fullName || '無LPAS'}`;
 }
 
+// 將已載入的角色卡與顏色色盤填入各個下拉選單（好友角色選單、使用者角色選單、顏色選單）
 function populateCharSelects() {
   const opts = state.characters.map(c => `<option value="${c.id}">${charDropdownLabel(c)}</option>`).join('');
   if (qs('#modal-friend-char-select')) {
@@ -327,6 +340,7 @@ function populateCharSelects() {
 // ══════════════════════════════════════════
 // SESSIONS (Supabase)
 // ══════════════════════════════════════════
+// 讀取目前使用者名下的所有對話（含參與者），並逐一計算每則對話的未讀訊息數
 async function loadSessionsForUser() {
   if (!state.currentUser) {
     state.sessions = [];
@@ -360,6 +374,7 @@ async function loadSessionsForUser() {
   } catch (e) { appendLog('⚠️ 讀取對話失敗: ' + e.message); }
 }
 
+// 建立新對話（一對一好友或群組聊天室），並加入所選角色為參與者
 async function createSession(type, title, charIds, charPersona) {
   if (!state.currentUser) { alert('請先選擇使用者'); return; }
   const sb = getSB();
@@ -370,7 +385,7 @@ async function createSession(type, title, charIds, charPersona) {
     }).select().single();
     if (error) throw error;
 
-    // add participants
+    // 新增參與者（將所選角色加入此對話的 chat_participants）
     const parts = charIds.map(cid => {
       const c = state.characters.find(x => x.id === cid);
       return {
@@ -380,7 +395,7 @@ async function createSession(type, title, charIds, charPersona) {
     });
     if (parts.length) await sb.from('chat_participants').insert(parts);
 
-    // save persona override in localStorage
+    // 將角色人設覆寫值（persona override）儲存到 localStorage
     if (charPersona) localStorage.setItem(`loveline_persona_${sess.id}`, charPersona);
 
     await loadSessionsForUser();
@@ -388,6 +403,7 @@ async function createSession(type, title, charIds, charPersona) {
   } catch (e) { appendLog('❌ 建立對話失敗: ' + e.message); }
 }
 
+// 刪除指定對話（含確認提示），若刪除的是目前開啟的對話則一併清空畫面
 async function deleteSession(id) {
   if (!confirm('確定要刪除這位好友與對話紀錄？')) return;
   const sb = getSB();
@@ -405,6 +421,7 @@ async function deleteSession(id) {
 // ══════════════════════════════════════════
 // MESSAGES (Supabase)
 // ══════════════════════════════════════════
+// 從雲端讀取指定對話的所有訊息，依建立時間由舊到新排序
 async function loadMessages(sessionId) {
   const sb = getSB();
   if (!sb) return [];
@@ -416,6 +433,7 @@ async function loadMessages(sessionId) {
   } catch (e) { return []; }
 }
 
+// 將一則訊息寫入資料庫，並更新對話的 updated_at 時間戳（用於排序與判斷最新活動）
 async function saveMessage(sessionId, senderType, senderKey, senderCharId, senderName, content, model) {
   const sb = getSB();
   if (!sb) return;
@@ -433,6 +451,7 @@ async function saveMessage(sessionId, senderType, senderKey, senderCharId, sende
 // ══════════════════════════════════════════
 // OPEN SESSION
 // ══════════════════════════════════════════
+// 開啟指定對話：先顯示載入中畫面，再非同步讀取訊息與本地設定，最後渲染畫面
 async function openSession(id) {
   const sess = state.sessions.find(s => String(s.id) === String(id));
   if (!sess) return;
@@ -468,6 +487,7 @@ async function openSession(id) {
 // ══════════════════════════════════════════
 // RENDER: session lists
 // ══════════════════════════════════════════
+// 依 session_type 分類渲染左側「一對一好友」與「群組聊天室」清單
 function renderSessionLists() {
   const one = state.sessions.filter(s => s.session_type === 'one_on_one');
   const grp = state.sessions.filter(s => s.session_type === 'group');
@@ -480,6 +500,7 @@ function renderSessionLists() {
   // 使用事件委託來處理齒輪點擊，解決動態渲染失效問題
 }
 
+// 產生單一對話項目的 HTML（頭像、名稱、預覽文字、設定按鈕）
 function sessionItem(s) {
   const parts = s.chat_participants || [];
   const names = parts.filter(p => p.participant_type === 'character').map(p => p.character_name).join('、');
@@ -505,6 +526,7 @@ function sessionItem(s) {
 // ══════════════════════════════════════════
 // RENDER: chat area
 // ══════════════════════════════════════════
+// 渲染右側聊天區域：若無選中對話則顯示空狀態，否則更新標題列並呼叫 renderMessages()
 function renderChatArea() {
   const sess = state.currentSession;
   const empty = qs('#empty-state');
@@ -540,6 +562,7 @@ function renderChatArea() {
   renderMessages();
 }
 
+// 將目前對話的所有訊息渲染成聊天泡泡，並自動捲動到最底部
 function renderMessages() {
   const sess = state.currentSession;
   if (!sess) return;
@@ -592,6 +615,7 @@ function renderMessages() {
   });
 }
 
+// HTML 逸出：避免訊息內容中的特殊字元破壞 HTML 結構（簡易 XSS 防護）
 function escHtml(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -662,11 +686,13 @@ function showBubbleMenu(bubble, msgId, rawContent, senderKey, senderCharId) {
   });
 }
 
+// 關閉泡泡操作選單，並移除訊息泡泡的選中樣式
 function hideBubbleMenu() {
   document.querySelector('.bubble-menu')?.remove();
   document.querySelectorAll('.msg-bubble.selected').forEach(b => b.classList.remove('selected'));
 }
 
+// 刪除單一訊息（含確認提示），成功後同步更新畫面上的訊息陣列
 async function deleteMessage(msgId) {
   const sb = getSB();
   if (!sb) { alert('Supabase 未連線'); return; }
@@ -750,6 +776,7 @@ async function deleteMessagesBySender(direction, msgId, senderKey, senderCharId,
   }
 }
 
+// 在聊天區底部加入「正在輸入中…」的假訊息泡泡，等待 AI 回覆時顯示
 function addTypingIndicator(name) {
   const container = qs('#chat-messages');
   const div = document.createElement('div');
@@ -765,6 +792,7 @@ function addTypingIndicator(name) {
   container.scrollTop = container.scrollHeight;
 }
 
+// 移除「正在輸入中…」的假訊息泡泡
 function removeTypingIndicator() {
   document.getElementById('typing-indicator')?.remove();
 }
@@ -778,6 +806,7 @@ function removeTypingIndicator() {
 let idleTimer = null;
 let isLoginSequenceRunning = false;
 
+// 重設閒置計時器：使用者閒置一段隨機時間後，讓角色主動發起話題
 function resetIdleTimer() {
   if (idleTimer) clearTimeout(idleTimer);
   if (!state.currentSession) return;
@@ -825,6 +854,8 @@ async function triggerRandomLoginMessage() {
   resetIdleTimer(); // 結束後啟動當前對話的閒置偵測
 }
 
+// 連續觸發多則主動發言（登入時或閒置後），直到達到 totalCount 則，
+// 或（非登入爆發模式時）使用者中途回話就提前中斷
 async function triggerProactiveSequence(sessionId, totalCount, isLoginBurst = false) {
   const sess = state.sessions.find(s => String(s.id) === String(sessionId));
   if (!sess || !state.serverOnline) return;
@@ -848,6 +879,7 @@ async function triggerProactiveSequence(sessionId, totalCount, isLoginBurst = fa
   sess.waitingForUserReply = true; // 標記為等待使用者回覆（停止主動發言）
 }
 
+// 觸發單次主動發言：隨機挑選一位角色參與者，帶入特殊提示詞讓其主動開啟話題
 async function triggerProactiveAction(sessionId) {
   const sess = state.sessions.find(s => String(s.id) === String(sessionId));
   if (!sess || !state.serverOnline) return;
@@ -870,6 +902,8 @@ async function triggerProactiveAction(sessionId) {
   await getAIReply(sess, participant, proactivePrompt, true);
 }
 
+// 使用者送出訊息的主要流程：讀取輸入框內容、樂觀更新畫面、寫入資料庫，
+// 再為對話中每位角色參與者各自呼叫 AI 產生回覆
 async function sendMessage() {
   const sess = state.currentSession;
   if (!sess || !state.currentUser) return;
@@ -887,7 +921,7 @@ async function sendMessage() {
 
   appendLog(`🗣️ 使用者 (${userName}) 發送訊息: ${content}`);
 
-  // optimistic UI
+  // 樂觀式更新 UI：先在畫面上顯示暫存訊息，不等資料庫回應
   const tempMsg = {
     id: Date.now(), session_id: sess.id, sender_type: 'user',
     sender_key: state.currentUser.key, sender_name: userName, content, created_at: now
@@ -897,16 +931,19 @@ async function sendMessage() {
   sess.messages.push(tempMsg);
   renderMessages();
 
-  // save to DB
+  // 儲存到資料庫
   await saveMessage(sess.id, 'user', state.currentUser.key, null, userName, content, null);
 
-  // get AI reply
+  // 取得 AI 回覆（對話中每位角色參與者都各自產生一則回覆）
   const charParts = (sess.chat_participants || []).filter(p => p.participant_type === 'character');
   for (const part of charParts) {
     await getAIReply(sess, part, content);
   }
 }
 
+// 核心函式：向後端 debug_server.py 請求指定角色的 AI 回覆。
+// 流程：組裝角色卡/使用者資料/對話歷史/寫作風格等 payload → 送出非同步 Job →
+// 輪詢 Job 狀態直到完成或逾時 → 將回覆存入資料庫並更新畫面/未讀數
 async function getAIReply(sess, participant, userMessage, isProactive = false) {
   if (!state.serverOnline) return;
   const charData = state.characters.find(c => c.id === participant.character_id);
@@ -1117,6 +1154,7 @@ async function getAIReply(sess, participant, userMessage, isProactive = false) {
 // ══════════════════════════════════════════
 // MODALS
 // ══════════════════════════════════════════
+// 開啟「好友設定」或「聊天室設定」彈窗，依對話類型顯示不同表單內容
 function openEditModal(id) {
   appendLog(`🛠️ 正在準備彈窗: [${id}]`);
   try {
@@ -1189,6 +1227,8 @@ function openEditModal(id) {
 let serverPollTimer = null;
 let lastModelFetch = 0;
 
+// 定期檢查後端 debug_server.py 是否在線，並更新狀態燈號與文字；
+// 由離線轉為在線時，順便重新抓取模型清單並檢查是否有漏發的 AI 回覆
 async function checkServerStatus() {
   const dot = qs('#server-dot');
   const txt = qs('#server-status-text');
@@ -1216,6 +1256,7 @@ async function checkServerStatus() {
   txt.textContent = '❌ 伺服器未啟動';
 }
 
+// 向後端取得可用的 AI 模型清單，並填入模型下拉選單
 async function fetchModels() {
   try {
     const res = await fetch('http://localhost:8081/api/models');
@@ -1262,6 +1303,7 @@ async function recoverMissedReplies() {
   }
 }
 
+// 啟動定期輪詢（每 5 秒）檢查後端伺服器連線狀態
 function startServerPolling() {
   checkServerStatus();
   if (serverPollTimer) return;
@@ -1271,6 +1313,7 @@ function startServerPolling() {
 // ══════════════════════════════════════════
 // LOG
 // ══════════════════════════════════════════
+// 在畫面下方的除錯 LOG 文字框附加一行帶時間戳的訊息，並自動捲動到底部
 function appendLog(text) {
   const box = qs('#log-output');
   if (!box) return;
@@ -1284,6 +1327,7 @@ function appendLog(text) {
 // ══════════════════════════════════════════
 const autoChatState = { running: false, timer: null };
 
+// 停止自動聊天循環，還原按鈕圖示
 function stopAutoChat() {
   if (!autoChatState.running) return;
   autoChatState.running = false;
@@ -1294,6 +1338,7 @@ function stopAutoChat() {
   appendLog('⏹️ 自動聊天已暫停');
 }
 
+// 切換自動聊天開關：檢查前置條件（有對話/有角色/伺服器在線）後啟動或停止循環
 function toggleAutoChat() {
   if (autoChatState.running) { stopAutoChat(); return; }
 
@@ -1310,6 +1355,8 @@ function toggleAutoChat() {
   runAutoChatLoop(sess.id);
 }
 
+// 自動聊天循環主體：以輪詢佇列方式輪流讓角色發言，每則之間間隔一段隨機時間，
+// 遞迴呼叫自身持續循環，直到 autoChatState.running 被設為 false
 async function runAutoChatLoop(sessionId) {
   if (!autoChatState.running) return;
 
@@ -1345,6 +1392,7 @@ async function runAutoChatLoop(sessionId) {
 // ══════════════════════════════════════════
 // EVENT LISTENERS
 // ══════════════════════════════════════════
+// 集中註冊所有 UI 事件監聽器（列表點擊、彈窗表單、送出訊息、自動聊天等）
 function setupEventListeners() {
   // ── 使用事件委託處理列表點擊 ──
   const midPanel = qs('#panel-mid');
@@ -1395,7 +1443,7 @@ function setupEventListeners() {
     }
   });
 
-  // User select
+  // 使用者下拉選單：切換使用者時需先通過密碼驗證
   qs('#user-select').addEventListener('change', e => {
     const val = e.target.value;
     if (!val) return;
@@ -1420,7 +1468,7 @@ function setupEventListeners() {
     e.target.value = state.currentUser ? state.currentUser.key : '';
   });
 
-  // Password check modal logic
+  // 密碼驗證彈窗邏輯
   qs('#btn-password-cancel').addEventListener('click', () => {
     qs('#modal-password-check').classList.add('hidden');
     state._tempTargetUser = null;
@@ -1443,7 +1491,7 @@ function setupEventListeners() {
     }
   });
 
-  // Add user
+  // 新增使用者按鈕：開啟空白的使用者編輯彈窗
   qs('#btn-add-user').addEventListener('click', () => {
     qs('#modal-user-title').textContent = '👤 新增使用者';
     qs('#modal-user-notes').value = '';
@@ -1480,7 +1528,7 @@ function setupEventListeners() {
     }
   });
 
-  // User profile edit
+  // 編輯使用者個人資料
   qs('#btn-edit-user-profile').addEventListener('click', () => {
     qs('#modal-user-title').textContent = '👤 編輯使用者資料';
     openUserEditModal();
@@ -1525,7 +1573,7 @@ function setupEventListeners() {
     appendLog(isNew ? '✅ 新使用者已建立' : '✅ 使用者設定已儲存至雲端');
   });
 
-  // Collapse left
+  // 收合左側面板
   qs('#btn-collapse-left').addEventListener('click', () => {
     const shell = qs('#app-shell');
     const collapsed = shell.classList.toggle('left-collapsed');
@@ -1539,7 +1587,7 @@ function setupEventListeners() {
   qs('#modal-group-color-select').addEventListener('change', () =>
     updateColorSwatch('modal-group-color-swatch', 'modal-group-color-select'));
 
-  // New 1-on-1 (Friend)
+  // 新增一對一好友對話
   qs('#btn-new-1on1').addEventListener('click', () => {
     if (!state.currentUser) { alert('請先選擇使用者'); return; }
     qs('#modal-friend-title').textContent = '💬 新增好友';
@@ -1616,7 +1664,7 @@ function setupEventListeners() {
     deleteSession(id);
   });
 
-  // New group
+  // 新增群組聊天室
   qs('#btn-new-group').addEventListener('click', () => {
     if (!state.currentUser) { alert('請先選擇使用者'); return; }
     qs('#modal-group-title').textContent = '👥 建立聊天室';
@@ -1661,7 +1709,7 @@ function setupEventListeners() {
       qs('#modal-group').classList.add('hidden');
       await createSession('group', title, checked, '');
 
-      const newSess = state.sessions[0]; // assuming newly created session is first
+      const newSess = state.sessions[0]; // 假設新建立的對話會排在清單最前面（依 updated_at 排序）
       if (newSess) {
         if (bgData) localStorage.setItem(`loveline_extra_${newSess.id}`, bgData);
         if (color) localStorage.setItem(`loveline_avatar_color_${newSess.id}`, color);
@@ -1709,7 +1757,7 @@ function setupEventListeners() {
     deleteSession(id);
   });
 
-  // Send message
+  // 送出訊息（點擊按鈕或按 Enter 鍵）
   qs('#btn-send').addEventListener('click', sendMessage);
   qs('#msg-input').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
@@ -1719,10 +1767,10 @@ function setupEventListeners() {
     this.style.height = Math.min(this.scrollHeight, 120) + 'px';
   });
 
-  // Auto-chat toggle
+  // 自動聊天開關按鈕
   qs('#btn-auto-chat').addEventListener('click', toggleAutoChat);
 
-  // Clear chat (local display only)
+  // 清空聊天畫面（僅清除前端顯示，不刪除資料庫紀錄）
   qs('#btn-clear-chat').addEventListener('click', () => {
     if (!state.currentSession) return;
     if (confirm('清空畫面顯示？（不刪除資料庫紀錄）')) {
@@ -1731,7 +1779,7 @@ function setupEventListeners() {
     }
   });
 
-  // Model select
+  // AI 模型下拉選單：切換時更新目前使用的模型
   qs('#model-select').addEventListener('change', e => { state.currentModel = e.target.value; });
 
   // 新增好友彈窗：選角色卡後若名稱欄位空白，自動填入角色名稱
@@ -1744,7 +1792,7 @@ function setupEventListeners() {
     if (char) nameInput.value = char.name;
   });
 
-  // Close modals clicking overlay
+  // 點擊彈窗外層遮罩時關閉彈窗
   ['modal-friend', 'modal-group', 'modal-user-edit'].forEach(id => {
     qs('#' + id).addEventListener('click', e => {
       if (e.target === qs('#' + id)) qs('#' + id).classList.add('hidden');

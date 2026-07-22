@@ -64,6 +64,7 @@
     box-sizing: border-box;
 }
 
+/* html 與 body 的基礎設定：全螢幕、隱藏捲軸、指定預設字型與文字顏色 */
 html,
 body {
     width: 100%;
@@ -78,16 +79,19 @@ body {
     text-size-adjust: 100%;
 }
 
+/* 依照目前所在「曖昧期」動態切換整體背景色，data-period 由 JS 依劇情階段設定在 body 上 */
 body[data-period="1"],
 body[data-period="1"] main#stage {
     background-color: var(--c-period-1);
 }
 
+/* 「熱戀期」對應的背景色 */
 body[data-period="2"],
 body[data-period="2"] main#stage {
     background-color: var(--c-period-2);
 }
 
+/* 「失戀期」對應的背景色 */
 body[data-period="3"],
 body[data-period="3"] main#stage {
     background-color: var(--c-period-3);
@@ -114,7 +118,7 @@ body[data-period="3"] main#stage {
     overflow: hidden;
 }
 
-/* 背景粒子動畫預留 */
+/* 背景粒子動畫預留：以放射狀漸層搭配位移動畫，營造星點緩慢飄移的氛圍 */
 #star-bg {
     position: fixed;
     top: 0;
@@ -127,6 +131,7 @@ body[data-period="3"] main#stage {
     animation: slowDrift 100s linear infinite;
 }
 
+/* #star-bg 使用的位移動畫關鍵影格，讓星點背景緩慢往右下漂移 */
 @keyframes slowDrift {
     0% {
         background-position: 0 0;
@@ -152,7 +157,7 @@ body[data-period="3"] main#stage {
     white-space: pre;
 }
 
-/* 每一頁的基礎底層 */
+/* 每一頁的基礎底層：所有畫面（screen）預設疊在同一位置，靠 opacity/visibility 切換顯示 */
 .screen {
     position: absolute;
     top: 0;
@@ -169,12 +174,13 @@ body[data-period="3"] main#stage {
     padding: 4px;
 }
 
+/* 目前被 JS 標記為啟用中的畫面，套用此 class 使其淡入並可被看見 */
 .screen.active {
     opacity: 1;
     visibility: visible;
 }
 
-/* 按鈕樣式 */
+/* 按鈕樣式：所有按鈕共用的基礎外觀（圓角、內距、字型） */
 .btn {
     padding: 6px 30px;
     border-radius: 30px;
@@ -187,12 +193,14 @@ body[data-period="3"] main#stage {
     margin-top: 4px;
 }
 
+/* 主要按鈕（強調色底），用於最重要的操作，例如「開始」「送出」 */
 .primary-btn {
     background-color: var(--c-accent);
     color: #fff;
     box-shadow: 0 0 20px rgba(156, 111, 214, 0.4);
 }
 
+/* 僅在支援 hover 的裝置（滑鼠）上啟用滑鼠移入效果，避免觸控裝置出現殘留高亮 */
 @media (hover: hover) {
     .primary-btn:hover {
         background-color: var(--c-accent-hover);
@@ -200,12 +208,14 @@ body[data-period="3"] main#stage {
     }
 }
 
+/* 次要按鈕（外框樣式），用於次要操作，例如「返回」「取消」 */
 .secondary-btn {
     background-color: var(--c-bg-card);
     color: var(--c-accent-light);
     border: 1px solid var(--c-accent);
 }
 
+/* 次要按鈕的滑鼠移入效果 */
 @media (hover: hover) {
     .secondary-btn:hover {
         background-color: var(--c-accent-hover);
@@ -213,6 +223,7 @@ body[data-period="3"] main#stage {
     }
 }
 
+/* 純文字按鈕：無背景、無邊框，僅有文字，用於較不顯眼的輔助操作 */
 .text-btn {
     background: hsla(0, 0%, 0%, 0.0);
     border: 1px hsla(0, 0%, 100%, 0.0);
@@ -221,6 +232,7 @@ body[data-period="3"] main#stage {
     font-size: 20px;
 }
 
+/* 純文字按鈕的滑鼠移入效果：提高亮度作為回饋 */
 @media (hover: hover) {
     .text-btn:hover {
         filter: brightness(1.3);
@@ -228,6 +240,7 @@ body[data-period="3"] main#stage {
 }
 
 /* 首頁 */
+/* 首頁主標題文字 */
 .main-title {
     font-size: var(--fs-title);
     margin-bottom: 20px;
@@ -235,6 +248,7 @@ body[data-period="3"] main#stage {
     text-align: center;
 }
 
+/* 首頁副標題文字 */
 .sub-title {
     font-size: var(--fs-subtitle);
     color: var(--c-text-sec);
@@ -242,12 +256,14 @@ body[data-period="3"] main#stage {
     font-weight: 300;
 }
 
+/* 首頁描述文字（例如簡短說明本測驗內容） */
 .desc-text {
     font-size: var(--fs-desc);
     color: var(--c-accent-light);
     margin-bottom: 60px;
 }
 
+/* 頁面底部的小字註記，例如版權或版本資訊，固定貼在畫面底部 */
 .footer-note {
     position: absolute;
     bottom: 20px;
@@ -255,6 +271,7 @@ body[data-period="3"] main#stage {
     color: var(--c-text-sec);
 }
 
+/* 使用說明頁的內文段落，字距與行高加大以利閱讀 */
 .instruction-content {
     font-size: var(--fs-instruction);
     line-height: 1.8;
@@ -265,6 +282,7 @@ body[data-period="3"] main#stage {
 }
 
 /* 表單 */
+/* 表單外層容器（卡片樣式），例如輸入暱稱等使用者資料的表單 */
 .form-container {
     width: 100%;
     max-width: 500px;
@@ -274,15 +292,18 @@ body[data-period="3"] main#stage {
     box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
 }
 
+/* 表單容器內的標題文字 */
 .form-container h2 {
     margin-bottom: 30px;
     font-weight: 500;
 }
 
+/* 單一表單欄位的外層區塊（標籤 + 輸入元件） */
 .form-group {
     margin-bottom: 30px;
 }
 
+/* 表單欄位的標籤文字（label） */
 .form-group label {
     display: block;
     margin-bottom: 10px;
@@ -290,6 +311,7 @@ body[data-period="3"] main#stage {
     font-size: 20px;
 }
 
+/* 文字輸入框樣式 */
 input[type="text"] {
     width: 100%;
     padding: 12px 20px;
@@ -301,12 +323,14 @@ input[type="text"] {
     font-size: 20px;
 }
 
+/* 單選按鈕群組的容器，讓多個選項自動換行排列 */
 .radio-group {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
 }
 
+/* 單一單選按鈕（以按鈕外觀呈現的選項） */
 .radio-btn {
     padding: 5px 16px;
     background-color: var(--c-accent);
@@ -319,11 +343,13 @@ input[type="text"] {
     font-size: var(--fs-radio-btn);
 }
 
+/* 目前被選取的單選按鈕狀態，改用更醒目的顏色標示 */
 .radio-btn.selected {
     background-color: var(--c-accent-vivian);
     color: #fff;
 }
 
+/* 表單下方的補充說明小字 */
 .note {
     font-size: var(--fs-note);
     color: var(--c-text-sec);
@@ -331,6 +357,7 @@ input[type="text"] {
 }
 
 /* 作答區 */
+/* 作答頁面頂部列，通常顯示題號進度等資訊，左右對齊排列 */
 .top-bar {
     position: absolute;
     top: 20px;
@@ -343,6 +370,7 @@ input[type="text"] {
 }
 
 /*問題文字*/
+/* 題目文字的外層容器，讓文字在剩餘空間中垂直置中 */
 .question-container {
     flex-grow: 1;
     display: flex;
@@ -351,12 +379,14 @@ input[type="text"] {
     padding: 0 20px;
 }
 
+/* 題目本身的文字樣式 */
 #question-text {
     font-size: var(--fs-question);
     font-weight: 300;
     line-height: 1.6;
 }
 
+/* 選項（李克特量表）整體容器，垂直排列量表與其他選項元素 */
 .options-container {
     width: 100%;
     display: flex;
@@ -370,6 +400,7 @@ input[type="text"] {
 }
 
 /*圓圈區域*/
+/* 李克特量表（同意程度）圓圈選項的橫向排列容器 */
 .likert-scale {
     display: flex;
     justify-content: center;
@@ -377,6 +408,7 @@ input[type="text"] {
     gap: 24px;
 }
 
+/* 量表下方左右兩端的文字標籤（例如「非常不同意」／「非常同意」） */
 .scale-labels-bottom {
     width: 90%;
     /*max-width: 500px;*/
@@ -389,6 +421,7 @@ input[type="text"] {
 
 
 /*圓形按鈕*/
+/* 量表上單顆圓形選項按鈕的基礎樣式 */
 .scale-circle {
     width: 30px;
     height: 30px;
@@ -400,6 +433,7 @@ input[type="text"] {
     position: relative;
 }
 
+/* 圓形選項按鈕的滑鼠移入效果：放大並變色，提示可點擊 */
 @media (hover: hover) {
     .scale-circle:hover {
         transform: scale(1.2);
@@ -408,24 +442,28 @@ input[type="text"] {
 }
 
 /* 強度漸變大小 */
+/* 兩端（最強烈同意/不同意）的圓圈尺寸最大，強調強度差異 */
 .scale-circle[data-val="1"],
 .scale-circle[data-val="7"] {
     width: 44px;
     height: 44px;
 }
 
+/* 次強烈同意/不同意的圓圈尺寸次之 */
 .scale-circle[data-val="2"],
 .scale-circle[data-val="6"] {
     width: 36px;
     height: 36px;
 }
 
+/* 量表兩端文字標籤的樣式 */
 .scale-label {
     font-size: 25px;
     color: var(--c-text-sec);
 }
 
 /* 動態標記顏色將由 JS 根據同意度控制 */
+/* 作答頁的返回按鈕，固定在畫面左上角 */
 .back-btn {
     position: absolute;
     top: 60px;
@@ -434,6 +472,7 @@ input[type="text"] {
 }
 
 /* 計算中動畫 */
+/* 結果計算中顯示的圓形轉圈動畫（loading spinner） */
 .calculating-anim {
     width: 75px;
     height: 75px;
@@ -444,17 +483,20 @@ input[type="text"] {
     margin-bottom: 40px;
 }
 
+/* .calculating-anim 使用的旋轉動畫關鍵影格 */
 @keyframes spin {
     100% {
         transform: rotate(360deg);
     }
 }
 
+/* 計算中頁面下方文字，套用淡入淡出的呼吸效果 */
 .fade-text {
     animation: pulse 3s infinite;
     font-weight: 300;
 }
 
+/* .fade-text 使用的透明度呼吸動畫關鍵影格 */
 @keyframes pulse {
 
     0%,
@@ -484,6 +526,7 @@ input[type="text"] {
     transition: opacity 0.8s ease, visibility 0.8s;
 }
 
+/* 結果頁外框啟用中的狀態，淡入顯示 */
 .screen-result.active {
     opacity: 1;
     visibility: visible;
@@ -516,6 +559,7 @@ input[type="text"] {
     min-height: 50%;
 }
 
+/* 結果頁下方的操作按鈕群組（初版，後被下方「橫排按鈕」區塊覆蓋樣式） */
 .result-actions {
     display: flex;
     gap: 20px;
@@ -524,6 +568,7 @@ input[type="text"] {
 }
 
 /* 音樂圖示 */
+/* 背景音樂開關按鈕，固定貼在畫面左下角 */
 #music-control {
     position: fixed;
     bottom: 25px;
@@ -536,6 +581,7 @@ input[type="text"] {
 }
 
 /* 結果頁重構 */
+/* 結果頁內框重構版本：改為直向 flex 排版，限制最大高度避免超出畫面 */
 .result-container {
     display: flex;
     flex-direction: column;
@@ -545,6 +591,7 @@ input[type="text"] {
 }
 
 /* 三個階段標題 */
+/* 結果頁頂部三個曖昧/熱戀/失戀階段的標題列容器 */
 .result-period-header {
     display: flex;
     justify-content: center;
@@ -553,6 +600,7 @@ input[type="text"] {
     margin-bottom: 0px;
 }
 
+/* 階段標題旁的小圓點指示器（預設未啟用樣式） */
 .period-dot {
     width: 10px;
     height: 10px;
@@ -561,10 +609,12 @@ input[type="text"] {
     transition: background-color 0.3s;
 }
 
+/* 目前所在階段對應的小圓點，改用強調色標示 */
 .period-dot.active {
     background-color: var(--c-accent-light);
 }
 
+/* 結果類型的簡短標題文字（例如角色代號） */
 .result-type-short {
     font-size: 30px;
     font-weight: 500;
@@ -574,6 +624,7 @@ input[type="text"] {
     text-align: center;
 }
 
+/* 徽章樣式：用於類型標籤或名稱的小圓角膠囊底色 */
 .type-badge,
 .type-name {
     background-color: var(--c-accent);
@@ -587,6 +638,7 @@ input[type="text"] {
 
 
 /*結果頁雷達*/
+/* 結果頁雷達圖（能力/特質圖表）容器，置中顯示並限制高度比例 */
 .result-radar {
     flex: 0 0 40%;
     /* 佔比約 30% */
@@ -599,12 +651,14 @@ input[type="text"] {
     align-items: center;
 }
 
+/* 雷達圖繪圖用的 canvas 元素，限制其不超出容器 */
 .result-radar canvas {
     max-height: 100% !important;
     max-width: 100% !important;
 }
 
 /*結果頁的說明文字框*/
+/* 結果說明文字的可捲動區塊，佔用剩餘空間並自訂捲軸樣式 */
 .result-description-wrapper {
     flex: 1;
     /* 佔用其餘所有可用空間 */
@@ -620,16 +674,19 @@ input[type="text"] {
     scrollbar-color: var(--c-accent) transparent;
 }
 
+/* 說明文字區塊在 Chrome/Safari 等 WebKit 瀏覽器中的捲軸外觀（軌道） */
 .result-description-wrapper::-webkit-scrollbar {
     width: 8px;
 }
 
+/* 說明文字區塊在 WebKit 瀏覽器中的捲軸滑塊樣式 */
 .result-description-wrapper::-webkit-scrollbar-thumb {
     background: var(--c-accent);
     border-radius: 4px;
 }
 
 /* 星星評分 */
+/* 使用者回饋（星等評分）區塊的外層容器 */
 .feedback-section {
     margin: 16px 0;
     text-align: center;
@@ -637,12 +694,14 @@ input[type="text"] {
     overflow: hidden;
 }
 
+/* 星等評分上方的提問文字，例如「這個結果準確嗎？」 */
 .feedback-q {
     font-size: 20px;
     color: var(--c-text-main);
     margin-bottom: 6px;
 }
 
+/* 星星圖示的橫向排列容器 */
 .star-rating {
     display: flex;
     justify-content: center;
@@ -652,6 +711,7 @@ input[type="text"] {
     margin-bottom: 6px;
 }
 
+/* 單顆星星圖示的樣式 */
 .star {
     font-size: 40px;
     color: rgba(255, 255, 255, 0.7);
@@ -660,6 +720,7 @@ input[type="text"] {
     line-height: 1;
 }
 
+/* 星星圖示滑鼠移入效果：變金黃色並放大 */
 @media (hover: hover) {
     .star:hover {
         color: goldenrod;
@@ -667,10 +728,12 @@ input[type="text"] {
     }
 }
 
+/* 已被使用者選取（點亮）的星星樣式 */
 .star.active {
     color: gold;
 }
 
+/* 星等評分旁的輔助文字說明（例如目前評分幾顆星） */
 .feedback-labels {
     font-size: 20px;
     color: var(--c-text-main);
@@ -678,6 +741,7 @@ input[type="text"] {
 }
 
 /* 橫排按鈕 */
+/* 結果頁下方操作按鈕群組（改版：橫向排列，各按鈕等寬） */
 .result-actions {
     display: flex;
     gap: 12px;
@@ -686,6 +750,7 @@ input[type="text"] {
     margin-top: 10px;
 }
 
+/* 橫排按鈕群組中每顆按鈕的樣式微調，避免文字換行、字級縮小以容納多顆按鈕 */
 .result-actions .btn {
     flex: 1;
     padding: 10px 6px;
@@ -697,6 +762,7 @@ input[type="text"] {
 /* ═══════════════════════════════════════
    漢堡選單（僅首頁）
    ═══════════════════════════════════════ */
+/* 漢堡選單按鈕本體，固定於畫面左上角，內含三條橫線圖示 */
 .hamburger-btn {
     position: absolute;
     top: 15px;
@@ -716,10 +782,12 @@ input[type="text"] {
     transition: background 0.2s;
 }
 
+/* 漢堡選單按鈕的滑鼠移入效果，背景稍微變亮 */
 .hamburger-btn:hover {
     background: rgba(255, 255, 255, 0.14);
 }
 
+/* 漢堡選單按鈕內的三條橫線圖示，各自為一個 span 元素 */
 .hamburger-btn span {
     display: block;
     width: 20px;
@@ -728,6 +796,7 @@ input[type="text"] {
     border-radius: 2px;
 }
 
+/* 點擊漢堡選單後展開的下拉選單容器 */
 .hamburger-dropdown {
     position: absolute;
     top: 58px;
@@ -741,10 +810,12 @@ input[type="text"] {
     box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
 }
 
+/* 下拉選單收合（隱藏）時套用的狀態 class，由 JS 切換 */
 .hamburger-dropdown.hd-hidden {
     display: none;
 }
 
+/* 下拉選單中單一選項項目的樣式 */
 .hd-item {
     display: block;
     width: 100%;
@@ -760,17 +831,20 @@ input[type="text"] {
     transition: background 0.15s;
 }
 
+/* 下拉選單中最後一個項目不顯示底部分隔線 */
 .hd-item:last-child {
     border-bottom: none;
 }
 
+/* 下拉選單項目的滑鼠移入效果 */
 .hd-item:hover {
     background: rgba(255, 255, 255, 0.09);
 }
 
 /* ═══════════════════════════════════════
-   Stage-level Modal 通用遮罩
+   舞台層級（Stage-level）彈窗共用遮罩
    ═══════════════════════════════════════ */
+/* 各種彈窗（Modal）共用的半透明背景遮罩，內容置中顯示並加上模糊效果 */
 .stage-modal {
     position: absolute;
     top: 0;
@@ -785,13 +859,15 @@ input[type="text"] {
     backdrop-filter: blur(4px);
 }
 
+/* 彈窗遮罩隱藏時套用的狀態 class，由 JS 切換 */
 .stage-modal.sm-hidden {
     display: none;
 }
 
 /* ═══════════════════════════════════════
-   QR Code Modal
+   QR Code 分享彈窗
    ═══════════════════════════════════════ */
+/* QR Code 彈窗內容的卡片容器 */
 .qr-box {
     background: var(--c-bg-card);
     border: 1px solid var(--c-accent);
@@ -804,12 +880,14 @@ input[type="text"] {
     box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
 }
 
+/* QR Code 彈窗的標題文字 */
 .qr-box h3 {
     font-size: 20px;
     font-weight: 500;
     color: var(--c-text-main);
 }
 
+/* QR Code 下方顯示的分享網址文字 */
 .qr-url-label {
     font-size: 12px;
     color: var(--c-text-sec);
@@ -818,6 +896,7 @@ input[type="text"] {
     max-width: 400px;
 }
 
+/* QR Code 圖像容器內的 canvas 或 img 元素樣式 */
 #qrcode-container canvas,
 #qrcode-container img {
     border-radius: 6px;
@@ -827,8 +906,9 @@ input[type="text"] {
 }
 
 /* ═══════════════════════════════════════
-   Result Viewer Modal（觀看評量結果）
+   結果檢視彈窗（觀看評量結果）
    ═══════════════════════════════════════ */
+/* 結果檢視彈窗內容的整體容器，直向排列並隨階段切換背景色 */
 .rv-box {
     background: var(--c-bg-main);
     width: 100%;
@@ -840,22 +920,27 @@ input[type="text"] {
 }
 
 /* 各期間背景顏色（對應 lpas_styles.css 情境色彩） */
+/* data-period-idx="0" 對應「曖昧期」背景色 */
 .rv-box[data-period-idx="0"] {
     background: var(--c-period-1);
 }
 
+/* data-period-idx="1" 對應「熱戀期」背景色 */
 .rv-box[data-period-idx="1"] {
     background: var(--c-period-2);
 }
 
+/* data-period-idx="2" 對應「失戀期」背景色 */
 .rv-box[data-period-idx="2"] {
     background: var(--c-period-3);
 }
 
+/* data-period-idx="3" 對應第四種背景色（預留擴充用） */
 .rv-box[data-period-idx="3"] {
     background: var(--c-period-4);
 }
 
+/* 結果檢視彈窗頂部列，含標題與關閉按鈕，左右對齊排列 */
 .rv-topbar {
     display: flex;
     align-items: center;
@@ -865,6 +950,7 @@ input[type="text"] {
     flex-shrink: 0;
 }
 
+/* 結果檢視彈窗的標題文字 */
 .rv-title {
     font-size: 30px;
     font-weight: 500;
@@ -873,6 +959,7 @@ input[type="text"] {
     color: var(--c-text-main);
 }
 
+/* 結果檢視彈窗的關閉按鈕（右上角 X） */
 .rv-close {
     background: none;
     border: 1px solid rgba(255, 255, 255, 0.3);
@@ -886,11 +973,13 @@ input[type="text"] {
     transition: background 0.15s;
 }
 
+/* 關閉按鈕的滑鼠移入效果 */
 .rv-close:hover {
     background: rgba(255, 255, 255, 0.3);
     color: #fff;
 }
 
+/* 選擇要檢視哪個時期結果的下拉選單列 */
 .rv-select-row {
     display: flex;
     align-items: center;
@@ -900,6 +989,7 @@ input[type="text"] {
     flex-shrink: 0;
 }
 
+/* 「期間」下拉選單前的文字標籤 */
 .rv-period-lbl {
     font-size: 20px;
     font-weight: 400;
@@ -907,6 +997,7 @@ input[type="text"] {
     white-space: nowrap;
 }
 
+/* 選擇期間的下拉選單本體 */
 .rv-select {
     flex: 1;
     background: var(--c-bg-card);
@@ -920,11 +1011,13 @@ input[type="text"] {
     outline: none;
 }
 
+/* 結果類型標題區塊（代號、名稱）的外層容器 */
 .rv-type-header {
     padding: 8px 14px 4px;
     flex-shrink: 0;
 }
 
+/* 結果類型代號與名稱的文字樣式 */
 .rv-type-code-name {
     font-size: 22px;
     font-weight: 500;
@@ -933,16 +1026,19 @@ input[type="text"] {
     text-align: left;
 }
 
+/* 類型名稱那一行的行高設定 */
 .rv-type-code-name .rv-line-title {
     line-height: 1.25;
 }
 
+/* 類型代號那一行的樣式（字距與顏色） */
 .rv-type-code-name .rv-line-code {
     letter-spacing: 1px;
     color: hsl(280, 50%, 82%);
     margin-top: 2px;
 }
 
+/* 結果類型的特質描述文字 */
 .rv-type-traits {
     font-size: 22px;
     font-weight: 500;
@@ -951,6 +1047,7 @@ input[type="text"] {
     text-align: left;
 }
 
+/* 結果詳細說明文字的可捲動內容區塊 */
 .rv-desc {
     flex: 1;
     margin: 8px 14px;
@@ -967,6 +1064,7 @@ input[type="text"] {
     -webkit-overflow-scrolling: touch;
 }
 
+/* 底部導覽列，放置上一期/下一期切換按鈕與複製按鈕 */
 .rv-navbar {
     display: flex;
     align-items: center;
@@ -991,10 +1089,12 @@ input[type="text"] {
     flex-shrink: 0;
 }
 
+/* 換期按鈕的滑鼠移入效果（未被停用時才生效） */
 .rv-nav-btn:hover:not(:disabled) {
     filter: brightness(1.2);
 }
 
+/* 換期按鈕被停用時（例如已是第一期/最後一期）的樣式 */
 .rv-nav-btn:disabled {
     opacity: 0.33;
     cursor: default;
@@ -1017,6 +1117,7 @@ input[type="text"] {
 
 }
 
+/* 複製按鈕的滑鼠移入效果 */
 .rv-copy-btn:hover {
     background: var(--c-accent-hover);
 }

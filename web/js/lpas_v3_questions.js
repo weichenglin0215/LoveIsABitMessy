@@ -244,26 +244,47 @@ window.LPAS_QUESTIONS_V3_PART2 = [
 // 隨機取題：每個 id 從 PART1 / PART2 隨機抽一份
 // ============================================================
 
+/**
+ * 依 id 隨機挑選一份題目（PART1 正式版 或 PART2 生活版 二選一）
+ * 用意：同一個 id 在兩份題庫代表相同測量目標（同軸、同 direction），
+ *       但文字風格不同，隨機抽其中一版可增加測驗的多樣性，
+ *       避免每次作答看到的都是同一套題目文字。
+ * @param {string} id 題目代碼，例如 "Q01"
+ * @returns {object|null} 抽中的題目物件（含 id/period/axis/direction/text），
+ *                         若兩份題庫都找不到該 id 則回傳 null
+ */
 window.lpasV3PickQuestion = function (id) {
+    // 分別在正式版與生活版題庫中尋找相同 id 的題目
     const p1 = window.LPAS_QUESTIONS_V3_PART1.find(q => q.id === id);
     const p2 = window.LPAS_QUESTIONS_V3_PART2.find(q => q.id === id);
+    // 過濾掉找不到（undefined）的版本，組成候選池
     const pool = [p1, p2].filter(Boolean);
     if (pool.length === 0) return null;
+    // 從候選池中隨機取一個版本回傳
     return pool[Math.floor(Math.random() * pool.length)];
 };
 
 /**
- * 取得某階段所有題目（已隨機洗牌 + 已隨機抽題庫版本）
- * @param {number} period 1=曖昧 / 2=熱戀 / 3=失戀 / 4=性象限
+ * 取得某階段（period）所有題目（已隨機洗牌 + 每題已隨機抽題庫版本）
+ * 流程：
+ *   1. 以 PART1 題庫為基準，篩出屬於指定 period 的所有題目 id
+ *      （PART1 / PART2 的 id 集合完全對應，用哪一份取 id 清單都一樣）
+ *   2. 對每個 id 呼叫 lpasV3PickQuestion 隨機決定要用正式版還是生活版的題目文字
+ *   3. 使用 Fisher-Yates 演算法將題目順序打亂，避免每次測驗題序固定
+ * @param {number} period 階段代碼：1=曖昧期 / 2=熱戀期 / 3=失戀期 / 4=性象限
+ * @returns {object[]} 該階段所有題目物件所組成的陣列（順序已隨機打亂）
  */
 window.lpasV3GetStageQuestions = function (period) {
+    // 篩出屬於此 period 的所有題目 id（例如曖昧期為 Q01~Q16）
     const ids = window.LPAS_QUESTIONS_V3_PART1
         .filter(q => q.period === period)
         .map(q => q.id);
 
+    // 對每個 id 隨機抽一份題目（正式版或生活版）
     const questions = ids.map(id => window.lpasV3PickQuestion(id));
 
-    // Fisher-Yates 洗牌
+    // Fisher-Yates 洗牌：由陣列尾端往前，依序與隨機索引 j 的元素互換，
+    // 確保每種排列出現的機率均等，達成公平的隨機題序
     for (let i = questions.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [questions[i], questions[j]] = [questions[j], questions[i]];

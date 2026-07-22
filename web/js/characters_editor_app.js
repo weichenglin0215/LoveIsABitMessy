@@ -5,11 +5,13 @@
 
 /* global supabase, TYPE_MAPPING, ZODIAC_SIGNS, BLOOD_TYPES, ZODIAC_RANGES, ZODIAC_DESCRIPTIONS, BLOOD_TYPE_DESCRIPTIONS */
 
-let sb = null;
-let currentCharacterId = null;
+let sb = null;              // Supabase client 實例（初始化後才會有值）
+let currentCharacterId = null; // 目前正在編輯的角色 ID；新增模式時為 null
 
+/** 簡易 querySelector 包裝，縮短呼叫語法 */
 function qs(sel) { return document.querySelector(sel); }
 
+/** 將物件格式化為縮排 2 格的 JSON 字串，供文字框顯示；失敗時退回字串化 */
 function prettyJson(obj) {
     try {
         return JSON.stringify(obj, null, 2);
@@ -18,6 +20,7 @@ function prettyJson(obj) {
     }
 }
 
+/** 更新畫面上方的連線狀態文字 */
 function setStatus(text) {
     const el = qs('#conn-status');
     if (el) el.textContent = text;
@@ -32,6 +35,10 @@ function friendlyError(msg) {
 }
 
 // ====== Supabase 初始化 ======
+/**
+ * 初始化 Supabase 連線（依賴 supabaseClient.js 提供的 window.SupabaseClient）。
+ * 連線成功後立即載入角色卡下拉清單；失敗則顯示錯誤狀態並中止。
+ */
 async function initSupabase() {
     if (window.SupabaseClient && window.SupabaseClient.init && window.SupabaseClient.init()) {
         sb = window.SupabaseClient.getClient();
@@ -46,6 +53,10 @@ async function initSupabase() {
 }
 
 // ====== 角色卡管理 ======
+/**
+ * 從 Supabase 重新讀取所有角色卡並填入下拉選單。
+ * 依 name 以繁中排序規則（zh-Hant）排序後顯示，最多讀取 500 筆。
+ */
 async function refreshCharacterList() {
     const sel = qs('#char-dropdown');
     sel.innerHTML = '<option value="">-- 選擇角色卡 --</option>';
@@ -87,8 +98,13 @@ window.charDropdownLabel = function (row) {
     return `${(row && row.name) || '未命名'}-${fullName || '無LPAS'}`;
 };
 
+/**
+ * 頁面載入時初始化所有下拉選單的選項內容：
+ * 星座、血型、MBTI 皆由外部常數表 (ZODIAC_SIGNS / BLOOD_TYPES / MBTI_TYPES) 產生，
+ * LPAS v3 的曖昧期/熱戀期/失戀期/親密關係則由 TYPE_MAPPING_V3 / SEX_QUADRANTS_V3 產生。
+ */
 function initDropdownOptions() {
-    // Populate Zodiac signs
+    // 填入星座選項
     const zodiacSel = qs('#char-zodiac');
     if (zodiacSel && window.ZODIAC_SIGNS) {
         zodiacSel.innerHTML = '<option value="">-- 選擇星座 --</option>';
@@ -100,7 +116,7 @@ function initDropdownOptions() {
         });
     }
 
-    // Populate Blood types
+    // 填入血型選項
     const bloodSel = qs('#char-blood-type');
     if (bloodSel && window.BLOOD_TYPES) {
         bloodSel.innerHTML = '<option value="">-- 選擇血型 --</option>';
@@ -112,7 +128,7 @@ function initDropdownOptions() {
         });
     }
 
-    // Populate MBTI types
+    // 填入 MBTI 選項
     const mbtiSel = qs('#char-mbti');
     if (mbtiSel && window.MBTI_TYPES) {
         mbtiSel.innerHTML = '<option value="">-- 選擇MBTI --</option>';
@@ -161,6 +177,7 @@ function initDropdownOptions() {
 
 // ====== 屬性連動與顯示邏輯 ======
 
+/** 依生日欄位計算並顯示目前年齡於生日欄位的標籤旁 */
 function updateAgeDisplay() {
     const bDay = qs('#char-birthday').value;
     const lbl = qs('#lbl-birthday');
@@ -172,6 +189,7 @@ function updateAgeDisplay() {
     }
 }
 
+/** 更新畫面上顯示的角色 ID 欄位：編輯中顯示實際 ID，新增模式顯示提示文字 */
 function updateIdPreview() {
     if (currentCharacterId) {
         qs('#char-id').value = currentCharacterId;
@@ -347,6 +365,10 @@ function ensureLpasV3IntimacyFilled() {
     }
 }
 
+/**
+ * 依目前各下拉選單的選擇值，更新右側對應的說明文字框（星座 / 血型 / MBTI /
+ * LPAS v3 三期 / 親密關係），純顯示用途，不會修改任何資料。
+ */
 function updateExplanations() {
     const zVal = qs('#char-zodiac').value;
     const zd = window.ZODIAC_DESCRIPTIONS;
@@ -429,6 +451,7 @@ function resizeImageToDataUrl(file, maxEdge, quality = 0.8) {
     });
 }
 
+/** 處理使用者選取或拖放的角色照片檔案：驗證類型、產生縮圖與原圖並更新預覽 */
 async function handleCharPhotoFile(file) {
     if (!file || !file.type.startsWith('image/')) {
         alert('請選擇圖片檔');
@@ -453,6 +476,7 @@ async function handleCharPhotoFile(file) {
     }
 }
 
+/** 依 currentPhotoThumb 是否有值，切換顯示縮圖或「尚未上傳」佔位圖 */
 function updateCharPhotoPreview() {
     const img = qs('#char-photo-thumb');
     const placeholder = qs('#char-photo-placeholder');
@@ -467,6 +491,7 @@ function updateCharPhotoPreview() {
     }
 }
 
+/** 清除目前暫存的照片資料與檔案輸入框，恢復成未上傳狀態 */
 function clearCharPhoto() {
     currentPhotoThumb = '';
     currentPhotoFull = '';
@@ -475,6 +500,7 @@ function clearCharPhoto() {
     qs('#char-photo-file-input').value = '';
 }
 
+/** 綁定角色照片區塊的所有互動事件：按鈕點擊、檔案選取、拖放上傳 */
 function setupCharPhotoUI() {
     const input = qs('#char-photo-file-input');
     const dropzone = qs('#char-photo-dropzone');
@@ -508,6 +534,10 @@ function setupCharPhotoUI() {
     });
 }
 
+/**
+ * 依角色 ID 從 Supabase 讀取完整角色卡資料，並將所有欄位（基本資料、照片、
+ * LPAS v3 四下拉）套用到表單上；charId 為空時視同取消編輯。
+ */
 async function loadCharacter(charId) {
     if (!charId || !sb) {
         cancelCharacterEdit();
@@ -573,6 +603,10 @@ async function loadCharacter(charId) {
     updateJsonFromDropdowns();
 }
 
+/**
+ * 儲存（覆蓋）目前正在編輯的角色卡：驗證必填欄位、將表單值同步回 cardJson、
+ * 組裝 LPAS v3 資料，最後以 upsert 寫入 Supabase 的 characters 資料表。
+ */
 async function saveCharacter() {
     if (!sb) { alert('Supabase 尚未初始化'); return; }
 
@@ -641,6 +675,10 @@ async function saveCharacter() {
     }
 }
 
+/**
+ * 以目前表單內容新增一筆角色卡（insert，不覆蓋既有資料）：
+ * 驗證必填欄位、同步表單值到 cardJson、組裝 LPAS v3，成功後記錄新產生的 ID。
+ */
 async function saveAsNewCharacter() {
     if (!sb) return;
 
@@ -704,6 +742,7 @@ async function saveAsNewCharacter() {
     }
 }
 
+/** 取消目前編輯狀態，清空所有表單欄位並恢復成「新增」預設值 */
 function cancelCharacterEdit() {
     currentCharacterId = null;
     qs('#char-id').value = '';
@@ -724,6 +763,7 @@ function cancelCharacterEdit() {
     updateButtonStates();
 }
 
+/** 依是否正在編輯既有角色（currentCharacterId 是否有值）切換「儲存」按鈕的可用狀態 */
 function updateButtonStates() {
     const isEditing = !!currentCharacterId;
     const btnSave = qs('#btn-char-save');
@@ -760,10 +800,11 @@ function updateJsonFromDropdowns() {
 
 // ====== 伺服器狀態偵測 ======
 
-let serverOnline = false;
-let lastModelFetchTime = 0;
-let pollInterval = null;
+let serverOnline = false;      // 目前偵測到的 debug_server.py 連線狀態
+let lastModelFetchTime = 0;    // 上次成功抓取模型清單的時間戳記，避免過於頻繁重試
+let pollInterval = null;       // setInterval 的計時器 ID，用於輪詢伺服器狀態
 
+/** 向本地 debug_server.py 查詢可用的 AI 模型清單，並填入模型下拉選單 */
 async function fetchOllamaModels() {
     try {
         const res = await fetch('http://localhost:8081/api/models');
@@ -786,6 +827,10 @@ async function fetchOllamaModels() {
     } catch (e) { console.error('Failed to fetch models', e); }
 }
 
+/**
+ * 定期檢查本地 debug_server.py 是否在線（2 秒逾時），並依結果更新狀態燈號、
+ * 文字提示與「啟動伺服器」按鈕的可用性；上線時視需要重新抓取模型清單。
+ */
 async function checkServerStatus() {
     const serverDot = document.getElementById('server-dot');
     const serverStatusText = document.getElementById('server-status-text');
@@ -827,6 +872,7 @@ async function checkServerStatus() {
     return false;
 }
 
+/** 啟動每 5 秒一次的伺服器狀態輪詢（避免重複啟動），並立即執行一次檢查 */
 function startServerPolling() {
     if (pollInterval) return;
     pollInterval = setInterval(checkServerStatus, 5000);
@@ -835,6 +881,7 @@ function startServerPolling() {
 
 // ====== Editor LOG 功能 ======
 
+/** 將一行文字附加到編輯器 LOG 輸出框，並自動捲動到最底部 */
 function appendEditorLog(text) {
     const logBox = document.getElementById('editor-log-output');
     if (!logBox) return;
@@ -842,11 +889,13 @@ function appendEditorLog(text) {
     logBox.scrollTop = logBox.scrollHeight;
 }
 
+/** 清空編輯器 LOG 輸出框 */
 window.clearEditorLog = () => {
     const el = document.getElementById('editor-log-output');
     if (el) el.value = '';
 };
 
+/** 將目前 LOG 內容複製到系統剪貼簿 */
 window.copyEditorLog = () => {
     const el = document.getElementById('editor-log-output');
     if (!el) return;
@@ -854,6 +903,7 @@ window.copyEditorLog = () => {
     alert('已複製到剪貼簿');
 };
 
+/** 開啟「LOG 詳細內容」彈窗，並重置搜尋欄與比對計數顯示 */
 window.showEditorLogModal = () => {
     const el = document.getElementById('editor-log-output');
     if (!el) return;
@@ -863,9 +913,11 @@ window.showEditorLogModal = () => {
     document.getElementById('editor-log-search-count').textContent = '';
 };
 
+// 立即執行函式：初始化「LOG 詳細內容」彈窗內的關鍵字搜尋功能（上一個／下一個／Enter 觸發）
 (function initEditorLogSearch() {
-    let matches = [], currentMatch = -1;
+    let matches = [], currentMatch = -1;   // matches: 所有比對到的起始位置；currentMatch: 目前選取的索引
 
+    /** 跳到第 idx 筆比對結果（自動循環），選取文字並將畫面捲動至置中位置 */
     function goToMatch(idx) {
         if (!matches.length) return;
         const ta = document.getElementById('editor-log-content');
@@ -885,6 +937,7 @@ window.showEditorLogModal = () => {
         document.getElementById('editor-log-search-count').textContent = `${currentMatch + 1} / ${matches.length}`;
     }
 
+    /** 依搜尋欄輸入的關鍵字，在 LOG 內容中找出所有比對位置（不分大小寫），並跳到第一筆 */
     function doSearch() {
         const query = document.getElementById('editor-log-search-input').value;
         const ta = document.getElementById('editor-log-content');
@@ -909,6 +962,7 @@ window.showEditorLogModal = () => {
 
 // ====== AI 分析：輔助函式 ======
 
+/** 對本地 debug_server.py 發送 POST 請求（JSON body），失敗時拋出附帶提示訊息的錯誤 */
 async function _apiPost(url, body) {
     const res = await fetch(url, {
         method: 'POST',
@@ -966,6 +1020,10 @@ async function _pollAnalysisJob(jobId, onDone, onError) {
     }
 }
 
+/**
+ * 將 AI 分析回傳的角色資料（charData）套用到編輯表單各欄位，
+ * 包含基本資料、生日正規化、MBTI 模糊比對，以及 LPAS v3 四個下拉的還原。
+ */
 function populateFormFromCharData(charData) {
     if (!charData) return;
     qs('#char-card-json').value = prettyJson(charData);
@@ -1031,6 +1089,7 @@ function populateFormFromCharData(charData) {
     updateButtonStates();
 }
 
+/** 將 AI 產生的圖片提示詞（image_prompt）寫入 JSON 文字框中的 cardJson */
 function updateImagePromptInJson(imagePrompt) {
     const textarea = qs('#char-card-json');
     let cardJson = {};
@@ -1109,6 +1168,10 @@ function _askCharacterName() {
 
 // ====== AI 分析：文字創造角色 ======
 
+/**
+ * 「文字創造角色」功能：詢問目標角色名稱 → 選取本地文字檔（txt/md/csv/json）
+ * → 呼叫後端 AI 非同步分析 → 輪詢任務結果 → 將分析出的角色資料填入表單。
+ */
 async function analyzeTextCharacter() {
     // 先詢問要分析的角色名稱
     const targetName = await _askCharacterName();
@@ -1161,6 +1224,10 @@ async function analyzeTextCharacter() {
 
 // ====== AI 分析：剪貼簿創造角色 ======
 
+/**
+ * 「剪貼簿創造角色」功能：詢問目標角色名稱 → 讀取系統剪貼簿文字（含空白 / 過短驗證）
+ * → 呼叫後端 AI 非同步分析 → 輪詢任務結果 → 將分析出的角色資料填入表單。
+ */
 async function analyzeClipboardCharacter() {
     // 先詢問要分析的角色名稱
     const targetName = await _askCharacterName();
@@ -1228,6 +1295,10 @@ async function analyzeClipboardCharacter() {
 
 // ====== AI 分析：人像圖片生成提示詞 ======
 
+/**
+ * 「人像圖片生成提示詞」功能：選取本地圖片 → 轉為 base64 → 呼叫後端 AI 非同步分析
+ * → 輪詢任務結果 → 將產生的 image_prompt 寫回角色設定 JSON。
+ */
 async function analyzeImageCharacter() {
     const input = document.createElement('input');
     input.type = 'file';
@@ -1326,6 +1397,7 @@ function ensureAllRequiredFilled() {
     return true;
 }
 
+// 頁面完整載入後：初始化下拉選項、綁定所有欄位與按鈕的事件、開始輪詢伺服器狀態、連線 Supabase
 window.addEventListener('load', async () => {
     initDropdownOptions();
 

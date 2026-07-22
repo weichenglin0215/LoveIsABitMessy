@@ -1,5 +1,12 @@
+// ============================================================
+// model_options_app.js
+// 功能：AI大模型呼叫參數（如溫度、Top-K、Top-P 等）的設定彈窗。
+// 提供使用者建立/編輯/儲存一組「模型參數表」，並存到 Supabase 的
+// model_options 資料表，供其他模組（如聊天呼叫功能）讀取使用。
+// ============================================================
 document.addEventListener("DOMContentLoaded", () => {
-    // 注入 modal HTML 與 CSS
+    // 動態注入 modal（彈窗）所需的 HTML 結構與對應的 CSS 樣式，
+    // 避免需要另外修改主頁面的 HTML 檔案。
     const modalHTML = `
     <style>
       .modal-LLM-overlay {
@@ -115,20 +122,29 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
     </div>
     `;
+    // 將上面組好的 modal HTML 字串插入到 <body> 的最後面，完成畫面元素的建立。
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 
+    // 取得頁面上與此功能相關的關鍵 DOM 元素：
+    // btnAdd  - 用來開啟「新增/編輯模型參數」彈窗的按鈕
+    // selectEl - 頁面上選擇「使用哪一組模型參數」的下拉選單
+    // modal    - 剛剛注入的彈窗本體（含遮罩層）
     const btnAdd = document.getElementById('btn-add-model-option');
     const selectEl = document.getElementById('model-options-select');
     const modal = document.getElementById('modal-LLM-model-options');
 
+    // 儲存從資料庫載入的所有模型參數表（每一筆為一組完整的呼叫參數）。
     let modelOptionsList = [];
 
-    // 暴露給外部取得目前的參數
+    // 暴露給外部（其他 js 檔案）取得目前下拉選單所選中的模型參數。
+    // 若沒有選擇任何參數表，或找不到對應資料，則回傳 null，
+    // 讓呼叫端可自行套用預設參數。
     window.getModelOptionsPayload = function () {
         const val = selectEl?.value;
         if (!val) return null;
         const opt = modelOptionsList.find(o => o.name === val);
         if (!opt) return null;
+        // 只回傳實際呼叫 LLM API 時需要用到的欄位（排除 id、name 等資料庫專屬欄位）
         return {
             stream: opt.stream,
             temperature: opt.temperature,
@@ -140,13 +156,19 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     };
 
+    // 從 Supabase 的 model_options 資料表載入所有已儲存的模型參數表，
+    // 並依名稱排序後，重新產生下拉選單的選項內容。
     async function loadModelOptions() {
+        // 若 Supabase 尚未初始化完成（連線物件不存在），則先不執行，
+        // 交由下方的 tryLoad() 輪詢機制稍後重試。
         if (!window.SupabaseClient || !window.SupabaseClient.getClient()) return;
         const sb = window.SupabaseClient.getClient();
         const { data, error } = await sb.from('model_options').select('*').order('name');
         if (!error && data) {
             modelOptionsList = data;
             if (selectEl) {
+                // 記住目前選單所選的值，重建選項後嘗試還原原本的選擇，
+                // 避免每次重新載入都跳回「預設」。
                 const currentVal = selectEl.value;
                 selectEl.innerHTML = '<option value="">預設</option>' + data.map(o => `<option value="${o.name}">${o.name}</option>`).join('');
                 if (data.some(o => o.name === currentVal)) selectEl.value = currentVal;
@@ -154,10 +176,17 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // 點擊「新增/編輯模型參數」按鈕時：
+    // 1. 若下拉選單目前已選擇某組已存在的參數表，則將該參數表的內容
+    //    填入彈窗中的各個欄位，讓使用者可以編輯後覆蓋儲存。
+    // 2. 若目前未選擇任何參數表（表示要新增一組），則將所有欄位
+    //    還原成程式內建的預設值。
+    // 最後打開（顯示）彈窗。
     if (btnAdd) {
         btnAdd.addEventListener('click', () => {
             const val = selectEl?.value;
             if (val) {
+                // 編輯模式：找出對應的既有參數，並回填到表單欄位
                 const opt = modelOptionsList.find(o => o.name === val);
                 if (opt) {
                     document.getElementById('mo-name').value = opt.name;
@@ -170,6 +199,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     document.getElementById('mo-top-p').value = opt.top_p;
                 }
             } else {
+                // 新增模式：套用預設參數值
                 document.getElementById('mo-name').value = "LLM大模型參數表";
                 document.getElementById('mo-stream').value = "true";
                 document.getElementById('mo-temperature').value = "0.85";
@@ -179,18 +209,26 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById('mo-top-k').value = "40";
                 document.getElementById('mo-top-p').value = "0.9";
             }
+            // 移除 'hidden' class，讓遮罩層與彈窗顯示出來
             modal.classList.remove('hidden');
         });
     }
 
+    // 「取消」按鈕：直接關閉彈窗，不做任何儲存動作。
     document.getElementById('btn-mo-cancel').addEventListener('click', () => {
         modal.classList.add('hidden');
     });
 
+    // 「儲存設定」按鈕：讀取表單中所有欄位的值，組成 payload 物件，
+    // 並以「名稱（name）」為唯一鍵，寫入（新增或更新）到 Supabase 的
+    // model_options 資料表中。
     document.getElementById('btn-mo-save').addEventListener('click', async () => {
         const name = document.getElementById('mo-name').value.trim();
+        // 名稱為必填欄位，用來當作資料表的識別鍵（upsert 的 onConflict 依據）
         if (!name) { alert('請輸入參數名稱'); return; }
 
+        // 組合要送到資料庫的完整參數物件；數值欄位需轉型
+        // （parseFloat / parseInt），避免存成字串型別。
         const payload = {
             name: name,
             stream: document.getElementById('mo-stream').value === 'true',
@@ -205,18 +243,23 @@ document.addEventListener("DOMContentLoaded", () => {
         const sb = window.SupabaseClient.getClient();
         if (!sb) { alert('Supabase未連線'); return; }
 
-        // Upsert by name
+        // 以 name 欄位為衝突判斷依據執行 upsert：
+        // 若資料庫已有同名參數表，則更新該筆資料；否則新增一筆。
         const { error } = await sb.from('model_options').upsert(payload, { onConflict: 'name' });
         if (error) {
             alert('儲存失敗: ' + error.message);
         } else {
+            // 儲存成功後：關閉彈窗、重新載入最新的參數清單，
+            // 並將下拉選單自動選回剛剛儲存的這組參數名稱。
             modal.classList.add('hidden');
             await loadModelOptions();
             if (selectEl) selectEl.value = name;
         }
     });
 
-    // 嘗試載入
+    // 嘗試載入模型參數清單。
+    // 因為 Supabase 客戶端可能是由其他 js 檔案非同步初始化，
+    // 此處若尚未就緒，就每隔 500 毫秒重試一次，直到連線物件可用為止。
     const tryLoad = () => {
         if (window.SupabaseClient && window.SupabaseClient.getClient()) {
             loadModelOptions();

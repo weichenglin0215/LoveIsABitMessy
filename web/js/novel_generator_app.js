@@ -401,6 +401,7 @@ async function initCharacters() {
 
 // ====== 介面繪製 ======
 
+// 一次重繪整個畫面：書名/故事粗綱輸入框、AI設定下拉選單、角色卡列表、章節列表、編輯區
 function renderAll() {
     ensureGenParams();
     qs('#book-title').value = state.bookTitle || "";
@@ -421,6 +422,7 @@ function renderAll() {
     renderEditor();
 }
 
+// 繪製角色卡欄位（4 個角色槽）：每列包含角色名稱輸入框 + 角色卡下拉選單 + 刪除按鈕
 function renderCharacters() {
     const container = qs('#char-slots-container');
     if (!container) return;
@@ -464,6 +466,7 @@ function renderCharacters() {
     });
 }
 
+// 繪製左側章節/小節列表，包含拖曳排序把手、鎖定按鈕、AI大綱按鈕、刪除按鈕
 function renderChapters() {
     const container = qs('#chapter-list');
     container.innerHTML = "";
@@ -518,6 +521,7 @@ function renderChapters() {
     });
 }
 
+// 繪製右側主編輯區（目前選取的小節標題與內文），並綁定編輯事件回寫至 state
 function renderEditor() {
     const { chapter, section } = state.activeIndex;
     const ch = state.chapters[chapter];
@@ -760,7 +764,7 @@ function setupEventListeners() {
         state.bookTitle = e.target.value;
     });
 
-    // Multi-Book Modal
+    // 多本小說批次產生視窗（Multi-Book Modal）
     qs('#btn-multibook-cancel').addEventListener('click', () => {
         qs('#modal-multibook').classList.add('hidden');
     });
@@ -785,13 +789,13 @@ function setupEventListeners() {
         aiGenMultiBook(count, { doPhase1, doPhase2, doPhase3, password });
     });
 
-    // Save Novel Modal
+    // 儲存小說視窗（Save Novel Modal）
     qs('#btn-save-cancel').addEventListener('click', () => {
         qs('#modal-novel-save').classList.add('hidden');
     });
     qs('#btn-save-confirm').addEventListener('click', confirmSaveProject);
 
-    // Load Password Modal
+    // 讀取雲端小說時的密碼輸入視窗（Load Password Modal）
     qs('#btn-password-cancel').addEventListener('click', () => {
         qs('#modal-novel-password').classList.add('hidden');
         qs('#cloud-novel-select').value = '';
@@ -818,44 +822,52 @@ function setupEventListeners() {
     }
 }
 
+// 設定目前選取（active）的章節/小節索引，並重繪列表與編輯區
 function setActive(chIdx, secIdx) {
     state.activeIndex = { chapter: chIdx, section: secIdx };
     renderChapters();
     renderEditor();
 }
 
+// 更新指定小節的標題文字（目前程式碼中未見呼叫端使用，保留供未來擴充）
 function updateSectionTitle(chIdx, secIdx, val) {
     state.chapters[chIdx].sections[secIdx].title = val;
 }
 
+// 在指定章節末端新增一個空白小節，並重繪章節列表
 function addSection(chIdx) {
     state.chapters[chIdx].sections.push({ title: "新節", content: "" });
     renderChapters();
 }
 
+// 刪除指定章節下的某個小節（會先跳確認視窗）
 function removeSection(chIdx, secIdx) {
     if (!confirm("確定要刪除這個小節大綱嗎？")) return;
     state.chapters[chIdx].sections.splice(secIdx, 1);
     renderChapters();
 }
 
+// 移除指定索引的角色卡欄位（會先跳確認視窗）
 function removeChar(idx) {
     if (!confirm("確定要移除這個角色嗎？")) return;
     state.characters.splice(idx, 1);
     renderCharacters();
 }
 
+// 刪除整個章節（含其下所有小節，會先跳確認視窗）
 function removeChapter(idx) {
     if (!confirm("確定要刪除整個章節嗎？這將會連同該章節下的所有小節內容一併刪除。")) return;
     state.chapters.splice(idx, 1);
     renderChapters();
 }
 
+// 切換單一小節的鎖定狀態（上鎖後 AI 不會覆寫該小節內容）
 function toggleLock(chIdx, secIdx) {
     state.chapters[chIdx].sections[secIdx].locked = !state.chapters[chIdx].sections[secIdx].locked;
     renderChapters();
 }
 
+// 切換整章的鎖定狀態，並連動該章底下所有小節一併鎖定/解鎖
 function toggleChapterLock(chIdx) {
     const ch = state.chapters[chIdx];
     ch.locked = !ch.locked;
@@ -877,13 +889,15 @@ function toggleAllLocks() {
 }
 
 // ── 整章拖曳排序 ──
-let chapterDragData = null;
+let chapterDragData = null; // 暫存目前正在拖曳的章節索引
+// 開始拖曳整章：記錄來源章節索引
 function handleChapterDragStart(e, chIdx) {
     chapterDragData = { chIdx };
     e.dataTransfer.setData('text/plain', ''); // 必需
     e.dataTransfer.effectAllowed = 'move';
 }
 
+// 放開拖曳的章節：將章節搬移至新位置，並同步更新目前選取索引
 function handleChapterDrop(e, targetChIdx) {
     if (!chapterDragData) return; // 若是拖曳小節則忽略
     e.preventDefault();
@@ -909,12 +923,14 @@ function handleChapterDrop(e, targetChIdx) {
     renderEditor();
 }
 
-let dragData = null;
+let dragData = null; // 暫存目前正在拖曳的小節（章節索引＋小節索引）
+// 開始拖曳小節：記錄來源章節與小節索引
 function handleDragStart(e, chIdx, secIdx) {
     dragData = { chIdx, secIdx };
     e.dataTransfer.setData('text/plain', ''); // 必需
 }
 
+// 放開拖曳的小節：僅允許同一章內搬移順序，並同步更新目前選取索引
 function handleDrop(e, chIdx, targetSecIdx) {
     if (!dragData) return; // 若是拖曳整章則交由 chapter-card 的 handleChapterDrop 處理
     e.preventDefault();
@@ -946,6 +962,7 @@ function handleDrop(e, chIdx, targetSecIdx) {
 
 // ====== AI 功能 (串接 debug_server.py) ======
 
+// 切換「AI 生成中」狀態：停用/啟用相關按鈕，並可選擇性附加一則 LOG 訊息
 function setAIGeneratingState(isGenerating, logMessage = "") {
     const buttons = document.querySelectorAll('.ai-btn, #btn-ai-gen-content');
     buttons.forEach(b => {
@@ -965,6 +982,7 @@ function setAIGeneratingState(isGenerating, logMessage = "") {
     }
 }
 
+// 將訊息附加到畫面下方的 LOG 輸出框，並同步輸出到 console 方便除錯
 function appendLog(text) {
     try {
         const logBox = document.getElementById('log-output');
@@ -984,6 +1002,7 @@ function appendLog(text) {
 }
 window.appendLog = appendLog;
 
+// 呼叫 AI 為指定章節（chIdx，0-based）產生小節大綱；已上鎖的小節會保留，未上鎖的會被覆寫或新增
 async function aiGenChapterOutline(chIdx) {
     const chapter = state.chapters[chIdx];
     if (!chapter.description) {
@@ -1032,14 +1051,14 @@ async function aiGenChapterOutline(chIdx) {
             words_per_section: state.genParams.chapterOutlineWordsPerSection
         };
 
-        // Step 1: 取得提示詞預覽
+        // 步驟一：先向後端要一份提示詞預覽，方便在 LOG 中檢視實際送出的內容
         appendLog(">> 正在彙整 AI 提示詞...");
         const previewRes = await callDebugServer('/api/generate_outline', { ...payload, preview: true });
         if (previewRes && previewRes.debug_prompt) {
             appendLog(`\n=== 傳遞給 AI 的提示詞 ===\n${previewRes.debug_prompt}\n=====================\n`);
         }
 
-        // Step 2: 真正生成
+        // 步驟二：真正呼叫 AI 進行生成
         appendLog(`>> 正在呼叫 AI 為第 ${chNum} 章產生小節大綱，請稍候...`);
         const res = await callDebugServerAsync('/api/novel_outline_async', payload);
         if (res && res.sections) {
@@ -1080,6 +1099,7 @@ async function aiGenChapterOutline(chIdx) {
     }
 }
 
+// 依序為所有「未鎖定」章節呼叫 AI 產生小節大綱（逐章循序執行，非平行）
 async function aiGenAllOutlines() {
     if (!confirm("確定要讓 AI 撰寫所有未鎖定章節的大綱嗎？")) return;
     for (let i = 0; i < state.chapters.length; i++) {
@@ -1090,6 +1110,7 @@ async function aiGenAllOutlines() {
     appendLog(">> 所有未鎖定章節的大綱已生成完畢。");
 }
 
+// 依序為所有「未鎖定」小節呼叫 AI 產生內文（會先切換到該小節再生成，讓使用者可即時看到進度）
 async function aiGenAllContent() {
     if (!confirm("確定要讓 AI 撰寫所有未鎖定小節的內文嗎？這可能需要非常長的時間。")) return;
     for (let i = 0; i < state.chapters.length; i++) {
@@ -1105,6 +1126,7 @@ async function aiGenAllContent() {
     appendLog(">> 所有未鎖定小節的內容已生成完畢。");
 }
 
+// 一鍵全自動生成：依序執行「粗綱轉章節」→「章節轉小節大綱」→「小節內文」三個階段
 async function aiGenFullAuto() {
     if (!state.storyPremise) {
         alert("請先輸入故事粗綱。");
@@ -1146,6 +1168,8 @@ function clearUnlockedContent() {
     });
 }
 
+// 批次生成多本小說：totalCount 為本數，opts 控制要執行哪些階段與是否自動存雲端（password）
+// 每本生成前都會先還原成原始快照，避免上一本內容殘留污染下一本
 async function aiGenMultiBook(totalCount, opts = {}) {
     const { doPhase1 = true, doPhase2 = true, doPhase3 = true, password = '' } = opts;
     const originalTitle = (state.bookTitle || '未命名小說').trim();
@@ -1208,15 +1232,15 @@ async function aiGenMultiBook(totalCount, opts = {}) {
         renderAll();
         appendLog(`✅ 原始狀態已還原（${state.chapters.length} 章），未上鎖的內容已清空。`);
 
-        // Phase 1: 根據粗綱生成章標題與章描述（跳過已鎖定）
+        // 階段一：根據粗綱生成章標題與章描述（跳過已鎖定）
         if (doPhase1) {
             appendLog("\n--- Phase 1: 根據故事粗綱生成各章節 ---");
-            await aiGenChaptersFromPremise(true); // true = skip confirm
+            await aiGenChaptersFromPremise(true); // true = 跳過確認彈窗，直接生成
         } else {
             appendLog("\n--- Phase 1: 已略過（使用現有章節）---");
         }
 
-        // Phase 2: 生成小節標題與小節描述
+        // 階段二：生成小節標題與小節描述
         if (doPhase2) {
             appendLog("\n--- Phase 2: 為各章節生成節大綱 ---");
             for (let i = 0; i < state.chapters.length; i++) {
@@ -1231,7 +1255,7 @@ async function aiGenMultiBook(totalCount, opts = {}) {
             appendLog("\n--- Phase 2: 已略過（使用現有節大綱）---");
         }
 
-        // Phase 3: 生成內文
+        // 階段三：為各節生成內文
         if (doPhase3) {
             appendLog("\n--- Phase 3: 為各節生成內文 ---");
             for (let i = 0; i < state.chapters.length; i++) {
@@ -1264,6 +1288,7 @@ async function aiGenMultiBook(totalCount, opts = {}) {
     appendLog(`\n==============================\n🎉 全部 ${totalCount} 本小說生成完畢！\n==============================`);
 }
 
+// 自動儲存單本小說：若有密碼則同時存至雲端（novel_entries），並一律下載本機 JSON + Markdown 檔
 async function autoSaveBook(bookTitle, password) {
     const savedTitle = state.bookTitle;
     state.bookTitle = bookTitle; // 暫時換成本書標題，供後續函式讀取
@@ -1321,6 +1346,8 @@ async function autoSaveBook(bookTitle, password) {
     appendLog(`>> 📁 已下載：${bookTitle}.json  &  ${bookTitle}.md`);
 }
 
+// 呼叫 AI 依據故事粗綱生成各章標題與描述；已上鎖的章節會保留，未上鎖的會被覆寫或新增
+// skipConfirm 為 true 時跳過確認彈窗（供多本自動生成流程使用）
 async function aiGenChaptersFromPremise(skipConfirm = false) {
     if (!state.storyPremise) {
         alert("請先輸入故事粗綱。");
@@ -1358,14 +1385,14 @@ async function aiGenChaptersFromPremise(skipConfirm = false) {
             words_per_chapter: state.genParams.chaptersFromPremiseWordsPerChapter
         };
 
-        // Step 1: 取得提示詞預覽
+        // 步驟一：取得提示詞預覽
         appendLog(">> 正在彙整 AI 提示詞...");
         const previewRes = await callDebugServer('/api/generate_chapters', { ...payload, preview: true });
         if (previewRes && previewRes.debug_prompt) {
             appendLog(`\n=== 傳遞給 AI 的提示詞 ===\n${previewRes.debug_prompt}\n=====================\n`);
         }
 
-        // Step 2: 真正生成
+        // 步驟二：真正生成
         appendLog(">> 正在呼叫 AI 執行章節規劃生成任務...");
         const res = await callDebugServerAsync('/api/novel_chapters_async', payload);
         if (res && res.chapters) {
@@ -1408,6 +1435,7 @@ async function aiGenChaptersFromPremise(skipConfirm = false) {
     }
 }
 
+// 將目前整本小說（書名、粗綱、各章各節）組成 Markdown 字串並觸發下載
 function exportNovelToMarkdown() {
     let md = `# ${state.bookTitle}\n\n`;
     md += `## 故事粗綱\n${state.storyPremise}\n\n`;
@@ -1434,6 +1462,8 @@ function exportNovelToMarkdown() {
     appendLog(">> 小說已匯出為 Markdown 格式。");
 }
 
+// 呼叫 AI 為「目前選取中」的小節（state.activeIndex）產生正文內容，
+// 會帶入上一節內文（銜接劇情）與下一節標題（預留伏筆）等前後文資訊
 async function aiGenSectionContent() {
     const { chapter, section } = state.activeIndex;
     const ch = state.chapters[chapter];
@@ -1493,14 +1523,14 @@ async function aiGenSectionContent() {
             all_sections_overview
         };
 
-        // Step 1: 取得提示詞預覽
+        // 步驟一：取得提示詞預覽
         appendLog(">> 正在彙整 AI 提示詞...");
         const previewRes = await callDebugServer('/api/generate_story_content', { ...payload, preview: true });
         if (previewRes && previewRes.debug_prompt) {
             appendLog(`\n=== 傳遞給 AI 的提示詞 ===\n${previewRes.debug_prompt}\n=====================\n`);
         }
 
-        // Step 2: 真正生成
+        // 步驟二：真正生成
         appendLog(">> 正在呼叫 AI 執行小節內文生成任務...");
         const res = await callDebugServerAsync('/api/novel_content_async', payload);
         if (res && res.content) {
@@ -1517,6 +1547,7 @@ async function aiGenSectionContent() {
     }
 }
 
+// 以同步方式呼叫本機 debug_server.py 的一般 API（POST JSON，直接等待回應）
 async function callDebugServer(endpoint, payload) {
     if (!serverOnline) await checkServerStatus();
     if (!serverOnline) throw new Error("Server offline");
@@ -1702,7 +1733,7 @@ async function callDebugServerAsync(asyncEndpoint, payload) {
     if (!serverOnline) await checkServerStatus();
     if (!serverOnline) throw new Error("Server offline");
 
-    // Step 1: 發送請求，立即取得 job_id
+    // 步驟一：發送請求，立即取得 job_id
     const startRes = await fetch(`http://localhost:8081${asyncEndpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1714,7 +1745,7 @@ async function callDebugServerAsync(asyncEndpoint, payload) {
 
     appendLog(`>> Job 已啟動 (id: ${job_id.slice(0, 8)}...)`);
 
-    // Step 2: 輪詢 /api/job — 使用「無活動超時」取代固定次數，支援大型模型長時間生成
+    // 步驟二：輪詢 /api/job — 使用「無活動超時」取代固定次數，支援大型模型長時間生成
     // 後端每 5 秒會追加心跳 LOG，只要持續有新 LOG 就繼續等待
     const INACTIVITY_MS = 300_000; // 300 秒無新 LOG → 超時
     let lastLogs = "";
@@ -1768,6 +1799,7 @@ let compareSearchMatches = [];
 let compareCurrentMatch = -1;
 let compareLastPassword = '';
 
+// 開啟「比對多本小說」彈窗，並重置搜尋狀態、重新載入雲端小說清單
 async function openCompareModal() {
     qs('#modal-compare').classList.remove('hidden');
     qs('#compare-search-input').value = '';
@@ -1777,6 +1809,7 @@ async function openCompareModal() {
     await loadCompareNovelList();
 }
 
+// 從雲端讀取小說清單（最多 200 筆），填入比對彈窗的 4 個下拉選單
 async function loadCompareNovelList() {
     try {
         const sb = window.SupabaseClient && window.SupabaseClient.getClient();
@@ -1809,6 +1842,7 @@ async function loadCompareNovelList() {
     }
 }
 
+// 使用者在比對欄 colIdx 選擇了某本小說（novelId）：先嘗試用記住的密碼載入，失敗則跳密碼彈窗
 async function onCompareNovelSelect(colIdx, novelId) {
     if (!novelId) {
         compareLoadedNovels[colIdx] = null;
@@ -1826,6 +1860,7 @@ async function onCompareNovelSelect(colIdx, novelId) {
     }
 }
 
+// 嘗試以指定密碼 pwd 從雲端載入小說到比對欄 colIdx；密碼不符或發生錯誤則回傳 false
 async function tryLoadCompareNovel(colIdx, novelId, meta, pwd) {
     const sb = window.SupabaseClient && window.SupabaseClient.getClient();
     if (!sb) return false;
@@ -1853,6 +1888,7 @@ async function tryLoadCompareNovel(colIdx, novelId, meta, pwd) {
     }
 }
 
+// 顯示比對用的密碼輸入彈窗，回傳 Promise：確定後嘗試載入，成功/失敗都會 resolve
 function showComparePasswordModal(colIdx, novelId, meta) {
     return new Promise((resolve) => {
         const modal = qs('#modal-compare-password');
@@ -1906,6 +1942,7 @@ function showComparePasswordModal(colIdx, novelId, meta) {
     });
 }
 
+// 依 mode（premise/chapters/sections/all_outlines/content/all）將指定小說狀態轉成純文字，供比對欄顯示
 function getCompareText(novelState, mode) {
     if (!novelState) return '';
     const chapters = novelState.chapters || [];
@@ -1960,6 +1997,7 @@ function getCompareText(novelState, mode) {
     }
 }
 
+// 從雲端永久刪除比對欄 colIdx 目前選取的小說（會先跳確認視窗）
 async function deleteCompareNovel(colIdx) {
     const sel = document.querySelectorAll('.compare-novel-select')[colIdx];
     const novelId = sel.value;
@@ -2016,6 +2054,7 @@ function toggleAllCompareModelInfo() {
     if (btn) btn.textContent = shouldHide ? '👁️‍🗨️ 顯示AI訊息' : '👁️‍🗨️ 隱藏AI訊息';
 }
 
+// 依目前選取的顯示模式，重新渲染比對欄 colIdx 的文字內容與上方 AI 設定資訊
 function updateCompareColContent(colIdx) {
     const ta = document.querySelectorAll('.compare-content')[colIdx];
     if (!ta) return;
@@ -2042,6 +2081,7 @@ function updateCompareColContent(colIdx) {
     qs('#compare-search-count').textContent = '';
 }
 
+// 重新渲染全部 4 欄比對內容（切換顯示模式下拉時觸發）
 function updateAllCompareContent() {
     compareLoadedNovels.forEach((_, i) => {
         const ta = document.querySelectorAll('.compare-content')[i];
@@ -2052,6 +2092,7 @@ function updateAllCompareContent() {
     qs('#compare-search-count').textContent = '';
 }
 
+// 在 4 個比對欄的 textarea 內容中搜尋關鍵字，找出所有符合位置並跳至第一筆
 function doCompareSearch() {
     const query = qs('#compare-search-input').value;
     const textareas = document.querySelectorAll('.compare-content');
@@ -2078,6 +2119,7 @@ function doCompareSearch() {
     }
 }
 
+// 跳至第 idx 個搜尋結果（可循環），選取文字並將該處捲動至可視範圍中央
 function goToCompareMatch(idx) {
     if (!compareSearchMatches.length) return;
     const textareas = document.querySelectorAll('.compare-content');
@@ -2130,6 +2172,7 @@ function getFormattedDateTime() {
     return `${y}-${m}-${d}_${hh}${mm}${ss}`;
 }
 
+// 開啟「儲存小說」彈窗，預填目前書名
 async function saveProject() {
     // 開啟儲存彈窗
     qs('#save-novel-name').value = state.bookTitle || "";
@@ -2137,6 +2180,7 @@ async function saveProject() {
     qs('#modal-novel-save').classList.remove('hidden');
 }
 
+// 確認儲存：驗證名稱與密碼後，同步目前 AI 設定至 state，並存至雲端 + 觸發本機檔案下載
 async function confirmSaveProject() {
     const name = qs('#save-novel-name').value.trim();
     const password = qs('#save-novel-password').value.trim();
@@ -2199,6 +2243,7 @@ async function confirmSaveProject() {
     appendLog("📂 本機 JSON 備份檔已下載 (無密碼)");
 }
 
+// 讀取雲端小說清單（最多 1000 筆）填入「讀取雲端小說」下拉選單，並將按鈕切換成下拉選單顯示
 async function listCloudNovels() {
     const btn = qs('#btn-load-cloud');
     const select = qs('#cloud-novel-select');
@@ -2230,6 +2275,7 @@ async function listCloudNovels() {
     }
 }
 
+// 使用者從下拉選單選擇要載入的雲端小說：先確認覆蓋警告，再開啟密碼驗證彈窗
 async function loadCloudNovel(e) {
     const id = e.target.value;
     if (!id) return;
@@ -2262,6 +2308,7 @@ async function loadCloudNovel(e) {
     }
 }
 
+// 驗證密碼後正式從雲端載入小說：解析 JSON、檢查資料格式，成功後覆蓋整個 state 並重繪畫面
 async function confirmLoadCloudNovel() {
     appendLog(">> [系統] 偵測到「確定」點擊，開始進行密碼驗證...");
     const id = state._tempLoadId;
@@ -2367,6 +2414,7 @@ async function confirmLoadCloudNovel() {
     appendLog("--------------------------------------------------");
 }
 
+// 從本機選取 .json 專案檔並讀取覆蓋目前 state（純前端 FileReader，不經過後端）
 async function loadProject() {
     const input = document.createElement('input');
     input.type = 'file';
@@ -2639,6 +2687,7 @@ function saveCurrentReviewPrompt(role) {
     state.reviewPrompts[role] = userReqEl.value;
 }
 
+// 開啟「評論小說」彈窗，依目前記憶中的立場（state.reviewRole）載入對應提示詞內容
 function openReviewModal() {
     // 預設文件名稱為目前小說名稱
     const bookTitle = (state.bookTitle || '').trim() || '未命名小說';
@@ -2662,6 +2711,7 @@ function openReviewModal() {
     qs('#modal-review').classList.remove('hidden');
 }
 
+// 使用者切換評論立場下拉選單時觸發：先保存切換前欄位內容，再載入新立場的內容
 function onReviewRoleChange() {
     const roleSel = qs('#review-role-select');
     const userReqEl = qs('#review-user-request');
@@ -2730,6 +2780,7 @@ function assembleCurrentNovelText() {
     return text;
 }
 
+// 評論「目前正在編輯中」的整本小說：組成全文後交給 runReviewJob 執行評審
 async function reviewCurrentNovel() {
     const bookTitle = (state.bookTitle || '').trim() || '未命名小說';
     qs('#review-doc-name').value = bookTitle;
@@ -2737,6 +2788,7 @@ async function reviewCurrentNovel() {
     await runReviewJob(fullText, bookTitle);
 }
 
+// 評論使用者選取的外部 .txt/.md 檔案（可多選），逐一讀取、評審並自動匯出結果
 async function reviewExternalFile(event) {
     const files = Array.from(event.target.files || []);
     event.target.value = '';
@@ -2779,6 +2831,7 @@ async function reviewExternalFile(event) {
     appendLog('✅ 所有已選取的外部文檔評審完畢。');
 }
 
+// 將一段文字附加到「AI 評審意見」輸出框，並自動捲動到底部
 function appendReviewFeedback(text) {
     const el = qs('#review-ai-feedback');
     if (!el) return;
@@ -2850,6 +2903,7 @@ async function runReviewJob(fullText, docName, opts = {}) {
     }
 }
 
+// 以指定立場的提示詞（userRequest）呼叫 AI 對稿件（fullText）進行單一次評審，並將結果附加到輸出框
 async function runSingleReview(fullText, docName, userRequest, roleLabel) {
     // 若原文過長,截斷並在 LOG 標註
     const MAX_LEN = 100000;
@@ -2979,6 +3033,7 @@ function downloadMarkdown(filename, content) {
     URL.revokeObjectURL(url);
 }
 
+// 匯出目前評論小說彈窗中的內容（提示詞 + AI 評審意見）為 .md 檔並下載
 function exportReviewResult() {
     const docName = (qs('#review-doc-name').value || '未命名').trim();
     const userReq = qs('#review-user-request').value || '';
@@ -3019,6 +3074,7 @@ function doReviewSearch() {
     else countEl.textContent = '找不到';
 }
 
+// 跳至評論小說彈窗中搜尋結果的第 idx 筆（可循環），並選取、捲動至可視範圍
 function goToReviewMatch(idx) {
     if (!reviewMatches.length) return;
     const query = qs('#review-search-input').value;
@@ -3148,6 +3204,7 @@ let rewriteMatches = [];
 let rewriteCurrentMatch = -1;
 let rewriteRunning = false;
 
+// 開啟「多文改寫」彈窗，若使用者指令欄位為空則填入預設範例提示詞
 function openRewriteModal() {
     const userReqEl = qs('#rewrite-user-request');
     if (!userReqEl.value) userReqEl.value = REWRITE_DEFAULT_USER_REQUEST;
@@ -3184,6 +3241,7 @@ function onRewriteFilesPicked(event) {
     if (added === 0) alert('沒有加入任何新檔案（可能全為重複或非 .txt/.md 格式）。');
 }
 
+// 依原始檔名產生改寫後的輸出檔名（保留副檔名，主檔名末尾加上「_改寫」）
 function buildRewrittenName(origName) {
     // 保留原副檔名，主檔名末尾補 _改寫
     const m = origName.match(/^(.*)\.(txt|md)$/i);
@@ -3191,6 +3249,7 @@ function buildRewrittenName(origName) {
     return `${m[1]}_改寫.${m[2]}`;
 }
 
+// 繪製多文改寫彈窗右側的待改寫檔案清單（含勾選框與狀態文字）
 function renderRewriteFileList() {
     const box = qs('#rewrite-file-list');
     const emptyHint = qs('#rewrite-file-empty-hint');
@@ -3219,14 +3278,17 @@ function renderRewriteFileList() {
     });
 }
 
+// 將清單中所有檔案的勾選狀態一次設為 v（true=全選, false=全不選）
 function setAllRewriteFilesChecked(v) {
     rewriteFiles.forEach(x => x.checked = !!v);
     renderRewriteFileList();
 }
+// 反轉清單中每個檔案目前的勾選狀態
 function invertRewriteFilesChecked() {
     rewriteFiles.forEach(x => x.checked = !x.checked);
     renderRewriteFileList();
 }
+// 清空整個待改寫檔案清單（改寫進行中時禁止清空，會先跳確認視窗）
 function clearRewriteFiles() {
     if (rewriteRunning) { alert('目前正在改寫中，請等改寫完成後再清空。'); return; }
     if (!rewriteFiles.length) return;
@@ -3235,6 +3297,8 @@ function clearRewriteFiles() {
     renderRewriteFileList();
 }
 
+// 依序改寫所有已勾選的檔案：讀取內容 → （可選）網路搜尋補充資料 → 呼叫 AI 改寫 → 自動匯出結果
+// 支援 DuckDuckGo / Tavily 兩種搜尋引擎，也可直接提供指定網址清單
 async function startMultiRewrite() {
     if (rewriteRunning) { alert('已有改寫任務進行中。'); return; }
     const targets = rewriteFiles.filter(x => x.checked);

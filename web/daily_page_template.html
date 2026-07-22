@@ -4,30 +4,45 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ character_name }} 的辦公室日常 - LoveIsABitMessy</title>
+<!-- 引入 Google Fonts 的思源黑體（Noto Sans TC），做為全站中文字型 -->
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<!-- 引入共用的 LPAS（角色互動系統）樣式表，統一色彩變數與基礎樣式 -->
 <link rel="stylesheet" href="css/lpas_styles.css">
 <style>
+/* 這是「每日日常故事頁」的頁面樣式，用來覆寫共用樣式中的預設版面（例如取消置中彈性排版），改成上下捲動的長頁面呈現 */
 body { background-color: var(--c-bg-main); padding: 40px 20px; flex-direction: column; height: auto; overflow: visible; display: block;}
+/* 故事卡片外框：置中顯示、限制最大寬度、圓角與陰影，讓內容看起來像一張卡片 */
 .story-card { background: var(--c-bg-card); max-width: 600px; margin: 0 auto; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+/* 圖片容器：固定 16:9 比例，並在圖片載入前後都能置中顯示 */
 .story-img-container { width: 100%; aspect-ratio: 16/9; background-color: var(--c-scale-empty); overflow: hidden; display: flex; align-items: center; justify-content: center;}
+/* 故事配圖：等比例裁切填滿容器，避免圖片變形 */
 .story-image { width: 100%; height: 100%; object-fit: cover; }
+/* 文字內容區塊：卡片內的留白與文字顏色 */
 .story-content { padding: 32px; color: var(--c-text-main); }
+/* 日期文字樣式：置中、加寬字距，作為故事標題上方的小標籤 */
 .story-date { color: var(--c-accent-light); font-size: 0.95rem; margin-bottom: 20px; text-align: center; letter-spacing: 2px;}
+/* 故事內文樣式：加大行距、左右對齊，並保留原始換行（pre-wrap）以呈現故事段落格式 */
 .story-text { line-height: 1.8; text-align: justify; white-space: pre-wrap; font-size: 1.05rem;}
+/* 「返回列表」連結樣式：置中顯示於頁面最下方 */
 .back-link { display: block; text-align: center; margin-top: 40px; color: var(--c-text-sec); text-decoration: none; font-size: 0.9rem;}
+/* 滑鼠移到返回連結上時，變更文字顏色以提供互動回饋 */
 .back-link:hover { color: var(--c-accent); }
 </style>
 </head>
 <body>
+    <!-- 故事卡片主體：包含配圖與文字內容，整個頁面只顯示單篇日常故事 -->
     <div class="story-card">
+        <!-- 圖片區塊：顯示角色當日日常照片，若圖片尚未生成完成或載入失敗，onerror 會自動改用預設的「圖片生成中」佔位圖 -->
         <div class="story-img-container">
             <img src="images/{{ image_filename }}" alt="{{ character_name }} 的照片" class="story-image" onerror="this.src='https://via.placeholder.com/800x450/3A2860/E8E0F5?text=Image+Generating'">
         </div>
+        <!-- 文字區塊：顯示故事發生的日期與正文內容，皆由後端樣板引擎（Jinja2 風格）帶入實際資料 -->
         <div class="story-content">
             <div class="story-date">{{ date }}</div>
             <div class="story-text">{{ story }}</div>
         </div>
     </div>
+    <!-- 頁面底部導覽連結：點擊後返回所有故事的列表首頁 -->
     <a href="index.html" class="back-link">← 返回全部故事列表</a>
 </body>
 </html>

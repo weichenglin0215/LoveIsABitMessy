@@ -14,35 +14,48 @@
                  viewport-fit=cover">
     <title>滿版遊戲 UI 範例</title>
 
-    <!-- Google Font（可替換） -->
+    <!-- Google Font（Web 字型，可依需求替換成其他字型） -->
+    <!-- preconnect：預先與字型伺服器建立連線，縮短後續字型檔案下載的延遲 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <!-- 引入「思源黑體 TC（Noto Sans TC）」，載入 400（一般）/600（半粗）/700（粗體）三種字重 -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600;700&display=swap" rel="stylesheet">
 
-    <!-- 外部樣式表 -->
+    <!-- 外部樣式表：所有版面配置、顏色、字型大小等樣式規則都定義在此檔案中 -->
     <link rel="stylesheet" href="css/screen_adaptive.css">
 </head>
 
 <body>
 
-    <!-- 舞台容器：邏輯尺寸 500×850，JS 負責縮放置中 -->
+    <!-- ============================================================
+         舞台容器（#stage）
+         這是整個畫面的「邏輯畫布」，固定邏輯尺寸為 500×850（單位：CSS px）。
+         不論實際裝置螢幕大小為何，畫面內容都以此固定尺寸設計，
+         再交由 screen_adaptive.js 依照瀏覽器視窗大小計算縮放比例（scale）
+         並置中顯示，達到「等比例縮放、畫面不跑版」的效果。
+         注意：此區塊的縮放/置中邏輯由外部 JS 控制，此處僅為 HTML 結構，不可更動。
+         ============================================================ -->
     <div id="stage">
 
-        <!-- 標題欄 -->
+        <!-- 標題欄：顯示遊戲/系統名稱，以及右側的縮放除錯資訊 -->
         <div id="header">
             <div>
+                <!-- 系統 Logo 文字（含裝飾用六邊形符號 ⬡） -->
                 <div class="logo">⬡ ARCANE</div>
+                <!-- 系統副標題／版本說明文字 -->
                 <div class="subtitle">Adventure System v2.0</div>
             </div>
+            <!-- 縮放資訊面板：由 JS 動態填入目前的縮放倍率與視窗實際像素尺寸，
+                 方便開發者除錯，確認縮放計算是否正確 -->
             <div id="scale-info">
                 <div id="info-scale">scale —</div>
                 <div id="info-size">— × —</div>
             </div>
         </div>
 
-        <!-- 主內容區 -->
+        <!-- 主內容區：角色建立表單的主要輸入欄位都放在這裡 -->
         <div id="content">
 
-            <!-- 下拉式選單 -->
+            <!-- 下拉式選單：讓玩家選擇角色職業 -->
             <div class="form-group">
                 <label for="sel-class">選擇角色職業</label>
                 <select class="field" id="sel-class">
@@ -54,25 +67,25 @@
                 </select>
             </div>
 
-            <!-- 單行輸入 -->
+            <!-- 單行輸入：角色名稱，限制最多 20 個字元 -->
             <div class="form-group">
                 <label for="inp-name">角色名稱</label>
                 <input type="text" class="field" id="inp-name" placeholder="輸入你的角色名稱…" maxlength="20">
             </div>
 
-            <!-- 多行輸入 -->
+            <!-- 多行輸入：角色背景故事，使用 textarea 讓玩家可輸入多行文字 -->
             <div class="form-group">
                 <label for="inp-story">角色背景故事</label>
                 <textarea class="field" id="inp-story" placeholder="描述你的角色來歷、個性、特殊技能…&#10;（可多行輸入）"></textarea>
             </div>
 
-            <!-- 說明用 Label -->
+            <!-- 說明用 Label：純文字提示區塊，說明各職業的特色，幫助玩家做選擇 -->
             <div class="info-label">
                 <strong>💡 提示：</strong>職業選擇將決定初始屬性分配。
                 戰士擅長近戰防禦，法師擅長範圍魔法，盜賊擅長速攻與暗殺，治療師則能強化隊伍生存。
             </div>
 
-            <!-- 按鈕列 -->
+            <!-- 按鈕列：重置表單／確認送出，onclick 呼叫的函式定義於 js/screen_adaptive.js -->
             <div class="btn-row">
                 <button class="btn btn-secondary" onclick="onReset()">重置</button>
                 <button class="btn btn-primary" onclick="onSubmit()">確認建立 →</button>
@@ -80,7 +93,7 @@
 
         </div><!-- /content -->
 
-        <!-- 狀態欄 -->
+        <!-- 狀態欄：畫面最底部的狀態提示列，顯示目前操作狀態文字與一顆狀態指示燈（圓點） -->
         <div id="statusbar">
             <span id="status-text">等待輸入…</span>
             <div class="status-dot"></div>
@@ -88,7 +101,9 @@
 
     </div><!-- /stage -->
 
-    <!-- 外部腳本（defer：DOM 解析完成後執行） -->
+    <!-- 外部腳本：負責畫面縮放/置中計算，以及表單互動邏輯
+         defer：等瀏覽器完成 DOM 解析後才執行，確保腳本存取到的元素都已存在
+         ⛔ 依專案規範，此腳本（screen_adaptive.js）之核心邏輯不可修改 -->
     <script src="js/screen_adaptive.js" defer></script>
 
 </body>

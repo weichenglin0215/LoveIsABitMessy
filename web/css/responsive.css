@@ -1,70 +1,91 @@
 /* =========================================
-   响应式布局 - 5:8 宽高比
-   确保所有画面保持固定比例并自动缩放
+   響應式版面配置 - 5:8 寬高比
+   確保所有畫面保持固定比例並自動縮放，
+   讓遊戲/小說內容在不同螢幕尺寸下都能正確顯示
    ========================================= */
 
-/* 5:8 宽高比容器 */
+/* 5:8 寬高比容器
+   這是整個應用程式畫面的外層容器，
+   用來限制內容維持 5:8 的固定寬高比 */
 .aspect-5-8 {
-    /* 使用现代CSS aspect-ratio属性 */
+    /* 使用現代 CSS 的 aspect-ratio 屬性，
+       直接指定寬高比為 5:8，瀏覽器會自動計算對應的高度或寬度 */
     aspect-ratio: 5 / 8;
 
-    /* 由JavaScript动态设置的尺寸变量 */
+    /* 寬度與高度由 JavaScript 動態計算後，
+       透過 CSS 變數 --responsive-width / --responsive-height 設定，
+       若尚未設定則使用預設值（滿版視窗寬度 / 自動高度） */
     width: var(--responsive-width, 100vw);
     height: var(--responsive-height, auto);
 
-    /* 确保不超出视窗 */
+    /* 確保容器尺寸不會超出目前的視窗範圍，避免產生捲軸 */
     max-width: 100vw;
     max-height: 100vh;
 
-    /* 居中显示 */
+    /* 讓容器在水平方向置中顯示 */
     margin: 0 auto;
 
-    /* 平滑过渡动画 */
+    /* 當寬高因應視窗變化而調整時，加上平滑的過渡動畫效果 */
     transition: width 0.2s ease, height 0.2s ease;
 
-    /* 相对定位，方便子元素使用绝对定位 */
+    /* 設定為相對定位，方便內部子元素使用絕對定位來排版 */
     position: relative;
 
-    /* 禁用手機雙擊縮放，並移除點擊延遲 */
+    /* 禁用手機雙擊縮放，並移除點擊延遲，提升觸控操作的反應速度 */
     touch-action: manipulation;
 }
 
-/* 游戏覆盖层的特殊样式 */
+/* 遊戲覆蓋層（彈出視窗/小遊戲畫面）的特殊樣式，
+   套用在同時擁有 .pd-overlay 與 .aspect-5-8 這兩個 class 的元素上 */
 .pd-overlay.aspect-5-8 {
-    /* 覆盖层需要固定定位并居中 */
+    /* 覆蓋層需要以固定定位方式顯示在畫面正中央，
+       不隨頁面捲動而移動 */
     position: fixed;
     top: 50%;
     left: 50%;
+    /* 利用 transform 將元素自身向左上各偏移 50%，
+       達成真正置中的效果（配合 top/left 50% 使用） */
     transform: translate(-50%, -50%);
     margin: 0;
 
-    /* 固定游戏尺寸为 500*800 */
+    /* 固定遊戲尺寸為 500*800（此為舊版寫死尺寸的作法，
+       目前已停用，改用下方的 JS 動態計算方式） */
     /*width: 15.0rem !important;
     height: 24.0rem !important;*/
 
-    /* 依照 JS 計算的動態尺寸縮放 */
+    /* 依照 JS 計算的動態尺寸縮放，
+       使用 !important 覆蓋前面 .aspect-5-8 的預設寬高設定 */
     width: var(--responsive-width) !important;
     height: var(--responsive-height) !important;
-    /* 添加平滑过渡 */
+    /* 除了寬高過渡動畫外，額外加上 transform 的平滑過渡效果 */
     transition: width 0.2s ease, height 0.2s ease, transform 0.2s ease;
 }
 
-/* 调试边框 - 显示500*800的参考框*/
+/* 除錯用邊框 - 顯示目前 500*800 參考框的實際範圍，
+   方便開發時檢查畫面尺寸是否計算正確 */
 .debug-frame {
+    /* 絕對定位並貼齊容器左上角 */
     position: absolute;
     top: 0;
     left: 0;
+    /* 寬高同樣採用 JS 動態計算的響應式尺寸變數 */
     width: var(--responsive-width);
     height: var(--responsive-height);
+    /* 以下為舊版固定尺寸的寫法，目前已停用保留供參考 */
     /*width: 12.0rem;*/
     /*height: 19.2rem;*/
+    /* 用黃色細框標示邊界，方便肉眼辨識 */
     border: 0.05rem solid yellow;
+    /* 讓此除錯框不會攔截滑鼠/觸控事件，避免影響底下元素的互動 */
     pointer-events: none;
+    /* 提高層級，確保邊框顯示在最上層 */
     z-index: 9999;
+    /* 邊框寬度計入元素總尺寸，避免尺寸計算誤差 */
     box-sizing: border-box;
 }
 
-/* 确保body在显示覆盖层时不滚动 */
+/* 當覆蓋層（遊戲畫面）顯示時，
+   為 body 加上此 class 以禁止背景頁面捲動，避免使用者滑動到覆蓋層後方的內容 */
 body.overlay-active {
     overflow: hidden;
 }

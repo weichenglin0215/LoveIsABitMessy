@@ -9,7 +9,10 @@ daily_page_build.py
 """
 
 def build_page():
+    # 主要函式：原本負責編譯日記頁面並輸出到 docs/，
+    # 現已停用此功能，故僅印出提示訊息，不執行任何實際編譯或寫檔動作。
     print("daily_page_build.py：[SKIP] docs 發布功能已停用，略過編譯流程。")
 
 if __name__ == "__main__":
+    # 程式進入點：當此檔案被直接執行時（而非被匯入），呼叫 build_page() 函式。
     build_page()

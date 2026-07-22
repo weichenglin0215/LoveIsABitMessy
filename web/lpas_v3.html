@@ -672,7 +672,8 @@
             </div>
         </section>
 
-        <!-- 6. 計算中頁面 -->
+        <!-- 6. 計算中頁面：所有題目作答完成後短暫顯示的過場動畫，
+             讓 JS 有時間計算分數並準備結果頁內容 -->
         <section id="screen-calculating" class="screen">
             <div class="calculating-anim"></div>
             <h2 class="fade-text">正在找到你的樣子……</h2>
@@ -758,7 +759,8 @@
             </div>
         </section>
 
-        <!-- ── QR Code Modal ── -->
+        <!-- ── QR Code Modal：透過漢堡選單「顯示QR Code」開啟，
+             方便他人用手機掃描直接進入本測驗網址 ── -->
         <div class="stage-modal sm-hidden" id="modal-qrcode">
             <div class="qr-box">
                 <h3>📱 掃描進入測驗</h3>
@@ -768,24 +770,31 @@
             </div>
         </div>
 
-        <!-- ── Result Viewer Modal ── -->
+        <!-- ── Result Viewer Modal：透過漢堡選單「觀看評量結果」開啟，
+             讓使用者不必實際作答，也能瀏覽任一期別（曖昧/熱戀/失戀/親密）
+             底下任一類型的完整評量文字說明，供查閱與複製 ── -->
         <div class="stage-modal sm-hidden" id="modal-result-viewer">
             <div class="rv-box">
+                <!-- 標題列：固定文字 + 關閉按鈕 -->
                 <div class="rv-topbar">
                     <div class="rv-title">你在愛情裡的真實樣貌</div>
                     <button class="rv-close" id="rv-close-btn">✕</button>
                 </div>
+                <!-- 期別標籤 + 類型下拉選單（選項由 JS 依當前期別動態產生） -->
                 <div class="rv-select-row">
                     <span class="rv-period-lbl" id="rv-period-lbl">曖昧期</span>
                     <select class="rv-select" id="rv-type-select">
                         <option value="">-- 選擇類型 --</option>
                     </select>
                 </div>
+                <!-- 選定類型後才顯示的標題區（型名代碼 + 特質摘要），預設隱藏 -->
                 <div class="rv-type-header" id="rv-type-header" style="display:none;">
                     <div class="rv-type-code-name" id="rv-type-code-name"></div>
                     <div class="rv-type-traits" id="rv-type-traits"></div>
                 </div>
+                <!-- 完整評量文字內容：唯讀 textarea，內容由 buildFullTypeText() 組成 -->
                 <textarea class="rv-desc" id="rv-desc" readonly></textarea>
+                <!-- 底部導覽列：上一期／複製文字／下一期 -->
                 <div class="rv-navbar">
                     <button class="rv-nav-btn" id="rv-prev-btn">← 曖昧期</button>
                     <button class="rv-copy-btn" id="rv-copy-btn">複製評量文字</button>
@@ -801,6 +810,8 @@
            ════════════════════════════════════════════════════════ */
         document.addEventListener('DOMContentLoaded', function () {
 
+            // Result Viewer Modal 所使用的四個期別（依序：曖昧、熱戀、失戀、親密與身體），
+            // key 對應資料物件內的欄位名稱，label 為畫面顯示文字
             const PERIODS = [
                 { key: 'ambiguity', label: '曖昧期' },
                 { key: 'love', label: '熱戀期' },
@@ -808,6 +819,8 @@
                 { key: 'intimacy', label: '親密與身體' }
             ];
 
+            // 16 種人格類型代碼（曖昧/熱戀/失戀三期共用），
+            // 對應 lpas_v3_types.js 中 TYPE_MAPPING_V3 的 key
             const TYPE_CODES = [
                 'A-F-O-H', 'A-F-O-L', 'A-F-I-H', 'A-F-I-L',
                 'A-S-O-H', 'A-S-O-L', 'A-S-I-H', 'A-S-I-L',
@@ -815,10 +828,15 @@
                 'P-S-O-H', 'P-S-O-L', 'P-S-I-H', 'P-S-I-L'
             ];
 
+            // 「親密與身體」期別專用的 4 種性象限標籤
             const SEX_LABELS = ['深情專一型', '鍾情博愛型', '靈肉分離型', '遊戲人間型'];
 
+            // 記錄 Result Viewer 每個期別目前選定的類型（下拉選單值），
+            // 切換期別時可還原之前的選擇，索引對應 PERIODS 陣列
             const rvSelections = ['', '', '', ''];
 
+            // ── 漢堡選單：點擊按鈕切換下拉選單顯示/隱藏，
+            //    點擊舞台其他地方則自動收合選單 ──
             const hamburgerBtn = document.getElementById('hamburger-btn');
             const hamburgerMenu = document.getElementById('hamburger-menu');
             hamburgerBtn.addEventListener('click', function (e) {
@@ -829,6 +847,8 @@
                 hamburgerMenu.classList.add('hd-hidden');
             });
 
+            // ── QR Code 彈窗：第一次開啟時才產生 QRCode（qrDone 旗標避免重複產生），
+            //    之後每次開啟直接顯示已產生的 QR Code ──
             const modalQR = document.getElementById('modal-qrcode');
             let qrDone = false;
             const QR_URL = 'https://weichenglin0215.github.io/LoveIsABitMessy/web/lpas_v3.html';
@@ -848,6 +868,8 @@
                 modalQR.classList.add('sm-hidden');
             });
 
+            // ── Result Viewer 彈窗：以下取得各個內部元素的參照，
+            //    供後續 rvPopulateOptions / rvUpdateContent 等函式操作 ──
             const modalRV = document.getElementById('modal-result-viewer');
             const rvBox = modalRV.querySelector('.rv-box');
             const rvSelect = document.getElementById('rv-type-select');
@@ -860,6 +882,8 @@
             const rvNextBtn = document.getElementById('rv-next-btn');
             let rvPeriodIdx = 0;
 
+            // 將評量文字依換行分段，每行前面加上全形縮排（　　）以利閱讀排版；
+            // 空白行保持原樣，不加縮排
             function formatRvDesc(text) {
                 if (!text) return '';
                 return text.split('\n').map(function (line) {
@@ -904,6 +928,10 @@
                 return lines.join('\n');
             }
 
+            // 依目前選定的期別 (rvPeriodIdx) 重建下拉選單的選項：
+            // 前三期（曖昧/熱戀/失戀）列出 16 種人格類型代碼，
+            // 第四期（親密與身體）則列出 4 種性象限標籤；
+            // 若該期別先前已選過類型，重建後自動還原選取狀態
             function rvPopulateOptions() {
                 const period = PERIODS[rvPeriodIdx];
                 rvSelect.innerHTML = '<option value="">-- 選擇' + period.label + '的類型 --</option>';

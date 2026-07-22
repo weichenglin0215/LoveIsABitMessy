@@ -1,13 +1,30 @@
 /**
  * character_logic.js
- * 角色資料格式與邏輯的單一真實來源 (SSOT)
+ * 角色資料格式與邏輯的單一真實來源 (SSOT, Single Source of Truth)
+ *
+ * 本檔案整體架構說明（供新手快速理解）：
+ * 1. 基礎常數資料：星座、血型清單，以及對應的日期區間、個性描述文字。
+ * 2. MBTI 人格類型定義：16種MBTI類型清單與各類型的愛情描述文字。
+ * 3. 愛情人格類型定義（LPAS，Love Personality Archetype System）：
+ *    由 A/P、O/I、C/L、F/S 四個維度組合而成的16種愛情人格，
+ *    包含簡短版(TYPE_MAPPING_SHORT)、標準版(TYPE_MAPPING)與長版(TYPE_MAPPING_LongVersion)三種資料量。
+ * 4. 角色資料結構(Schema)與建立函式：定義角色物件的標準欄位，以及建立預設角色的函式。
+ * 5. 通用邏輯函式：年齡計算、依生日判斷星座、計算星座區間中點日期等工具函式。
+ *
+ * 這些資料與函式會被掛載在 window 全域物件上，讓其他 js 檔案（例如編輯器、
+ * 角色生成器、日記生成、小說生成等模組）都能直接存取，達到「單一資料來源」的效果，
+ * 避免同樣的星座/MBTI/愛情人格資料在多個檔案裡各自維護一份、造成不一致。
  */
 
 // ====== 1. 基礎常數資料 ======
 
+// 十二星座名稱清單（依日期順序排列，從牡羊座開始）
 window.ZODIAC_SIGNS = ["牡羊座", "金牛座", "雙子座", "巨蟹座", "獅子座", "處女座", "天秤座", "天蠍座", "射手座", "摩羯座", "水瓶座", "雙魚座"];
+// 四種血型清單
 window.BLOOD_TYPES = ["A型", "B型", "AB型", "O型"];
 
+// 十二星座對應的日期區間（月-日格式），供 getZodiacByDate() 依生日反查星座使用。
+// 注意：摩羯座的區間橫跨年底（12-22 ~ 01-19），在使用時需特別處理跨年判斷。
 window.ZODIAC_RANGES = [
     { name: "牡羊座", start: "03-21", end: "04-19" },
     { name: "金牛座", start: "04-20", end: "05-20" },
@@ -23,6 +40,9 @@ window.ZODIAC_RANGES = [
     { name: "雙魚座", start: "02-19", end: "03-20" }
 ];
 
+// 十二星座的詳細個性與愛情觀描述文字（供 AI 生成角色設定、分析理由時參考使用）。
+// 每個星座的描述包含：核心愛情信念、精神面/肉體面情感表達方式、
+// 容易被吸引的對象類型、潛在衝突點、長期關係傾向，以及適合扮演的女性角色範例。
 window.ZODIAC_DESCRIPTIONS = {
     "牡羊座": "♈牡羊座:熱情、直率、具有冒險精神，行動力強。\n" +
         "核心愛情信念：愛情應直接、熱烈且充滿挑戰。討厭曖昧與拖延。\n" +
@@ -170,6 +190,8 @@ window.ZODIAC_DESCRIPTIONS = {
         "療癒者或志工（無條件包容與救贖）\n"
 };
 
+// 四種血型的詳細個性與愛情觀描述文字，結構與 ZODIAC_DESCRIPTIONS 相同，
+// 同樣供角色生成/分析時作為文字素材使用。
 window.BLOOD_TYPE_DESCRIPTIONS = {
     "A型": "血型🅰 A型的核心愛情信念：愛情應認真、負責、有秩序。重視承諾與社會觀感，追求安定的關係。\n" +
         "精神層面情感表達：含蓄、謹慎、用行動與細節表達關心。愛情堅貞度極高——一旦投入極難動搖，自我約束力強。成為小三的可能性極低——道德感強烈，害怕破壞他人關係與自身名譽，即使有感情也會壓抑。\n" +
@@ -219,6 +241,8 @@ window.BLOOD_TYPE_DESCRIPTIONS = {
 
 // ====== MBTI 人格類型定義 ======
 
+// MBTI 16種人格類型清單，格式為「英文代碼-中文暱稱」，
+// 並依MBTI官方分組（分析型/外交型/守護型/藝術家型）加上行內註解說明所屬分組與對應維度字母。
 window.MBTI_TYPES = [
     "INTJ-建築師", //分析型N、T
     "INTP-邏輯學家", //分析型N、T
@@ -238,6 +262,8 @@ window.MBTI_TYPES = [
     "ESFP-表演者" //藝術家S、P
 ];
 
+// 16種MBTI類型各自的愛情觀描述文字，內容包含：核心愛情信念、
+// 精神面/肉體面的情感表達方式、容易被吸引的對象類型，以及潛在衝突點與長期關係傾向。
 window.MBTI_DESCRIPTIONS = {
     "INTJ-建築師": "🔷INTJ 建築師型\n" +
         "核心愛情信念：愛情是我人生藍圖中經過嚴格篩選的一個變數，必須有意義且高效。\n" +
@@ -382,6 +408,9 @@ C / L：乾脆 vs 留戀
 F / S：快速短暫 vs 緩慢持久
 
 */
+// 16種愛情人格類型的「簡短版」對照表：key為四個維度字母組成的代碼（例如"A-O-C-F"），
+// value為{name（人格暱稱如"煙火型"）, desc（一句話精簡描述）}。
+// 適合用在只需要顯示簡短標籤、不需要完整長篇描述的場合。
 window.TYPE_MAPPING_SHORT = {
     "A-O-C-F": { name: "煙火型", desc: "主動、外放、乾脆、快速短暫" },
     "A-O-C-S": { name: "太陽型", desc: "主動、外放、乾脆、緩慢長久" },
@@ -403,8 +432,18 @@ window.TYPE_MAPPING_SHORT = {
 
 /**
  * 愛情人格測驗 (LPAS) 核心評分與類型映射
+ *
+ * 這是「標準版」的愛情人格對照表，資料結構比 TYPE_MAPPING_SHORT 更詳細：
+ * 每個代碼（例如"A-O-C-F"）對應一個物件，內含：
+ *   - name：人格暱稱（如"煙火型"）
+ *   - desc：整體核心情感模式的中篇描述
+ *   - ambiguity：曖昧期的行為與心理描述
+ *   - love：熱戀期的行為與心理描述
+ *   - breakup：失戀/分手期的行為與心理描述
+ *   - roleplay：提供給AI進行角色扮演時參考的語氣、行為模式、潛台詞與內在矛盾說明
+ * 這份資料主要提供給角色扮演/小說生成模組，讓AI能依照角色的愛情人格類型
+ * 產生符合其曖昧期、熱戀期、失戀期不同階段行為模式的對話與劇情內容。
  */
-
 window.TYPE_MAPPING = {
     "A-O-C-F": {
         name: "煙火型",
@@ -728,6 +767,9 @@ window.TYPE_MAPPING = {
     }
 };
 
+// 16種愛情人格類型的「長版」對照表：資料結構與 TYPE_MAPPING 相同(name/desc/ambiguity/love/breakup/roleplay)，
+// 但每個階段的 desc 內容篇幅更長、細節更豐富（多為數段文字組成），
+// 用於需要更深入人物刻畫的長篇小說生成或深度角色扮演情境。
 window.TYPE_MAPPING_LongVersion = {
     "A-O-C-F": {
         name: "煙火型",
@@ -1184,11 +1226,19 @@ window.TYPE_MAPPING_LongVersion = {
 
 // ====== 3. 角色資料結構 (Schema) 與 建立函式 ======
 
-/** 
- * 建立預設角色資料格式 
+/**
+ * 建立預設角色資料格式
  * 備註：此函式定義了所有系統（編輯器、生成器、日記生成、小說生成）應採用的標準欄位。
+ *
+ * @param {Object} overrides - 要覆蓋預設值的欄位物件，例如 {name: "小美", height: "160"}。
+ *                              未傳入時預設為空物件，代表完全使用預設角色資料。
+ * @returns {Object} 回傳一個「預設欄位 base」與「傳入的 overrides」合併後的新角色物件。
+ *                    合併使用 Object.assign，overrides 中的欄位會覆蓋 base 中同名欄位，
+ *                    但不會修改到 base 本身（每次呼叫都會重新建立新的 base 物件）。
  */
 window.createDefaultCharacter = function (overrides = {}) {
+    // base：角色物件的完整預設欄位範本，涵蓋基本資料、外觀、個性、性格分析、
+    // 性格相關描述（sexual_personality）與圖片生成提示詞等，作為新角色的起始樣板。
     const base = {
         id: "", //角色ID，由系統自動生成
         name: "未命名角色", //角色名稱
@@ -1224,48 +1274,91 @@ window.createDefaultCharacter = function (overrides = {}) {
         image_prompt: "A stunning 23-year-old Japanese woman, baby face with deep captivating eyes, long straight black hair. Wearing a tight white mini dress and 5-inch white stiletto heels. Body proportions 35D-22-35, slender waist and long legs. Expression is a mix of innocent sweetness and sensual desire. Setting: A luxury Las Vegas hotel room or a billiard room with soft lighting.", //圖片生成提示詞
         created_at: new Date().toISOString() //建立時間
     };
+    // 用 Object.assign 將 base 預設值與呼叫端傳入的 overrides 合併成新物件並回傳。
+    // 第一個參數 {} 是合併的目標（空物件），確保不會直接修改到 base 常數本身。
     return Object.assign({}, base, overrides);
 
 };
 
 // ====== 4. 通用邏輯函式 ======
 
+/**
+ * 依生日字串計算目前實歲年齡。
+ * @param {string} birthday - 生日字串，格式應為可被 Date 解析的日期字串（如 "1999-01-01"）。
+ * @returns {number} 回傳實歲年齡；若未傳入 birthday，回傳 0。
+ *
+ * 計算邏輯：先用「今年 - 出生年」得到粗略年齡，
+ * 再檢查今天的月/日是否還沒到生日的月/日，若還沒到就要再減1歲（因為還沒過生日）。
+ */
 window.calculateAge = function (birthday) {
-    if (!birthday) return 0;
-    const today = new Date();
-    const birthDate = new Date(birthday);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
+    if (!birthday) return 0; // 沒有生日資料時，直接回傳0避免計算錯誤
+    const today = new Date(); // 取得目前日期
+    const birthDate = new Date(birthday); // 將生日字串轉換為Date物件
+    let age = today.getFullYear() - birthDate.getFullYear(); // 粗略年齡＝年份差
+    const m = today.getMonth() - birthDate.getMonth(); // 月份差，用來判斷今年是否已過生日
+    // 若「今天的月份」比「生日月份」早，或同月但「今天的日期」比「生日日期」早，
+    // 代表今年還沒過生日，因此實歲要再減1
     if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
     return age;
 };
 
+/**
+ * 依日期字串（月-日）反查對應的星座名稱。
+ * @param {string} dateStr - 日期字串，格式為 "YYYY-MM-DD"（例如 "1999-05-15"）。
+ * @returns {string} 回傳對應的星座名稱（如"金牛座"）；若查無資料或參數缺失，回傳空字串""。
+ *
+ * 演算法說明：
+ * 1. 將日期字串拆解為年(y)、月(m)、日(d)，並把「月*100+日」轉換成一個可直接比大小的整數md
+ *    （例如 5月15日 → 515），方便後續與星座區間比較。
+ * 2. 逐一走訪 window.ZODIAC_RANGES 中每個星座的起訖區間，同樣把起訖日期轉成 sVal/eVal 整數。
+ * 3. 一般情況（起始值 <= 結束值，例如 3月21日~4月19日）：md 落在 [sVal, eVal] 區間內即符合。
+ * 4. 特殊情況（起始值 > 結束值，例如摩羯座 12月22日~隔年1月19日這種跨年區間）：
+ *    md 只要 >= 起始值「或」<= 結束值 其中一個成立即符合（因為區間橫跨了年底）。
+ */
 window.getZodiacByDate = function (dateStr) {
-    if (!dateStr || !window.ZODIAC_RANGES) return "";
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const md = m * 100 + d;
+    if (!dateStr || !window.ZODIAC_RANGES) return ""; // 缺少日期或星座區間資料時直接回傳空字串
+    const [y, m, d] = dateStr.split('-').map(Number); // 拆解年、月、日並轉為數字
+    const md = m * 100 + d; // 將月日組合成可比較的整數，例如 5月15日 -> 515
     for (const r of window.ZODIAC_RANGES) {
-        const [sm, sd] = r.start.split('-').map(Number);
-        const [em, ed] = r.end.split('-').map(Number);
-        const sVal = sm * 100 + sd;
-        const eVal = em * 100 + ed;
+        const [sm, sd] = r.start.split('-').map(Number); // 該星座起始月、日
+        const [em, ed] = r.end.split('-').map(Number); // 該星座結束月、日
+        const sVal = sm * 100 + sd; // 起始值轉整數
+        const eVal = em * 100 + ed; // 結束值轉整數
         if (sVal <= eVal) {
+            // 一般區間（未跨年），直接判斷md是否落在[sVal, eVal]之間
             if (md >= sVal && md <= eVal) return r.name;
         } else {
+            // 跨年區間（例如摩羯座12/22~1/19），md只要大於等於起始值或小於等於結束值即符合
             if (md >= sVal || md <= eVal) return r.name;
         }
     }
-    return "";
+    return ""; // 找不到符合的星座時回傳空字串
 };
 
+/**
+ * 計算指定星座在指定年份的日期區間中點日期，常用於「已知星座、需推算大約生日」的情境。
+ * @param {string} zodiacName - 星座名稱（如"獅子座"）。
+ * @param {number} year - 要計算的年份。
+ * @returns {string} 回傳格式為 "YYYY-MM-DD" 的中點日期字串；若查無該星座，回傳 `${year}-01-01`。
+ *
+ * 演算法說明：
+ * 1. 從 window.ZODIAC_RANGES 中找出對應星座的起訖月日設定。
+ * 2. 分別建立起始日期(sDate)與結束日期(eDate)的Date物件（月份索引需 -1，因JS的Date月份從0開始）。
+ * 3. 若起始月份大於結束月份（例如摩羯座12月~1月），代表區間跨年，
+ *    需將結束日期的年份加1，否則eDate會被誤判成比sDate還早，導致中點計算錯誤。
+ * 4. 用「起始時間戳 + (結束時間戳-起始時間戳)/2」取得中點的時間戳，再轉換回Date物件。
+ * 5. 最後將年、月、日組合成 "YYYY-MM-DD" 字串回傳，月與日不足兩位數時用0補齊(padStart)。
+ */
 window.getMidpointDate = function (zodiacName, year) {
-    const r = window.ZODIAC_RANGES.find(x => x.name === zodiacName);
-    if (!r) return `${year}-01-01`;
-    const [sm, sd] = r.start.split('-').map(Number);
-    const [em, ed] = r.end.split('-').map(Number);
-    let sDate = new Date(year, sm - 1, sd);
-    let eDate = new Date(year, em - 1, ed);
-    if (sm > em) eDate.setFullYear(year + 1);
+    const r = window.ZODIAC_RANGES.find(x => x.name === zodiacName); // 依名稱找出對應星座的日期區間設定
+    if (!r) return `${year}-01-01`; // 查無此星座時，回傳保底日期
+    const [sm, sd] = r.start.split('-').map(Number); // 起始月、日
+    const [em, ed] = r.end.split('-').map(Number); // 結束月、日
+    let sDate = new Date(year, sm - 1, sd); // 建立起始日期（月份需-1，JS Date月份從0開始）
+    let eDate = new Date(year, em - 1, ed); // 建立結束日期
+    if (sm > em) eDate.setFullYear(year + 1); // 跨年星座（如摩羯座）：結束日期需調整到隔年，避免區間顛倒
+    // 取起始與結束時間戳的中間值，得到中點時間戳，再轉回Date物件
     const midDate = new Date(sDate.getTime() + (eDate.getTime() - sDate.getTime()) / 2);
+    // 組合成 "YYYY-MM-DD" 格式字串回傳，月、日不足兩位數時補0
     return `${midDate.getFullYear()}-${String(midDate.getMonth() + 1).padStart(2, '0')}-${String(midDate.getDate()).padStart(2, '0')}`;
 };

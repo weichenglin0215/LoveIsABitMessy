@@ -24,8 +24,28 @@
  *   - 心理諮商師對個案說明的語氣：清楚、有同理、不過度評價
  */
 
+// window.TYPE_MAPPING_V3：16 型人格資料表（掛在全域 window 物件上，方便其他 js 檔案直接存取）
+// 資料結構為「物件的物件」：外層 key 是 16 種型別的代碼字串（例如 "A-F-O-H"），
+// value 則是描述該型別的完整資料物件。
+//
+// 每個型別物件的欄位說明（給新手看的逐欄位註解）：
+//   code            : string  型別代碼 + 中文軸名組合，格式為 "代碼_軸名1-軸名2-軸名3-軸名4"
+//   name            : string  型別的中文命名（例如「海嘯型」），會顯示在畫面上
+//   short           : string  一句話簡短形容，通常用於卡片或列表的副標題
+//   ambiguity       : object  「曖昧期」的描述，內含 desc（詳細文字說明）欄位
+//   love            : object  「熱戀期」的描述，內含 desc 欄位
+//   breakup         : object  「失戀期」的描述，內含 desc 欄位
+//   roleplay        : object  「角色扮演／語氣範例」的描述，內含 desc 欄位，用來示範該型別說話的語氣與用詞
+//   traps           : Array<string>  該型別容易陷入的 4 條感情陷阱（陣列，每個元素是一句話）
+//   pairing         : object  配對建議，分為三類：
+//                       best       : Array<string>  最佳配對的型別名稱陣列
+//                       complement : Array<string>  互補型（可以截長補短）的型別名稱陣列
+//                       danger     : Array<string>  危險組合（容易踩雷）的型別名稱陣列
+//   growth_keyword  : string  給該型別的一句成長建議關鍵字，通常放在結尾做總結
 window.TYPE_MAPPING_V3 = {
 
+    // 型別代碼："A-F-O-H"（主動-快速-外放-佔有）
+    // 對應下方 name 欄位為「海嘯型」
     "A-F-O-H": {
         code: "A-F-O-H_主動-快速-外放-佔有",
         name: "海嘯型",
@@ -48,6 +68,7 @@ window.TYPE_MAPPING_V3 = {
         growth_keyword: "妳的愛來得又急又猛，但對方也需要選擇的空間——稍緩半步，等他主動走向妳。"
     },
 
+    // 型別代碼："A-F-O-L"，對應 name 欄位為「煙火型」
     "A-F-O-L": {
         code: "A-F-O-L_主動-快速-外放-自由",
         name: "煙火型",
@@ -70,6 +91,7 @@ window.TYPE_MAPPING_V3 = {
         growth_keyword: "燦爛不需要證明，但允許自己留下一次，是長大的開始。"
     },
 
+    // 型別代碼："A-F-I-H"，對應 name 欄位為「漩渦型」
     "A-F-I-H": {
         code: "A-F-I-H_主動-快速-內斂-佔有",
         name: "漩渦型",
@@ -92,6 +114,7 @@ window.TYPE_MAPPING_V3 = {
         growth_keyword: "讓對方看見妳的引力來自哪裡——願意被看見，才能真正被擁抱。"
     },
 
+    // 型別代碼："A-F-I-L"，對應 name 欄位為「陣雨型」
     "A-F-I-L": {
         code: "A-F-I-L_主動-快速-內斂-自由",
         name: "陣雨型",
@@ -114,6 +137,7 @@ window.TYPE_MAPPING_V3 = {
         growth_keyword: "乾淨是妳的禮物，但偶爾為一個人多停留一晚，會打開另一片天空。"
     },
 
+    // 型別代碼："A-S-O-H"，對應 name 欄位為「岩漿型」
     "A-S-O-H": {
         code: "A-S-O-H_主動-緩慢-外放-佔有",
         name: "岩漿型",
@@ -136,6 +160,7 @@ window.TYPE_MAPPING_V3 = {
         growth_keyword: "妳的熱是真的，但對方需要呼吸——放慢一寸，反而能燒得更久。"
     },
 
+    // 型別代碼："A-S-O-L"，對應 name 欄位為「太陽型」
     "A-S-O-L": {
         code: "A-S-O-L_主動-緩慢-外放-自由",
         name: "太陽型",
@@ -158,6 +183,7 @@ window.TYPE_MAPPING_V3 = {
         growth_keyword: "陽光也需要被遮蔭——允許自己疲憊，被照顧不會減損妳的溫暖。"
     },
 
+    // 型別代碼："A-S-I-H"，對應 name 欄位為「藤蔓型」
     "A-S-I-H": {
         code: "A-S-I-H_主動-緩慢-內斂-佔有",
         name: "藤蔓型",
@@ -180,6 +206,7 @@ window.TYPE_MAPPING_V3 = {
         growth_keyword: "把「我需要你」說出口，不會破壞妳的纏繞——對方才有機會回應妳。"
     },
 
+    // 型別代碼："A-S-I-L"，對應 name 欄位為「燈塔型」
     "A-S-I-L": {
         code: "A-S-I-L_主動-緩慢-內斂-自由",
         name: "燈塔型",
@@ -202,6 +229,7 @@ window.TYPE_MAPPING_V3 = {
         growth_keyword: "光不必證明自己——但偶爾走下塔，會發現有人正等著妳靠近。"
     },
 
+    // 型別代碼："P-F-O-H"，對應 name 欄位為「雷雨型」
     "P-F-O-H": {
         code: "P-F-O-H_被動-快速-外放-佔有",
         name: "雷雨型",
@@ -224,6 +252,7 @@ window.TYPE_MAPPING_V3 = {
         growth_keyword: "妳的激烈來自在乎——學會在劈雷之前說出感受，會改寫故事走向。"
     },
 
+    // 型別代碼："P-F-O-L"，對應 name 欄位為「流星型」
     "P-F-O-L": {
         code: "P-F-O-L_被動-快速-外放-自由",
         name: "流星型",
@@ -246,6 +275,7 @@ window.TYPE_MAPPING_V3 = {
         growth_keyword: "燃完不留是妳的美——但有些人值得妳留下一晚，看看清晨會怎樣。"
     },
 
+    // 型別代碼："P-F-I-H"，對應 name 欄位為「流沙型」
     "P-F-I-H": {
         code: "P-F-I-H_被動-快速-內斂-佔有",
         name: "流沙型",
@@ -268,6 +298,7 @@ window.TYPE_MAPPING_V3 = {
         growth_keyword: "妳的安靜不是不愛——說出來吧，讓對方有機會選擇留下，而不是被困住。"
     },
 
+    // 型別代碼："P-F-I-L"，對應 name 欄位為「晨露型」
     "P-F-I-L": {
         code: "P-F-I-L_被動-快速-內斂-自由",
         name: "晨露型",
@@ -290,6 +321,7 @@ window.TYPE_MAPPING_V3 = {
         growth_keyword: "妳的存在比妳想的更被需要——讓自己被看見一次，不會破壞那份美。"
     },
 
+    // 型別代碼："P-S-O-H"，對應 name 欄位為「梅雨型」
     "P-S-O-H": {
         code: "P-S-O-H_被動-緩慢-外放-佔有",
         name: "梅雨型",
@@ -312,6 +344,7 @@ window.TYPE_MAPPING_V3 = {
         growth_keyword: "妳的綿長是溫柔，但偶爾露出陽光，會讓對方更想留下。"
     },
 
+    // 型別代碼："P-S-O-L"，對應 name 欄位為「晚霞型」
     "P-S-O-L": {
         code: "P-S-O-L_被動-緩慢-外放-自由",
         name: "晚霞型",
@@ -334,6 +367,7 @@ window.TYPE_MAPPING_V3 = {
         growth_keyword: "優雅不必演一輩子——允許自己為一個人爭取一次，明天的黃昏可能會更深。"
     },
 
+    // 型別代碼："P-S-I-H"，對應 name 欄位為「深海型」
     "P-S-I-H": {
         code: "P-S-I-H_被動-緩慢-內斂-佔有",
         name: "深海型",
@@ -356,6 +390,7 @@ window.TYPE_MAPPING_V3 = {
         growth_keyword: "深愛無聲，但說出來會讓對方知道自己有多幸運——而妳值得這份知道。"
     },
 
+    // 型別代碼："P-S-I-L"，對應 name 欄位為「迷霧型」
     "P-S-I-L": {
         code: "P-S-I-L_被動-緩慢-內斂-自由",
         name: "迷霧型",
@@ -384,7 +419,25 @@ window.TYPE_MAPPING_V3 = {
 // 性象限四種
 // ============================================================
 
+// window.SEX_QUADRANTS_V3：性象限四種型別資料表
+// 資料結構同樣是「物件的物件」：外層 key 為象限中文名稱（例如「深情專一型」），
+// value 為描述該象限的資料物件。
+//
+// 分類依據為兩個座標軸交叉出的四個象限：
+//   emotion  : "high" | "low"   情感連結需求高／低（是否需要先有愛才能有性）
+//   openness : "high" | "low"   關係開放程度高／低（是否能接受多重關係／非獨佔）
+//
+// 每個象限物件的欄位說明：
+//   emotion         : string  情感軸座標，"high"（重情感）或 "low"（可分離）
+//   openness        : string  開放軸座標，"high"（多元開放）或 "low"（專一封閉）
+//   tagline         : string  一句代表性的內心話，用引號包起來，凸顯該象限的核心價值觀
+//   desc            : string  該象限的整體性格描述
+//   roleplay        : object  語氣範例，內含 desc 欄位，示範該象限角色說話的用詞與態度
+//   traps           : Array<string>  該象限容易陷入的 4 條陷阱
+//   pairing         : object  配對建議（best / complement / danger 三類，用法同上方 TYPE_MAPPING_V3）
+//   growth_keyword  : string  給該象限的一句成長建議
 window.SEX_QUADRANTS_V3 = {
+    // 象限：情感連結需求高 + 開放程度低 → 深情專一型
     "深情專一型": {
         emotion: "high",
         openness: "low",
@@ -404,6 +457,7 @@ window.SEX_QUADRANTS_V3 = {
         },
         growth_keyword: "你的鄭重是稀有的禮物——允許自己偶爾輕鬆一點，不會折損這份深情。"
     },
+    // 象限：情感連結需求高 + 開放程度高 → 鍾情博愛型
     "鍾情博愛型": {
         emotion: "high",
         openness: "high",
@@ -423,6 +477,7 @@ window.SEX_QUADRANTS_V3 = {
         },
         growth_keyword: "寬廣的愛需要更細的溝通——把界線講清楚，每段關係才能各得其所。"
     },
+    // 象限：情感連結需求低 + 開放程度低 → 靈肉分離型
     "靈肉分離型": {
         emotion: "low",
         openness: "low",
@@ -442,6 +497,7 @@ window.SEX_QUADRANTS_V3 = {
         },
         growth_keyword: "理性是你的盾——但偶爾把身體之外的部分也交出去，才會嘗到真正的暖意。"
     },
+    // 象限：情感連結需求低 + 開放程度高 → 遊戲人間型
     "遊戲人間型": {
         emotion: "low",
         openness: "high",
@@ -468,6 +524,13 @@ window.SEX_QUADRANTS_V3 = {
 // 4 軸 → 8 個半軸標籤對照
 // ============================================================
 
+// window.AXIS_LABELS_V3：4 個分類軸的正負向中文標籤對照表
+// 用於把英文軸名稱（如 initiative）與正／負向數值轉換成畫面上顯示的中文字（如「主動」「被動」）。
+// 結構為「物件的物件」：外層 key 是英文軸名稱，value 是 { positive, negative } 兩個字串欄位。
+//   initiative : 主動性軸，positive = 主動，negative = 被動
+//   pace       : 節奏軸，  positive = 快速，negative = 緩慢
+//   expression : 表現軸，  positive = 外放，negative = 內斂
+//   possess    : 佔有軸，  positive = 佔有，negative = 自由
 window.AXIS_LABELS_V3 = {
     initiative: { positive: "主動", negative: "被動" },
     pace: { positive: "快速", negative: "緩慢" },
@@ -475,6 +538,10 @@ window.AXIS_LABELS_V3 = {
     possess: { positive: "佔有", negative: "自由" }
 };
 
+// window.PERIOD_NAMES_V3：時期編號 → 中文名稱對照表
+// key 為數字（1~4），代表感情發展的四個階段流程順序；value 為對應的中文顯示名稱。
+// 這個編號通常用來對應 window.TYPE_MAPPING_V3 內各型別物件的欄位（
+// 1 → ambiguity 曖昧期、2 → love 熱戀期、3 → breakup 失戀期、4 → 對應「親密與身體」/性象限資料）。
 window.PERIOD_NAMES_V3 = {
     1: "曖昧期",
     2: "熱戀期",

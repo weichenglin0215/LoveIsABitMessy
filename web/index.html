@@ -1,32 +1,51 @@
+<!-- 網站首頁：列出所有可進入的功能入口與小說故事清單 -->
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
+<!-- 網頁基本編碼與行動裝置縮放設定 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- 瀏覽器分頁標題 -->
 <title>LoveIsABitMessy: 辦公室日常</title>
+<!-- 載入 Google Fonts 的「思源黑體 TC」字型，供全站文字使用 -->
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<!-- 載入共用樣式表（含 CSS 變數，如顏色主題等） -->
 <link rel="stylesheet" href="css/lpas_styles.css">
 <style>
+/* 頁面整體版面：加大內距、套用主題背景色、允許垂直捲動 */
 body { display: block; padding: 40px; background-color: var(--c-bg-main); overflow-y: auto;}
+/* 頁首區塊：置中對齊，並與下方內容保留間距 */
 .site-header { text-align: center; margin-bottom: 50px; }
+/* 頁首主標題文字樣式 */
 .site-header h1 { font-size: 2.5rem; font-weight: 300; margin-bottom: 20px;}
+/* 功能導覽按鈕（如「前往測驗」「LoveLine 聊天」）的基本樣式 */
 .link-btn { display: inline-block; padding: 10px 24px; background-color: var(--c-accent); color: white; text-decoration: none; border-radius: 20px; transition: 0.3s;}
+/* 按鈕滑鼠移入時的變色效果 */
 .link-btn:hover { background-color: var(--c-bg-card); color: var(--c-accent-light); }
+/* 故事清單容器：限制最大寬度並置中，移除項目符號 */
 .story-list { max-width: 600px; margin: 0 auto; list-style: none; padding: 0; }
+/* 每一則故事項目：底部加分隔線與間距 */
 .story-list li { margin-bottom: 15px; border-bottom: 1px solid var(--c-scale-empty); padding-bottom: 15px; }
+/* 故事連結：左右對齊排版（標題在左、日期在右） */
 .story-list a { color: var(--c-text-main); text-decoration: none; font-size: 1.2rem; display: flex; justify-content: space-between;}
+/* 故事連結滑鼠移入時的變色效果 */
 .story-list a:hover { color: var(--c-accent-light); }
+/* 故事日期文字樣式（較小、較淡的顏色） */
 .story-date { color: var(--c-text-sec); font-size: 0.9rem; }
 </style>
 </head>
 <body>
+    <!-- 頁首區塊：網站標題與主要功能入口按鈕 -->
     <div class="site-header">
         <h1>LoveIsABitMessy</h1>
+        <!-- 前往「愛情人格特質評量表（LPAS）」測驗頁面 -->
         <a href="lpas.html" class="link-btn">前往測驗：愛情人格特質評量表 (LPAS)</a>
         &nbsp;&nbsp;
+        <!-- 前往「LoveLine」聊天功能頁面 -->
         <a href="loveline.html" class="link-btn" style="background-color:hsl(330,50%,40%);">💬 LoveLine 聊天</a>
     </div>
-    
+
+    <!-- 故事清單區塊：列出目前已發布的互動小說，每則附上發布日期 -->
     <ul class="story-list">
         <li><a href='2026-04-15_a.html'><span>a 的故事</span> <span class='story-date'>2026-04-15</span></a></li>
     </ul>

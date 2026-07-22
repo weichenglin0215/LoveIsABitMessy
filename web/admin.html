@@ -2,6 +2,7 @@
 <html lang="zh-Hant">
 
 <head>
+  <!-- 網頁基本資訊設定：字元編碼、視窗縮放、頁籤標題 -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LoveIsABitMessy 後台管理</title>
@@ -9,19 +10,23 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/lpas_styles.css">
+  <!-- 本頁專屬樣式：後台管理頁面的版面配置與元件外觀，與全站共用樣式（lpas_styles.css）搭配使用 -->
   <style>
+    /* 讓後台頁面可以直向捲動，並從畫面上方開始排列內容（不同於一般頁面置中的設計） */
     body {
       overflow-y: auto;
       height: auto;
       align-items: flex-start;
     }
 
+    /* 主要容器：限制最大寬度，避免在大螢幕上內容過度延伸 */
     main#app-container {
       max-width: 1100px;
       height: auto;
       padding-top: 48px;
     }
 
+    /* 卡片式面板：用於「連線設定」「角色」「日記」「LPAS測驗」等各區塊的外框 */
     .panel {
       width: 100%;
       background: var(--c-bg-card);
@@ -30,6 +35,7 @@
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
     }
 
+    /* 橫向排列的欄位群組，超出寬度會自動換行 */
     .row {
       display: flex;
       gap: 12px;
@@ -37,10 +43,12 @@
       align-items: center;
     }
 
+    /* row 內每個子項目的最小寬度與伸縮比例 */
     .row>* {
       flex: 1 1 240px;
     }
 
+    /* 表單欄位標籤文字樣式 */
     label {
       display: block;
       font-size: 0.9rem;
@@ -48,6 +56,7 @@
       margin: 8px 0 6px;
     }
 
+    /* 各類輸入框、下拉選單、多行文字框的共用外觀 */
     input[type="text"],
     input[type="password"],
     input[type="email"],
@@ -62,12 +71,14 @@
       font-family: inherit;
     }
 
+    /* 多行文字框（例如角色卡 JSON 編輯區）：保留原始換行與空白格式 */
     textarea {
       min-height: 160px;
       resize: vertical;
       white-space: pre;
     }
 
+    /* 分頁標籤列（角色／日記／LPAS測驗）的排列方式 */
     .tabs {
       display: flex;
       gap: 8px;
@@ -75,6 +86,7 @@
       margin: 16px 0;
     }
 
+    /* 單一分頁標籤的樣式 */
     .tab {
       padding: 8px 14px;
       border-radius: 18px;
@@ -84,23 +96,27 @@
       border: 1px solid transparent;
     }
 
+    /* 目前選中的分頁標籤，以主題色標示 */
     .tab.active {
       background: var(--c-accent);
       color: #fff;
     }
 
+    /* 列表項目的網格排版容器 */
     .grid {
       display: grid;
       grid-template-columns: 1fr;
       gap: 12px;
     }
 
+    /* 資料表格的基本樣式 */
     .table {
       width: 100%;
       border-collapse: collapse;
       font-size: 0.95rem;
     }
 
+    /* 表格儲存格內距與分隔線 */
     .table th,
     .table td {
       padding: 10px 8px;
@@ -108,25 +124,30 @@
       vertical-align: top;
     }
 
+    /* 表格標題列文字樣式 */
     .table th {
       color: var(--c-text-sec);
       font-weight: 500;
       text-align: left;
     }
 
+    /* 次要說明文字（例如提示、狀態文字）的樣式 */
     .muted {
       color: var(--c-text-sec);
       font-size: 0.9rem;
     }
 
+    /* 內容靠右對齊的輔助類別 */
     .right {
       justify-content: flex-end;
     }
 
+    /* 等寬字型，用於顯示程式碼或 JSON 內容 */
     .mono {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     }
 
+    /* 圓角標籤樣式（例如狀態標記） */
     .pill {
       display: inline-block;
       padding: 2px 10px;
@@ -135,24 +156,29 @@
       color: var(--c-text-sec);
     }
 
+    /* 區塊間的垂直留白間距 */
     .spacer {
       height: 12px;
     }
   </style>
 
-  <!-- Supabase JS (UMD) -->
+  <!-- 引入 Supabase JS SDK（UMD 版本），用於連線後端資料庫並進行登入驗證、資料讀寫 -->
   <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
+  <!-- 建立並匯出 Supabase client 實例，供其他腳本共用連線設定 -->
   <script src="js/supabaseClient.js" defer></script>
+  <!-- 後台管理頁面主要邏輯：處理連線設定、登入登出、角色/日記/LPAS測驗資料的顯示與編輯 -->
   <script src="js/admin_app.js" defer></script>
 </head>
 
 <body>
+  <!-- 頁面主要內容容器 -->
   <main id="app-container">
     <h1 class="main-title" style="margin-bottom: 8px;">後台管理</h1>
     <div class="muted" style="text-align:center; margin-bottom: 20px;">
       連線到 Supabase 之後，才能管理角色、測驗紀錄與日記。
     </div>
 
+    <!-- 連線設定區塊：輸入 Supabase 專案網址與金鑰，並提供帳號登入／登出功能 -->
     <section class="panel" id="panel-connection">
       <h2 style="font-weight:500; margin-bottom: 10px;">Supabase 連線設定</h2>
       <div class="row">
@@ -191,12 +217,14 @@
       <div class="muted mono" id="conn-status">尚未連線。</div>
     </section>
 
+    <!-- 分頁標籤列：登入成功後才會顯示，用於切換「角色」「日記」「LPAS測驗」三個管理區塊 -->
     <div class="tabs" id="tabs" style="display:none;">
       <div class="tab active" data-tab="characters">角色</div>
       <div class="tab" data-tab="diary">日記</div>
       <div class="tab" data-tab="lpas">LPAS 測驗</div>
     </div>
 
+    <!-- 角色管理區塊：新增／更新角色卡（可直接貼上 LPAS 產生的 JSON 內容），並列出現有角色 -->
     <section class="panel" id="tab-characters" style="display:none;">
       <div class="row" style="align-items:flex-end;">
         <div>
@@ -229,6 +257,7 @@
       <div id="characters-list" class="grid"></div>
     </section>
 
+    <!-- 日記管理區塊：列出玩家在遊戲中產生的日記紀錄，可重新整理取得最新資料 -->
     <section class="panel" id="tab-diary" style="display:none;">
       <div class="row right">
         <button class="btn secondary-btn" id="btn-refresh-diary">重新整理列表</button>
@@ -237,6 +266,7 @@
       <div id="diary-list"></div>
     </section>
 
+    <!-- LPAS 測驗管理區塊：列出使用者填寫的 LPAS 測驗結果，可重新整理取得最新資料 -->
     <section class="panel" id="tab-lpas" style="display:none;">
       <div class="row right">
         <button class="btn secondary-btn" id="btn-refresh-lpas">重新整理列表</button>
@@ -245,6 +275,7 @@
       <div id="lpas-list"></div>
     </section>
 
+    <!-- 頁尾提示：說明此頁面雖公開於 GitHub Pages，但實際寫入仍受 Supabase 資料列層級安全性（RLS）保護 -->
     <div class="spacer"></div>
     <div class="muted" style="text-align:center;">
       GitHub Pages 會公開此頁面，但資料表寫入會受 Supabase RLS 限制（未登入不可寫）。\n

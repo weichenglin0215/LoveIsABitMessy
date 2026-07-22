@@ -2003,7 +2003,7 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                     print(f">> JSON 解析失敗 (大綱): {e}")
                     print(f">> 顯示原始回傳文字：{response_text}")
                     print(f">> 顯示JSON修正後文字：{repaired_text}")
-                    # Fallback
+                    # 備援方案：JSON解析失敗時，改用逐行文字拆分的方式取得章節標題
                     sections = [s.strip() for s in response_text.split('\n') if s.strip() and not s.startswith('[') and not s.startswith('`')]
                 
                 if not sections: 

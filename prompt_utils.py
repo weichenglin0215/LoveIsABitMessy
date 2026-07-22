@@ -5,6 +5,9 @@ import time
 from datetime import datetime
 
 def load_character_from_path(char_path: str) -> dict:
+    # 從指定路徑讀取角色卡 JSON 檔案並解析為 dict。
+    # 參數 char_path：角色卡 JSON 檔案的完整路徑；若為空字串或路徑不存在，回傳空 dict。
+    # 回傳值：角色卡資料的 dict（讀取失敗或路徑無效時為空 dict）。
     if not char_path:
         return {}
     if not os.path.exists(char_path):
@@ -17,8 +20,11 @@ _CACHED_LOGIC = None
 def _parse_character_logic_js():
     #####################################################################################
     # 解析 character_logic.js 檔案，取得星座、血型、MBTI 描述
+    # 無參數；回傳值為 dict：{"zodiac": {...}, "blood": {...}, "type": {...}}
+    # 內容會快取於全域變數 _CACHED_LOGIC，避免每次呼叫都重新讀檔與解析（提升效能）。
     #####################################################################################
     global _CACHED_LOGIC
+    # 已有快取結果則直接回傳，不重複解析檔案
     if _CACHED_LOGIC: return _CACHED_LOGIC
     js_path = os.path.join(os.path.dirname(__file__), 'web', 'js', 'character_logic.js')
     if not os.path.exists(js_path): return {"zodiac": {}, "blood": {}, "type": {}}
@@ -94,8 +100,11 @@ def _parse_character_logic_js():
 def _enrich_char_data(char_data: dict, relationship_params: dict = None) -> dict:
     #####################################################################################
     # 補充角色資料
+    # 參數 char_data：原始角色卡 dict（可能欄位不齊全）
+    # 參數 relationship_params：關係狀態參數（如 partner_status 曖昧期/戀愛期/失戀期），用於決定要帶入哪一期的人格描述
+    # 回傳值：補齊星座描述、血型描述、年齡、人格描述、身高體重胸圍預設值後的新 dict（不修改原 char_data）
     #####################################################################################
-    c = dict(char_data)
+    c = dict(char_data)  # 複製一份，避免直接修改呼叫端傳入的原始 dict
     # 若前端傳入「劇本中的角色名稱」(role_name)，則優先以它取代角色卡名字 (name)。
     # 這樣 prompt 中的「女主角姓名」「配角姓名」與情境比對都會使用劇中名，避免和角色卡演員名混淆。
     role_name = (c.get('role_name') or '').strip() if isinstance(c.get('role_name'), str) else ''
@@ -315,14 +324,29 @@ def build_analyze_image_prompt_text() -> str:
     )
 
 def build_chat_reply_prompt(char_data, char_name, user_name, user_message, history,
-                            persona_override="", session_extra="", 
+                            persona_override="", session_extra="",
                             user_char_data=None, user_persona_override="", user_extra="",
                             session_type="one_on_one", other_participants=None, writer_settings: dict = None):
     """
     建立 LoveLine 聊天的提示詞，支援使用者資料與進階覆寫。
     """
     #####################################################################################
-    #建立 LoveLine 聊天的提示詞，支援使用者資料與進階覆寫。
+    # 建立 LoveLine 聊天的提示詞，支援使用者資料與進階覆寫。
+    # 參數說明：
+    #   char_data            ：AI 扮演角色的角色卡 dict
+    #   char_name            ：AI 扮演角色的顯示名稱
+    #   user_name            ：使用者顯示名稱
+    #   user_message         ：使用者本次傳送的訊息內容
+    #   history              ：對話歷史紀錄列表，每筆為 {"name":..., "content":...}
+    #   persona_override     ：本次對話特定的人設覆寫文字（優先權高於角色卡）
+    #   session_extra        ：本次對話的額外補充設定
+    #   user_char_data       ：使用者自己的角色卡 dict（選填）
+    #   user_persona_override：使用者特質的覆寫文字
+    #   user_extra           ：關於使用者的額外補充資訊
+    #   session_type         ：對話類型，"one_on_one"（一對一）或 "group"（群組）
+    #   other_participants   ：群組聊天時的其他參與者列表
+    #   writer_settings      ：知名作家寫作風格/範本設定（選填）
+    # 回傳值：組合完成、可直接送給 LLM 的完整提示詞字串
     #####################################################################################
     # --- 1. 處理目標角色 (AI) 的資料 ---
     target_char = dict(char_data)

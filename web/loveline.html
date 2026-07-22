@@ -9,12 +9,16 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
   <!-- 編輯器共用css/editer.css -->
   <link rel="stylesheet" href="css/editer.css">
+  <!-- Supabase JS SDK：提供雲端資料庫（角色卡、使用者、聊天記錄等）讀寫功能 -->
   <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
   <!-- LPAS v3 類型表 + V1→V3 轉換器（讓 loveline 顯示與傳給後端的卡片皆為 V3） -->
   <script src="js/lpas_v3_types.js"></script>
   <script src="js/lpas_v1_to_v3.js"></script>
+  <!-- Supabase 連線設定與共用客戶端實例 -->
   <script src="js/supabaseClient.js" defer></script>
+  <!-- AI 模型參數（model-options）選單的資料載入與編輯邏輯 -->
   <script src="js/model_options_app.js" defer></script>
+  <!-- 寫作風格／寫作範本選單的資料載入與編輯彈窗邏輯 -->
   <script src="js/writer_settings_app.js" defer></script>
   <!-- 公用使用說明彈窗（讀寫官方 note/*.md + 雲端 manual_custom_history） -->
   <script src="js/help_modal.js" defer></script>
@@ -23,7 +27,7 @@
 </head>
 
 <body>
-  <!-- Top Bar -->
+  <!-- 頂部導覽列：站內各頁面連結，以及右側的使用說明按鈕 -->
   <div class="app-topbar">
     <span class="title-lg">💌 LoveLine</span>
     <nav class="app-topbar-nav">
@@ -38,19 +42,19 @@
     </nav>
   </div>
 
-  <!-- Main 3-column layout -->
+  <!-- 主要三欄式版面：左（控制台）／中（聊天室清單）／右（聊天內容） -->
   <div class="app-shell" id="app-shell">
 
-    <!-- ═══ LEFT PANEL ═══ -->
+    <!-- ═══ 左側面板：控制台 ═══ -->
     <div class="panel" id="panel-left">
-      <!-- Header with collapse button -->
+      <!-- 面板標題列，含收合按鈕 -->
       <div class="col-header">
         <span class="left-content">⚙️ 控制台</span>
         <button class="collapse-btn" id="btn-collapse-left" title="縮放左側欄">◀</button>
       </div>
 
       <div class="left-content" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
-        <!-- User Section -->
+        <!-- 使用者區塊：顯示目前使用者、切換／新增使用者 -->
         <div class="user-section">
           <div class="user-row" id="current-user-row">
             <div class="user-avatar" id="user-avatar-icon">👤</div>
@@ -71,7 +75,7 @@
           </div>
         </div>
 
-        <!-- Server Status -->
+        <!-- 伺服器狀態與模型／寫作風格／寫作範本設定區塊 -->
         <div class="server-status-row server-settings-row">
           <div class="server-row">
             <div class="dot" id="server-dot"></div>
@@ -123,7 +127,7 @@
             </div>
           </div>
         </div>
-        <!-- LOG -->
+        <!-- LOG 輸出區：顯示系統/除錯訊息的唯讀文字框 -->
         <div class="form-section">
           <textarea id="log-output" class="log-area">等待任務...</textarea>
         </div>
@@ -134,20 +138,20 @@
         </div>
       </div>
 
-      <!-- collapsed icon -->
+      <!-- 左側欄收合後顯示的縮小圖示（直式文字） -->
       <div id="collapsed-icon"
         style="display:none;flex-direction:column;align-items:center;padding:8px;gap:8px;writing-mode:vertical-rl;">
         <span color:var(--c-text-sec);>控制台</span>
       </div>
     </div>
 
-    <!-- ═══ MIDDLE PANEL ═══ -->
+    <!-- ═══ 中間面板：好友／聊天室清單 ═══ -->
     <div class="panel" id="panel-mid">
       <div class="col-header">
         <span>💬 聊天</span>
       </div>
       <div class="panel-scroll">
-        <!-- 1-on-1 -->
+        <!-- 一對一好友清單區塊 -->
         <div class="title-sm">
           <span>👤 好友</span>
           <button id="btn-new-1on1" title="加入好友" class="small-btn">＋</button>
@@ -155,7 +159,7 @@
         <div id="list-1on1">
           <div class="title-md">尚無好友</div>
         </div>
-        <!-- Group -->
+        <!-- 多人聊天室清單區塊 -->
         <div class="title-sm" style="margin-top:10px;">
           <span>👥 聊天室</span>
           <button id="btn-new-group" title="建立多人聊天室" class="small-btn">＋</button>
@@ -166,7 +170,7 @@
       </div>
     </div>
 
-    <!-- ═══ RIGHT PANEL ═══ -->
+    <!-- ═══ 右側面板：目前對話的訊息內容與輸入區 ═══ -->
     <div class="panel" id="panel-right">
       <div id="chat-header">
         <div class="chat-avatar" id="chat-header-avatar">💬</div>
@@ -182,13 +186,16 @@
         </div>
       </div>
 
+      <!-- 聊天訊息顯示區：由 loveline_app.js 動態插入對話泡泡 -->
       <div id="chat-messages"></div>
 
+      <!-- 尚未選擇任何對話時顯示的空白提示畫面 -->
       <div class="empty-chat" id="empty-state" style="display: flex;">
         <div class="icon">💌</div>
         <p>選擇角色或聊天室開始聊天</p>
       </div>
 
+      <!-- 訊息輸入區：文字框與送出按鈕 -->
       <div id="chat-input-area">
         <textarea id="msg-input" rows="1" placeholder="輸入訊息…（Shift+Enter 換行，Enter 送出）" disabled></textarea>
         <button id="btn-send" disabled>➤</button>
@@ -197,7 +204,7 @@
   </div>
 
 
-  <!-- ── Modal: Edit User Profile ── -->
+  <!-- ── 彈窗：編輯使用者資料（暱稱、密碼、關聯角色卡、覆蓋資料等） ── -->
   <div class="modal-overlay hidden" id="modal-user-edit">
     <div class="modal" style="width: min(96vw, 1600px); max-width: none;">
       <h3 id="modal-user-title">👤 編輯使用者資料</h3>
@@ -241,7 +248,7 @@
     </div>
   </div>
 
-  <!-- ── Modal: Friend (Add / Edit) ── -->
+  <!-- ── 彈窗：新增／編輯好友（關聯角色卡、寫作風格、頭像框顏色等） ── -->
   <div class="modal-overlay hidden" id="modal-friend">
     <div class="modal" style="width: 600px;">
       <h2 id="modal-friend-title">💬 新增好友</h2>
@@ -280,7 +287,7 @@
     </div>
   </div>
 
-  <!-- ── Modal: Group Chat (Add / Edit) ── -->
+  <!-- ── 彈窗：建立／編輯多人聊天室（選擇參與角色、背景資料、自動聊天主題等） ── -->
   <div class="modal-overlay hidden" id="modal-group">
     <div class="modal" style="width: 600px;">
       <h2 id="modal-group-title">👥 建立聊天室</h2>
@@ -314,7 +321,7 @@
   </div>
 
 
-  <!-- ── Modal: Password Check ── -->
+  <!-- ── 彈窗：密碼驗證（載入受密碼保護的使用者資料前需先驗證） ── -->
   <div class="modal-overlay hidden" id="modal-password-check">
     <div class="modal" style="width: 600px;">
       <h2 id="password-check-title">🔐 安全驗證</h2>
@@ -328,16 +335,21 @@
   </div>
 
   <script>
-    // Log 輔助功能
+    // ── Log 輔助功能：清空／複製／以大型彈窗檢視左側控制台的 LOG 文字框 ──
+
+    // 清空 LOG 文字框內容
     window.clearLogOutput = () => {
       const logBox = document.getElementById('log-output');
       if (logBox) logBox.value = '';
     };
+    // 將 LOG 文字框內容複製到系統剪貼簿，並跳出提示
     window.copyLogOutput = () => {
       const logBox = document.getElementById('log-output');
       navigator.clipboard.writeText(logBox ? logBox.value : '');
       alert('已複製到剪貼簿');
     };
+    // 開啟「系統訊息 LOG」大型彈窗，將目前 LOG 內容（還原逸出的換行符號）填入彈窗文字框，
+    // 並重置搜尋欄位與筆數顯示
     window.showLogModal = () => {
       const logBox = document.getElementById('log-output');
       const rawText = logBox ? logBox.value : '';
@@ -347,10 +359,12 @@
       document.getElementById('log-search-count').textContent = '';
     };
 
-    // LOG 彈窗搜尋功能
+    // ── LOG 彈窗搜尋功能：在大型 LOG 彈窗內，依關鍵字尋找並跳轉至比對位置 ──
     (function initLogSearch() {
+      // matches：所有比對到的起始位置陣列；currentMatch：目前選取的比對索引
       let matches = [], currentMatch = -1;
 
+      // 跳轉並反白顯示第 idx 個比對結果（索引採循環方式，超出範圍會回繞）
       function goToMatch(idx) {
         if (!matches.length) return;
         const ta = document.getElementById('system-log-content');
@@ -370,6 +384,7 @@
         document.getElementById('log-search-count').textContent = `${currentMatch + 1} / ${matches.length}`;
       }
 
+      // 依搜尋欄位文字（不分大小寫）掃描整份 LOG 文字，記錄所有比對位置後跳至第一筆
       function doSearch() {
         const query = document.getElementById('log-search-input').value;
         const ta = document.getElementById('system-log-content');
@@ -382,6 +397,7 @@
         matches.length ? goToMatch(0) : (countEl.textContent = '找不到', ta.focus());
       }
 
+      // 綁定搜尋欄位（Enter 觸發搜尋）與上一個／下一個按鈕的事件
       window.addEventListener('DOMContentLoaded', () => {
         document.getElementById('log-search-input').addEventListener('keydown', e => {
           if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
@@ -391,8 +407,9 @@
       });
     })();
   </script>
+  <!-- 本頁主要邏輯（使用者/好友/聊天室資料處理、聊天訊息收發等）皆在此外部檔案中 -->
   <script src="js/loveline_app.js" defer></script>
-  <!-- ── Modal: System Message LOG ── -->
+  <!-- ── 彈窗：系統訊息 LOG（大型檢視，可搜尋 LOG 內容） ── -->
   <div id="modal-system-log" class="modal-overlay hidden">
     <div class="modal"
       style="background-color: var(--c-bg-card-light); width: 80%; height: 80%; display: flex; flex-direction: column; max-width: none;">

@@ -5,13 +5,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>小說自動產生器 - LoveIsABitMessy</title>
-  <!-- Supabase JS (UMD) -->
+  <!-- Supabase JS 官方 UMD 版函式庫，提供雲端資料庫（讀取角色卡、儲存/讀取小說）連線功能 -->
   <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
   <!-- LPAS v3 類型表 + V1→V3 轉換器（讓登場角色顯示與傳給後端皆為 V3） -->
   <script src="js/lpas_v3_types.js"></script>
   <script src="js/lpas_v1_to_v3.js"></script>
   <script src="js/supabaseClient.js" defer></script>
+  <!-- AI 模型參數設定（模型下拉選單、參數編輯彈窗）邏輯 -->
   <script src="js/model_options_app.js" defer></script>
+  <!-- 寫作風格／寫作範本 的下拉選單與編輯彈窗邏輯 -->
   <script src="js/writer_settings_app.js" defer></script>
   <!-- 公用使用說明彈窗（讀寫 note/*.md，右上角 ? 按鈕呼叫） -->
   <script src="js/help_modal.js" defer></script>
@@ -21,6 +23,10 @@
 </head>
 
 <body>
+  <!-- ══════════════════════ 頂部工具列（app-topbar） ══════════════════════
+       包含：小說名稱輸入框、雲端讀取/儲存/本機讀取/匯出按鈕、
+       額外功能下拉選單（作者備註、比對多本小說、評論小說、多文改寫、網路搜尋並依序改寫）、
+       全自動生成按鈕、右上角使用說明按鈕。 -->
   <div class="app-topbar">
     <div class="title-lg">📖 開心花園AI小說產生器</div>
     <nav class="app-topbar-nav">
@@ -37,9 +43,10 @@
       <button class="btn primary-btn" id="btn-save">💾 儲存雲端小說</button>
       <button class="btn secondary-btn" id="btn-load">📂 讀取小說</button>
       <button class="btn primary-btn" id="btn-export">📤 匯出小說</button>
-      <!-- 🧰 額外功能：點擊展開下方選單 -->
+      <!-- 🧰 額外功能：點擊展開下方選單（下拉式選單，內含多項輔助工具按鈕） -->
       <div class="extra-features-wrapper" style="position:relative; display:inline-block;">
         <button class="btn secondary-btn" id="btn-extra-features" title="展開額外功能選單">🧰 額外功能🔽</button>
+        <!-- 額外功能下拉選單本體，預設隱藏（display:none），由JS切換顯示 -->
         <div id="extra-features-menu"
           style="display:none; position:absolute; top:100%; left:0; margin-top:4px; padding:8px; flex-direction:column; gap:6px; background:var(--c-bg-panel, hsla(240, 10%, 10%, 0.85)); border:2px solid var(--c-border, #555); border-bottom:5px solid var(--c-border, #555); border-radius:var(--radius-lg, 10px); z-index:100; white-space:nowrap; box-shadow:0 4px 12px rgba(0,0,0,0.3);">
           <button class="btn secondary-btn" id="btn-author-notes" title="撰寫作者備註，不會提供給 AI，但會隨小說一起儲存／讀取">📝 作者備註</button>
@@ -58,8 +65,12 @@
         style="margin-left:auto; width:36px; height:36px; border-radius:50%; border:2px solid #f472b6; background:#333; color:#f472b6; font-size:18px; font-weight:bold; cursor:pointer; flex-shrink:0;">?</button>
     </nav>
   </div>
+  <!-- ══════════════════════ 主要四欄式版面（main-columns-grid） ══════════════════════
+       由左至右依序為：①登場角色欄　②故事粗綱欄　③故事大綱（章/節列表）欄　④內文編輯器欄
+       欄與欄之間以 .resizer 分隔線做拖拉縮放，寬度比例由下方 <script> 內的
+       initResizableColumns() 邏輯動態計算並套用到 grid-template-columns。 -->
   <div id="main-columns-grid" class="main-columns-grid">
-    <!-- 角色挑選 -->
+    <!-- 角色挑選欄：顯示登場角色卡列表，可從雲端刷新或手動新增角色 -->
     <div class="col" id="char-col-container">
       <div class="col-header">
         <button class="collapse-btn" id="toggle-char-col" title="縮放">↔</button>
@@ -77,20 +88,23 @@
           <div id="char-source-status">☁️ 預設讀取雲端角色卡</div>
         </div>
         <div id="char-slots-container">
-          <!-- JS 動態生成 -->
+          <!-- JS 動態生成：依已選角色卡數量動態插入角色卡片 -->
         </div>
       </div>
-      <!--LOG狀態欄-->
+      <!--LOG狀態欄：顯示後端AI伺服器連線狀態，以及AI模型/參數/寫作風格/寫作範本等下拉選單-->
       <div class="server-status-row server-settings-row">
+        <!-- 伺服器連線狀態指示燈：offline(離線)/online(在線)由JS依偵測結果切換class -->
         <span class="server-status-dot offline" id="server-dot"></span>
         <span class="title-hint" id="server-status-text">偵測中…</span>
         <button id="start-server-btn" disabled>🚀 請自行啟動伺服器</button>
+        <!-- AI 模型選擇下拉選單 -->
         <div id="model-container" class="model-container-row">
           <label class="model-label">🤖 AI 模型：</label>
           <select id="model-select">
             <option value="gemma4">gemma4</option>
           </select>
         </div>
+        <!-- AI 模型參數（溫度、Top-P等）選擇與編輯 -->
         <div class="model-container-row">
           <label class="model-label">⚙️ 模型參數：</label>
           <select id="model-options-select">
@@ -98,6 +112,7 @@
           </select>
           <button id="btn-add-model-option" class="ai-btn size-md">+編輯</button>
         </div>
+        <!-- 寫作風格一、二、三：可各自套用不同寫作風格範本，一併送給AI參考 -->
         <div class="model-container-row">
           <label class="model-label">🖋️ 寫作風格一：</label>
           <select id="writer-style-select-1" class="ws-style-dropdown">
@@ -122,6 +137,7 @@
           <button class="ai-btn size-md"
             onclick="WriterSettingsApp.openStyleModal(document.getElementById('writer-style-select-3').value)">+編輯</button>
         </div>
+        <!-- 寫作範本：提供文字範例讓AI模仿其文筆／敘事節奏 -->
         <div class="model-container-row">
           <label class="model-label">📝 寫作範本：</label>
           <select id="writer-sample-select" class="ws-sample-dropdown">
@@ -131,10 +147,11 @@
             onclick="WriterSettingsApp.openSampleModal(document.getElementById('writer-sample-select').value)">+編輯</button>
         </div>
       </div>
-      <!-- LOG -->
+      <!-- LOG：顯示AI呼叫過程與系統訊息的簡易文字輸出區 -->
       <div class="form-section">
         <textarea id="log-output" class="log-area">等待任務...</textarea>
       </div>
+      <!-- LOG欄操作按鈕：清空／複製到剪貼簿／開啟大型LOG彈窗（含搜尋功能） -->
       <div class="log-actions">
         <button class="small-btn" onclick="clearLogOutput()" title="清空LOG欄的所有文字">🗑️清空</button>
         <button class="small-btn" onclick="copyLogOutput()" title="複製LOG欄的所有文字到剪貼簿">📋複製</button>
@@ -143,9 +160,10 @@
       <div id="diary-cloud-status" class="title-hint">雲端狀態</div>
     </div>
 
+    <!-- 欄位拖拉縮放用的分隔線，data-index對應下方JS的index判斷 -->
     <div class="resizer" data-index="1"></div>
 
-    <!-- 故事粗綱欄位 -->
+    <!-- 故事粗綱欄位：撰寫整體故事走向、結局設想，亦可由本地端文字檔轉換而成 -->
     <div class="col" id="story-premise-container">
       <div class="col-header">
         <button class="collapse-btn" id="toggle-premise" title="縮放">↔</button>
@@ -166,7 +184,7 @@
 
     <div class="resizer" data-index="3"></div>
 
-    <!-- 故事大綱 -->
+    <!-- 故事大綱欄：章／節樹狀列表，可鎖定避免被AI覆寫、可請AI生成章描述或所有小節大綱 -->
     <div class="col">
       <div class="col-header">
         <h3>📖故事大綱</h3>
@@ -179,13 +197,13 @@
         </div>
       </div>
       <div class="scroll-area" id="chapter-list">
-        <!-- JS 動態生成 -->
+        <!-- JS 動態生成：依資料模型渲染每一章與其下小節的清單項目 -->
       </div>
     </div>
 
     <div class="resizer" data-index="5"></div>
 
-    <!-- 編輯器 -->
+    <!-- 內文編輯器欄：顯示目前選取小節的標題與內文，可請AI撰寫本節或所有未鎖定小節的內文 -->
     <div class="col">
       <div class="col-header">
         <h3>🖋️ 內文編輯器</h3>
@@ -200,7 +218,10 @@
       </div>
     </div>
   </div>
-  <!-- ── Modal: Save Novel ── -->
+  <!-- ══════════════════════ 以下為各功能彈窗（Modal） ══════════════════════
+       所有彈窗預設皆帶 .hidden 樣式（display:none），由對應按鈕的JS事件移除/加入 .hidden 來顯示/隱藏。 -->
+
+  <!-- ── 彈窗：儲存小說專案（輸入小說名稱與雲端存取密碼） ── -->
   <div id="modal-novel-save" class="modal-overlay hidden">
     <div class="modal-box modal-box-sm">
       <h3 class="modal-title">💾 儲存小說專案</h3>
@@ -219,7 +240,7 @@
     </div>
   </div>
 
-  <!-- ── Modal: Author Notes ── -->
+  <!-- ── 彈窗：作者備註（僅隨小說資料儲存，不會傳送給AI） ── -->
   <div id="modal-author-notes" class="modal-overlay hidden">
     <div class="modal-box" style="width:min(94vw,1200px); max-width:none; padding: 24px;">
       <h3 class="modal-title">📝 作者備註</h3>
@@ -235,12 +256,12 @@
     </div>
   </div>
 
-  <!-- ── Modal: Multi-Book Count ── -->
+  <!-- ── 彈窗：全自動產生多本小說（設定產生數量、各生成階段開關、AI生成參數） ── -->
   <div id="modal-multibook" class="modal-overlay hidden">
     <div class="modal-box" style="width:min(94vw,820px); max-width:none; padding: 24px;">
       <h3 class="modal-title">🚀 全自動產生多本小說</h3>
       <div style="display:flex; gap:24px; align-items:flex-start;">
-        <!-- 左側：原有設定 -->
+        <!-- 左側：產生數量、生成階段勾選、雲端儲存密碼 -->
         <div style="flex:1; min-width:0;">
           <div class="modal-field">
             <label class="modal-label">產生數量：</label>
@@ -269,10 +290,10 @@
               style="font-size: 24px; box-sizing: border-box; border: 2px solid red">
           </div>
         </div>
-        <!-- 右側：AI 生成參數 -->
+        <!-- 右側：各階段AI生成參數（章描述字數、小節數、內文字數等） -->
         <div style="flex:1; min-width:0; border-left:1px solid var(--c-border); padding-left:20px;">
           <label class="modal-label">⚙️ AI 生成參數</label>
-          <!-- Phase 1 params -->
+          <!-- 第一階段參數：章標題與章描述 -->
           <label class="modal-label">📝 章描述（Phase 1）</label>
           <div class="modal-field" style="gap:6px;">
             <label class="checkbox-label">建議章數：</label>
@@ -283,7 +304,7 @@
             <label class="checkbox-label">每章描述字數：</label>
             <input class="w-70 input-num-sm" type="number" id="mb-cfp-words" min="50" max="2000" value="400">
           </div>
-          <!-- Phase 2 params -->
+          <!-- 第二階段參數：小節標題與小節描述 -->
           <label class="modal-label">📖 小節大綱（Phase 2）</label>
           <div class="modal-field" style="gap:6px;">
             <label class="checkbox-label">建議小節數：</label>
@@ -293,7 +314,7 @@
             <label class="checkbox-label">每節描述字數：</label>
             <input class="w-70 input-num-sm" type="number" id="mb-co-words" min="50" max="2000" value="500">
           </div>
-          <!-- Phase 3 params -->
+          <!-- 第三階段參數：小節內文生成 -->
           <label class="modal-label">🖋️📙 內文（Phase 3）</label>
           <div class="modal-field-last" style="gap:6px;">
             <label class="checkbox-label">每節內文字數：</label>
@@ -311,7 +332,7 @@
     </div>
   </div>
 
-  <!-- ── Modal: Story-To-Bullet-Premise Params ── -->
+  <!-- ── 彈窗：文檔轉條列式粗綱 — 生成參數（建議章數、每章字數） ── -->
   <div id="modal-params-stb" class="modal-overlay hidden">
     <div class="modal-box modal-box-sm">
       <h3 class="modal-title">📋 文檔轉條列 — 生成參數</h3>
@@ -330,7 +351,7 @@
     </div>
   </div>
 
-  <!-- ── Modal: Story-To-Premise Params ── -->
+  <!-- ── 彈窗：文檔轉粗綱 — 生成參數（建議章數、每章字數） ── -->
   <div id="modal-params-stp" class="modal-overlay hidden">
     <div class="modal-box modal-box-sm">
       <h3 class="modal-title">📄 文檔轉粗綱 — 生成參數</h3>
@@ -349,7 +370,7 @@
     </div>
   </div>
 
-  <!-- ── Modal: Chapters-From-Premise Params ── -->
+  <!-- ── 彈窗：由粗綱生成章描述 — 生成參數（建議章數、每章描述字數） ── -->
   <div id="modal-params-cfp" class="modal-overlay hidden">
     <div class="modal-box modal-box-sm">
       <h3 class="modal-title">🤖 章描述 — 生成參數</h3>
@@ -368,7 +389,7 @@
     </div>
   </div>
 
-  <!-- ── Modal: Chapter-Outline Params ── -->
+  <!-- ── 彈窗：小節大綱生成 — 生成參數（建議小節數、每節描述字數） ── -->
   <div id="modal-params-co" class="modal-overlay hidden">
     <div class="modal-box modal-box-sm">
       <h3 class="modal-title">🤖 AI 大綱 — 生成參數</h3>
@@ -387,7 +408,7 @@
     </div>
   </div>
 
-  <!-- ── Modal: Section-Content Params ── -->
+  <!-- ── 彈窗：小節內文生成 — 生成參數（每小節內文建議字數） ── -->
   <div id="modal-params-sc" class="modal-overlay hidden">
     <div class="modal-box modal-box-sm">
       <h3 class="modal-title">🤖 AI 內文 — 生成參數</h3>
@@ -402,7 +423,7 @@
     </div>
   </div>
 
-  <!-- ── Modal: Novel Password Check ── -->
+  <!-- ── 彈窗：雲端小說專案讀取密碼驗證 ── -->
   <div id="modal-novel-password" class="modal-overlay hidden">
     <div class="modal-box modal-box-sm">
       <h3 class="modal-title">🔐 雲端專案驗證</h3>
@@ -417,13 +438,20 @@
   </div>
 
   <script>
-    // Log 輔助功能
+    // ══════════════════════ 內嵌 Script：頁面互動輔助邏輯 ══════════════════════
+    // 本區塊負責：①LOG欄清空/複製/開啟大型彈窗　②大型LOG彈窗內的搜尋功能
+    // ③欄位拖拉縮放（含折疊/展開）邏輯。其餘商業邏輯（AI呼叫、資料存取等）
+    // 皆放在外部檔案 js/novel_generator_app.js 中。
+
+    // Log 輔助功能：清空LOG欄文字
     window.clearLogOutput = () => { document.getElementById('log-output').value = ''; };
+    // 複製LOG欄文字到系統剪貼簿
     window.copyLogOutput = () => {
       const log = document.getElementById('log-output').value;
       navigator.clipboard.writeText(log);
       alert('已複製到剪貼簿');
     };
+    // 開啟大型LOG彈窗：把LOG欄原始文字（含 \\n 跳脫字元）轉為真正換行後顯示，並重置搜尋狀態
     window.showLogModal = () => {
       const logBox = document.getElementById('log-output');
       const rawText = logBox.value;
@@ -433,11 +461,12 @@
       document.getElementById('log-search-count').textContent = '';
     };
 
-    // LOG 彈窗搜尋功能
+    // LOG 彈窗搜尋功能（IIFE 立即執行函式，封裝搜尋狀態避免污染全域）
     (function initLogSearch() {
-      let matches = [];
-      let currentMatch = -1;
+      let matches = [];   // 所有符合關鍵字的起始位置陣列
+      let currentMatch = -1;  // 目前反白顯示的符合項目索引
 
+      // 跳到第 idx 個符合項目：反白選取文字並將該處捲動至垂直置中
       function goToMatch(idx) {
         if (!matches.length) return;
         const ta = document.getElementById('system-log-content');
@@ -457,6 +486,7 @@
         document.getElementById('log-search-count').textContent = `${currentMatch + 1} / ${matches.length}`;
       }
 
+      // 依輸入框關鍵字，於LOG全文中做不分大小寫搜尋，找出所有符合位置並跳至第一筆
       function doSearch() {
         const query = document.getElementById('log-search-input').value;
         const ta = document.getElementById('system-log-content');
@@ -470,6 +500,7 @@
         matches.length ? goToMatch(0) : (countEl.textContent = '找不到', ta.focus());
       }
 
+      // 綁定搜尋輸入框（Enter鍵觸發搜尋）與上一個／下一個按鈕事件
       window.addEventListener('DOMContentLoaded', () => {
         document.getElementById('log-search-input').addEventListener('keydown', e => {
           if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
@@ -480,16 +511,19 @@
     })();
 
     // --- 欄位拖拉縮放邏輯 ---
+    // 讓使用者可用滑鼠拖曳 .resizer 分隔線，調整四欄（角色/粗綱/大綱/編輯器）的寬度比例，
+    // 並支援角色欄與粗綱欄的折疊/展開（collapsed class）。
     (function initResizableColumns() {
       const grid = document.getElementById('main-columns-grid');
       const resizers = document.querySelectorAll('.resizer');
-      let isResizing = false;
-      let currentResizer = null;
+      let isResizing = false;      // 目前是否正在拖曳中
+      let currentResizer = null;   // 目前正在被拖曳的分隔線元素
 
       // 儲存每個直欄的比例 (fr)
       // 初始比例根據預設寬度設定
       let colFractions = [192, 320, 500, 400]; // 概略對應 12rem, 20rem, 1fr, 25rem
 
+      // 依 colFractions 陣列（各欄比例）與折疊狀態，重新組出 grid-template-columns 字串並套用
       function updateGridTemplate() {
         const charCol = document.getElementById('char-col-container');
         const premiseCol = document.getElementById('story-premise-container');
@@ -532,6 +566,7 @@
         window.addEventListener('load', () => setTimeout(initFractions, 200));
       }
 
+      // 為每條分隔線綁定拖曳事件：mousedown 開始拖曳，mousemove 即時計算新寬度，mouseup 結束
       resizers.forEach(resizer => {
         resizer.addEventListener('mousedown', (e) => {
           isResizing = true;
@@ -589,7 +624,7 @@
         });
       });
 
-      // 處理折疊按鈕
+      // 處理折疊按鈕：點擊後切換該欄容器的 collapsed class，並重新計算版面寬度
       const setupToggle = (btnId, containerId) => {
         const btn = document.getElementById(btnId);
         if (btn) {
@@ -607,10 +642,10 @@
 
     })();
   </script>
-  <!-- ── Modal: Compare Novels ── -->
+  <!-- ── 彈窗：比對多本小說（並排顯示最多四本雲端小說的粗綱/大綱/內文） ── -->
   <div id="modal-compare" class="modal-overlay hidden">
     <div class="cmp-modal">
-      <!-- Top bar (single row) -->
+      <!-- 頂部工具列（單行）：比對內容切換、重新載入雲端列表、隱藏/顯示AI訊息、搜尋框 -->
       <div class="cmp-toolbar">
         <h2 class="cmp-title">📚 多本小說比對</h2>
         <label class="cmp-label">比對內容：</label>
@@ -633,9 +668,9 @@
         <button class="modal-close-btn" style="margin-left:auto;"
           onclick="document.getElementById('modal-compare').classList.add('hidden')">&times;</button>
       </div>
-      <!-- 4 columns -->
+      <!-- 四欄並排比對區：每欄各自選擇一本雲端小說，可刪除該小說或隱藏/顯示AI模型訊息 -->
       <div class="cmp-body">
-        <!-- Col 0 -->
+        <!-- 第0欄 -->
         <div class="cmp-col">
           <div class="cmp-col-header">
             <select class="cmp-select compare-novel-select" style="width: 60%;" data-col="0">
@@ -648,7 +683,7 @@
             style="font-size: 18px; flex-shrink:0; max-height:calc(1.4em * 8); border:1px solid #7ac0ff; background:transparent; color:#7ac0ff; resize:none; padding:4px 8px; margin:0; border-radius:10px;"></textarea>
           <textarea class="cmp-content compare-content story-premise-textarea" data-col="0" readonly></textarea>
         </div>
-        <!-- Col 1 -->
+        <!-- 第1欄 -->
         <div class="cmp-col">
           <div class="cmp-col-header">
             <select class="cmp-select compare-novel-select" style="width: 60%;" data-col="1">
@@ -661,7 +696,7 @@
             style="font-size: 18px; flex-shrink:0; max-height:calc(1.4em * 8); border:1px solid #7ac0ff; background:transparent; color:#7ac0ff; resize:none; padding:4px 8px; margin:0; border-radius:10px;"></textarea>
           <textarea class="cmp-content compare-content story-premise-textarea" data-col="1" readonly></textarea>
         </div>
-        <!-- Col 2 -->
+        <!-- 第2欄 -->
         <div class="cmp-col">
           <div class="cmp-col-header">
             <select class="cmp-select compare-novel-select" style="width: 60%;" data-col="2">
@@ -674,7 +709,7 @@
             style="font-size: 18px; flex-shrink:0; max-height:calc(1.4em * 8); border:1px solid #7ac0ff; background:transparent; color:#7ac0ff; resize:none; padding:4px 8px; margin:0; border-radius:10px;"></textarea>
           <textarea class="cmp-content compare-content story-premise-textarea" data-col="2" readonly></textarea>
         </div>
-        <!-- Col 3 -->
+        <!-- 第3欄 -->
         <div class="cmp-col">
           <div class="cmp-col-header">
             <select class="cmp-select compare-novel-select" style="width: 60%;" data-col="3">
@@ -691,7 +726,7 @@
     </div>
   </div>
 
-  <!-- ── Modal: Compare Novel Password ── -->
+  <!-- ── 彈窗：比對小說時的密碼驗證 ── -->
   <div id="modal-compare-password" class="modal-overlay hidden" style="z-index:200;">
     <div class="modal-box modal-box-sm">
       <h3 class="modal-title">🔐 小說密碼驗證</h3>
@@ -704,10 +739,10 @@
     </div>
   </div>
 
-  <!-- ── Modal: Review Novel（評論小說） ── -->
+  <!-- ── 彈窗：評論小說（以AI模擬編輯/讀者身分審評小說，並可匯出評論結果） ── -->
   <div id="modal-review" class="modal-overlay hidden">
     <div class="cmp-modal">
-      <!-- Top bar -->
+      <!-- 頂部工具列：搜尋、文件名稱、評審目前小說／評審外部文檔 按鈕 -->
       <div class="cmp-toolbar">
         <h2 class="cmp-title">🎯 評論小說</h2>
         <span class="cmp-icon">🔍</span>
@@ -725,7 +760,7 @@
         <button class="modal-close-btn" style="margin-left:auto;"
           onclick="document.getElementById('modal-review').classList.add('hidden')">&times;</button>
       </div>
-      <!-- Body: 上下兩欄，中間夾一條可拖動高度的橫向 resizer -->
+      <!-- 主體：上下兩欄（上：提示詞／下：AI評審建議），中間夾一條可拖動高度的橫向 resizer -->
       <div class="cmp-body" id="review-body" style="flex-direction:column;">
         <div class="cmp-col" id="review-col-request" style="flex:1 1 0; min-height:40px;">
           <div class="cmp-col-header">
@@ -762,10 +797,10 @@
     </div>
   </div>
 
-  <!-- ── Modal: Multi-File Rewrite（多文改寫） ── -->
+  <!-- ── 彈窗：多文改寫（批次改寫多個外部文檔，依勾選順序逐一交由AI改寫並自動匯出） ── -->
   <div id="modal-rewrite" class="modal-overlay hidden">
     <div class="cmp-modal">
-      <!-- Top bar -->
+      <!-- 頂部工具列：搜尋、文件名稱、開始改寫 按鈕 -->
       <div class="cmp-toolbar">
         <h2 class="cmp-title">📝 多文改寫</h2>
         <span class="cmp-icon">🔍</span>
@@ -780,7 +815,7 @@
         <button class="modal-close-btn" style="margin-left:auto;"
           onclick="document.getElementById('modal-rewrite').classList.add('hidden')">&times;</button>
       </div>
-      <!-- Body: 左右兩欄；左欄再分上下 -->
+      <!-- 主體：左右兩欄；左欄再分上下（指令／輸出），右欄為搜尋網址與檔案清單 -->
       <div class="cmp-body" style="flex-direction:row;">
         <!-- 左欄：使用者指令 / AI 改寫內容 -->
         <div class="cmp-col" id="rewrite-left-col" style="flex:2 1 0; display:flex; flex-direction:column;">
@@ -840,10 +875,10 @@
     </div>
   </div>
 
-  <!-- ── Modal: Web Search & Sequential Rewrite（🌐 網路搜尋並依序改寫） ── -->
+  <!-- ── 彈窗：網路搜尋並依序改寫（依工作項目自動上網搜尋資料，並依序讓AI產生內容） ── -->
   <div id="modal-web-rewrite" class="modal-overlay hidden">
     <div class="cmp-modal">
-      <!-- Top bar -->
+      <!-- 頂部工具列：搜尋、開始改寫 按鈕 -->
       <div class="cmp-toolbar">
         <h2 class="cmp-title">🌐 網路搜尋並依序改寫</h2>
         <span class="cmp-icon">🔍</span>
@@ -855,7 +890,7 @@
         <button class="modal-close-btn" style="margin-left:auto;"
           onclick="document.getElementById('modal-web-rewrite').classList.add('hidden')">&times;</button>
       </div>
-      <!-- Body: 左右兩欄；左欄再分上下 -->
+      <!-- 主體：左右兩欄；左欄再分上下（指令／輸出），右欄為搜尋引擎選擇與工作項目JSON -->
       <div class="cmp-body" style="flex-direction:row;">
         <!-- 左欄：使用者指令 / AI 改寫內容 -->
         <div class="cmp-col" id="webre-left-col" style="flex:2 1 0; display:flex; flex-direction:column;">
@@ -899,8 +934,9 @@
     </div>
   </div>
 
+  <!-- 主要商業邏輯：AI呼叫、資料讀寫、角色卡渲染、章節樹狀結構管理等皆在此檔案中實作 -->
   <script src="js/novel_generator_app.js" defer></script>
-  <!-- ── Modal: System Message LOG ── -->
+  <!-- ── 彈窗：系統訊息 LOG（大型LOG顯示視窗，支援關鍵字搜尋與上下筆跳轉） ── -->
   <div id="modal-system-log" class="modal-overlay hidden">
     <div class="modal"
       style="background-color: var(--c-bg-card-light); width: 80%; height: 80%; display: flex; flex-direction: column; max-width: none;">

@@ -150,6 +150,7 @@ label {
     appearance: none;
 }
 
+/* ─── input 取得焦點（focus）時的樣式：邊框與底色轉亮、加上外發光 ─── */
 .field:focus {
     border-color: rgba(160, 120, 255, 0.8);
     background: rgba(160, 120, 255, 0.1);
@@ -165,6 +166,7 @@ select.field {
     padding-right: 40px;
 }
 
+/* ─── 下拉選單展開時，每個選項（option）的底色與文字色 ─── */
 select.field option {
     background: #1e1040;
     color: #e8e0ff;
@@ -188,6 +190,7 @@ textarea.field {
     line-height: 1.7;
 }
 
+/* ─── 說明文字內的粗體（強調）字樣 ─── */
 .info-label strong {
     color: #c8aaff;
     font-weight: 600;
@@ -210,12 +213,14 @@ textarea.field {
     overflow: hidden;
 }
 
+/* ─── 主要按鈕（Primary）：紫色漸層底色 + 發光陰影，用於最重要的動作 ─── */
 .btn-primary {
     background: linear-gradient(135deg, #7c3aed, #a855f7, #6d28d9);
     color: #fff;
     box-shadow: 0 4px 24px rgba(140, 60, 255, 0.4);
 }
 
+/* 主要按鈕表面的斜向高光疊層，增加立體光澤感 */
 .btn-primary::after {
     content: '';
     position: absolute;
@@ -224,27 +229,32 @@ textarea.field {
     pointer-events: none;
 }
 
+/* 滑鼠移入（hover）：稍微上浮 + 加深陰影，給予互動回饋 */
 .btn-primary:hover {
     opacity: 0.9;
     transform: translateY(-1px);
     box-shadow: 0 6px 28px rgba(140, 60, 255, 0.5);
 }
 
+/* 按下（active）：向下沉一點並縮小陰影，模擬被按壓的手感 */
 .btn-primary:active {
     transform: translateY(1px);
     box-shadow: 0 2px 12px rgba(140, 60, 255, 0.3);
 }
 
+/* ─── 次要按鈕（Secondary）：透明底 + 淡紫邊框，用於次要/取消動作 ─── */
 .btn-secondary {
     background: transparent;
     color: rgba(200, 180, 255, 0.8);
     border: 1px solid rgba(160, 120, 255, 0.35);
 }
 
+/* 滑鼠移入時填入淡淡的紫色底色 */
 .btn-secondary:hover {
     background: rgba(160, 120, 255, 0.1);
 }
 
+/* 按下時底色更淡，呈現被按壓的效果 */
 .btn-secondary:active {
     background: rgba(160, 120, 255, 0.05);
 }
@@ -255,6 +265,7 @@ textarea.field {
     gap: 12px;
 }
 
+/* 按鈕列中每個按鈕平分寬度（flex: 1） */
 .btn-row .btn {
     flex: 1;
 }
@@ -278,18 +289,22 @@ textarea.field {
     letter-spacing: 0.8px;
 }
 
+/* 狀態文字：切換顏色時加上過渡動畫，避免顏色瞬間跳變 */
 #status-text {
     transition: color 0.3s;
 }
 
+/* 狀態文字：正常/成功（ok）狀態 → 綠色 */
 #status-text.ok {
     color: #7dd3a8;
 }
 
+/* 狀態文字：錯誤（err）狀態 → 紅色 */
 #status-text.err {
     color: #f87171;
 }
 
+/* ─── 狀態小圓點：綠色圓點 + 發光，並持續呼吸閃爍表示連線中/運作中 ─── */
 .status-dot {
     width: 8px;
     height: 8px;
@@ -299,6 +314,7 @@ textarea.field {
     animation: pulse 2s infinite;
 }
 
+/* 呼吸動畫關鍵影格：透明度在 1 與 0.4 之間循環，做出「脈動」效果 */
 @keyframes pulse {
 
     0%,
