@@ -2738,28 +2738,45 @@ async function reviewCurrentNovel() {
 }
 
 async function reviewExternalFile(event) {
-    const file = event.target.files[0];
+    const files = Array.from(event.target.files || []);
     event.target.value = '';
-    if (!file) return;
-    if (!file.name.match(/\.(txt|md)$/i)) {
+    if (!files.length) return;
+
+    // 篩選出合法的 .txt / .md 檔案，其餘的記錄到 LOG 並略過
+    const validFiles = [];
+    for (const file of files) {
+        if (!file.name.match(/\.(txt|md)$/i)) {
+            appendLog(`⚠️ 已略過「${file.name}」：僅支援 .txt 或 .md 文字檔案。`);
+            continue;
+        }
+        validFiles.push(file);
+    }
+    if (!validFiles.length) {
         alert('❌ 僅支援 .txt 或 .md 文字檔案。');
         return;
     }
-    let textContent = '';
-    try {
-        textContent = await file.text();
-    } catch (e) {
-        alert('❌ 無法讀取檔案：' + e.message);
-        return;
+
+    appendLog(`📂 已選取 ${validFiles.length} 個檔案，將依序評審，每個檔案完成後會自動匯出 .md。`);
+
+    // 依序處理每個檔案：讀取 → 評審（含 H 模式的最終評審意見）→ 自動匯出 .md
+    for (const file of validFiles) {
+        let textContent = '';
+        try {
+            textContent = await file.text();
+        } catch (e) {
+            appendLog(`❌ 無法讀取「${file.name}」：${e.message}`);
+            continue;
+        }
+        if (!textContent || textContent.trim().length < 50) {
+            appendLog(`⚠️ 已略過「${file.name}」：內容太短（少於 50 字）。`);
+            continue;
+        }
+        // 覆寫文件名稱為外部檔名（去掉副檔名）
+        const baseName = file.name.replace(/\.(txt|md)$/i, '');
+        qs('#review-doc-name').value = baseName;
+        await runReviewJob(textContent, baseName, { autoExport: true });
     }
-    if (!textContent || textContent.trim().length < 50) {
-        alert('❌ 檔案內容太短（少於 50 字）。');
-        return;
-    }
-    // 覆寫文件名稱為外部檔名（去掉副檔名）
-    const baseName = file.name.replace(/\.(txt|md)$/i, '');
-    qs('#review-doc-name').value = baseName;
-    await runReviewJob(textContent, baseName);
+    appendLog('✅ 所有已選取的外部文檔評審完畢。');
 }
 
 function appendReviewFeedback(text) {
@@ -2770,9 +2787,22 @@ function appendReviewFeedback(text) {
     el.scrollTop = el.scrollHeight;
 }
 
-async function runReviewJob(fullText, docName) {
+/**
+ * 執行一次評審任務。
+ * @param {string} fullText 待審稿件全文
+ * @param {string} docName  文件名稱
+ * @param {{autoExport?: boolean}} [opts] autoExport: 單一立場（非 H）時，評審完成後是否自動匯出 .md
+ *   ⚠️ H 模式（依序執行以上所有選項評論）一律會在跑完 A~G 並整理「最終評審意見」後，
+ *      自動匯出「單一份」合併 .md（不需輸出成多份 .md 檔案），不受 autoExport 影響。
+ */
+async function runReviewJob(fullText, docName, opts = {}) {
+    const autoExport = !!opts.autoExport;
     const roleSel = qs('#review-role-select');
     const role = (roleSel && roleSel.value) || 'A';
+    // 下拉選單目前顯示的完整文字（例如「A. 出版社老闆（極度嚴厲，預設）」），用於匯出檔名
+    const roleOptionLabel = (roleSel && roleSel.selectedOptions && roleSel.selectedOptions[0])
+        ? roleSel.selectedOptions[0].textContent.trim()
+        : (REVIEW_ROLE_LABELS[role] || role);
 
     // 先把欄位目前內容保存回目前立場，確保用到的是最新修改
     saveCurrentReviewPrompt(currentReviewRole);
@@ -2781,6 +2811,7 @@ async function runReviewJob(fullText, docName) {
     if (role === 'H') {
         appendLog(`🎯 H 模式:依序執行 A~G 七種評論立場。`);
         const seq = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+        const collected = []; // { label, text }：蒐集每個立場的評審全文，供最終整合使用
         for (const r of seq) {
             const prompt = getReviewPrompt(r) || '';
             const label = REVIEW_ROLE_LABELS[r] || r;
@@ -2788,16 +2819,35 @@ async function runReviewJob(fullText, docName) {
                 appendLog(`⚠️ 略過 ${label}(提示詞為空)。`);
                 continue;
             }
-            await runSingleReview(fullText, docName, prompt, label);
+            const text = await runSingleReview(fullText, docName, prompt, label);
+            collected.push({ label, text });
         }
-        appendLog('✅ H 模式所有立場評論完畢。');
+
+        // 加碼：將 A~G 全部評審意見再交給 AI 整理成「最終評審意見」
+        appendLog('🎯 開始整理「最終評審意見」...');
+        const finalText = await runFinalSynthesis(docName, collected);
+        appendLog('✅ H 模式所有立場評論與最終評審意見皆已完成。');
+
+        // H 模式一律自動匯出「單一份」合併 .md（A~G + 最終評審意見）
+        const sections = collected.map(c => `## 【${c.label}】\n\n${c.text}\n`).join('\n---\n\n');
+        const md = `# 🎯 小說評審報告：${docName}\n\n${sections}\n\n---\n\n## 【最終評審意見】\n\n${finalText}\n`;
+        const filename = `${sanitizeFilename(docName)}_${sanitizeFilename(roleOptionLabel)}.md`;
+        downloadMarkdown(filename, md);
+        appendLog(`📤 已自動匯出合併評審報告：${filename}`);
         return;
     }
 
     // 單一立場
     const userRequest = qs('#review-user-request').value.trim() || getReviewPrompt(role);
     const label = REVIEW_ROLE_LABELS[role] || `自訂立場 (${role})`;
-    await runSingleReview(fullText, docName, userRequest, label);
+    const text = await runSingleReview(fullText, docName, userRequest, label);
+
+    if (autoExport) {
+        const md = `# 🎯 小說評審報告：${docName}\n\n## ✏️ AI評審的提示詞\n\n${userRequest}\n\n---\n\n## 【${label}】\n\n${text}\n`;
+        const filename = `${sanitizeFilename(docName)}_${sanitizeFilename(roleOptionLabel)}.md`;
+        downloadMarkdown(filename, md);
+        appendLog(`📤 已自動匯出評審報告：${filename}`);
+    }
 }
 
 async function runSingleReview(fullText, docName, userRequest, roleLabel) {
@@ -2829,19 +2879,104 @@ async function runSingleReview(fullText, docName, userRequest, roleLabel) {
         const result = await callDebugServerAsync('/api/review_novel_async', payload);
         // 移除佔位符,寫入實際結果
         if (placeholderStart >= 0) el.value = el.value.slice(0, placeholderStart);
+        let text;
         if (result && result.review) {
-            el.value += result.review;
+            text = result.review;
+            el.value += text;
             appendLog(`✅ 【${roleLabel}】評審結果已附加。`);
         } else {
-            el.value += '❌ AI 未回傳有效評審內容,請查看 LOG 或重試。';
+            text = '❌ AI 未回傳有效評審內容,請查看 LOG 或重試。';
+            el.value += text;
             appendLog(`❌ 【${roleLabel}】AI 未回傳有效評審內容。`);
         }
         el.scrollTop = el.scrollHeight;
+        return text;
     } catch (e) {
         if (placeholderStart >= 0) el.value = el.value.slice(0, placeholderStart);
-        el.value += '❌ 發生錯誤:' + e.message;
+        const text = '❌ 發生錯誤:' + e.message;
+        el.value += text;
         appendLog(`❌ 【${roleLabel}】評審發生錯誤:` + e.message);
+        return text;
     }
+}
+
+/**
+ * H 模式加碼功能：把 A~G 七種立場的評審全文合併，再請 AI 整理成一份「最終評審意見」。
+ * 規則：依重要性(被越多評審提到)排序，每條意見分別列出正面評論／反面評論／修改建議，
+ *       類似看法的意見會合併並標注是哪幾位評審提出。
+ */
+async function runFinalSynthesis(docName, collected) {
+    const combinedReviews = collected.map(c => `===== 【${c.label}】 =====\n${c.text}`).join('\n\n');
+    const synthesisInstructions = `你是一位經驗豐富的出版總監，收到了以下 ${collected.length} 位不同立場的評審針對同一份稿件所寫的評論意見（A~G，各自代表完全不同的審讀角度）。
+
+請將這些評論意見整合成一份「最終評審意見」，規則如下：
+1. 以條列式列出整合後的意見，並依照「重要性」排序——越多位評審提到、或越多評審強調的意見，排序越前面。
+2. 每一條意見都需要分別列出：
+   【正面評論】(可能有多個，若這條意見完全沒有正面觀點可省略)
+   【反面評論】(可能有多個，若這條意見完全沒有反面觀點可省略)
+   【修改建議】(可能有多個，若無具體建議可省略)
+3. 若多位評審對同一件事表達出相似的看法，請合併為同一條意見，並在該條意見後方標注是哪幾位評審(以評審的字母/立場標示，例如 A、C、F)提出了這個看法。
+4. 全部使用繁體中文，禁止使用中文簡體字。
+
+以下為 ${collected.length} 位評審的評論全文：
+
+${combinedReviews}
+
+請開始撰寫「最終評審意見」：`;
+
+    const timestamp = new Date().toLocaleString('zh-TW', { hour12: false });
+    const header = `\n\n===== 【最終評審意見】 ${timestamp} =====\n`;
+    appendReviewFeedback(header + '⏳ AI 整理中,請稍候...(過程 LOG 顯示在主 LOG 欄)');
+    const el = qs('#review-ai-feedback');
+    const placeholderStart = el.value.lastIndexOf('⏳ AI 整理中');
+
+    try {
+        const payload = {
+            text_content: combinedReviews,
+            user_request: synthesisInstructions,
+            doc_name: docName,
+            model: state.currentModel || 'gemma4',
+            model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null
+        };
+        const result = await callDebugServerAsync('/api/review_novel_async', payload);
+        if (placeholderStart >= 0) el.value = el.value.slice(0, placeholderStart);
+        let text;
+        if (result && result.review) {
+            text = result.review;
+            el.value += text;
+            appendLog('✅ 【最終評審意見】已附加。');
+        } else {
+            text = '❌ AI 未回傳有效整理內容,請查看 LOG 或重試。';
+            el.value += text;
+            appendLog('❌ 【最終評審意見】AI 未回傳有效內容。');
+        }
+        el.scrollTop = el.scrollHeight;
+        return text;
+    } catch (e) {
+        if (placeholderStart >= 0) el.value = el.value.slice(0, placeholderStart);
+        const text = '❌ 發生錯誤:' + e.message;
+        el.value += text;
+        appendLog('❌ 【最終評審意見】整理發生錯誤:' + e.message);
+        return text;
+    }
+}
+
+// 將字串中 Windows 檔名不允許的字元替換為底線，避免自動匯出失敗
+function sanitizeFilename(name) {
+    return (name || '').replace(/[\\/:*?"<>|]/g, '_').trim();
+}
+
+// 建立 .md 檔案並觸發瀏覽器下載
+function downloadMarkdown(filename, content) {
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 function exportReviewResult() {

@@ -43,7 +43,7 @@
         <div id="extra-features-menu"
           style="display:none; position:absolute; top:100%; left:0; margin-top:4px; padding:8px; flex-direction:column; gap:6px; background:var(--c-bg-panel, hsla(240, 10%, 10%, 0.85)); border:2px solid var(--c-border, #555); border-bottom:5px solid var(--c-border, #555); border-radius:var(--radius-lg, 10px); z-index:100; white-space:nowrap; box-shadow:0 4px 12px rgba(0,0,0,0.3);">
           <button class="btn secondary-btn" id="btn-author-notes" title="撰寫作者備註，不會提供給 AI，但會隨小說一起儲存／讀取">📝 作者備註</button>
-          <button class="btn secondary-btn" id="btn-compare-novels" title="並排比對四本雲端小說的內容">📚 比對多本小說</button>
+          <button class="btn secondary-btn" id="btn-compare-novels" title="並排比對四本雲端小說的內容">📚 比對多本小說(只能比對，無法儲存)</button>
           <button class="btn secondary-btn" id="btn-review-novel" title="以最嚴格的專業編輯身分審評小說，提前獲得真切的讀者/編輯回應">🎯
             評論小說</button>
           <button class="btn secondary-btn" id="btn-multi-rewrite" title="批次改寫多個外部文檔（例如：翻譯成英文），依照勾選順序逐一交由 AI 改寫並自動匯出">📝
@@ -718,9 +718,10 @@
         <label class="cmp-label">文件名稱：</label>
         <input type="text" id="review-doc-name" class="w-300" placeholder="預設為目前小說名稱">
         <button class="btn secondary-btn" id="btn-review-current-novel" title="以最嚴格的標準評審目前編輯中的小說">🎯 評審目前小說</button>
-        <button class="btn secondary-btn" id="btn-review-external-file" title="選擇本地端 .txt / .md 檔案來評審">📂
+        <button class="btn secondary-btn" id="btn-review-external-file"
+          title="選擇本地端 .txt / .md 檔案來評審（可複選多個檔案，將依序評審並各自自動匯出 .md）">📂
           評審外部文檔</button>
-        <input type="file" id="review-file-input" accept=".txt,.md" style="display:none;">
+        <input type="file" id="review-file-input" accept=".txt,.md" multiple style="display:none;">
         <button class="modal-close-btn" style="margin-left:auto;"
           onclick="document.getElementById('modal-review').classList.add('hidden')">&times;</button>
       </div>
