@@ -1005,6 +1005,109 @@ def build_novel_content_prompt(char_data: dict, current_chapter: str, chapter_ou
     return f"{system_prompt}\n\n【當前任務/情境】\n{user_input}\n\n請開始執行（以繁體中文）："
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 「選取文字 AI 加工」四種功能的預設語氣指令（擴寫／精簡／對白／視覺化改寫）
+# ⚠️ 若要調整各功能的 AI 行為，直接修改這裡的字串即可（前端「補充指示」會另外附加疊加）。
+# ─────────────────────────────────────────────────────────────────────────────
+REFINE_MODE_INSTRUCTIONS = {
+    # Alt+P 擴寫／優化
+    'expand': (
+        "任務：把【待處理段落】擴寫、優化得更豐富飽滿。\n"
+        "- 依前後上下文延展，補上更多有畫面的動作、環境互動與具體細節，讓情節更立體。\n"
+        "- 必須維持原段落的原意、人物、時間線與立場，不可自行新增與上下文矛盾的設定或角色。\n"
+        "- 避免文青式內心獨白與第三人稱說教，盡量以「看得見的行為」與「聽得見的對白」來呈現情緒。\n"
+    ),
+    # Alt+S 精簡
+    'condense': (
+        "任務：把【待處理段落】精簡濃縮。\n"
+        "- 保留關鍵資訊、劇情轉折與人物動機，刪除贅字、重複與可有可無的鋪陳。\n"
+        "- 維持原段落的原意與語氣，不可刪掉會影響上下文銜接的必要資訊。\n"
+    ),
+    # Alt+T 對白優化
+    'dialogue': (
+        "任務：把【待處理段落】中的對白優化得更貼近角色。\n"
+        "- 依【登場角色設定】對照段落中出現的人名（例如「聶小倩：」「小倩：」），讓每個人的台詞符合其性格與習慣用語／說話口吻。\n"
+        "- 若段落中有多位角色說話，請分別依各自的角色設定調整，不要讓所有人講話都是同一個腔調。\n"
+        "- 對白要簡短、精準、像真人在說話；刪除說教式、解說劇情式的呆板台詞。\n"
+        "- 禁止在對白之前添加角色的情緒描述（例如「他生氣地說」），改以對白本身與必要的動作來呈現情緒。\n"
+        "- 對白以外的敘述可保留，但若與對白語氣不搭可一併微調。\n"
+    ),
+    # Alt+A 視覺化改寫
+    'visual': (
+        "任務：把【待處理段落】改寫成「觀眾看得到」的視覺化內容。\n"
+        "- 把內心戲、理性分析、抽象感受，改寫成角色的具體動作、表情、肢體語言，或角色與環境／物件的互動來表達。\n"
+        "- 讓情緒透過「行為」被讀者看見，而不是被作者直接說出來。\n"
+        "- 禁止文青式內心獨白與第三人稱說教式的心境描述。\n"
+        "- 維持原段落的原意、人物與劇情走向。\n"
+    ),
+}
+
+REFINE_MODE_TITLES = {
+    'expand': '擴寫／優化',
+    'condense': '精簡',
+    'dialogue': '對白優化',
+    'visual': '視覺化改寫',
+}
+
+
+def build_refine_text_prompt(mode: str, selected_text: str, context_text: str = "",
+                             extra_instruction: str = "", target_words: int = 0,
+                             characters: list = None, writer_settings: dict = None) -> str:
+    """建立「選取文字 AI 加工」提示詞（擴寫／精簡／對白／視覺化改寫共用）。
+
+    參數：
+      mode              ：'expand' | 'condense' | 'dialogue' | 'visual'
+      selected_text     ：使用者在輸入框中反白選取、待加工的原始文字
+      context_text      ：前端組好的上下文（含以特殊標記包住的待處理段落），供 AI 理解脈絡
+      extra_instruction ：使用者於彈窗填寫的「補充指示」（選填，疊加於預設語氣之後）
+      target_words      ：目標字數（僅為參考建議值，0 表示不限制）
+      characters        ：登場角色卡清單（供對白優化對照人名／口吻）
+      writer_settings   ：寫作風格／範本設定（選填）
+    """
+    #####################################################################################
+    # 選取文字 AI 加工提示詞：後端提供四種預設語氣骨架，前端「補充指示」可疊加覆寫。
+    #####################################################################################
+    mode_instruction = REFINE_MODE_INSTRUCTIONS.get(mode, REFINE_MODE_INSTRUCTIONS['expand'])
+    mode_title = REFINE_MODE_TITLES.get(mode, '加工')
+
+    # 登場角色區塊（主要給對白優化對照，其他模式也一併提供以維持人物一致）
+    char_block = ""
+    if characters:
+        lines = []
+        for i, c in enumerate(characters):
+            if c and (c.get('name') or c.get('role_name')):
+                lines.append(_format_char_context(c, is_main=(i == 0)))
+        if lines:
+            char_block = "\n【登場角色設定（供對照人名與說話口吻）】\n" + "\n\n".join(lines)
+
+    target_note = f"\n- 目標字數：約 {target_words} 字（僅為參考建議，可為求自然而略增減）。" if target_words and target_words > 0 else ""
+
+    extra_block = ""
+    if extra_instruction and extra_instruction.strip():
+        extra_block = f"\n【使用者補充指示（優先遵守）】\n{extra_instruction.strip()}\n"
+
+    prompt = f"""
+你是一位獲獎無數的小說編修高手。以下提供一段小說文字的上下文，其中以「⟦選取★開始⟧」與「⟦選取★結束⟧」標記包住的部分，是使用者指定要你加工的【待處理段落】。
+
+【加工模式】{mode_title}
+{mode_instruction}{target_note}
+{extra_block}
+【共通規則】
+- 只輸出加工後的【待處理段落】文字本身，不要輸出標題、前言、說明、標記符號或任何額外文字。
+- 不要重複輸出上下文中未被標記的部分。
+- 全部使用繁體中文，禁止使用中文簡體字。
+{char_block}
+
+【上下文（★標記處為待處理段落★）】
+{context_text}
+
+【待處理段落原文】
+{selected_text}
+
+請直接輸出加工後的文字（繁體中文，只輸出替換【待處理段落】的內容）：""".strip()
+
+    return prompt
+
 
 def build_novel_review_prompt(text_content: str, user_request: str, doc_name: str = "") -> str:
     """建立「小說評審」提示詞。

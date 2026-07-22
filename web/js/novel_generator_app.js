@@ -120,7 +120,9 @@ let state = {
         chapterOutlineSectionCount: 4,
         chapterOutlineWordsPerSection: 500,
         sectionContentWords: 3000
-    }
+    },
+    // 「選取文字 AI 加工」四種功能各自記住的參數（隨小說存檔），詳見 ensureRefineParams()
+    refineParams: null
 };
 
 // ====== genParams 輔助 ======
@@ -720,6 +722,13 @@ function setupEventListeners() {
     qs('#webre-search-prev').addEventListener('click', () => goToWebRewriteMatch(webRewriteCurrentMatch - 1));
     qs('#webre-search-next').addEventListener('click', () => goToWebRewriteMatch(webRewriteCurrentMatch + 1));
     initWebRewriteResizer();
+
+    // ✨ 選取文字 AI 加工（擴寫／精簡／對白／視覺化改寫）：熱鍵 + 彈窗按鈕
+    document.addEventListener('keydown', onRefineHotkey, true);
+    qs('#btn-refine-cancel').addEventListener('click', closeRefineModal);
+    qs('#btn-refine-generate').addEventListener('click', runRefineGenerate);
+    qs('#btn-refine-replace').addEventListener('click', () => applyRefineResult('replace'));
+    qs('#btn-refine-append').addEventListener('click', () => applyRefineResult('append'));
 
     qs('#btn-compare-novels').addEventListener('click', openCompareModal);
     qs('#compare-mode-select').addEventListener('change', updateAllCompareContent);
@@ -3767,4 +3776,332 @@ function initWebRewriteResizer() {
         document.addEventListener('mousemove', onMove);
         document.addEventListener('mouseup', onUp);
     });
+}
+
+
+// ============================================================================
+// ✨ 選取文字 AI 加工（擴寫 Alt+P／精簡 Alt+S／對白 Alt+T／視覺化 Alt+A）
+// ============================================================================
+// 待處理段落在上下文中的標記符號（需與後端 build_refine_text_prompt 一致）
+const REFINE_SEL_START = '⟦選取★開始⟧';
+const REFINE_SEL_END = '⟦選取★結束⟧';
+
+// 四種模式設定：熱鍵字母、彈窗標題、目標字數的預設倍率
+const REFINE_MODES = {
+    expand: { key: 'p', title: '✨ 擴寫／優化', multiplier: 2 },
+    condense: { key: 's', title: '✂️ 精簡', multiplier: 0.5 },
+    dialogue: { key: 't', title: '💬 對白優化', multiplier: 1 },
+    visual: { key: 'a', title: '🎬 視覺化改寫', multiplier: 1 }
+};
+// 熱鍵字母 → 模式名稱
+const REFINE_HOTKEY_MAP = { p: 'expand', s: 'condense', t: 'dialogue', a: 'visual' };
+
+// 目前這次加工的情境（開啟彈窗時鎖定，套用結果時使用）
+let refineCtx = null;
+
+// 確保 state.refineParams 存在，並為四種模式補上預設結構（讀取舊小說時也適用）
+function ensureRefineParams() {
+    if (!state.refineParams || typeof state.refineParams !== 'object') state.refineParams = {};
+    Object.keys(REFINE_MODES).forEach(mode => {
+        if (state.refineParams[mode] === undefined) {
+            state.refineParams[mode] = null; // null 代表「尚未設定」，開啟時會繼承全域選擇
+        }
+    });
+}
+
+// 熱鍵處理：僅在焦點位於四個目標框、且有反白選取時才攔截
+function onRefineHotkey(e) {
+    if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    const mode = REFINE_HOTKEY_MAP[(e.key || '').toLowerCase()];
+    if (!mode) return;
+
+    const field = detectActiveField();
+    if (!field) return; // 焦點不在目標框 → 完全不理會，不 preventDefault
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const el = field.el;
+    if (el.selectionStart === el.selectionEnd) {
+        alert('請先在輸入框中反白選取一段文字，再按加工熱鍵。');
+        return;
+    }
+    field.selStart = el.selectionStart;
+    field.selEnd = el.selectionEnd;
+    field.fullValue = el.value;
+    field.selectedText = el.value.slice(field.selStart, field.selEnd);
+    openRefineModal(mode, field);
+}
+
+// 判斷目前焦點在哪一個目標框，回傳 { type, el, chapterIndex? }；不是目標框則回傳 null
+function detectActiveField() {
+    const el = document.activeElement;
+    if (!el || el.tagName !== 'TEXTAREA') return null;
+
+    if (el.id === 'story-premise') return { type: 'premise', el };
+    if (el.id === 'main-editor') {
+        const sec = getActiveSection();
+        return sec ? { type: 'content', el } : null;
+    }
+    if (el.id === 'active-section-title') {
+        const sec = getActiveSection();
+        return sec ? { type: 'section_outline', el } : null;
+    }
+    if (el.classList.contains('chapter-desc')) {
+        const card = el.closest('.chapter-card');
+        const list = qs('#chapter-list');
+        if (!card || !list) return null;
+        const chapterIndex = Array.prototype.indexOf.call(list.children, card);
+        if (chapterIndex < 0 || !state.chapters[chapterIndex]) return null;
+        return { type: 'chapter', el, chapterIndex };
+    }
+    return null;
+}
+
+// 取得目前選取中的小節物件（無則 null）
+function getActiveSection() {
+    const ch = state.chapters[state.activeIndex.chapter];
+    return ch ? ch.sections[state.activeIndex.section] || null : null;
+}
+
+// 在整段文字中，以標記包住選取範圍，讓 AI 知道要處理哪一段
+function markSelection(full, s, e) {
+    return full.slice(0, s) + REFINE_SEL_START + full.slice(s, e) + REFINE_SEL_END + full.slice(e);
+}
+
+// 依框的種類組出送給 AI 的上下文字串
+function assembleRefineContext(field) {
+    const { type, selStart: s, selEnd: e, fullValue } = field;
+
+    if (type === 'premise') {
+        return '【故事粗綱全文】\n' + markSelection(fullValue, s, e);
+    }
+
+    if (type === 'chapter') {
+        const ci = field.chapterIndex;
+        const ch = state.chapters[ci];
+        const prev = state.chapters[ci - 1];
+        const next = state.chapters[ci + 1];
+        const parts = [];
+        parts.push('【故事粗綱】\n' + (state.storyPremise || '（未撰寫）'));
+        if (prev) parts.push(`【上一章】第${ci}章 ${prev.title || ''}\n${prev.description || ''}`);
+        parts.push(`【本章標題】第${ci + 1}章 ${ch.title || ''}`);
+        parts.push('【本章描述】\n' + markSelection(fullValue, s, e));
+        if (next) parts.push(`【下一章】第${ci + 2}章 ${next.title || ''}\n${next.description || ''}`);
+        return parts.join('\n\n');
+    }
+
+    if (type === 'section_outline') {
+        const ci = state.activeIndex.chapter, si = state.activeIndex.section;
+        const ch = state.chapters[ci];
+        const prevSec = ch.sections[si - 1];
+        const nextSec = ch.sections[si + 1];
+        const parts = [];
+        parts.push(`【本章描述】第${ci + 1}章 ${ch.title || ''}\n${ch.description || ''}`);
+        if (prevSec) parts.push(`【上一節大綱】${prevSec.title || ''}`);
+        parts.push('【本節大綱】\n' + markSelection(fullValue, s, e));
+        if (nextSec) parts.push(`【下一節大綱】${nextSec.title || ''}`);
+        return parts.join('\n\n');
+    }
+
+    if (type === 'content') {
+        const sec = getActiveSection();
+        const parts = [];
+        parts.push('【本節大綱】' + (sec ? (sec.title || '') : ''));
+        parts.push('【本節內文全文】\n' + markSelection(fullValue, s, e));
+        return parts.join('\n\n');
+    }
+    return markSelection(fullValue, s, e);
+}
+
+// 以角色卡完整資料組出送給後端的 characters 陣列（沿用內文生成的作法）
+function buildCharactersPayload() {
+    return state.characters
+        .map(c => {
+            const id = getCharId(c);
+            const found = cloudCharacters.find(cc => cc.id === id);
+            if (!found) return null;
+            return { ...found.card_json, role_name: getCharRoleName(c) };
+        })
+        .filter(Boolean);
+}
+
+// 用選項名稱陣列填入下拉選單（含「無」選項），並嘗試選回指定值
+function fillDropdown(sel, names, selectedValue, emptyLabel) {
+    if (!sel) return;
+    sel.innerHTML = `<option value="">${emptyLabel}</option>` +
+        names.map(n => `<option value="${n}">${n}</option>`).join('');
+    sel.value = selectedValue || '';
+}
+
+// 讀取彈窗目前的參數（供記憶用）
+function readRefineModalParams() {
+    return {
+        extra: qs('#refine-extra').value,
+        styles: [qs('#refine-style-1').value, qs('#refine-style-2').value, qs('#refine-style-3').value],
+        sample: qs('#refine-sample-select').value,
+        modelOptions: qs('#refine-model-options-select').value
+    };
+}
+
+// 把彈窗目前參數存回 state.refineParams[mode]（隨小說存檔）
+function saveRefineParams(mode) {
+    ensureRefineParams();
+    state.refineParams[mode] = readRefineModalParams();
+}
+
+// 由彈窗選取的風格/範本名稱解析出 writer_settings（獨立於左側全域下拉，不互相污染）
+function resolveRefineWriterSettings() {
+    const styleList = (window.WriterSettingsApp && WriterSettingsApp.styleList) || [];
+    const sampleList = (window.WriterSettingsApp && WriterSettingsApp.sampleList) || [];
+    const names = [qs('#refine-style-1').value, qs('#refine-style-2').value, qs('#refine-style-3').value];
+    const parts = [];
+    names.forEach(n => {
+        if (!n) return;
+        const it = styleList.find(i => i.name === n);
+        if (it && it.content && !parts.includes(it.content)) parts.push(it.content);
+    });
+    const smp = sampleList.find(i => i.name === qs('#refine-sample-select').value);
+    return {
+        style: parts.length ? parts.join('\n\n') : null,
+        sample: smp ? smp.content : null
+    };
+}
+
+// 開啟加工彈窗：填入原文、目標字數、記憶參數（首次繼承左側全域選擇）
+function openRefineModal(mode, field) {
+    ensureRefineParams();
+    refineCtx = { mode, field };
+    const cfg = REFINE_MODES[mode];
+
+    qs('#refine-title').textContent = cfg.title;
+    qs('#refine-source').value = field.selectedText;
+    qs('#refine-preview').value = '';
+
+    // 目標字數：預設 = 選取字數 × 該模式倍率（可手改，不持久化絕對字數）
+    qs('#refine-target-words').value = Math.max(10, Math.round(field.selectedText.length * cfg.multiplier));
+
+    // 準備下拉選項來源
+    const styleNames = ((window.WriterSettingsApp && WriterSettingsApp.styleList) || []).map(i => i.name);
+    const sampleNames = ((window.WriterSettingsApp && WriterSettingsApp.sampleList) || []).map(i => i.name);
+    const moNames = (window.getModelOptionsList && window.getModelOptionsList()) || [];
+
+    // 取記憶參數；若該模式尚未設定過，改為繼承左側全域目前選擇（Q11）
+    let p = state.refineParams[mode];
+    if (!p) {
+        p = {
+            extra: '',
+            styles: [
+                qs('#writer-style-select-1')?.value || '',
+                qs('#writer-style-select-2')?.value || '',
+                qs('#writer-style-select-3')?.value || ''
+            ],
+            sample: qs('#writer-sample-select')?.value || '',
+            modelOptions: qs('#model-options-select')?.value || ''
+        };
+    }
+
+    qs('#refine-extra').value = p.extra || '';
+    fillDropdown(qs('#refine-style-1'), styleNames, p.styles?.[0], '無');
+    fillDropdown(qs('#refine-style-2'), styleNames, p.styles?.[1], '無');
+    fillDropdown(qs('#refine-style-3'), styleNames, p.styles?.[2], '無');
+    fillDropdown(qs('#refine-sample-select'), sampleNames, p.sample, '無');
+    fillDropdown(qs('#refine-model-options-select'), moNames, p.modelOptions, '預設');
+
+    // 尚未生成 → 停用套用按鈕
+    qs('#btn-refine-replace').disabled = true;
+    qs('#btn-refine-append').disabled = true;
+
+    qs('#modal-refine').classList.remove('hidden');
+}
+
+function closeRefineModal() {
+    // 關閉前也把目前參數記起來（即使沒生成也保留使用者的設定）
+    if (refineCtx) saveRefineParams(refineCtx.mode);
+    qs('#modal-refine').classList.add('hidden');
+    refineCtx = null;
+}
+
+// 呼叫 AI 生成加工結果，填入預覽區
+async function runRefineGenerate() {
+    if (!refineCtx) return;
+    const { mode, field } = refineCtx;
+    saveRefineParams(mode);
+
+    const targetWords = Math.max(1, parseInt(qs('#refine-target-words').value) || 0);
+    const payload = {
+        mode,
+        selected_text: field.selectedText,
+        context_text: assembleRefineContext(field),
+        extra_instruction: qs('#refine-extra').value || '',
+        target_words: targetWords,
+        characters: buildCharactersPayload(),
+        model: state.currentModel || qs('#model-select')?.value || 'gemma4',
+        model_options: (window.resolveModelOptionsByName &&
+            window.resolveModelOptionsByName(qs('#refine-model-options-select').value)) || null,
+        writer_settings: resolveRefineWriterSettings()
+    };
+
+    const genBtn = qs('#btn-refine-generate');
+    genBtn.disabled = true;
+    qs('#refine-preview').value = '⏳ AI 加工中，請稍候…（過程 LOG 顯示在主 LOG 欄）';
+    appendLog(`✨ 開始「${REFINE_MODES[mode].title}」，選取 ${field.selectedText.length} 字，目標約 ${targetWords} 字。`);
+
+    try {
+        const res = await callDebugServerAsync('/api/refine_text_async', payload);
+        if (res && res.content) {
+            qs('#refine-preview').value = res.content.trim();
+            qs('#btn-refine-replace').disabled = false;
+            qs('#btn-refine-append').disabled = false;
+            appendLog('✅ 加工完成，請於彈窗檢視並選擇「取代選取」或「附加在選取之後」。');
+        } else {
+            qs('#refine-preview').value = '❌ AI 未回傳有效內容，請查看 LOG 或重試。';
+            appendLog('❌ 加工失敗：AI 未回傳有效內容。');
+        }
+    } catch (e) {
+        qs('#refine-preview').value = '❌ 發生錯誤：' + e.message;
+        appendLog('❌ 加工發生錯誤：' + e.message);
+    } finally {
+        genBtn.disabled = false;
+    }
+}
+
+// 把預覽結果套回原框：applyMode='replace' 取代選取／'append' 附加在選取之後
+function applyRefineResult(applyMode) {
+    if (!refineCtx) return;
+    const result = qs('#refine-preview').value.trim();
+    if (!result) { alert('目前沒有可套用的加工結果。'); return; }
+
+    const { mode, field } = refineCtx;
+    const { fullValue, selStart: s, selEnd: e } = field;
+    const newFull = (applyMode === 'replace')
+        ? fullValue.slice(0, s) + result + fullValue.slice(e)         // 取代選取段落
+        : fullValue.slice(0, e) + result + fullValue.slice(e);        // 附加在選取之後
+
+    writeBackRefine(field, newFull);
+    saveRefineParams(mode);
+    appendLog(`📝 已${applyMode === 'replace' ? '取代選取' : '附加於選取之後'}（${REFINE_MODES[mode].title}）。`);
+    qs('#modal-refine').classList.add('hidden');
+    refineCtx = null;
+}
+
+// 依框的種類把新文字寫回資料模型並重繪畫面
+function writeBackRefine(field, newFull) {
+    if (field.type === 'premise') {
+        state.storyPremise = newFull;
+        qs('#story-premise').value = newFull;
+    } else if (field.type === 'chapter') {
+        state.chapters[field.chapterIndex].description = newFull;
+        renderChapters();
+    } else if (field.type === 'section_outline') {
+        const sec = getActiveSection();
+        if (sec) sec.title = newFull;
+        renderChapters();
+        renderEditor();
+    } else if (field.type === 'content') {
+        const sec = getActiveSection();
+        if (sec) sec.content = newFull;
+        renderEditor();
+        renderChapters();
+    }
 }

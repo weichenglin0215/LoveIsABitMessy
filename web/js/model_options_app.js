@@ -139,10 +139,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // 暴露給外部（其他 js 檔案）取得目前下拉選單所選中的模型參數。
     // 若沒有選擇任何參數表，或找不到對應資料，則回傳 null，
     // 讓呼叫端可自行套用預設參數。
-    window.getModelOptionsPayload = function () {
-        const val = selectEl?.value;
-        if (!val) return null;
-        const opt = modelOptionsList.find(o => o.name === val);
+    // 依名稱解析一組模型參數（供彈窗等「獨立下拉選單」使用，不受頁面全域選單影響）。
+    // 找不到或名稱為空則回傳 null，讓呼叫端自行套用預設參數。
+    window.resolveModelOptionsByName = function (name) {
+        if (!name) return null;
+        const opt = modelOptionsList.find(o => o.name === name);
         if (!opt) return null;
         // 只回傳實際呼叫 LLM API 時需要用到的欄位（排除 id、name 等資料庫專屬欄位）
         return {
@@ -154,6 +155,15 @@ document.addEventListener("DOMContentLoaded", () => {
             top_k: opt.top_k,
             top_p: opt.top_p
         };
+    };
+
+    // 取得所有已儲存模型參數的名稱清單（供彈窗動態產生下拉選項）。
+    window.getModelOptionsList = function () {
+        return modelOptionsList.map(o => o.name);
+    };
+
+    window.getModelOptionsPayload = function () {
+        return window.resolveModelOptionsByName(selectEl?.value);
     };
 
     // 從 Supabase 的 model_options 資料表載入所有已儲存的模型參數表，

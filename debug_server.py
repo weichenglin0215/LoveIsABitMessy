@@ -1467,6 +1467,60 @@ def _run_novel_content_job(job_id: str, params: dict):
                 JOBS[job_id]["updated_at"] = time.time()
 
 
+def _run_refine_text_job(job_id: str, params: dict):
+    """非同步執行「選取文字 AI 加工」任務（擴寫／精簡／對白／視覺化改寫）"""
+    #####################################################################################
+    # 非同步執行「選取文字 AI 加工」任務：四種模式共用同一端點，只是提示詞不同。
+    #####################################################################################
+    from prompt_utils import build_refine_text_prompt, REFINE_MODE_TITLES
+    try:
+        mode              = params.get('mode', 'expand')
+        selected_text     = params.get('selected_text', '') or ''
+        context_text      = params.get('context_text', '') or ''
+        extra_instruction = params.get('extra_instruction', '') or ''
+        target_words      = int(params.get('target_words', 0) or 0)
+        characters        = params.get('characters', []) or []
+        writer_settings   = params.get('writer_settings', {}) or {}
+
+        prompt = build_refine_text_prompt(
+            mode, selected_text,
+            context_text=context_text,
+            extra_instruction=extra_instruction,
+            target_words=target_words,
+            characters=characters,
+            writer_settings=writer_settings
+        )
+
+        mode_title = REFINE_MODE_TITLES.get(mode, '加工')
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        _log_print(job_id, "=" * 50)
+        _log_print(job_id, f"[{timestamp}] debug_server.py：【非同步】選取文字加工 —「{mode_title}」")
+        _log_print(job_id, f">> 選取 {len(selected_text)} 字，目標約 {target_words} 字，正在呼叫 Ollama...")
+        _log_print(job_id, "=" * 20 + " 以下是送給 AI 的完整提示詞 " + "=" * 20)
+        _log_print(job_id, prompt)
+
+        timeStartSec = time.time()
+        content = _ollama_with_heartbeat(
+            job_id, params.get('model', 'gemma4'), prompt,
+            options=params.get('model_options'), time_start=timeStartSec
+        )
+        duration = int(time.time() - timeStartSec)
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        _log_print(job_id, f"[{timestamp}] 總共花費 {duration} 秒，「{mode_title}」完畢！")
+
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["result"]     = {"content": content, "debug_prompt": prompt}
+                JOBS[job_id]["status"]     = "done"
+                JOBS[job_id]["updated_at"] = time.time()
+    except Exception as e:
+        _log_print(job_id, f"[ERROR] _run_refine_text_job failed: {e}")
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["status"]     = "error"
+                JOBS[job_id]["updated_at"] = time.time()
+
+
 def _run_chat_reply_job(job_id: str, params: dict):
     """非同步執行「LoveLine 角色回覆」任務"""
     #####################################################################################
@@ -2235,6 +2289,32 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                     }
                 threading.Thread(
                     target=_run_novel_content_job,
+                    args=(job_id, params),
+                    daemon=True
+                ).start()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"job_id": job_id, "status": "running"}, ensure_ascii=False).encode('utf-8'))
+
+            elif self.path == '/api/refine_text_async':
+                ############################################################################
+                # 非同步：選取文字 AI 加工（擴寫／精簡／對白／視覺化改寫，共用此端點）
+                ############################################################################
+                from prompt_utils import REFINE_MODE_TITLES
+                job_id = str(uuid.uuid4())
+                mode_title = REFINE_MODE_TITLES.get(params.get('mode', ''), '加工')
+                with JOBS_LOCK:
+                    JOBS[job_id] = {
+                        "status": "running",
+                        "logs": [f">> 任務啟動：選取文字加工 - {mode_title}..."],
+                        "result": None,
+                        "created_at": time.time(),
+                        "last_activity": time.time(),
+                        "updated_at": time.time()
+                    }
+                threading.Thread(
+                    target=_run_refine_text_job,
                     args=(job_id, params),
                     daemon=True
                 ).start()
