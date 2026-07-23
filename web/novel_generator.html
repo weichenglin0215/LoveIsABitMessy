@@ -42,7 +42,17 @@
       </div>
       <button class="btn primary-btn" id="btn-save">💾 儲存雲端小說</button>
       <button class="btn secondary-btn" id="btn-load">📂 讀取小說</button>
-      <button class="btn primary-btn" id="btn-export">📤 匯出小說</button>
+      <!-- 📤 匯出小說：點擊展開下拉選單（兩種匯出格式），樣式沿用「額外功能」下拉選單 -->
+      <div class="export-features-wrapper" style="position:relative; display:inline-block;">
+        <button class="btn primary-btn" id="btn-export" title="展開匯出選單">📤 匯出小說🔽</button>
+        <!-- 匯出下拉選單本體，預設隱藏（display:none），由JS切換顯示 -->
+        <div id="export-menu"
+          style="display:none; position:absolute; top:100%; left:0; margin-top:4px; padding:8px; flex-direction:column; gap:6px; background:var(--c-bg-panel, hsla(240, 10%, 10%, 0.85)); border:2px solid var(--c-border, #555); border-bottom:5px solid var(--c-border, #555); border-radius:var(--radius-lg, 10px); z-index:100; white-space:nowrap; box-shadow:0 4px 12px rgba(0,0,0,0.3);">
+          <button class="btn primary-btn" id="btn-export-simple" title="只匯出章標題與內文，等同一般小說格式">📤 匯出小說 章標題+內文</button>
+          <button class="btn primary-btn" id="btn-export-full" title="匯出粗綱＋章＋節＋內文＋作者備註（完整資料）">📤 匯出小說
+            粗綱+章+節+內文+作者備註</button>
+        </div>
+      </div>
       <!-- 🧰 額外功能：點擊展開下方選單（下拉式選單，內含多項輔助工具按鈕） -->
       <div class="extra-features-wrapper" style="position:relative; display:inline-block;">
         <button class="btn secondary-btn" id="btn-extra-features" title="展開額外功能選單">🧰 額外功能🔽</button>
@@ -821,7 +831,15 @@
         <div class="cmp-col" id="rewrite-left-col" style="flex:2 1 0; display:flex; flex-direction:column;">
           <div class="cmp-col" id="rewrite-col-instruction" style="flex:1 1 0; min-height:40px;">
             <div class="cmp-col-header">
-              <span class="title-md">✏️ 使用者指令（送給 AI 的提示詞，例如：翻譯成英文、改寫成小紅書貼文、改寫成兒童讀物…）</span>
+              <span class="title-md">✏️ 使用者指令（給 AI 的提示詞：翻譯成英文、改寫成小紅書貼文…）</span>
+              <span class="title-md" style="color:hsl(0, 100%, 40%); font-weight:bold">注意：修改後的提示詞無法儲存</span>
+              <label class="cmp-label" style="margin-left:auto;">指令範本：</label>
+              <select id="rewrite-preset-select" class="cmp-select" style="width: 300px;"
+                title="選擇一個使用者指令範本填入左方，套用後仍可自行修改">
+                <option value="">-- 使用者指令列表 --</option>
+                <option value="perspective">小說視角轉換的機械式改寫工具</option>
+                <option value="jp-lyrics">日文歌詞翻譯成羅馬拼音+繁體中文</option>
+              </select>
             </div>
             <textarea class="cmp-content" id="rewrite-user-request" placeholder="在此撰寫要求 AI 改寫的方向與規則..."></textarea>
           </div>
@@ -897,6 +915,14 @@
           <div class="cmp-col" id="webre-col-instruction" style="flex:1 1 0; min-height:40px;">
             <div class="cmp-col-header">
               <span class="title-md">✏️ 使用者指令（{topic} 會自動替換成每個工作項目的主題）</span>
+              <span class="title-md" style="color:hsl(0, 100%, 40%); font-weight:bold">注意：修改後的提示詞無法儲存</span>
+              <label class="cmp-label" style="margin-left:auto;">指令範本：</label>
+              <select id="webre-preset-select" class="cmp-select" style="width: 300px;"
+                title="選擇一個使用者指令範本填入左方，套用後仍可自行修改">
+                <option value="">-- 使用者指令列表 --</option>
+                <option value="history-fiction">混合真實歷史與想像的感人短篇</option>
+                <option value="filter-list">整理搜尋資料，排除不相關內容並以條列式顯示</option>
+              </select>
             </div>
             <textarea class="cmp-content" id="webre-user-request" placeholder="送給 AI 的完整改寫規則..."></textarea>
           </div>
@@ -936,7 +962,8 @@
 
   <!-- ── 彈窗：選取文字 AI 加工（擴寫／精簡／對白／視覺化改寫，由 Alt+P/S/T/A 觸發） ── -->
   <div id="modal-refine" class="modal-overlay hidden">
-    <div class="modal-box" style="width:min(94vw,900px); max-width:none; padding:24px; display:flex; flex-direction:column; gap:12px;">
+    <div class="modal-box"
+      style="width:min(94vw,900px); max-width:none; padding:24px; display:flex; flex-direction:column; gap:12px;">
       <h3 class="modal-title" id="refine-title">✨ 選取文字加工</h3>
 
       <!-- 原始選取文字（唯讀） -->
@@ -961,23 +988,33 @@
         </div>
         <div class="model-container-row">
           <label class="model-label">🖋️ 風格一：</label>
-          <select id="refine-style-1" class="refine-style-dropdown"><option value="">無</option></select>
+          <select id="refine-style-1" class="refine-style-dropdown">
+            <option value="">無</option>
+          </select>
         </div>
         <div class="model-container-row">
           <label class="model-label">🖋️ 風格二：</label>
-          <select id="refine-style-2" class="refine-style-dropdown"><option value="">無</option></select>
+          <select id="refine-style-2" class="refine-style-dropdown">
+            <option value="">無</option>
+          </select>
         </div>
         <div class="model-container-row">
           <label class="model-label">🖋️ 風格三：</label>
-          <select id="refine-style-3" class="refine-style-dropdown"><option value="">無</option></select>
+          <select id="refine-style-3" class="refine-style-dropdown">
+            <option value="">無</option>
+          </select>
         </div>
         <div class="model-container-row">
           <label class="model-label">📝 範本：</label>
-          <select id="refine-sample-select" class="refine-sample-dropdown"><option value="">無</option></select>
+          <select id="refine-sample-select" class="refine-sample-dropdown">
+            <option value="">無</option>
+          </select>
         </div>
         <div class="model-container-row">
           <label class="model-label">⚙️ 模型參數：</label>
-          <select id="refine-model-options-select"><option value="">預設</option></select>
+          <select id="refine-model-options-select">
+            <option value="">預設</option>
+          </select>
         </div>
       </div>
 

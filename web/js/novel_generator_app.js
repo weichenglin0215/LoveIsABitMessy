@@ -601,7 +601,21 @@ function setupEventListeners() {
     qs('#use-local-data').addEventListener('change', initCharacters);
     qs('#btn-save').addEventListener('click', saveProject);
     qs('#btn-load').addEventListener('click', loadProject);
-    qs('#btn-export').addEventListener('click', exportNovelToMarkdown);
+    // 📤 匯出小說：主按鈕展開下拉選單（沿用「額外功能」的開合行為），選單內兩種匯出格式
+    const exportBtn = qs('#btn-export');
+    const exportMenu = qs('#export-menu');
+    if (exportBtn && exportMenu) {
+        exportBtn.addEventListener('click', () => {
+            const open = exportMenu.style.display === 'flex';
+            exportMenu.style.display = open ? 'none' : 'flex';
+        });
+        // 點選單內任一按鈕後自動收合
+        exportMenu.querySelectorAll('button').forEach(b => {
+            b.addEventListener('click', () => { exportMenu.style.display = 'none'; });
+        });
+    }
+    qs('#btn-export-simple').addEventListener('click', exportNovelSimple);
+    qs('#btn-export-full').addEventListener('click', exportNovelFull);
     qs('#btn-ai-gen-content').addEventListener('click', async () => {
         const ok = await openParamsModal({
             modalId: 'modal-params-sc', confirmBtnId: 'btn-sc-params-confirm', cancelBtnId: 'btn-sc-params-cancel',
@@ -691,6 +705,7 @@ function setupEventListeners() {
     qs('#btn-rewrite-deselect-all').addEventListener('click', () => setAllRewriteFilesChecked(false));
     qs('#btn-rewrite-invert').addEventListener('click', invertRewriteFilesChecked);
     qs('#btn-rewrite-clear-files').addEventListener('click', clearRewriteFiles);
+    qs('#rewrite-preset-select').addEventListener('change', onRewritePresetChange);
     qs('#rewrite-search-input').addEventListener('keydown', e => {
         if (e.key === 'Enter') { e.preventDefault(); doRewriteSearch(); }
     });
@@ -716,6 +731,7 @@ function setupEventListeners() {
     // 🌐 網路搜尋並依序改寫：按鈕與彈窗事件
     qs('#btn-web-rewrite').addEventListener('click', openWebRewriteModal);
     qs('#btn-webre-start').addEventListener('click', startWebRewrite);
+    qs('#webre-preset-select').addEventListener('change', onWebRewritePresetChange);
     qs('#webre-search-input').addEventListener('keydown', e => {
         if (e.key === 'Enter') { e.preventDefault(); doWebRewriteSearch(); }
     });
@@ -1444,8 +1460,21 @@ async function aiGenChaptersFromPremise(skipConfirm = false) {
     }
 }
 
-// 將目前整本小說（書名、粗綱、各章各節）組成 Markdown 字串並觸發下載
-function exportNovelToMarkdown() {
+// 匯出「章標題 + 內文」的一般小說格式（不含粗綱、章描述、節標題、作者備註）
+function exportNovelSimple() {
+    let md = `# ${state.bookTitle}\n\n`;
+    state.chapters.forEach(ch => {
+        md += `## ${ch.title}\n\n`;
+        ch.sections.forEach(sec => {
+            if (sec.content && sec.content.trim()) md += `${sec.content.trim()}\n\n`;
+        });
+    });
+    downloadMarkdown(`${sanitizeFilename(state.bookTitle) || 'novel'}.md`, md);
+    appendLog(">> 小說已匯出（章標題＋內文，一般小說格式）。");
+}
+
+// 匯出完整資料：粗綱 + 各章（章描述）+ 各節（節標題）+ 內文 + 作者備註
+function exportNovelFull() {
     let md = `# ${state.bookTitle}\n\n`;
     md += `## 故事粗綱\n${state.storyPremise}\n\n`;
 
@@ -1459,16 +1488,13 @@ function exportNovelToMarkdown() {
         md += `---\n\n`;
     });
 
-    const blob = new Blob([md], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${state.bookTitle || 'novel'}.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    appendLog(">> 小說已匯出為 Markdown 格式。");
+    // 作者備註（若有）附加於最後
+    if (state.authorNotes && state.authorNotes.trim()) {
+        md += `## 📝 作者備註\n\n${state.authorNotes.trim()}\n`;
+    }
+
+    downloadMarkdown(`${sanitizeFilename(state.bookTitle) || 'novel'}.md`, md);
+    appendLog(">> 小說已匯出（粗綱＋章＋節＋內文＋作者備註）。");
 }
 
 // 呼叫 AI 為「目前選取中」的小節（state.activeIndex）產生正文內容，
@@ -3214,6 +3240,78 @@ let rewriteCurrentMatch = -1;
 let rewriteRunning = false;
 
 // 開啟「多文改寫」彈窗，若使用者指令欄位為空則填入預設範例提示詞
+// ── 多文改寫：使用者指令範本 ──
+const REWRITE_PRESETS = {
+    // 小說視角轉換的機械式改寫工具
+    perspective: `你是一個「小說視角轉換」的機械式改寫工具。請將提供的文本進行敘事視角轉換，規則如下：
+1. 只做視角與人稱的機械式轉換，不得增刪劇情、不得改寫對白內容、不得添加或刪除任何情節與細節。
+2. 預設將「第一人稱（我）」轉換為「第三人稱（以主角姓名或他／她稱呼）」；若原文已是第三人稱，則反向轉為第一人稱。
+3. 對應調整所有人稱代名詞，以及視角所及的感官、心理描述之歸屬，使其在新視角下語意通順。
+4. 對白（引號內文字）維持原樣，只調整對白以外的敘述人稱。
+5. 保持原文的段落結構、標點與用字風格，僅更動與視角相關的字詞。
+6. 全部使用繁體中文，禁止使用中文簡體字。直接輸出轉換後的完整文本，不要加任何說明或前言。`,
+
+    // 日文歌詞翻譯成羅馬拼音 + 繁體中文
+    'jp-lyrics': `你是一個日文歌詞翻譯工具。請將提供的日文歌詞「逐行」處理，每一行日文歌詞都輸出以下三行：
+1. 第一行：原始日文歌詞。
+2. 第二行：該行的羅馬拼音（Romaji，採 Hepburn 式，單字之間以空白分隔）。
+3. 第三行：該行的繁體中文翻譯（意譯，力求自然通順且貼近原意）。
+每處理完一行歌詞後空一行，再處理下一行。規則：
+- 保留原文的分行與段落（例如主歌、副歌）結構。
+- 專有名詞、擬聲詞可保留原樣並於繁體中文行中適度註解。
+- 所有中文一律使用繁體中文，禁止使用中文簡體字。
+- 直接輸出結果，不要加任何額外說明或前言。`
+};
+
+// ── 網路搜尋並依序改寫：使用者指令範本（{topic} 會被逐項主題替換）──
+const WEBRE_PRESETS = {
+    // 混合真實歷史與合理想像的感人短篇
+    'history-fiction': `請以當時在場人士的第一人稱視角，寫一篇混合真實歷史與合理想像的感人短篇故事。
+主題：{topic}
+網路搜尋資料：{context}
+寫作要求：
+1. 選擇最適合的「在場人士」視角（例如：詩詞中的主角、好友、船夫、侍女、同行友人、目擊者等），讓敘述者真正身處事件現場。
+2. 先找出這首詩的「詩眼」或最動人的金句，以此作為故事的情感核心與高潮。
+3. 深入分析詩中「人事時地物」的關聯性，找出合理的交集點。
+4. 以具體的畫面與情境描寫作為故事開頭。
+5. 融合真實歷史與想像，營造強烈情感。
+6. 包含自然生動的對話。
+7. 字數約 1000~1800 字。
+8. 最後自然列出主要參考來源。
+請直接開始撰寫故事，不要加入任何解說或分析。`,
+
+    // 將搜尋回傳資料再次排除不相關內容並以條列式顯示
+    'filter-list': `以下是針對主題「{topic}」的網路搜尋回傳資料，內容通常龐雜且夾帶許多不相關的雜訊。請執行「二次篩選與整理」：
+1. 僅保留與主題「{topic}」直接相關的資訊，徹底排除廣告、導覽列、版權宣告、無關連結、重複內容與離題段落。
+2. 將保留下來的重點整理成條列式，每一條聚焦一個獨立事實或重點，力求精簡。
+3. 相似或重複的資訊請合併為同一條，避免冗餘。
+4. 若資料中有明確的數據、日期、人名、地點，請完整保留於條列中。
+5. 若某些資訊可信度存疑或彼此矛盾，請在該條末尾以括號註明（例如：資料來源說法不一）。
+6. 全部使用繁體中文，禁止使用中文簡體字。直接輸出條列式結果，不要加任何開場白。`
+};
+
+// 共用：把選定的指令範本填入指定 textarea（若已有內容先確認），套用後把下拉選單復位以便再次選取
+function applyPresetToTextarea(selectEl, textareaSel, presetMap) {
+    const key = selectEl.value;
+    if (!key) return;
+    const preset = presetMap[key];
+    const ta = qs(textareaSel);
+    if (preset && ta) {
+        if (!ta.value.trim() || confirm('這會覆蓋目前「使用者指令」欄位的內容，確定套用此範本？')) {
+            ta.value = preset;
+        }
+    }
+    selectEl.value = ''; // 復位，讓同一範本可再次被選取套用
+}
+
+function onRewritePresetChange(e) {
+    applyPresetToTextarea(e.target, '#rewrite-user-request', REWRITE_PRESETS);
+}
+
+function onWebRewritePresetChange(e) {
+    applyPresetToTextarea(e.target, '#webre-user-request', WEBRE_PRESETS);
+}
+
 function openRewriteModal() {
     const userReqEl = qs('#rewrite-user-request');
     if (!userReqEl.value) userReqEl.value = REWRITE_DEFAULT_USER_REQUEST;
@@ -3541,8 +3639,7 @@ const WEB_REWRITE_DEFAULT_INSTRUCTION =
 
 主題：{topic}
 
-可用資料：
-{context}
+網路搜尋資料：{context}
 
 寫作要求：
 
