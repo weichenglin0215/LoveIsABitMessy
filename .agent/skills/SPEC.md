@@ -41,6 +41,8 @@ description: 開始任何任務前必讀，所有修改必須符合本規範
 | **通用文字** | `.text-center` `.text-warn` `.text-pink` `.text-muted-sm` | 警示色／粉色強調／灰色小註解 |
 | **比對彈窗** | `.cmp-modal` `.cmp-toolbar` `.cmp-title` `.cmp-label` `.cmp-icon` `select.cmp-select` `.cmp-body` `.cmp-col` `.cmp-col-header` `.cmp-content` | 兩個 4 欄 Compare modal 共用版型（小說 / 日記） |
 | **比對欄內標籤** | `.cd-col-label` (+`.with-top`) `.cd-col-textarea` | daily_run 比對日記彈窗內，「故事 / 圖片提示詞 / AI 參數」三段標籤與平面 textarea |
+| **全面搜尋面板** | `.gs-panel` (+`.hidden`) `.gs-header` `.gs-row` `.gs-results` `.gs-cat-header` `.gs-cat-count` `.gs-item` `.gs-loc` | novel_generator 的 Ctrl+Shift+F 浮動搜尋面板（非 modal、可拖曳；`z-index:90` 低於 `.modal-overlay`。因專案 `.hidden` 僅對 `.modal-overlay` 生效，故另定義 `.gs-panel.hidden`） |
+| **全畫面編輯** | `.fs-body` `.fs-row` `.fs-chapter` `.fs-desc` `.fs-content` `.fs-row-resizer` | novel_generator「全畫面編輯」彈窗：每小節一橫行（章編號直排／小節描述 1/3 寬／內文），行間夾可上下拖曳的分隔線；外層沿用既有 `.cmp-modal` + `.cmp-toolbar`，`.fs-body` 捲動軸覆寫為 12px |
 
 ### 三、新增 class 的時機與規範
 

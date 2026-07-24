@@ -198,6 +198,68 @@ window.promptAndGenChapterOutline = promptAndGenChapterOutline;
 let cloudCharacters = []; // 儲存雲端角色卡完整資料
 let localCharacters = []; // 儲存本機角色 ID
 
+// ====== 雲端小說清單排序（供「☁️ 讀取雲端小說」下拉與「比對多本小說」四個選單共用）======
+let cloudNovelListRaw = []; // 讀取雲端小說清單的原始資料（未排序），供切換排序方式時重新渲染而不必重新查詢
+const novelListCollator = new Intl.Collator('zh-Hant'); // 中文字母（筆畫/拼音）排序用
+
+// 依目前選擇的排序方式，回傳排序後的小說清單複本。
+// 「字母排序正向/反向」在名稱相同時，一律以「最新的在上面」做次要排序。
+function sortNovelList(list, mode) {
+    const arr = (list || []).slice();
+    const byNewestFirst = (a, b) => new Date(b.updated_at) - new Date(a.updated_at);
+    if (mode === 'alpha_asc' || mode === 'alpha_desc') {
+        const dir = mode === 'alpha_desc' ? -1 : 1;
+        arr.sort((a, b) => {
+            const c = novelListCollator.compare(a.novel_title || '', b.novel_title || '') * dir;
+            return c !== 0 ? c : byNewestFirst(a, b); // 同名 → 最新的在上面
+        });
+    } else if (mode === 'time_asc') {
+        arr.sort((a, b) => -byNewestFirst(a, b)); // 最舊在上面
+    } else {
+        arr.sort(byNewestFirst); // time_desc（預設）：最新在上面
+    }
+    return arr;
+}
+
+// 依排序後的清單組出 <option> HTML（各下拉選單共用同一份格式）
+function buildNovelOptionsHtml(list) {
+    return '<option value="">-- 請選擇小說 --</option>' +
+        list.map(d => {
+            const date = new Date(d.updated_at).toLocaleString('zh-TW', { hour12: false });
+            return `<option value="${d.id}">${d.novel_title} (${date})</option>`;
+        }).join('');
+}
+
+// 取得目前選擇的排序方式（下拉選單若尚未載入則回退為預設「字母排序正向」）
+function getNovelSortMode() {
+    return qs('#novel-sort-select')?.value || 'alpha_asc';
+}
+
+// 依目前排序方式重新渲染「☁️ 讀取雲端小說」的下拉選單（不重新查詢雲端）
+function renderCloudNovelSelect() {
+    const select = qs('#cloud-novel-select');
+    if (!select) return;
+    const sorted = sortNovelList(cloudNovelListRaw, getNovelSortMode());
+    select.innerHTML = buildNovelOptionsHtml(sorted);
+}
+
+// 依目前排序方式重新渲染「比對多本小說」彈窗的四個下拉選單（不重新查詢雲端，並保留各欄原本選取值）
+function renderCompareNovelSelects() {
+    const sorted = sortNovelList(compareNovelList, getNovelSortMode());
+    const optionsHtml = buildNovelOptionsHtml(sorted);
+    document.querySelectorAll('.compare-novel-select').forEach(sel => {
+        const cur = sel.value;
+        sel.innerHTML = optionsHtml;
+        if (cur) sel.value = cur;
+    });
+}
+
+// 切換排序方式時，兩處下拉選單一併重新排序（各自只在已有資料時才重繪）
+function onNovelSortChange() {
+    if (cloudNovelListRaw.length) renderCloudNovelSelect();
+    if (compareNovelList.length) renderCompareNovelSelects();
+}
+
 /**
  * 統一的角色卡下拉顯示文字：「角色名稱-full_name」。
  * full_name 取自 card_json.lpas_v3.full_name；無 LPAS 資料時以「無LPAS」替代。
@@ -739,6 +801,12 @@ function setupEventListeners() {
     qs('#webre-search-next').addEventListener('click', () => goToWebRewriteMatch(webRewriteCurrentMatch + 1));
     initWebRewriteResizer();
 
+    // 🔎 全面搜尋（Ctrl+Shift+F）：熱鍵、面板按鈕、結果點擊、拖曳
+    initGlobalSearch();
+
+    // 🖥️ 全畫面編輯：開關按鈕、橫行輸入同步、搜尋列
+    initFullscreenEdit();
+
     // ✨ 選取文字 AI 加工（擴寫／精簡／對白／視覺化改寫）：熱鍵 + 彈窗按鈕
     document.addEventListener('keydown', onRefineHotkey, true);
     qs('#btn-refine-cancel').addEventListener('click', closeRefineModal);
@@ -760,6 +828,7 @@ function setupEventListeners() {
     qs('#compare-search-next').addEventListener('click', () => goToCompareMatch(compareCurrentMatch + 1));
 
     qs('#btn-load-cloud').addEventListener('click', listCloudNovels);
+    qs('#novel-sort-select').addEventListener('change', onNovelSortChange);
     qs('#cloud-novel-select').addEventListener('change', loadCloudNovel);
     // 只要下拉選單失去焦點（關閉），不論是否已選取，一律還原成按鈕
     qs('#cloud-novel-select').addEventListener('blur', () => {
@@ -1859,18 +1928,7 @@ async function loadCompareNovelList() {
 
         if (error) throw error;
         compareNovelList = data || [];
-
-        const optionsHtml = '<option value="">-- 請選擇小說 --</option>' +
-            compareNovelList.map(d => {
-                const date = new Date(d.updated_at).toLocaleString('zh-TW', { hour12: false });
-                return `<option value="${d.id}">${d.novel_title} (${date})</option>`;
-            }).join('');
-
-        document.querySelectorAll('.compare-novel-select').forEach(sel => {
-            const cur = sel.value;
-            sel.innerHTML = optionsHtml;
-            if (cur) sel.value = cur;
-        });
+        renderCompareNovelSelects();
         appendLog(`✅ [比對] 已載入 ${compareNovelList.length} 筆雲端紀錄`);
     } catch (e) {
         appendLog('❌ [比對] 讀取清單失敗: ' + e.message);
@@ -2296,11 +2354,8 @@ async function listCloudNovels() {
 
         if (error) throw error;
 
-        select.innerHTML = '<option value="">-- 請選擇小說 --</option>' +
-            data.map(d => {
-                const date = new Date(d.updated_at).toLocaleString('zh-TW', { hour12: false });
-                return `<option value="${d.id}">${d.novel_title} (${date})</option>`;
-            }).join('');
+        cloudNovelListRaw = data || [];
+        renderCloudNovelSelect();
 
         btn.style.display = 'none';
         select.style.display = 'inline-block';
@@ -4171,9 +4226,17 @@ function applyRefineResult(applyMode) {
 
     const { mode, field } = refineCtx;
     const { fullValue, selStart: s, selEnd: e } = field;
+
+    // 在回寫的文字前後加上明顯的分隔標記，讓作者一眼就能看出 AI 內容的起訖位置。
+    // 標記本身前後都帶換行，確保一定會自成一行，不會黏在原文尾巴或新內容開頭。
+    const marks = (applyMode === 'replace')
+        ? { start: '\n---從此處取代---\n', end: '\n---取代結束---\n' }
+        : { start: '\n---從此處附加---\n', end: '\n---附加結束---\n' };
+    const marked = marks.start + result + marks.end;
+
     const newFull = (applyMode === 'replace')
-        ? fullValue.slice(0, s) + result + fullValue.slice(e)         // 取代選取段落
-        : fullValue.slice(0, e) + result + fullValue.slice(e);        // 附加在選取之後
+        ? fullValue.slice(0, s) + marked + fullValue.slice(e)         // 取代選取段落
+        : fullValue.slice(0, e) + marked + fullValue.slice(e);        // 附加在選取之後
 
     writeBackRefine(field, newFull);
     saveRefineParams(mode);
@@ -4201,4 +4264,627 @@ function writeBackRefine(field, newFull) {
         renderEditor();
         renderChapters();
     }
+}
+
+
+// ============================================================================
+// 🔎 全面搜尋（Ctrl+Shift+F）
+// ============================================================================
+// 模仿 IDE 的全域搜尋：一次搜尋粗綱／章標題／章描述／小節大綱／內文／作者備註六大項目，
+// 依項目分組列出命中結果，點擊任一結果即可跳到對應編輯欄位並反白該關鍵字。
+// 為避免資料量大時卡頓，每個主要項目預設最多只取 GSEARCH_LIMIT 筆，
+// 若仍有未搜尋完的項目會顯示「繼續搜尋」讓使用者手動取回全部結果。
+
+// 每個主要項目的預設命中上限
+const GSEARCH_LIMIT = 20;
+// 結果預覽時，關鍵字前後各取幾個字
+const GSEARCH_CONTEXT = 10;
+
+// 六大主要項目定義（顯示順序即為此陣列順序）
+const GSEARCH_CATS = [
+    { key: 'premise', label: '📝 粗綱' },
+    { key: 'chapterTitle', label: '📖 章標題' },
+    { key: 'chapterDesc', label: '📖 章描述' },
+    { key: 'sectionTitle', label: '📑 小節大綱' },
+    { key: 'content', label: '🖋️ 內文' },
+    { key: 'authorNotes', label: '🗒️ 作者備註' }
+];
+
+// 搜尋狀態：results 依項目分組存放命中項目，truncated 記錄該項目是否因上限而中斷
+const gsearchState = {
+    query: '',
+    unlimited: false,
+    results: {},
+    truncated: {}
+};
+
+// HTML 跳脫，避免搜尋到的文字含 < > & 時破壞版面
+function gsEscapeHtml(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// 正規表示式跳脫，讓使用者輸入的關鍵字一律以「純文字」比對
+function gsEscapeRegExp(s) {
+    return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// 取出關鍵字前後各 GSEARCH_CONTEXT 個字作為預覽（換行一律轉空白，維持單行顯示）
+function gsMakePreview(text, start, len) {
+    const from = Math.max(0, start - GSEARCH_CONTEXT);
+    const to = Math.min(text.length, start + len + GSEARCH_CONTEXT);
+    const flat = (s) => s.replace(/\s+/g, ' ');
+    return {
+        before: (from > 0 ? '…' : '') + flat(text.slice(from, start)),
+        keyword: flat(text.slice(start, start + len)),
+        after: flat(text.slice(start + len, to)) + (to < text.length ? '…' : '')
+    };
+}
+
+// 結果所在位置的標籤文字（例：第3章 第2節）
+function gsLocationLabel(item) {
+    if (item.ci === undefined) return '';
+    if (item.si === undefined) return `第${item.ci + 1}章`;
+    return `第${item.ci + 1}章 第${item.si + 1}節`;
+}
+
+/**
+ * 執行全面搜尋。
+ * @param {boolean} unlimited true = 不套用每項目 20 筆上限，一次搜尋到底（「繼續搜尋」用）
+ */
+function runGlobalSearch(unlimited = false) {
+    const query = qs('#gsearch-input').value;
+    gsearchState.query = query;
+    gsearchState.unlimited = unlimited;
+    gsearchState.results = {};
+    gsearchState.truncated = {};
+    GSEARCH_CATS.forEach(c => { gsearchState.results[c.key] = []; gsearchState.truncated[c.key] = false; });
+
+    if (!query) {
+        renderGlobalSearchResults();
+        return;
+    }
+
+    const lq = query.toLowerCase();
+    const limit = unlimited ? Infinity : GSEARCH_LIMIT;
+
+    // 於單一欄位文字中找出所有命中位置，並在達到上限時標記 truncated
+    const scan = (catKey, text, meta) => {
+        if (!text) return;
+        const lo = String(text).toLowerCase();
+        let i = 0;
+        while ((i = lo.indexOf(lq, i)) !== -1) {
+            if (gsearchState.results[catKey].length >= limit) {
+                gsearchState.truncated[catKey] = true;
+                return;
+            }
+            gsearchState.results[catKey].push({
+                cat: catKey, ...meta,
+                start: i, end: i + query.length,
+                preview: gsMakePreview(String(text), i, query.length)
+            });
+            i += lq.length;
+        }
+    };
+
+    scan('premise', state.storyPremise, {});
+    (state.chapters || []).forEach((ch, ci) => {
+        scan('chapterTitle', ch.title, { ci });
+        scan('chapterDesc', ch.description, { ci });
+        (ch.sections || []).forEach((sec, si) => {
+            scan('sectionTitle', sec.title, { ci, si });
+            scan('content', sec.content, { ci, si });
+        });
+    });
+    scan('authorNotes', state.authorNotes, {});
+
+    renderGlobalSearchResults();
+}
+
+// 依 gsearchState 重新繪製結果清單與狀態列
+function renderGlobalSearchResults() {
+    const box = qs('#gsearch-results');
+    const statusEl = qs('#gsearch-status');
+    const moreBtn = qs('#gsearch-btn-more');
+
+    let total = 0;
+    let anyTruncated = false;
+    let html = '';
+
+    GSEARCH_CATS.forEach(c => {
+        const arr = gsearchState.results[c.key] || [];
+        const cut = !!gsearchState.truncated[c.key];
+        total += arr.length;
+        if (cut) anyTruncated = true;
+
+        html += `<div class="gs-cat-header"><span>${c.label}</span>` +
+            `<span class="gs-cat-count">${arr.length}${cut ? '+' : ''}</span></div>`;
+
+        arr.forEach((it, idx) => {
+            const loc = gsLocationLabel(it);
+            html += `<div class="gs-item" data-cat="${c.key}" data-idx="${idx}">` +
+                (loc ? `<span class="gs-loc">${gsEscapeHtml(loc)}</span>` : '') +
+                `${gsEscapeHtml(it.preview.before)}<mark>${gsEscapeHtml(it.preview.keyword)}</mark>${gsEscapeHtml(it.preview.after)}` +
+                `</div>`;
+        });
+    });
+
+    box.innerHTML = html;
+
+    if (!gsearchState.query) {
+        statusEl.textContent = '尚未搜尋';
+    } else if (total === 0) {
+        statusEl.textContent = '找不到符合的文字';
+    } else {
+        statusEl.textContent = `共找到 ${total} 個結果` +
+            (anyTruncated ? `（部分項目已達 ${GSEARCH_LIMIT} 筆上限）` : '');
+    }
+    // 只有「還有項目沒搜尋完」時才顯示繼續搜尋鈕
+    moreBtn.style.display = anyTruncated ? 'inline-block' : 'none';
+}
+
+// 聚焦某個輸入欄位並反白指定範圍，textarea 另外把該位置捲動到視野中央
+function gsFocusAndSelect(el, start, end) {
+    if (!el) return;
+
+    // 保險：搜尋後若使用者又編輯過該欄位，原本記錄的位置可能已經失效。
+    // 先確認該位置的文字仍等於關鍵字，否則不要亂反白，改為提示使用者重新搜尋。
+    const q = gsearchState.query || '';
+    if (q && (el.value || '').substring(start, end).toLowerCase() !== q.toLowerCase()) {
+        el.focus();
+        const statusEl = qs('#gsearch-status');
+        if (statusEl) statusEl.textContent = '⚠️ 內容已變動，請重新搜尋以更新結果位置';
+        return;
+    }
+
+    el.focus();
+    if (el.tagName === 'TEXTAREA') {
+        // 截斷至比對位置量測 scrollHeight（自動考慮 word-wrap），再還原並置中顯示
+        const full = el.value;
+        el.value = full.substring(0, start);
+        const pixelPos = el.scrollHeight;
+        el.value = full;
+        el.setSelectionRange(start, end);
+        requestAnimationFrame(() => {
+            el.scrollTop = Math.max(0, pixelPos - el.clientHeight / 2);
+        });
+    } else {
+        try { el.setSelectionRange(start, end); } catch (e) { /* 部分 input 型別不支援 */ }
+    }
+}
+
+// 若指定的直欄目前是折疊狀態，先展開它（否則跳過去也看不到）
+function gsExpandColumn(containerId) {
+    const c = qs('#' + containerId);
+    if (c && c.classList.contains('collapsed')) {
+        c.classList.remove('collapsed');
+        if (typeof window.updateGridTemplate === 'function') window.updateGridTemplate();
+    }
+}
+
+// 點擊搜尋結果 → 跳到對應的編輯欄位並反白關鍵字
+function jumpToSearchResult(item) {
+    switch (item.cat) {
+        case 'premise': {
+            gsExpandColumn('story-premise-container');
+            gsFocusAndSelect(qs('#story-premise'), item.start, item.end);
+            break;
+        }
+        case 'chapterTitle':
+        case 'chapterDesc': {
+            const card = qs('#chapter-list').children[item.ci];
+            if (!card) return;
+            card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            const el = (item.cat === 'chapterTitle')
+                ? card.querySelector('.chapter-title-row input[type="text"]')
+                : card.querySelector('.chapter-desc');
+            gsFocusAndSelect(el, item.start, item.end);
+            break;
+        }
+        case 'sectionTitle': {
+            setActive(item.ci, item.si);   // 切換目前編輯中的小節
+            gsFocusAndSelect(qs('#active-section-title'), item.start, item.end);
+            break;
+        }
+        case 'content': {
+            setActive(item.ci, item.si);
+            gsFocusAndSelect(qs('#main-editor'), item.start, item.end);
+            break;
+        }
+        case 'authorNotes': {
+            // 作者備註在彈窗內，先開啟彈窗並帶入目前內容
+            qs('#author-notes-text').value = state.authorNotes || '';
+            qs('#modal-author-notes').classList.remove('hidden');
+            gsFocusAndSelect(qs('#author-notes-text'), item.start, item.end);
+            break;
+        }
+    }
+}
+
+/**
+ * 把六大項目中所有符合的關鍵字全部替換（不分大小寫）。
+ * ⚠️ 此操作無法復原，執行前必須先跳出警告讓使用者確認。
+ */
+function replaceAllGlobalSearch() {
+    const query = qs('#gsearch-input').value;
+    const replacement = qs('#gsearch-replace-input').value;
+    if (!query) { alert('請先在搜尋欄輸入要被替換的關鍵字。'); return; }
+
+    if (!confirm(
+        `⚠️ 警告：即將把「粗綱／章標題／章描述／小節大綱／內文／作者備註」中\n` +
+        `所有的「${query}」全部替換成「${replacement}」。\n\n` +
+        `此操作【無法復原】（不能用 Ctrl+Z 還原），請謹慎使用！\n\n確定要執行嗎？`
+    )) return;
+
+    const rx = new RegExp(gsEscapeRegExp(query), 'gi');
+    let count = 0;
+    // 逐欄替換並累計替換次數
+    const replaceIn = (s) => {
+        if (!s) return s;
+        return String(s).replace(rx, () => { count++; return replacement; });
+    };
+
+    state.storyPremise = replaceIn(state.storyPremise);
+    (state.chapters || []).forEach(ch => {
+        ch.title = replaceIn(ch.title);
+        ch.description = replaceIn(ch.description);
+        (ch.sections || []).forEach(sec => {
+            sec.title = replaceIn(sec.title);
+            sec.content = replaceIn(sec.content);
+        });
+    });
+    state.authorNotes = replaceIn(state.authorNotes);
+
+    // 同步畫面（粗綱／章節樹／內文編輯器）
+    qs('#story-premise').value = state.storyPremise || '';
+    renderChapters();
+    renderEditor();
+
+    appendLog(`🔎 全面搜尋：已將「${query}」替換為「${replacement}」，共 ${count} 處。`);
+    alert(`✅ 已完成替換，共 ${count} 處。`);
+
+    // 替換後重新搜尋，讓結果清單反映最新狀態
+    runGlobalSearch(gsearchState.unlimited);
+}
+
+function openGlobalSearchPanel() {
+    const panel = qs('#global-search-panel');
+    panel.classList.remove('hidden');
+    const input = qs('#gsearch-input');
+    input.focus();
+    input.select();
+}
+
+function closeGlobalSearchPanel() {
+    qs('#global-search-panel').classList.add('hidden');
+}
+
+// 面板拖曳：按住標題列即可移動整個面板
+function initGlobalSearchDrag() {
+    const panel = qs('#global-search-panel');
+    const header = qs('#gsearch-header');
+    if (!panel || !header) return;
+
+    header.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const rect = panel.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        const offsetY = e.clientY - rect.top;
+
+        const onMove = (ev) => {
+            // 限制在視窗範圍內，避免把面板拖出畫面外再也抓不回來
+            const x = Math.max(0, Math.min(window.innerWidth - rect.width, ev.clientX - offsetX));
+            const y = Math.max(0, Math.min(window.innerHeight - rect.height, ev.clientY - offsetY));
+            panel.style.left = x + 'px';
+            panel.style.top = y + 'px';
+        };
+        const onUp = () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+}
+
+// 初始化全面搜尋：熱鍵、按鈕、結果點擊、拖曳
+function initGlobalSearch() {
+    // Ctrl+Shift+F 開啟面板（capture 階段攔截，避免被其他監聽器搶先）
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.shiftKey && !e.altKey && (e.key === 'F' || e.key === 'f')) {
+            e.preventDefault();
+            e.stopPropagation();
+            openGlobalSearchPanel();
+        }
+    }, true);
+
+    qs('#gsearch-btn-run').addEventListener('click', () => runGlobalSearch(false));
+    qs('#gsearch-btn-close').addEventListener('click', closeGlobalSearchPanel);
+    qs('#gsearch-btn-more').addEventListener('click', () => runGlobalSearch(true));
+    qs('#gsearch-btn-replace-all').addEventListener('click', replaceAllGlobalSearch);
+    qs('#gsearch-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); runGlobalSearch(false); }
+    });
+
+    // 結果清單採事件委派：點擊任一 .gs-item 就跳到該處
+    qs('#gsearch-results').addEventListener('click', (e) => {
+        const row = e.target.closest('.gs-item');
+        if (!row) return;
+        const cat = row.getAttribute('data-cat');
+        const idx = parseInt(row.getAttribute('data-idx'), 10);
+        const item = (gsearchState.results[cat] || [])[idx];
+        if (item) jumpToSearchResult(item);
+    });
+
+    initGlobalSearchDrag();
+}
+
+
+// ============================================================================
+// 🖥️ 全畫面編輯（內文編輯器 → 全畫面編輯）
+// ============================================================================
+// 提供安靜無干擾的編輯環境：把所有小節攤平成一行一節，
+// 每行由左至右為「章編號(直排) / 小節描述 / 內文」，行與行之間可拖曳調整高度。
+// 這裡的兩個欄位與主介面的「小節大綱(sec.title)」「內文(sec.content)」是同一份資料，
+// 編輯時即時寫回 state；關閉彈窗時再整批重繪主介面。
+
+// 搜尋狀態（比照評論小說彈窗的雙欄搜尋）
+let fsEditMatches = [];
+let fsEditCurrentMatch = -1;
+
+/**
+ * 阿拉伯數字轉繁體中文數字（供「第十五章」這類章編號顯示）。
+ * 章數不會太大，支援到千位已綽綽有餘。
+ */
+function fsNumberToChinese(n) {
+    const digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+    if (n < 10) return digits[n];
+    if (n === 10) return '十';
+    if (n < 20) return '十' + (n % 10 ? digits[n % 10] : '');
+    if (n < 100) {
+        const t = Math.floor(n / 10), r = n % 10;
+        return digits[t] + '十' + (r ? digits[r] : '');
+    }
+    const h = Math.floor(n / 100), rest = n % 100;
+    let s = digits[h] + '百';
+    if (rest === 0) return s;
+    if (rest < 10) return s + '零' + digits[rest];
+    return s + fsNumberToChinese(rest);
+}
+
+// 橫行的最低高度（內容很短或空白時，至少保留這個高度）
+const FS_MIN_ROW_H = 100;
+
+/**
+ * 依小節描述／內文的字數「粗估」橫行高度（px）。
+ * ⚠️ 這只是還沒完成版面計算前的暫定值，實際高度會由 fsAutoFitRows() 量測後覆寫，
+ *    因為真正需要的高度取決於欄寬與換行結果，光靠字數是算不準的。
+ */
+function fsEstimateRowHeight(sec) {
+    const len = Math.max((sec.title || '').length, (sec.content || '').length);
+    return Math.max(FS_MIN_ROW_H, Math.round(60 + len * 0.35));
+}
+
+/**
+ * 依「實際渲染後的文字高度」自動調整每一橫行的高度，讓每個欄位的文字都完整顯示，
+ * 使用者不必再一個一個把框拉高。
+ *
+ * 作法：暫時把 textarea 的高度設為 0，此時 scrollHeight 會等於文字的完整高度，
+ *       量到之後還原（高度交還給 flex 的 align-items:stretch 控制），
+ *       再把該行高度設成「描述欄與內文欄所需高度的較大值」。
+ * 注意：必須在彈窗已顯示（版面寬度已確定）之後才呼叫，否則量不到正確的高度。
+ */
+function fsAutoFitRows() {
+    const body = qs('#fsedit-body');
+    if (!body) return;
+
+    body.querySelectorAll('.fs-row').forEach(row => {
+        let needed = 0;
+        row.querySelectorAll('textarea').forEach(ta => {
+            const prev = ta.style.height;
+            ta.style.height = '0px';            // 收成 0 才能量到純文字高度
+            needed = Math.max(needed, ta.scrollHeight);
+            ta.style.height = prev;             // 還原，讓 flex 重新撐滿該行
+        });
+        // 加上橫行本身的上下 padding 與一點緩衝，避免最後一行被切掉
+        const rowPad = 8 + 4;
+        row.style.height = Math.max(FS_MIN_ROW_H, needed + rowPad) + 'px';
+    });
+}
+
+/**
+ * 建立全畫面編輯的所有橫行。
+ * 每個 textarea 都帶 data-ci / data-si，輸入時即可直接寫回對應的小節。
+ */
+function renderFullscreenEditor() {
+    const body = qs('#fsedit-body');
+    body.innerHTML = '';
+
+    (state.chapters || []).forEach((ch, ci) => {
+        (ch.sections || []).forEach((sec, si) => {
+            const row = document.createElement('div');
+            row.className = 'fs-row';
+            row.style.height = fsEstimateRowHeight(sec) + 'px';
+
+            // 左：章編號（直排，僅一字寬）
+            const chapterCell = document.createElement('div');
+            chapterCell.className = 'fs-chapter';
+            chapterCell.textContent = `第${fsNumberToChinese(ci + 1)}章`;
+            chapterCell.title = `第${ci + 1}章 第${si + 1}節：${ch.title || ''}`;
+
+            // 中：小節描述（對應 sec.title）
+            const descTa = document.createElement('textarea');
+            descTa.className = 'fs-desc';
+            descTa.placeholder = '小節描述…';
+            descTa.value = sec.title || '';
+            descTa.dataset.ci = ci;
+            descTa.dataset.si = si;
+            descTa.dataset.field = 'title';
+
+            // 右：內文（對應 sec.content）
+            const contentTa = document.createElement('textarea');
+            contentTa.className = 'fs-content';
+            contentTa.placeholder = '內文…';
+            contentTa.value = sec.content || '';
+            contentTa.dataset.ci = ci;
+            contentTa.dataset.si = si;
+            contentTa.dataset.field = 'content';
+
+            row.appendChild(chapterCell);
+            row.appendChild(descTa);
+            row.appendChild(contentTa);
+            body.appendChild(row);
+
+            // 每行下方加一條可拖曳的分隔線（用來調整「上方那一行」的高度）
+            const resizer = document.createElement('div');
+            resizer.className = 'fs-row-resizer';
+            resizer.title = '拖曳可調整上方橫行的高度';
+            body.appendChild(resizer);
+            bindFsRowResizer(resizer, row);
+        });
+    });
+}
+
+// 綁定單一分隔線的拖曳行為：往下拖曳 = 上方橫行變高
+function bindFsRowResizer(resizer, row) {
+    resizer.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const startY = e.clientY;
+        const startH = row.getBoundingClientRect().height;
+        resizer.classList.add('resizing');
+        document.body.style.userSelect = 'none';
+
+        const onMove = (ev) => {
+            const h = Math.max(60, startH + (ev.clientY - startY));  // 最低 60px，避免縮到看不見
+            row.style.height = h + 'px';
+        };
+        const onUp = () => {
+            resizer.classList.remove('resizing');
+            document.body.style.userSelect = '';
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+}
+
+/**
+ * 全畫面編輯的輸入處理：即時寫回 state，並同步主介面「目前選取小節」的欄位。
+ * 為避免每次按鍵都重繪整棵章節樹（很耗效能），主介面的完整重繪延到關閉彈窗時再做。
+ */
+function onFullscreenEditInput(e) {
+    const ta = e.target;
+    if (!ta.matches('.fs-desc, .fs-content')) return;
+
+    const ci = parseInt(ta.dataset.ci, 10);
+    const si = parseInt(ta.dataset.si, 10);
+    const sec = state.chapters?.[ci]?.sections?.[si];
+    if (!sec) return;
+
+    if (ta.dataset.field === 'title') {
+        sec.title = ta.value;
+        // 若正好是主介面目前選取的小節，順手同步該欄位（不重繪整棵樹）
+        if (state.activeIndex.chapter === ci && state.activeIndex.section === si) {
+            const t = qs('#active-section-title');
+            if (t) t.value = ta.value;
+        }
+    } else {
+        sec.content = ta.value;
+        if (state.activeIndex.chapter === ci && state.activeIndex.section === si) {
+            const ed = qs('#main-editor');
+            if (ed) ed.value = ta.value;
+        }
+    }
+}
+
+function openFullscreenEditModal() {
+    // ⚠️ 必須「先顯示彈窗」再建立內容並量測高度，
+    //    因為元素在 display:none 時量不到寬度，textarea 的 scrollHeight 會是 0。
+    qs('#modal-fullscreen-edit').classList.remove('hidden');
+
+    renderFullscreenEditor();
+    qs('#fsedit-search-input').value = '';
+    qs('#fsedit-search-count').textContent = '';
+    fsEditMatches = [];
+    fsEditCurrentMatch = -1;
+
+    // 依實際文字高度把每行調整到剛好放得下：
+    // 先同步量一次（此時彈窗已顯示，版面寬度已可計算），確保一定會執行；
+    // 再於下一個影格與字型載入完成後各補量一次，因為換行結果可能因字型而改變。
+    fsAutoFitRows();
+    requestAnimationFrame(() => fsAutoFitRows());
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => fsAutoFitRows());
+    }
+}
+
+function closeFullscreenEditModal() {
+    qs('#modal-fullscreen-edit').classList.add('hidden');
+    // 關閉時整批重繪主介面，讓章節樹的完成狀態(✓)與編輯器內容完全同步
+    renderChapters();
+    renderEditor();
+}
+
+// 全畫面編輯彈窗的搜尋：掃描所有橫行的「小節描述 + 內文」兩欄
+function doFullscreenEditSearch() {
+    const query = qs('#fsedit-search-input').value;
+    const countEl = qs('#fsedit-search-count');
+    fsEditMatches = [];
+    fsEditCurrentMatch = -1;
+    if (!query) { countEl.textContent = ''; return; }
+
+    const textareas = Array.from(qs('#fsedit-body').querySelectorAll('textarea'));
+    const lq = query.toLowerCase();
+    textareas.forEach((ta, taIdx) => {
+        const lo = ta.value.toLowerCase();
+        let i = 0;
+        while ((i = lo.indexOf(lq, i)) !== -1) {
+            fsEditMatches.push({ taIdx, start: i });
+            i += lq.length;
+        }
+    });
+    if (fsEditMatches.length) goToFullscreenEditMatch(0);
+    else countEl.textContent = '找不到';
+}
+
+// 跳至第 idx 筆搜尋結果（可循環），選取該處並捲動到可視範圍
+function goToFullscreenEditMatch(idx) {
+    if (!fsEditMatches.length) return;
+    const query = qs('#fsedit-search-input').value;
+    fsEditCurrentMatch = ((idx % fsEditMatches.length) + fsEditMatches.length) % fsEditMatches.length;
+    const m = fsEditMatches[fsEditCurrentMatch];
+    const textareas = Array.from(qs('#fsedit-body').querySelectorAll('textarea'));
+    const ta = textareas[m.taIdx];
+    if (!ta) return;
+
+    const start = m.start, end = start + query.length;
+    // 先把該橫行捲進畫面，再處理 textarea 內部的捲動
+    ta.closest('.fs-row')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+
+    const fullText = ta.value;
+    ta.value = fullText.substring(0, start);
+    const pixelPos = ta.scrollHeight;
+    ta.value = fullText;
+    ta.focus();
+    ta.setSelectionRange(start, end);
+    requestAnimationFrame(() => {
+        ta.scrollTop = Math.max(0, pixelPos - ta.clientHeight / 2);
+    });
+    qs('#fsedit-search-count').textContent = `${fsEditCurrentMatch + 1} / ${fsEditMatches.length}`;
+}
+
+// 初始化全畫面編輯：開關按鈕、輸入同步、搜尋列
+function initFullscreenEdit() {
+    qs('#btn-fullscreen-edit').addEventListener('click', openFullscreenEditModal);
+    qs('#fsedit-btn-close').addEventListener('click', closeFullscreenEditModal);
+    // 編輯過後文字長度改變，可隨時按此鈕讓所有橫行重新貼合內容高度
+    qs('#fsedit-btn-autofit').addEventListener('click', fsAutoFitRows);
+    // 事件委派：所有橫行的 textarea 共用同一個 input 處理器
+    qs('#fsedit-body').addEventListener('input', onFullscreenEditInput);
+    qs('#fsedit-search-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); doFullscreenEditSearch(); }
+    });
+    qs('#fsedit-search-prev').addEventListener('click', () => goToFullscreenEditMatch(fsEditCurrentMatch - 1));
+    qs('#fsedit-search-next').addEventListener('click', () => goToFullscreenEditMatch(fsEditCurrentMatch + 1));
 }

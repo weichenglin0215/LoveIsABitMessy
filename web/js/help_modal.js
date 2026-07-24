@@ -69,7 +69,11 @@
                         <button class="log-search-nav-btn" id="help-search-next" title="下一個">▼</button>
                         <input type="text" id="help-search-input" class="log-search-input" placeholder="搜尋新增使用手冊（Enter 執行）...">
                     </div>
-                    <button class="modal-close-btn" id="help-btn-close" title="關閉">&times;</button>
+                    <label class="checkbox-label" style="font-size:18px; margin-left:12px;margin-right:24px; white-space:nowrap;" title="暫時隱藏「新增使用手冊 — 編輯 Markdown」欄，讓另外兩欄放大寬度方便閱讀">
+                        <input type="checkbox" id="help-toggle-editor-col">
+                        <span>👁️隱藏編輯區</span>
+                    </label>
+                    <button class="modal-close-btn" style="font-size: 24px;" id="help-btn-close" title="關閉">X</button>
                 </div>
                 <div class="modal-body-area">
                     <div class="cmp-body">
@@ -83,8 +87,8 @@
                             <div class="cd-col-label">👁 新增使用手冊 — 即時預覽</div>
                             <div id="help-custom-preview" class="scroll-area"></div>
                         </div>
-                        <!-- 新增使用手冊：編輯 -->
-                        <div class="cmp-col">
+                        <!-- 新增使用手冊：編輯（可由「👁️隱藏編輯區」勾選框暫時隱藏） -->
+                        <div class="cmp-col" id="help-custom-editor-col">
                             <div class="cd-col-label">📝 新增使用手冊 — 編輯 Markdown</div>
                             <textarea id="help-custom-editor" class="cd-col-textarea" spellcheck="false"
                                 placeholder="在此撰寫或補充使用手冊。儲存後會新增一筆歷程紀錄至雲端，載入時自動取最新版。"></textarea>
@@ -106,6 +110,12 @@
         document.getElementById('help-btn-save').addEventListener('click', save);
         // 編輯區內容變動時，即時更新右側的 Markdown 預覽
         document.getElementById('help-custom-editor').addEventListener('input', updateCustomPreview);
+
+        // 「👁️隱藏編輯區」勾選框：暫時隱藏編輯欄，讓官方手冊／即時預覽兩欄放大寬度方便閱讀
+        // （.cmp-col 皆為 flex:1，隱藏第三欄後另外兩欄會自動平分剩餘寬度，不需額外調整樣式）
+        document.getElementById('help-toggle-editor-col').addEventListener('change', (e) => {
+            document.getElementById('help-custom-editor-col').style.display = e.target.checked ? 'none' : '';
+        });
 
         // 設定「新增使用手冊」編輯區的搜尋功能（上一個／下一個／Enter 搜尋）
         setupSearch();
