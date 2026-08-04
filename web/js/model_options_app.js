@@ -94,7 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <input type="number" id="mo-temperature" step="0.01" value="0.85" style="width: 100%; padding: 5px;">
             </div>
             <div>
-                <label>最大Token數 (num_predict)，預設-1表示無上限，建議值:2048(2~32768)。</label>
+                <label>最大預測字數 (num_predict)，預設-1表示無上限，建議值:2048(2~32768)。</label>
                 <input type="number" id="mo-num-predict" value="-1" style="width: 100%; padding: 5px;">
             </div>
             <div>

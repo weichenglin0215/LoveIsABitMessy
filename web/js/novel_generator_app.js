@@ -744,8 +744,21 @@ function setupEventListeners() {
     qs('#btn-review-external-file').addEventListener('click', () => qs('#review-file-input').click());
     qs('#review-file-input').addEventListener('change', reviewExternalFile);
     qs('#btn-review-export').addEventListener('click', exportReviewResult);
-    qs('#review-role-select').addEventListener('change', onReviewRoleChange);
     qs('#review-user-request').addEventListener('input', onReviewRequestInput);
+    // 兩個模式 Toggle：互斥（只能二擇一），狀態記錄到專案供 runReviewJob 判斷要跑哪些評審立場
+    qs('#review-use-skills').addEventListener('change', () => setReviewMode('skills'));
+    qs('#review-use-custom').addEventListener('change', () => setReviewMode('custom'));
+    // 「選擇評論的立場」彈窗：開啟、批次勾選、重新讀取目錄、兩個附加選項
+    qs('#btn-open-review-skills').addEventListener('click', openReviewSkillsModal);
+    qs('#btn-review-skills-all').addEventListener('click', () => setReviewSkillSelection('all'));
+    qs('#btn-review-skills-none').addEventListener('click', () => setReviewSkillSelection('none'));
+    qs('#btn-review-skills-default').addEventListener('click', () => setReviewSkillSelection('default'));
+    qs('#btn-review-skills-reload').addEventListener('click', async () => {
+        await loadReviewSkills(true);
+        renderReviewSkillList();
+    });
+    qs('#review-include-custom').addEventListener('change', e => { state.reviewIncludeCustom = e.target.checked; });
+    qs('#review-final-synthesis').addEventListener('change', e => { state.reviewFinalSynthesis = e.target.checked; });
     qs('#btn-reset-review-prompt').addEventListener('click', resetReviewPrompt);
     qs('#btn-toggle-review-request').addEventListener('click',
         () => toggleReviewSection('review-col-request', 'btn-toggle-review-request'));
@@ -2535,322 +2548,217 @@ async function loadProject() {
 // ============================================================================
 // 🎯 評論小說（Review Novel）功能
 // ============================================================================
-// 預設「使用者要求」提示詞：以最嚴格的專業編輯身分要求 AI
-const REVIEW_PROMPT_A = `你是一位有 30 年資歷、鐵面無私的資深出版社主編兼書評人，經手過數百部暢銷與退稿作品，見過所有新人常犯的毛病。
-請以你「最嚴格、絲毫不留情面、直言不諱」的高標準，審讀下方這份小說稿件，並寫下你的評審意見。
+// 預設的「使用者編輯提示詞」：刻意只給三段式骨架而不預設任何立場，
+// 讓使用者自行填寫；此內容會保存在 state.reviewCustomPrompt，隨小說專案一起儲存。
+const REVIEW_CUSTOM_DEFAULT_PROMPT = `（請在此撰寫你希望 AI 採取的評審立場與風格，以下為填寫指引，可直接刪除或覆寫）
 
 【審讀立場】
-- 假設你正在替出版社決定「是否簽下這本書」，錯過爛稿的成本很高，你必須挑毛病。
-- 假設讀者付了錢、時間有限、耐心稀薄，凡是拖沓、假掰、老套、邏輯崩塌之處都要立刻點名。
-- 不要客套、不要鼓勵性廢話、不要「整體來說還不錯」這種話。有問題就直接說出來。
-
-【評審面向(每項都要有具體引文或段落定位)】
-1. 故事結構與節奏:起承轉合是否成立?哪幾章拖戲?哪幾章崩掉?
-2. 每個段落的懸念是否有鉤子效果?
-3. 前面伏筆與結局的聯繫是否合理順暢？
-4. 人物塑造:主角動機是否可信?角色行為是否前後矛盾?配角有沒有存在的必要?
-5. 對白:像不像真人在說話?有沒有作者跳出來替角色說教?
-6. 情感真實度:戀愛/衝突/情慾/背叛的張力夠不夠?哪裡讓人尷尬出戲?
-7. 語言與文字:贅字、陳腔濫調、比喻是否老套?段落節奏是否單調?
-8. 邏輯與世界觀:因果是否成立?有無 bug、時間線錯亂、常識錯誤?
-9. 市場與讀者觀感:這本書若上市,讀者最可能在哪一章棄書?書評星等大概幾顆星?
-
-【輸出格式】
-- 開頭給出「一句話總評」(不超過 30 字,語氣可以毒辣)。
-- 接著給出「總體評分」:故事 / 人物 / 文筆 / 節奏 / 市場潛力,各項 1–10 分並附一句理由。
-- 然後條列具體問題,每條格式為:【問題類型】章節或段落定位 — 問題描述 — 修改建議。
-- 最後給出「若要出版必須先修好的三大致命傷」與「值得保留的五個亮點(若真的有)」。
-- 全部使用繁體中文。禁止使用中文簡體字。禁止安慰性語言。`;
-
-const REVIEW_PROMPT_B = `你是一位有 20 年資歷的資深出版社編輯,經手過數十部暢銷書與退稿作品。
-你以「標準嚴格但願意陪作者把稿子養大」聞名——不放水、不客套,但每個缺點都會附上以你的專業經驗為基礎的、實質可行的修改建議。
-即使作品仍未完成或章節缺漏,你也能針對現有內容與缺漏之處,提出具體的補寫方向;除了指出缺點,你更會清楚點出作品的優點與獨特之處,讓作者知道哪些是應該保留並繼續發揮的資產。
-
-【審讀立場】
-- 假設你已經決定「陪這位作者把這本書修到能簽」,但前提是作者必須知道自己錯在哪裡、又對在哪裡。
-- 針對缺漏或未完成處,不以「等寫完再說」推託,而是以現有素材推測意圖並提出可行的補寫路徑。
-- 專業誠實優先於情緒安撫,但絕不做無意義的貶低。
-
-【評審面向(每項都要有具體引文或段落定位,並附「修改建議」)】
-1. 故事結構與節奏:哪些段落成立?哪些拖戲、哪些崩盤?若要修,先從哪一章下手?
-2. 每個段落的懸念是否有鉤子效果?該如何加強？
-3. 前面伏筆與結局的聯繫是否合理順暢？該如何補強？
-2. 人物塑造:主角動機是否清楚?配角是否可有可無?哪個角色其實有潛力被放大?
-3. 對白:語氣、資訊密度、是否符合人物立場?哪一段對白最好,可作為全書語感基準?
-4. 情感真實度:戀愛/衝突/情慾/背叛的層次與轉折是否鋪陳到位?
-5. 語言與文字:贅字、陳腔濫調、節奏單調處在哪?哪些文字是作者的個人特色,值得保留?
-6. 邏輯與世界觀:因果、時間線、設定是否自洽?缺漏之處建議如何補足?
-7. 市場定位:作品現在的樣子最接近哪一個既有市場區隔?讀者輪廓是誰?
-
-【輸出格式】
-- 開頭給出「一句話總評」(30 字內,誠實但不刻薄)。
-- 接著「總體評分」:故事 / 人物 / 文筆 / 節奏 / 市場潛力,各項 1–10 分並附一句理由。
-- 【必須保留的亮點】列出 5 個具體優點及其可繼續發揮的方向。
-- 【必須修補的問題】每條格式為:【問題類型】章節或段落定位 — 問題描述 — 具體可行的修改建議 (至少一條落地作法)。
-- 【缺漏處補寫建議】針對明顯未完成/未展開之處,提出可以順延既有素材的補寫路徑。
-- 【下一步優先順序】列出作者應該最先動手修改的三件事。
-- 全部使用繁體中文。禁止使用中文簡體字。`;
-
-const REVIEW_PROMPT_C = `你是一位資深的中文系老師,長年批改學生的小說創作作業。
-你相信「每一份作業裡都藏著沙子中的金塊」——即使作品尚未完整,你也能從稚拙的段落中辨識出獨到的想像力、觀察力或語感,並清楚點出這些難得的優異點。
-針對缺點,你會以老師的角度,對每個問題提出多個可行的補強路徑,協助學生自行判斷選用;對於作品的優點與獨特之處,你能提出讓這些亮點延續、串接、進一步發揮的具體方向。
-
-【審讀立場】
-- 把稿件當成一份「有潛力但仍待琢磨」的作業,以教育者而非市場評審的立場出發。
-- 缺點必說,但要說得清楚、可操作;並且盡量給「不只一條」的補強路徑,讓作者能依自身取向選擇。
-- 特別留意那些「作者自己可能沒發現、但很珍貴」的細節、意象、句法或人物瞬間。
-
-【評審面向(每項都要有具體引文或段落定位)】
-1. 敘事結構:章節之間的敘事推進是否成立?哪裡是結構性的斷裂?
-2. 每章的懸念在哪裡?會吸引人想往下讀嗎?
-3. 每個伏筆是否有合理的發展？哪些伏筆值得保留？哪些是埋得太深或多餘的？
-4. 人物與內心:角色的心理層次是否被寫出來?哪個瞬間最能看出作者的觀察力?
-5. 語言與意象:找出「藏在沙裡的金塊」——特別出色的句子、意象或譬喻,並說明其可貴之處。
-6. 對白與聲口:每個人物的說話方式是否具識別度?
-7. 邏輯與細節:因果、時序、常識層面的疏漏。
-8. 主題與思想:作品想說什麼?這個主題有沒有被寫透?
-
-【輸出格式】
-- 開頭給出「一句話總評」(30 字內,語氣如批改作業般溫和但誠實)。
-- 【本作亮點】列出至少 5 個具體的優點,附引文並說明「這裡難得在哪」。
-- 【延續與串接建議】針對上述亮點,提出如何讓它們貫穿全書、彼此呼應的具體方向。
-- 【需要補強的地方】每條格式為:【問題類型】章節或段落定位 — 問題描述 — 【補強路徑一】... 【補強路徑二】... (每個問題至少兩條可行路徑,讓作者選擇)。
-- 【給作者的一段話】以老師身分,寫一段鼓勵且務實的整體回饋(150 字內)。
-- 全部使用繁體中文。禁止使用中文簡體字。`;
-
-const REVIEW_PROMPT_D = `你是一位極富耐心與洞察力的「愛心家教」型創作導師。
-你深信:每一份作品——不論篇幅長短、完整與否、風格為何——都必然有其獨到之處,而你的職責是「找到它、命名它、讓它發光」。
-你能接受各式各樣的可能性,不預設「什麼才叫好小說」的框架;每一種創意、每一種風格、每一種偏執,對你來說都是極其珍貴的、值得深入挖掘的材料。
-
-【審讀立場】
-- 你的第一任務是「深度分析並辨識出這份作品的特點」——哪怕特點只有一個,也要說清楚它為何獨特。
-- 分析特點的可行性:這個特點若繼續往下寫,能夠支撐一部什麼樣的作品?可能的未來發展方向有哪些?
-- 提出讓「作品既有的優點彼此串聯」的建議,讓每一份作品最難得的創意與風格能被凸顯、被放大。
-- 完全不需要挑毛病式的批評;必要提到弱點時,只以「若要讓這個特點更立體,或許可以...」的建設性語氣。
-
-【分析面向(每項都要有具體引文或段落定位)】
-1. 這份作品最獨特的一個(或幾個)特點是什麼?為什麼它獨特?
-2. 這個特點的可行性:它在什麼樣的敘事類型/題材/受眾中最能發揮?
-3. 未來發展方向:延續這個特點,故事可以往哪些方向走?各自的可能性為何?
-4. 優點串聯:作品內部的哪些元素(人物、意象、節奏、主題)其實可以彼此呼應?如何串起來?
-5. 讓創意與風格被凸顯:作者應該如何在後續章節中「更大膽地」使用自己的特色?
-
-【輸出格式】
-- 開頭給出「一句話總評」(30 字內,溫暖且具體地指出作品的獨到之處)。
-- 【本作最珍貴的特點】具體命名 5 個特點,並以引文說明其獨特性。
-- 【特點的可行性分析】針對每個特點,說明它適合的敘事類型與受眾。
-- 【未來發展方向】針對每個特點,提出 5 條可行的延伸方向。
-- 【優點串聯建議】具體指出哪些元素應該被互相串接,以及串接後可能產生的化學反應。
-- 【給作者的鼓勵】以家教身分寫一段溫暖而誠實的話(150 字內),讓作者相信自己的獨特值得被繼續發揮。
-- 全部使用繁體中文。禁止使用中文簡體字。禁止任何形式的貶低或酸言酸語。`;
-
-const REVIEW_PROMPT_E = `（在此撰寫你希望 AI 採取的立場，以下範例是以讀者身分審視）
-【審讀立場】
-- 你是第一位看到這份原稿的讀者，請以讀者身分提出喜好與厭惡的建議。
-- 完全以讀者身分提出評論，只有好惡，無須理由。
+- 你希望 AI 扮演什麼身分來閱讀這份稿件？（例如：特定類型的讀者、某種職業視角、某位假想人物）
+- 這個身分對稿件的態度是嚴厲、鼓勵、中立，還是只看單一面向（只挑優點／只挑缺點）？
 
 【評審面向】
-1. 這份作品在同類型作品之中的獨特性與差異性。
-2. 主題與敘事方式是否和諧搭配？
-3. 以「起承轉合」的結構分配是否恰當？
-4. 以「人事時地物」的關聯性來看，是否緊密相關且合理？
+- 列出你希望 AI 具體檢視的項目（例如：人物、節奏、對白、伏筆、市場性…），建議 3~8 項。
 
 【輸出格式】
-- 喜歡哪幾位角色？喜歡的原因？
-- 討厭哪幾位角色？厭惡的原因？
-- 這個題材吸引你嗎？哪幾點最吸引你？
-- 閱讀的過程你最在意 / 擔心哪幾位角色？
-- 哪幾段文字讓你產生情緒起伏？甚麼樣的情緒？
-- 哪幾段情節讓你覺得拖沓，想要快轉。
-- 你看到哪幾段會想要放棄不看了？
-- 你覺得哪幾段劇情很不合理？
-- 你覺得結局安排如何？
-- 你從哪幾段看出了劇情的伏筆？從哪裡看出來的？
-`;
+- 說明你希望 AI 怎麼呈現結果（例如：先給一句話總評、再逐條列問題、是否要附引文或段落定位、字數限制…）。
+- 全部使用繁體中文。禁止使用中文簡體字。`;
 
-const REVIEW_PROMPT_F = `你是一位「只說優點的誠實讀者」——你剛讀完這份稿件，心裡真心喜歡它。
-你的評論規則很單純：只講你「真的喜歡、真的被打動」的地方，完全不提缺點、不給修改建議、不潑冷水。
-但你並不是敷衍地說好話——你的每一句稱讚都必須誠實、具體、有引文或段落定位佐證，讓作者清楚知道「原來這裡是有效的」。
-
-【審讀立場】
-- 你是一位真心投入的讀者，只想告訴作者：這本書哪裡讓你捨不得放下。
-- 完全不提缺點、不比較市場、不談「如果能更好」。凡是負面的話一律不說。
-- 稱讚必須真實可信：找出文本中確實成立的亮點，而不是空泛的「寫得很好」。
-
-【只找亮點的面向（每項都要有具體引文或段落定位）】
-1. 哪些角色讓你喜歡、甚至想繼續看他們的故事？為什麼？
-2. 哪幾段文字、對白或意象讓你眼睛一亮、忍不住重讀？
-3. 哪些情節安排讓你緊張、感動、會心一笑或想哭？
-4. 這個題材／主題最吸引你的幾點是什麼？
-5. 哪些隱喻或是伏筆讓你讚嘆？從哪裡看出來的？
-6. 作者有哪些「別人不一定寫得出來」的獨特之處？
-7. 你覺得這是一本甚麼類型的小說？有哪些內容符合此類小說的高標準？
-8. 你會推薦給哪些類型的朋友？
-
-【輸出格式】
-- 開頭給出「一句話真心話」（100 字內，說出你最喜歡這本書的哪一點）。
-- 【我最喜歡的角色】列出 1–3 位，附引文說明喜歡的原因。
-- 【打動我的段落】列出至少 5 處具體文字／情節，說明它為何有效。
-- 【令人有感的劇情安排】列出至少 5 處劇情安排，說明它讓你產生何種情緒？為何？。
-- 【吸引我的題材】主題最吸引你的幾點是什麼？
-- 【這本書的獨到之處】具體點出作品值得驕傲且獨特的特色。
-- 【給作者的一句話】以讀者身分寫一句溫暖而誠實的鼓勵。
-- 【本書類型】有哪些內容符合此類小說的高標準？
-- 【好友推薦】這本書適合推薦給哪些讀者？
-- 全部使用繁體中文。禁止使用中文簡體字。禁止提及任何缺點或修改建議。`;
-
-const REVIEW_PROMPT_G = `你是一位「只說缺點的毒舌讀者」——你時間寶貴、毒舌愛批評、沒耐心，讀到不順的地方就想直接棄書。
-你的評論規則很單純：只講讓你「不耐煩、想快轉、想翻白眼、看不下去」的地方，完全不誇獎、不客套、不給正面回饋。
-但你並不是無理取鬧——你的每一句抱怨都必須誠實、具體、有引文或段落定位佐證，讓作者清楚知道「讀者是在哪裡失去耐心的」。
-
-【審讀立場】
-- 你是一位付了錢、時間有限的普通讀者，只想告訴作者：這本書哪裡讓你讀不下去。
-- 完全不誇獎、不鼓勵、不說「但整體還行」。凡是正面的話一律不說。
-- 抱怨必須真實可信：指出文本中確實存在的問題，而不是為罵而罵。
-
-【只挑缺點的面向（每項都要有具體引文或段落定位）】
-1. 哪幾段劇情發展不合理到令你無法忍受？
-2. 哪幾段最讓你想直接快轉或跳過？為什麼拖沓？
-3. 哪些角色讓你厭煩、無感或覺得可有可無？
-4. 哪些對白假掰、說教、不像真人在講話？
-5. 哪些情節讓你出戲、覺得不合理或老套？
-6. 你會在第幾章、哪一個瞬間真的想關掉書棄讀？
-
-【輸出格式】
-- 開頭給出「一句話真心話」（100 字內，語氣可以毒辣，說出你最受不了的幾點）。
-- 【無法忍受的劇情】列出至少 5 處具體文字／情節，說明你為何無法忍受。
-- 【最想快轉的段落】列出至少 5 處具體文字／情節，說明你為何不耐煩。
-- 【讓我厭煩的角色】列出讓你無感或反感的幾位角色，附引文與原因。
-- 【讓我出戲的對白】列出幾句對白假掰、說教、不像真人在講話？
-- 【讓我覺得不合理的情節】列出幾個情節讓你出戲、覺得不合理或老套？
-- 【想棄書的那一刻】明確指出你最可能在哪一章、哪一段放棄。
-- 全部使用繁體中文。禁止使用中文簡體字。禁止任何稱讚或正面回饋。`;
-
-const REVIEW_PROMPTS = {
-    A: REVIEW_PROMPT_A,
-    B: REVIEW_PROMPT_B,
-    C: REVIEW_PROMPT_C,
-    D: REVIEW_PROMPT_D,
-    E: REVIEW_PROMPT_E,
-    F: REVIEW_PROMPT_F,
-    G: REVIEW_PROMPT_G
-};
-const REVIEW_ROLE_LABELS = {
-    A: 'A. 出版社老闆（極度嚴厲，預設）',
-    B: 'B. 出版社編輯（嚴格但提供實質建議）',
-    C: 'C. 中文系老師（挖掘優點並補強缺點）',
-    D: 'D. 愛心家教（發掘特點與可行方向）',
-    E: 'E. 空白架構（自行填寫，先以讀者身分為範例）',
-    F: 'F. 只說優點的誠實讀者',
-    G: 'G. 只說缺點的毒舌讀者'
-};
-const REVIEW_DEFAULT_USER_REQUEST = REVIEW_PROMPT_A;
+// NovelReviewSkill 目錄讀回來的提示詞清單快取：[{ name, label, content }]
+let reviewSkills = [];
+// 目前在「選擇評論的立場」彈窗右欄預覽中的項目檔名
+let reviewSkillPreviewName = '';
 
 let reviewMatches = [];
 let reviewCurrentMatch = -1;
 let reviewSearchLastCol = 0; // 0=user request, 1=ai feedback
 
-// 目前「使用者要求」欄位對應的立場（A~E；F 不對應單一欄位內容）
-let currentReviewRole = 'A';
+/**
+ * 判斷某個提示詞檔名是否屬於「預設勾選」項目。
+ * 規則：單一個英文字母開頭 + "."（例如 A. / B. / … / Z.），日後新增 H. I. … 會自動被視為預設項目。
+ */
+function isDefaultReviewSkill(name) {
+    return /^[A-Za-z]\./.test(name || '');
+}
 
 /**
- * 取得某立場目前應顯示的內容：
- * 優先使用「使用者已改寫並保存」的版本，沒有才回退到預設提示詞。
- * A~E 皆保存在 state.reviewPrompts（會隨專案儲存至雲端）。
+ * 取得「使用者編輯提示詞」目前的內容：
+ * 優先使用專案中已保存的版本，沒有才回退到程式預設骨架。
  */
-function getReviewPrompt(role) {
-    if (state.reviewPrompts && typeof state.reviewPrompts[role] === 'string') {
-        return state.reviewPrompts[role];
+function getReviewCustomPrompt() {
+    if (typeof state.reviewCustomPrompt === 'string' && state.reviewCustomPrompt.trim()) {
+        return state.reviewCustomPrompt;
     }
-    return REVIEW_PROMPTS[role] || REVIEW_DEFAULT_USER_REQUEST;
+    return REVIEW_CUSTOM_DEFAULT_PROMPT;
 }
 
 /**
- * 把「使用者要求」欄位目前的內容，保存到對應立場的儲存位置。
- * F 沒有單一對應內容，直接略過。
+ * 從後端 /api/review_skills 讀取 NovelReviewSkill 目錄中的所有 .md 提示詞。
+ * 第一次讀取（或專案尚無勾選記錄）時，自動勾選所有「單一英文字母 + .」開頭的項目。
  */
-function saveCurrentReviewPrompt(role) {
-    if (!role || role === 'H') return;
-    const userReqEl = qs('#review-user-request');
-    if (!userReqEl) return;
-    if (!state.reviewPrompts) state.reviewPrompts = {};
-    state.reviewPrompts[role] = userReqEl.value;
+async function loadReviewSkills(force = false) {
+    if (reviewSkills.length && !force) return reviewSkills;
+    try {
+        const resp = await fetch('/api/review_skills');
+        reviewSkills = await resp.json();
+    } catch (e) {
+        reviewSkills = [];
+        appendLog('❌ 讀取 NovelReviewSkill 清單失敗：' + e.message);
+        return reviewSkills;
+    }
+    // 專案中尚未保存過勾選狀態時，預設勾選字母開頭項目
+    if (!Array.isArray(state.reviewSelectedSkills)) {
+        state.reviewSelectedSkills = reviewSkills
+            .filter(s => isDefaultReviewSkill(s.name))
+            .map(s => s.name);
+    }
+    appendLog(`📋 已載入 NovelReviewSkill 提示詞 ${reviewSkills.length} 份。`);
+    return reviewSkills;
 }
 
-// 開啟「評論小說」彈窗，依目前記憶中的立場（state.reviewRole）載入對應提示詞內容
+// 依 reviewSkills 與 state.reviewSelectedSkills 重繪「選擇評論的立場」彈窗的左側清單
+function renderReviewSkillList() {
+    const listEl = qs('#review-skills-list');
+    const countEl = qs('#review-skills-count');
+    if (!listEl) return;
+    const selected = state.reviewSelectedSkills || [];
+    listEl.innerHTML = '';
+
+    reviewSkills.forEach(skill => {
+        // 每一列：勾選框 + 可點擊的名稱（點名稱在右欄預覽內容）
+        const row = document.createElement('div');
+        row.className = 'checkbox-label';
+        row.style.cssText = 'display:flex; align-items:center; gap:6px; padding:2px 0; cursor:pointer;';
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = selected.includes(skill.name);
+        cb.addEventListener('change', () => {
+            const list = state.reviewSelectedSkills || (state.reviewSelectedSkills = []);
+            const idx = list.indexOf(skill.name);
+            if (cb.checked && idx < 0) list.push(skill.name);
+            if (!cb.checked && idx >= 0) list.splice(idx, 1);
+            updateReviewSkillCount();
+        });
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = skill.label;
+        nameSpan.style.flex = '1 1 auto';
+        // 點名稱只做預覽，不影響勾選狀態
+        nameSpan.addEventListener('click', e => {
+            e.preventDefault();
+            showReviewSkillPreview(skill.name);
+        });
+
+        row.appendChild(cb);
+        row.appendChild(nameSpan);
+        listEl.appendChild(row);
+    });
+
+    if (countEl) updateReviewSkillCount();
+}
+
+// 更新清單標題旁的「已勾選 N / 共 M」計數
+function updateReviewSkillCount() {
+    const countEl = qs('#review-skills-count');
+    if (!countEl) return;
+    const n = (state.reviewSelectedSkills || []).length;
+    countEl.textContent = `已勾選 ${n} / 共 ${reviewSkills.length}`;
+}
+
+// 在右欄顯示指定 .md 的完整內容
+function showReviewSkillPreview(name) {
+    const skill = reviewSkills.find(s => s.name === name);
+    if (!skill) return;
+    reviewSkillPreviewName = name;
+    const titleEl = qs('#review-skill-preview-title');
+    const prevEl = qs('#review-skill-preview');
+    if (titleEl) titleEl.textContent = `📖 ${skill.label}`;
+    if (prevEl) { prevEl.value = skill.content || ''; prevEl.scrollTop = 0; }
+}
+
+// 開啟「選擇評論的立場」彈窗
+async function openReviewSkillsModal() {
+    await loadReviewSkills();
+    // 兩個附加選項的狀態同樣保存在專案中
+    const incEl = qs('#review-include-custom');
+    const finEl = qs('#review-final-synthesis');
+    if (incEl) incEl.checked = state.reviewIncludeCustom !== false;
+    if (finEl) finEl.checked = state.reviewFinalSynthesis !== false;
+    renderReviewSkillList();
+    qs('#modal-review-skills').classList.remove('hidden');
+}
+
+// 「選擇評論的立場」彈窗工具列：批次勾選（全選／全放棄／只選字母項目）
+function setReviewSkillSelection(mode) {
+    if (mode === 'all') {
+        state.reviewSelectedSkills = reviewSkills.map(s => s.name);
+    } else if (mode === 'none') {
+        state.reviewSelectedSkills = [];
+    } else { // 'default'：只勾選單一英文字母 + "." 開頭者
+        state.reviewSelectedSkills = reviewSkills.filter(s => isDefaultReviewSkill(s.name)).map(s => s.name);
+    }
+    renderReviewSkillList();
+}
+
+/**
+ * 兩個模式 Toggle 互斥切換：「使用NovelReviewSkill列表」與「使用者編輯提示詞」只能擇一。
+ * @param {'skills'|'custom'} clicked 使用者剛剛點擊的那一個
+ * 若使用者把已勾選的那個取消掉，等同切換到另一個模式（不允許兩個都不勾）。
+ */
+function setReviewMode(clicked) {
+    const skillsEl = qs('#review-use-skills');
+    const customEl = qs('#review-use-custom');
+    if (!skillsEl || !customEl) return;
+    // 以「剛點擊者是否被勾起」決定最終模式：勾起就選它，取消勾選就切到另一個
+    const useSkills = (clicked === 'skills') ? skillsEl.checked : !customEl.checked;
+    skillsEl.checked = useSkills;
+    customEl.checked = !useSkills;
+    state.reviewUseSkills = useSkills;
+    state.reviewUseCustom = !useSkills;
+}
+
+// 開啟「評論小說」彈窗，載入使用者自訂提示詞與兩個模式開關
 function openReviewModal() {
     // 預設文件名稱為目前小說名稱
     const bookTitle = (state.bookTitle || '').trim() || '未命名小說';
     const docNameEl = qs('#review-doc-name');
     if (!docNameEl.value) docNameEl.value = bookTitle;
 
-    const roleSel = qs('#review-role-select');
     const userReqEl = qs('#review-user-request');
-    let role = state.reviewRole || 'A';
-    if (role === 'H') {
-        // H 模式：下拉維持 H，但欄位載入目前記憶中的立場（預設 A）內容供參考
-        if (roleSel) roleSel.value = 'H';
-        currentReviewRole = 'A';
-        if (userReqEl) userReqEl.value = getReviewPrompt('A');
-    } else {
-        if (roleSel) roleSel.value = role;
-        currentReviewRole = role;
-        if (userReqEl) userReqEl.value = getReviewPrompt(role);
-    }
+    if (userReqEl) userReqEl.value = getReviewCustomPrompt();
+
+    // 兩個模式 Toggle 互斥，預設為「使用NovelReviewSkill列表」
+    const skillsEl = qs('#review-use-skills');
+    const customEl = qs('#review-use-custom');
+    const useSkills = state.reviewUseSkills !== false;
+    if (skillsEl) skillsEl.checked = useSkills;
+    if (customEl) customEl.checked = !useSkills;
+    state.reviewUseSkills = useSkills;
+    state.reviewUseCustom = !useSkills;
+
+    // 先把清單讀回來（讓計數與後續評審流程可直接使用），失敗不阻擋彈窗開啟
+    loadReviewSkills();
 
     qs('#modal-review').classList.remove('hidden');
 }
 
-// 使用者切換評論立場下拉選單時觸發：先保存切換前欄位內容，再載入新立場的內容
-function onReviewRoleChange() {
-    const roleSel = qs('#review-role-select');
-    const userReqEl = qs('#review-user-request');
-    if (!roleSel || !userReqEl) return;
-    const role = roleSel.value || 'A';
-
-    // 切換前，先把目前欄位內容保存回「切換前」的立場，避免修改遺失
-    saveCurrentReviewPrompt(currentReviewRole);
-
-    // H 為「依序執行所有選項」，不覆寫使用者要求欄位
-    if (role === 'H') {
-        state.reviewRole = 'H';
-        return;
-    }
-
-    // 載入新立場「已保存或預設」的內容（不再覆寫掉使用者的修改）
-    userReqEl.value = getReviewPrompt(role);
-    currentReviewRole = role;
-    state.reviewRole = role;
-}
-
 /**
- * 「重置評論提示詞」：把目前選項的內容還原為程式預設值。
- * 若目前選 H，則詢問是否一次重置 A~G 全部立場。
+ * 「重置評論提示詞」：把「使用者編輯提示詞」欄位還原為程式預設骨架。
+ * NovelReviewSkill 的 .md 由使用者自行維護檔案，不在此重置範圍內。
  */
 function resetReviewPrompt() {
-    const roleSel = qs('#review-role-select');
     const userReqEl = qs('#review-user-request');
-    if (!roleSel || !userReqEl) return;
-    const role = roleSel.value || 'A';
-
-    if (role === 'H') {
-        if (!confirm('目前為 H 模式，確定將 A~G 全部立場的評論提示詞都重置為程式預設值？')) return;
-        if (!state.reviewPrompts) state.reviewPrompts = {};
-        ['A', 'B', 'C', 'D', 'E', 'F', 'G'].forEach(r => { state.reviewPrompts[r] = REVIEW_PROMPTS[r]; });
-        appendLog('♻️ 已將 A~G 全部立場的評論提示詞重置為預設值。');
-        return;
-    }
-
-    const label = REVIEW_ROLE_LABELS[role] || role;
-    if (!confirm(`確定將【${label}】的評論提示詞重置為程式預設值？目前的修改將被覆蓋。`)) return;
-    userReqEl.value = REVIEW_PROMPTS[role] || '';
-    saveCurrentReviewPrompt(role);
-    appendLog(`♻️ 已將【${label}】的評論提示詞重置為預設值。`);
+    if (!userReqEl) return;
+    if (!confirm('確定將「使用者編輯提示詞」重置為程式預設骨架？目前的修改將被覆蓋。')) return;
+    userReqEl.value = REVIEW_CUSTOM_DEFAULT_PROMPT;
+    state.reviewCustomPrompt = REVIEW_CUSTOM_DEFAULT_PROMPT;
+    appendLog('♻️ 已將「使用者編輯提示詞」重置為預設骨架。');
 }
 
-// 使用者在「使用者要求」欄位輸入時，即時保存到目前立場，確保不遺失
+// 使用者在「使用者編輯提示詞」欄位輸入時，即時保存到專案狀態，確保不遺失
 function onReviewRequestInput() {
-    saveCurrentReviewPrompt(currentReviewRole);
+    const userReqEl = qs('#review-user-request');
+    if (userReqEl) state.reviewCustomPrompt = userReqEl.value;
 }
 
 /**
@@ -2932,64 +2840,76 @@ function appendReviewFeedback(text) {
 
 /**
  * 執行一次評審任務。
+ * 評審清單由兩個 Toggle 決定：
+ *   - 「使用NovelReviewSkill列表」：取 NovelReviewSkill 目錄中被勾選的 .md 當成多位評審。
+ *   - 「使用者編輯提示詞」：把上方文字框的自訂提示詞當成一位評審。
+ *   （在立場彈窗中另有「加入評論使用者自訂提示詞」，可在使用 Skill 列表時額外併入自訂提示詞）
+ * 全部評審跑完後，若勾選「整合成一份最終評審意見」，會再請 AI 統整一次。
  * @param {string} fullText 待審稿件全文
  * @param {string} docName  文件名稱
- * @param {{autoExport?: boolean}} [opts] autoExport: 單一立場（非 H）時，評審完成後是否自動匯出 .md
- *   ⚠️ H 模式（依序執行以上所有選項評論）一律會在跑完 A~G 並整理「最終評審意見」後，
- *      自動匯出「單一份」合併 .md（不需輸出成多份 .md 檔案），不受 autoExport 影響。
+ * @param {{autoExport?: boolean}} [opts] autoExport: 評審完成後是否自動匯出合併 .md
  */
 async function runReviewJob(fullText, docName, opts = {}) {
     const autoExport = !!opts.autoExport;
-    const roleSel = qs('#review-role-select');
-    const role = (roleSel && roleSel.value) || 'A';
-    // 下拉選單目前顯示的完整文字（例如「A. 出版社老闆（極度嚴厲，預設）」），用於匯出檔名
-    const roleOptionLabel = (roleSel && roleSel.selectedOptions && roleSel.selectedOptions[0])
-        ? roleSel.selectedOptions[0].textContent.trim()
-        : (REVIEW_ROLE_LABELS[role] || role);
 
-    // 先把欄位目前內容保存回目前立場，確保用到的是最新修改
-    saveCurrentReviewPrompt(currentReviewRole);
+    // 先把欄位目前內容保存回專案狀態，確保用到的是最新修改
+    onReviewRequestInput();
 
-    // 若選 H,依序執行 A~G（使用各立場「已保存或預設」的內容）
-    if (role === 'H') {
-        appendLog(`🎯 H 模式:依序執行 A~G 七種評論立場。`);
-        const seq = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
-        const collected = []; // { label, text }：蒐集每個立場的評審全文，供最終整合使用
-        for (const r of seq) {
-            const prompt = getReviewPrompt(r) || '';
-            const label = REVIEW_ROLE_LABELS[r] || r;
-            if (!prompt.trim()) {
-                appendLog(`⚠️ 略過 ${label}(提示詞為空)。`);
-                continue;
+    const useSkills = qs('#review-use-skills') ? qs('#review-use-skills').checked : true;
+    const useCustom = qs('#review-use-custom') ? qs('#review-use-custom').checked : false;
+    state.reviewUseSkills = useSkills;
+    state.reviewUseCustom = useCustom;
+
+    // 組出這次要跑的評審清單：[{ label, prompt }]
+    const jobs = [];
+    if (useSkills) {
+        await loadReviewSkills();
+        const selected = state.reviewSelectedSkills || [];
+        reviewSkills.forEach(s => {
+            if (!selected.includes(s.name)) return;
+            if (!(s.content || '').trim()) {
+                appendLog(`⚠️ 略過【${s.label}】：提示詞內容為空。`);
+                return;
             }
-            const text = await runSingleReview(fullText, docName, prompt, label);
-            collected.push({ label, text });
-        }
+            jobs.push({ label: s.label, prompt: s.content });
+        });
+    }
+    // 自訂提示詞：勾選「使用者編輯提示詞」，或在使用 Skill 列表時勾選了「加入評論使用者自訂提示詞」
+    const includeCustom = useCustom || (useSkills && state.reviewIncludeCustom !== false);
+    if (includeCustom) {
+        const customPrompt = (qs('#review-user-request').value || '').trim() || getReviewCustomPrompt();
+        if (customPrompt.trim()) jobs.push({ label: '使用者自訂提示詞', prompt: customPrompt });
+    }
 
-        // 加碼：將 A~G 全部評審意見再交給 AI 整理成「最終評審意見」
-        appendLog('🎯 開始整理「最終評審意見」...');
-        const finalText = await runFinalSynthesis(docName, collected);
-        appendLog('✅ H 模式所有立場評論與最終評審意見皆已完成。');
-
-        // H 模式一律自動匯出「單一份」合併 .md（A~G + 最終評審意見）
-        const sections = collected.map(c => `## 【${c.label}】\n\n${c.text}\n`).join('\n---\n\n');
-        const md = `# 🎯 小說評審報告：${docName}\n\n${sections}\n\n---\n\n## 【最終評審意見】\n\n${finalText}\n`;
-        const filename = `${sanitizeFilename(docName)}_${sanitizeFilename(roleOptionLabel)}.md`;
-        downloadMarkdown(filename, md);
-        appendLog(`📤 已自動匯出合併評審報告：${filename}`);
+    if (!jobs.length) {
+        alert('❌ 沒有任何可用的評審立場。請勾選「使用NovelReviewSkill列表」並在列表中選取項目，或改用「使用者編輯提示詞」。');
         return;
     }
 
-    // 單一立場
-    const userRequest = qs('#review-user-request').value.trim() || getReviewPrompt(role);
-    const label = REVIEW_ROLE_LABELS[role] || `自訂立場 (${role})`;
-    const text = await runSingleReview(fullText, docName, userRequest, label);
+    appendLog(`🎯 本次共有 ${jobs.length} 位評審立場，將依序執行。`);
+    const collected = []; // { label, text }：蒐集每位評審的全文，供最終整合與匯出使用
+    for (const job of jobs) {
+        const text = await runSingleReview(fullText, docName, job.prompt, job.label);
+        collected.push({ label: job.label, text });
+    }
+
+    // 是否再請 AI 整合成一份「最終評審意見」（預設開啟）
+    let finalText = '';
+    const doSynthesis = state.reviewFinalSynthesis !== false;
+    if (doSynthesis && collected.length > 1) {
+        appendLog('🎯 開始整理「最終評審意見」...');
+        finalText = await runFinalSynthesis(docName, collected);
+    }
+    appendLog('✅ 所有評審立場與最終評審意見皆已完成。');
 
     if (autoExport) {
-        const md = `# 🎯 小說評審報告：${docName}\n\n## ✏️ AI評審的提示詞\n\n${userRequest}\n\n---\n\n## 【${label}】\n\n${text}\n`;
-        const filename = `${sanitizeFilename(docName)}_${sanitizeFilename(roleOptionLabel)}.md`;
+        // 一律匯出「單一份」合併 .md（各立場 + 最終評審意見）
+        const sections = collected.map(c => '## 【' + c.label + '】\n\n' + c.text + '\n').join('\n---\n\n');
+        let md = '# 🎯 小說評審報告：' + docName + '\n\n' + sections;
+        if (finalText) md += '\n\n---\n\n## 【最終評審意見】\n\n' + finalText + '\n';
+        const filename = `${sanitizeFilename(docName)}_評審報告.md`;
         downloadMarkdown(filename, md);
-        appendLog(`📤 已自動匯出評審報告：${filename}`);
+        appendLog(`📤 已自動匯出合併評審報告：${filename}`);
     }
 }
 
@@ -3051,7 +2971,7 @@ async function runSingleReview(fullText, docName, userRequest, roleLabel) {
  */
 async function runFinalSynthesis(docName, collected) {
     const combinedReviews = collected.map(c => `===== 【${c.label}】 =====\n${c.text}`).join('\n\n');
-    const synthesisInstructions = `你是一位經驗豐富的出版總監，收到了以下 ${collected.length} 位不同立場的評審針對同一份稿件所寫的評論意見（A~G，各自代表完全不同的審讀角度）。
+    const synthesisInstructions = `你是一位經驗豐富的出版總監，收到了以下 ${collected.length} 位不同立場的評審針對同一份稿件所寫的評論意見（各自代表完全不同的審讀角度）。
 
 請將這些評論意見整合成一份「最終評審意見」，規則如下：
 1. 以條列式列出整合後的意見，並依照「重要性」排序——越多位評審提到、或越多評審強調的意見，排序越前面。

@@ -393,7 +393,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  width: 36rem;
+  width: 30rem;
 }
 
 .book-title input {
@@ -638,6 +638,25 @@ input.input-num-sm {
   flex-direction: column;
   background: var(--c-bg-root);
   border-radius: 0;
+}
+
+/* 評論小說：「使用NovelReviewSkill列表」／「使用者編輯提示詞」互斥 Toggle 標籤，字級與勾選框同步放大以利辨識 */
+.review-mode-toggle {
+  font-size: var(--font-size-lg);
+}
+
+.review-mode-toggle input[type="checkbox"] {
+  width: var(--font-size-lg);
+  height: var(--font-size-lg);
+}
+
+/* .cmp-modal 尺寸修飾：不佔滿整個畫面，只取螢幕 90%，四角保留圓角與邊框 */
+.cmp-modal.cmp-modal-90 {
+  width: 90vw;
+  height: 90vh;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }
 
 .cmp-toolbar {
@@ -2642,6 +2661,7 @@ body.daily-page .ai-btn {
 #chat-messages::-webkit-scrollbar {
   width: 4px;
 }
+
 /* ─────────────────────────────────────────────────────────────
    50. 全面搜尋浮動面板（novel_generator 專用，Ctrl+Shift+F 呼叫）
         ── 非 modal 的浮動面板：可拖曳移動，且不遮蔽主介面互動，

@@ -1682,6 +1682,35 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
             files = [f for f in os.listdir('diaries') if f.endswith('.json')]
             self.wfile.write(json.dumps(files).encode())
 
+        elif parsed_path.path == '/api/review_skills':
+            # 讀取 NovelReviewSkill/ 目錄下所有 .md 評審立場提示詞，一次回傳檔名與完整內容。
+            # 前端「選擇評論的立場」彈窗即以此清單為準，之後只要往此目錄放新的 .md，
+            # 不需更動任何程式碼即可出現在清單中。
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json; charset=utf-8')
+            self.end_headers()
+            skill_dir = os.path.join(os.path.dirname(__file__), 'NovelReviewSkill')
+            os.makedirs(skill_dir, exist_ok=True)
+            skills = []
+            try:
+                # 依檔名排序，讓「A. / B. / C. ...」這類字母開頭的預設項目自然排在前面
+                for fname in sorted(os.listdir(skill_dir)):
+                    if not fname.lower().endswith('.md'):
+                        continue
+                    try:
+                        with open(os.path.join(skill_dir, fname), 'r', encoding='utf-8') as f:
+                            content = f.read()
+                    except Exception as e:
+                        content = f'（讀取失敗：{e}）'
+                    skills.append({
+                        'name': fname,                     # 完整檔名（含 .md），前端當作唯一 key
+                        'label': fname[:-3],               # 去掉 .md 的顯示名稱
+                        'content': content,                # 提示詞全文
+                    })
+            except Exception as e:
+                print(f'[review_skills] 讀取目錄失敗：{e}', flush=True)
+            self.wfile.write(json.dumps(skills, ensure_ascii=False).encode('utf-8'))
+
         elif parsed_path.path == '/api/note':
             # 讀取 note/ 目錄下的 .md 檔（使用手冊等公用文件）
             qs_params = parse_qs(parsed_path.query)

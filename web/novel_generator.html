@@ -28,9 +28,9 @@
        額外功能下拉選單（作者備註、比對多本小說、評論小說、多文改寫、網路搜尋並依序改寫）、
        全自動生成按鈕、右上角使用說明按鈕。 -->
   <div class="app-topbar">
-    <div class="title-lg">📖 開心花園AI小說產生器</div>
+    <div class="title-lg">📖開心花園AI小說</div>
     <nav class="app-topbar-nav">
-      <label class="nav-label">小說名稱：</label>
+      <label class="nav-label">名稱：</label>
       <div class="book-title">
         <input type="text" id="book-title" placeholder="請輸入小說名稱...">
       </div>
@@ -209,7 +209,7 @@
           <button class="btn-circle" id="btn-lock-all-chapters" title="一次上鎖所有章與所有小節（再次點擊可解開所有）"
             onclick="toggleAllLocks()">🔒</button>
           <button class="ai-btn" id="btn-ai-gen-chapters" title=" AI根據粗綱生成各章標題、章描述">🤖 章描述</button>
-          <button class="ai-btn" id="btn-ai-gen-all-outlines" title="撰寫所有未鎖定的小節大綱">🤖 撰寫所有大綱</button>
+          <button class="ai-btn" id="btn-ai-gen-all-outlines" title="撰寫所有未鎖定的小節大綱">🤖 全大綱</button>
           <button class="btn-circle" id="add-chapter" title="增加新章">+</button>
         </div>
       </div>
@@ -225,8 +225,7 @@
       <div class="col-header">
         <h3>🖋️內文</h3>
         <div class="toolbox">
-          <button class="btn secondary-btn" id="btn-fullscreen-edit"
-            title="開啟全畫面編輯：安靜無干擾的環境，逐節並排編輯小節描述與內文">🖥️全畫面編輯</button>
+          <button class="btn secondary-btn" id="btn-fullscreen-edit" title="開啟全畫面編輯：安靜無干擾的環境，逐節並排編輯小節描述與內文">全畫面</button>
           <button class="ai-btn" id="btn-ai-gen-all-content" title="撰寫所有未鎖定的小節內文">🤖全節內文</button>
           <button class="ai-btn" id="btn-ai-gen-content" title="撰寫本小節內文">🤖本節內文</button>
         </div>
@@ -786,24 +785,25 @@
       <div class="cmp-body" id="review-body" style="flex-direction:column;">
         <div class="cmp-col" id="review-col-request" style="flex:1 1 0; min-height:40px;">
           <div class="cmp-col-header">
-            <span class="title-md">✏️ AI評審的提示詞（送給 AI 的指令，可自行改寫以加強特定段落的批評）</span>
-            <label class="model-label" style="margin-left:12px;">選擇評論的立場</label>
-            <select id="review-role-select" title="切換不同評論立場，會覆寫下方要求文字" style="width:400px;">
-              <option value="A">A. 出版社老闆（極度嚴厲，預設）</option>
-              <option value="B">B. 出版社編輯（嚴格但提供實質建議）</option>
-              <option value="C">C. 中文系老師（挖掘優點並補強缺點）</option>
-              <option value="D">D. 愛心家教（發掘特點與可行方向）</option>
-              <option value="E">E. 空白架構（自行填寫）</option>
-              <option value="F">F. 只說優點的誠實讀者</option>
-              <option value="G">G. 只說缺點的沒耐性讀者</option>
-              <option value="H">H. 依序執行以上所有選項評論</option>
-            </select>
-            <button class="btn secondary-btn" id="btn-reset-review-prompt" title="將目前選項的評論提示詞重置為程式預設值">♻️
-              重置評論提示詞</button>
+            <span class="title-md">✏️ 使用者編輯提示詞（勾選「使用者編輯提示詞」時送給 AI，專案儲存內容）</span>
+            <label class="cmp-label" style="margin-left:12px;">評論立場：</label>
+            <label class="checkbox-label review-mode-toggle" title="使用 NovelReviewSkill 目錄中勾選的 .md 提示詞來評審（與右側選項二擇一）">
+              <input type="checkbox" id="review-use-skills" checked>
+              <span>使用NovelReviewSkill列表</span>
+            </label>
+            <label class="checkbox-label review-mode-toggle" title="使用下方文字框中由使用者自行編輯的提示詞來評審（與左側選項二擇一）">
+              <input type="checkbox" id="review-use-custom">
+              <span>使用者編輯提示詞</span>
+            </label>
+            <button class="btn secondary-btn" id="btn-open-review-skills"
+              title="開啟 NovelReviewSkill 提示詞清單，勾選要參與評審的立場">📋 開啟NovelReviewSkill列表</button>
+            <button class="btn secondary-btn" id="btn-reset-review-prompt" title="將下方「使用者編輯提示詞」重置為程式預設骨架">♻️
+              重置提示詞</button>
             <button class="btn secondary-btn" id="btn-toggle-review-request" style="margin-left:auto;"
               title="隱藏／顯示使用者要求文字輸入框">👁️‍🗨️ 隱藏</button>
           </div>
-          <textarea class="cmp-content" id="review-user-request" placeholder="在此撰寫要求 AI 評審的重點與角度..."></textarea>
+          <textarea class="cmp-content" id="review-user-request"
+            placeholder="在此撰寫「使用者編輯提示詞」，內容會隨小說專案一起儲存..."></textarea>
         </div>
         <div class="review-resizer" id="review-resizer" title="拖曳調整上下欄高度"></div>
         <div class="cmp-col" id="review-col-feedback" style="flex:1 1 0; min-height:40px;">
@@ -814,6 +814,52 @@
             <button class="btn secondary-btn" id="btn-review-export" title="匯出「使用者要求」+「AI 評審建議」為 .md 檔">📤 匯出</button>
           </div>
           <textarea class="cmp-content" id="review-ai-feedback" placeholder="AI 評審結果將顯示於此..."></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 彈窗：選擇評論的立場（列出 NovelReviewSkill 目錄中的 .md 提示詞供勾選與預覽） ── -->
+  <div id="modal-review-skills" class="modal-overlay hidden">
+    <div class="cmp-modal cmp-modal-90">
+      <div class="cmp-toolbar">
+        <h2 class="cmp-title">📋 選擇評論的立場(NovelReviewSkill列表)</h2>
+        <button class="btn secondary-btn" id="btn-review-skills-all" title="勾選清單中的全部項目">✅ 全選</button>
+        <button class="btn secondary-btn" id="btn-review-skills-none" title="取消清單中的全部勾選">☐ 全放棄</button>
+        <button class="btn secondary-btn" id="btn-review-skills-default" title="只勾選單一英文字母開頭（A. B. C. …）的預設項目">🔤
+          只選字母項目</button>
+        <button class="btn secondary-btn" id="btn-review-skills-reload"
+          title="重新讀取 NovelReviewSkill 目錄（新增 .md 後可按此更新清單）">🔄 重新整理</button>
+        <button class="modal-close-btn" style="margin-left:auto;"
+          onclick="document.getElementById('modal-review-skills').classList.add('hidden')">&times;</button>
+      </div>
+      <!-- 主體：左右兩欄（左：可勾選的 .md 清單／右：點選後顯示該 .md 全文） -->
+      <div class="cmp-body">
+        <div class="cmp-col" style="flex:0 0 450px; min-width:300px;">
+          <div class="cmp-col-header">
+            <span class="title-md">📄 提示詞清單</span>
+            <span id="review-skills-count" class="log-search-count"></span>
+          </div>
+          <!-- 清單本體：由 JS 依 /api/review_skills 回傳結果動態產生 -->
+          <div id="review-skills-list" class="cmp-content" style="overflow-y:auto; padding:6px;"></div>
+          <!-- 左下方兩個附加選項 -->
+          <div class="cmp-col-header" style="flex-direction:column; align-items:stretch; gap:4px;">
+            <label class="checkbox-label review-mode-toggle" title="除了上方勾選的 .md，另把「使用者編輯提示詞」也當成一位評審">
+              <input type="checkbox" id="review-include-custom" checked>
+              <span>加入「評論使用者自訂提示詞」</span>
+            </label>
+            <label class="checkbox-label review-mode-toggle" title="全部評審跑完後，再請 AI 把所有意見整合成一份最終評審意見">
+              <input type="checkbox" id="review-final-synthesis" checked>
+              <span>將以上評論意見整合成一份「最終評審意見」</span>
+            </label>
+          </div>
+        </div>
+        <div class="cmp-col" style="flex:1 1 0;">
+          <div class="cmp-col-header">
+            <span class="title-md" id="review-skill-preview-title">📖 提示詞內容（點選左側項目以預覽）</span>
+          </div>
+          <textarea class="cmp-content" id="review-skill-preview" readonly
+            placeholder="點選左側清單中的項目，即可在此檢視該 .md 的完整內容。"></textarea>
         </div>
       </div>
     </div>
