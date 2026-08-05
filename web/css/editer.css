@@ -14,7 +14,7 @@
   --c-bg-card: hsla(240, 15%, 15%, 0.66);
   --c-bg-card-light: hsla(240, 33%, 60%, 0.66);
   /* 外部頁面 modal 引用，勿刪 */
-  --c-bg-panel: hsla(240, 10%, 10%, 0.85);
+  --c-bg-panel: hsla(240, 10%, 10%, 1.0);
   --c-bg-input: hsl(0, 0%, 0%);
   /* 標準輸入框底色 */
   --c-bg-input-dark: hsl(0, 0%, 0%);
@@ -63,7 +63,7 @@
   /* ── 訊息氣泡（loveline）── */
   --c-msg-user-bg: linear-gradient(135deg, hsl(262, 60%, 35%), hsl(290, 50%, 28%));
   --c-msg-ai-bg: hsla(240, 20%, 16%, 0.9);
-  --c-item-hover: rgba(255, 255, 255, 0.06);
+  --c-item-hover: rgba(255, 255, 255, 0.18);
   /* 聊天列表 hover */
   --c-item-active: rgba(162, 89, 255, 0.18);
   /* 聊天列表 active */
@@ -1112,6 +1112,10 @@ body.daily-page .ai-btn {
   padding: var(--pad-icon);
   transition: background 0.2s, color 0.2s;
   user-select: none;
+}
+
+.btn-icon-white {
+  color: var(--c-text-main);
 }
 
 .btn-lock-ch,
@@ -2673,7 +2677,7 @@ body.daily-page .ai-btn {
   top: 5vh;
   left: 0;
   width: 25vw;
-  min-width: 260px;
+  min-width: 360px;
   height: 90vh;
   /* 低於 .modal-overlay(100)，讓作者備註等彈窗開啟時能正常蓋在面板之上 */
   z-index: 90;
@@ -2698,6 +2702,7 @@ body.daily-page .ai-btn {
   gap: var(--gap-sm);
   padding: var(--pad-both-sm);
   background: var(--c-accent-subtle);
+  border-left: 5px solid var(--c-accent);
   border-bottom: 1px solid var(--c-border);
   cursor: move;
   user-select: none;
@@ -2708,7 +2713,7 @@ body.daily-page .ai-btn {
 .gs-row {
   display: flex;
   align-items: center;
-  gap: var(--gap-sm);
+  gap: var(--gap-xs);
   padding: var(--pad-both-sm);
   border-bottom: 1px solid var(--c-border);
   flex-shrink: 0;
@@ -2731,7 +2736,7 @@ body.daily-page .ai-btn {
   margin-top: var(--gap-xs);
   background: var(--c-bg-card);
   border-radius: var(--radius-2xs);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-md);
   font-weight: var(--heading-weight);
   color: var(--c-accent-field-label);
 }
@@ -2746,7 +2751,7 @@ body.daily-page .ai-btn {
 .gs-item {
   padding: var(--pad-both-xs) var(--pad-both-sm);
   border-radius: var(--radius-2xs);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-md);
   color: var(--c-text-main);
   cursor: pointer;
   white-space: nowrap;
@@ -2842,4 +2847,87 @@ body.daily-page .ai-btn {
 .fs-row-resizer.resizing {
   opacity: 1;
   background: var(--c-accent);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   52. 尋找／取代小面板（novel_generator，由 Alt+A 快顯功能表呼叫）
+        ── 「尋找列」永遠顯示，「取代列」可摺疊；標題列可拖曳移動。
+           z-index 必須高於 .modal-overlay(100)，
+           這樣「全畫面編輯」彈窗開著時，此面板仍能浮在上面操作 ──
+───────────────────────────────────────────────────────────── */
+.fr-panel {
+  position: fixed;
+  top: 12vh;
+  right: 3vw;
+  width: 560px;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-bg-panel);
+  border: 2px solid var(--c-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+/* 隱藏狀態（專案的 .hidden 僅對 .modal-overlay 生效，故此處自行定義） */
+.fr-panel.hidden {
+  display: none;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   53. 快顯功能表選單（novel_generator，Alt+A 於游標附近彈出）
+        ── 集中放置「尋找／取代／全面搜尋／四種 AI 加工」入口 ──
+───────────────────────────────────────────────────────────── */
+.qk-menu {
+  position: fixed;
+  z-index: 130;
+  min-width: 300px;
+  padding: var(--pad-both-xs);
+  display: flex;
+  flex-direction: column;
+  background: var(--c-bg-panel);
+  border: 1px solid var(--c-border);
+  border-left: 5px solid var(--c-accent);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.qk-menu.hidden {
+  display: none;
+}
+
+/* 選單頂端的情境提示（顯示目前作用範圍：主介面／全畫面編輯） */
+.qk-scope {
+  padding: var(--pad-both-xs) var(--pad-both-sm);
+  border-bottom: 1px solid var(--c-border);
+  margin-bottom: var(--pad-both-xs);
+}
+
+/* 單一選單項目：左側功能名稱、右側熱鍵提示 */
+.qk-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-xl);
+  padding: var(--pad-both-xs) var(--pad-both-sm);
+  border: none;
+  background: none;
+  border-radius: var(--radius-2xs);
+  font-size: var(--font-size-lg);
+  color: var(--c-text-main);
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.qk-item:hover {
+  background: var(--c-item-hover);
+}
+
+/* 選單項目右側的熱鍵文字 */
+.qk-key {
+  color: var(--c-text-sec);
+  font-family: var(--font-mono);
+  font-weight: bold;
 }

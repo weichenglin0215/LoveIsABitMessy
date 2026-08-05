@@ -820,6 +820,9 @@ function setupEventListeners() {
     // 🖥️ 全畫面編輯：開關按鈕、橫行輸入同步、搜尋列
     initFullscreenEdit();
 
+    // 🧭 快顯功能表選單（Alt+A）＋ 尋找／取代浮動面板
+    initQuickMenuAndFindReplace();
+
     // ✨ 選取文字 AI 加工（擴寫／精簡／對白／視覺化改寫）：熱鍵 + 彈窗按鈕
     document.addEventListener('keydown', onRefineHotkey, true);
     qs('#btn-refine-cancel').addEventListener('click', closeRefineModal);
@@ -3863,10 +3866,10 @@ const REFINE_MODES = {
     expand: { key: 'p', title: '✨ 擴寫／優化', multiplier: 2 },
     condense: { key: 's', title: '✂️ 精簡', multiplier: 0.5 },
     dialogue: { key: 't', title: '💬 對白優化', multiplier: 1 },
-    visual: { key: 'a', title: '🎬 視覺化改寫', multiplier: 1 }
+    visual: { key: 'q', title: '🎬 視覺化改寫', multiplier: 1 }
 };
-// 熱鍵字母 → 模式名稱
-const REFINE_HOTKEY_MAP = { p: 'expand', s: 'condense', t: 'dialogue', a: 'visual' };
+// 熱鍵字母 → 模式名稱（Alt+A 已改為呼叫「快顯功能表選單」，故視覺化改寫改用 Alt+Q）
+const REFINE_HOTKEY_MAP = { p: 'expand', s: 'condense', t: 'dialogue', q: 'visual' };
 
 // 目前這次加工的情境（開啟彈窗時鎖定，套用結果時使用）
 let refineCtx = null;
@@ -3887,7 +3890,7 @@ function onRefineHotkey(e) {
     const mode = REFINE_HOTKEY_MAP[(e.key || '').toLowerCase()];
     if (!mode) return;
 
-    const field = detectActiveField();
+    const field = detectRefineField();
     if (!field) return; // 焦點不在目標框 → 完全不理會，不 preventDefault
 
     e.preventDefault();
@@ -3903,6 +3906,35 @@ function onRefineHotkey(e) {
     field.fullValue = el.value;
     field.selectedText = el.value.slice(field.selStart, field.selEnd);
     openRefineModal(mode, field);
+}
+
+// 「全畫面編輯」彈窗是否正開啟中
+function isFullscreenEditOpen() {
+    const m = qs('#modal-fullscreen-edit');
+    return !!m && !m.classList.contains('hidden');
+}
+
+/**
+ * 判斷目前焦點是否落在「全畫面編輯」彈窗的欄位上。
+ * 是 → 回傳 { type:'fs_title'|'fs_content', el, ci, si }；否 → null。
+ */
+function detectActiveFsField() {
+    if (!isFullscreenEditOpen()) return null;
+    const el = document.activeElement;
+    if (!el || !el.matches || !el.matches('#fsedit-body textarea')) return null;
+    const ci = parseInt(el.dataset.ci, 10);
+    const si = parseInt(el.dataset.si, 10);
+    if (!state.chapters?.[ci]?.sections?.[si]) return null;
+    return { type: el.dataset.field === 'title' ? 'fs_title' : 'fs_content', el, ci, si };
+}
+
+/**
+ * 依目前情境取得要加工的欄位。
+ * ⚠️ 全畫面編輯彈窗開啟時「只認彈窗內的欄位」，確保加工結果不會誤寫到主介面的框。
+ */
+function detectRefineField() {
+    if (isFullscreenEditOpen()) return detectActiveFsField();
+    return detectActiveField();
 }
 
 // 判斷目前焦點在哪一個目標框，回傳 { type, el, chapterIndex? }；不是目標框則回傳 null
@@ -3981,6 +4013,21 @@ function assembleRefineContext(field) {
         const parts = [];
         parts.push('【本節大綱】' + (sec ? (sec.title || '') : ''));
         parts.push('【本節內文全文】\n' + markSelection(fullValue, s, e));
+        return parts.join('\n\n');
+    }
+
+    // 全畫面編輯彈窗內的兩個欄位：小節位置由 field.ci / field.si 指定（與主介面目前選取的小節無關）
+    if (type === 'fs_title' || type === 'fs_content') {
+        const ch = state.chapters[field.ci];
+        const sec = ch.sections[field.si];
+        const parts = [];
+        parts.push(`【本章描述】第${field.ci + 1}章 ${ch.title || ''}\n${ch.description || ''}`);
+        if (type === 'fs_title') {
+            parts.push('【本節大綱】\n' + markSelection(fullValue, s, e));
+        } else {
+            parts.push('【本節大綱】' + (sec.title || ''));
+            parts.push('【本節內文全文】\n' + markSelection(fullValue, s, e));
+        }
         return parts.join('\n\n');
     }
     return markSelection(fullValue, s, e);
@@ -4183,6 +4230,15 @@ function writeBackRefine(field, newFull) {
         if (sec) sec.content = newFull;
         renderEditor();
         renderChapters();
+    } else if (field.type === 'fs_title' || field.type === 'fs_content') {
+        // 全畫面編輯彈窗：只寫回該小節與彈窗內的 textarea。
+        // ⚠️ 不重建整份橫行（renderFullscreenEditor），否則使用者調過的行高會被重置；
+        //    主介面的完整重繪一律延到關閉彈窗時再做（沿用 onFullscreenEditInput 的策略）。
+        const sec = state.chapters?.[field.ci]?.sections?.[field.si];
+        if (!sec) return;
+        if (field.type === 'fs_title') sec.title = newFull; else sec.content = newFull;
+        if (field.el) field.el.value = newFull;
+        fsSyncToMainEditor(field.ci, field.si);
     }
 }
 
@@ -4344,12 +4400,13 @@ function renderGlobalSearchResults() {
 }
 
 // 聚焦某個輸入欄位並反白指定範圍，textarea 另外把該位置捲動到視野中央
-function gsFocusAndSelect(el, start, end) {
+// query 用來驗證該位置的文字是否仍為關鍵字；預設取全面搜尋的關鍵字，其他模組可自行傳入
+function gsFocusAndSelect(el, start, end, query) {
     if (!el) return;
 
     // 保險：搜尋後若使用者又編輯過該欄位，原本記錄的位置可能已經失效。
     // 先確認該位置的文字仍等於關鍵字，否則不要亂反白，改為提示使用者重新搜尋。
-    const q = gsearchState.query || '';
+    const q = (query !== undefined ? query : gsearchState.query) || '';
     if (q && (el.value || '').substring(start, end).toLowerCase() !== q.toLowerCase()) {
         el.focus();
         const statusEl = qs('#gsearch-status');
@@ -4479,10 +4536,11 @@ function closeGlobalSearchPanel() {
     qs('#global-search-panel').classList.add('hidden');
 }
 
-// 面板拖曳：按住標題列即可移動整個面板
-function initGlobalSearchDrag() {
-    const panel = qs('#global-search-panel');
-    const header = qs('#gsearch-header');
+/**
+ * 讓浮動面板可拖曳：按住 header 即可移動 panel。
+ * 供「全面搜尋」與「尋找／取代」兩個浮動面板共用。
+ */
+function makePanelDraggable(panel, header) {
     if (!panel || !header) return;
 
     header.addEventListener('mousedown', (e) => {
@@ -4536,7 +4594,7 @@ function initGlobalSearch() {
         if (item) jumpToSearchResult(item);
     });
 
-    initGlobalSearchDrag();
+    makePanelDraggable(qs('#global-search-panel'), qs('#gsearch-header'));
 }
 
 
@@ -4702,20 +4760,24 @@ function onFullscreenEditInput(e) {
     const sec = state.chapters?.[ci]?.sections?.[si];
     if (!sec) return;
 
-    if (ta.dataset.field === 'title') {
-        sec.title = ta.value;
-        // 若正好是主介面目前選取的小節，順手同步該欄位（不重繪整棵樹）
-        if (state.activeIndex.chapter === ci && state.activeIndex.section === si) {
-            const t = qs('#active-section-title');
-            if (t) t.value = ta.value;
-        }
-    } else {
-        sec.content = ta.value;
-        if (state.activeIndex.chapter === ci && state.activeIndex.section === si) {
-            const ed = qs('#main-editor');
-            if (ed) ed.value = ta.value;
-        }
-    }
+    if (ta.dataset.field === 'title') sec.title = ta.value;
+    else sec.content = ta.value;
+    fsSyncToMainEditor(ci, si);
+}
+
+/**
+ * 若第 ci 章第 si 節正好是主介面目前選取的小節，把 state 的最新值同步到主介面兩個欄位。
+ * 只更新欄位值、不重繪整棵章節樹（每次按鍵都重繪太耗效能），
+ * 主介面的完整重繪延到關閉全畫面編輯彈窗時再做。
+ */
+function fsSyncToMainEditor(ci, si) {
+    if (state.activeIndex.chapter !== ci || state.activeIndex.section !== si) return;
+    const sec = state.chapters?.[ci]?.sections?.[si];
+    if (!sec) return;
+    const t = qs('#active-section-title');
+    if (t) t.value = sec.title || '';
+    const ed = qs('#main-editor');
+    if (ed) ed.value = sec.content || '';
 }
 
 function openFullscreenEditModal() {
@@ -4741,6 +4803,9 @@ function openFullscreenEditModal() {
 
 function closeFullscreenEditModal() {
     qs('#modal-fullscreen-edit').classList.add('hidden');
+    // 若「尋找／取代」面板正作用於本彈窗，一併關閉；否則它記錄的欄位全部失效
+    if (frState.scope === 'fs') closeFindReplacePanel();
+    closeQuickMenu();
     // 關閉時整批重繪主介面，讓章節樹的完成狀態(✓)與編輯器內容完全同步
     renderChapters();
     renderEditor();
@@ -4807,4 +4872,533 @@ function initFullscreenEdit() {
     });
     qs('#fsedit-search-prev').addEventListener('click', () => goToFullscreenEditMatch(fsEditCurrentMatch - 1));
     qs('#fsedit-search-next').addEventListener('click', () => goToFullscreenEditMatch(fsEditCurrentMatch + 1));
+}
+
+
+// ============================================================================
+// 🧭 快顯功能表選單（Alt+A）＋ 尋找／取代浮動面板
+// ============================================================================
+// 本區塊把散落的編輯輔助功能整合到一個入口：
+//   Alt+A → 快顯功能表 →「尋找／取代／全面搜尋／擴寫／視覺化／精簡／對白」
+//
+// 【作用範圍（scope）】開啟選單的當下就鎖定，之後所有動作都只在該範圍內生效：
+//   'fs'   ── 「全畫面編輯」彈窗開啟中：只作用於彈窗內的小節描述與內文欄位
+//   'main' ── 其餘情況：只作用於主介面的編輯欄位
+//
+// 【尋找／取代的欄位順序】主介面依作者的閱讀順序攤平成一維清單：
+//   粗綱 → 第1章標題 → 第1章描述 → 1-1大綱 → 1-1內文 → 1-2大綱 → … → 第2章標題 → …
+//   「下一個」會先從游標所在欄位的游標位置往後找，找完才換下一個欄位，到底會繞回開頭。
+
+// 尋找／取代的執行狀態
+const frState = {
+    scope: 'main',   // 'main' | 'fs'
+    query: '',       // 上一次掃描用的關鍵字
+    fields: [],      // 依順序排列的欄位描述子
+    matches: [],     // 命中清單 [{ fi, start }]，順序與 fields 一致
+    current: -1,     // 目前停在第幾筆命中（-1 = 尚未定位）
+    anchor: null     // 開啟面板當下的游標位置，供第一次「下一個」當起點
+};
+
+// ── 欄位清單建立 ───────────────────────────────────────────────
+
+// 主介面欄位清單（不含作者備註；作者備註請用 Ctrl+Shift+F 全面搜尋）
+function frBuildMainFields() {
+    const fields = [{ kind: 'premise', label: '粗綱' }];
+    (state.chapters || []).forEach((ch, ci) => {
+        fields.push({ kind: 'chapterTitle', ci, label: `第${ci + 1}章 標題` });
+        fields.push({ kind: 'chapterDesc', ci, label: `第${ci + 1}章 描述` });
+        (ch.sections || []).forEach((sec, si) => {
+            fields.push({ kind: 'sectionTitle', ci, si, label: `第${ci + 1}章 第${si + 1}節 大綱` });
+            fields.push({ kind: 'content', ci, si, label: `第${ci + 1}章 第${si + 1}節 內文` });
+        });
+    });
+    return fields;
+}
+
+// 全畫面編輯彈窗的欄位清單＝彈窗內 textarea 的 DOM 順序（每節「描述、內文」各一）
+function frBuildFsFields() {
+    const body = qs('#fsedit-body');
+    if (!body) return [];
+    return Array.from(body.querySelectorAll('textarea')).map(ta => {
+        const ci = parseInt(ta.dataset.ci, 10);
+        const si = parseInt(ta.dataset.si, 10);
+        const isTitle = ta.dataset.field === 'title';
+        return {
+            kind: isTitle ? 'fsTitle' : 'fsContent', ci, si, el: ta,
+            label: `第${ci + 1}章 第${si + 1}節 ${isTitle ? '描述' : '內文'}`
+        };
+    });
+}
+
+function frBuildFields(scope) {
+    return scope === 'fs' ? frBuildFsFields() : frBuildMainFields();
+}
+
+// ── 欄位讀寫 ───────────────────────────────────────────────────
+
+// 讀取欄位目前的文字（一律以 state 為準；全畫面欄位則直接讀 textarea）
+function frGetText(f) {
+    switch (f.kind) {
+        case 'premise': return state.storyPremise || '';
+        case 'chapterTitle': return state.chapters?.[f.ci]?.title || '';
+        case 'chapterDesc': return state.chapters?.[f.ci]?.description || '';
+        case 'sectionTitle': return state.chapters?.[f.ci]?.sections?.[f.si]?.title || '';
+        case 'content': return state.chapters?.[f.ci]?.sections?.[f.si]?.content || '';
+        case 'fsTitle':
+        case 'fsContent': return f.el ? f.el.value : '';
+    }
+    return '';
+}
+
+/**
+ * 把新文字寫回欄位。
+ * @param {boolean} silent true = 不重繪畫面（「全部取代」時逐欄寫入，最後再統一重繪一次）
+ */
+function frSetText(f, v, silent) {
+    switch (f.kind) {
+        case 'premise':
+            state.storyPremise = v;
+            qs('#story-premise').value = v;
+            break;
+        case 'chapterTitle':
+            state.chapters[f.ci].title = v;
+            if (!silent) renderChapters();
+            break;
+        case 'chapterDesc':
+            state.chapters[f.ci].description = v;
+            if (!silent) renderChapters();
+            break;
+        case 'sectionTitle':
+            state.chapters[f.ci].sections[f.si].title = v;
+            if (!silent) { renderChapters(); renderEditor(); }
+            break;
+        case 'content':
+            state.chapters[f.ci].sections[f.si].content = v;
+            if (!silent) { renderChapters(); renderEditor(); }
+            break;
+        case 'fsTitle':
+        case 'fsContent': {
+            // 全畫面編輯：只更新 state 與該 textarea，不重建橫行（避免使用者調過的行高被重置）
+            const sec = state.chapters?.[f.ci]?.sections?.[f.si];
+            if (!sec) break;
+            if (f.kind === 'fsTitle') sec.title = v; else sec.content = v;
+            if (f.el) f.el.value = v;
+            fsSyncToMainEditor(f.ci, f.si);
+            break;
+        }
+    }
+}
+
+/**
+ * 取得欄位「目前在畫面上」對應的 DOM 元素；沒有渲染出來則回傳 null。
+ * ⚠️ 小節大綱／內文只有「主介面目前選取的那一節」才有對應的輸入框，
+ *    其餘小節必須先 setActive() 切過去才拿得到（見 frFocusField）。
+ */
+function frFieldElement(f) {
+    const list = qs('#chapter-list');
+    switch (f.kind) {
+        case 'premise': return qs('#story-premise');
+        case 'chapterTitle':
+            return list?.children[f.ci]?.querySelector('.chapter-title-row input[type="text"]') || null;
+        case 'chapterDesc':
+            return list?.children[f.ci]?.querySelector('.chapter-desc') || null;
+        case 'sectionTitle':
+            return (state.activeIndex.chapter === f.ci && state.activeIndex.section === f.si)
+                ? qs('#active-section-title') : null;
+        case 'content':
+            return (state.activeIndex.chapter === f.ci && state.activeIndex.section === f.si)
+                ? qs('#main-editor') : null;
+        case 'fsTitle':
+        case 'fsContent': return f.el || null;
+    }
+    return null;
+}
+
+// 跳到某欄位並反白 [start, end)：必要時先切換小節、展開折疊欄、捲動到可視範圍
+function frFocusField(f, start, end) {
+    const q = frState.query;
+    switch (f.kind) {
+        case 'premise':
+            gsExpandColumn('story-premise-container');
+            gsFocusAndSelect(qs('#story-premise'), start, end, q);
+            break;
+        case 'chapterTitle':
+        case 'chapterDesc': {
+            const card = qs('#chapter-list')?.children[f.ci];
+            if (!card) return;
+            card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            const el = (f.kind === 'chapterTitle')
+                ? card.querySelector('.chapter-title-row input[type="text"]')
+                : card.querySelector('.chapter-desc');
+            gsFocusAndSelect(el, start, end, q);
+            break;
+        }
+        case 'sectionTitle':
+            setActive(f.ci, f.si);   // 切換主介面目前編輯中的小節
+            gsFocusAndSelect(qs('#active-section-title'), start, end, q);
+            break;
+        case 'content':
+            setActive(f.ci, f.si);
+            gsFocusAndSelect(qs('#main-editor'), start, end, q);
+            break;
+        case 'fsTitle':
+        case 'fsContent':
+            f.el?.closest('.fs-row')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            gsFocusAndSelect(f.el, start, end, q);
+            break;
+    }
+}
+
+// ── 搜尋核心 ───────────────────────────────────────────────────
+
+// 重新掃描：依目前 scope 重建欄位清單與命中清單（不分大小寫，比照全面搜尋）
+function frRescan() {
+    frState.query = qs('#findrep-find-input').value;
+    frState.fields = frBuildFields(frState.scope);
+    frState.matches = [];
+    frState.current = -1;
+    if (!frState.query) return;
+
+    const lq = frState.query.toLowerCase();
+    frState.fields.forEach((f, fi) => {
+        const lo = frGetText(f).toLowerCase();
+        let i = 0;
+        while ((i = lo.indexOf(lq, i)) !== -1) {
+            frState.matches.push({ fi, start: i });
+            i += lq.length;
+        }
+    });
+}
+
+/**
+ * 決定這次要「從哪裡開始找」。優先序：
+ *   1. 上一筆命中（連續按下一個時，從該命中之後接續）
+ *   2. 目前焦點所在的欄位與游標位置（使用者剛把游標點在某個框裡）
+ *   3. 開啟面板當下記錄的游標位置（此時焦點多半已在面板的輸入框上）
+ *   4. 都沒有 → 從第一個欄位的開頭
+ */
+function frAnchor(prevMatch) {
+    if (prevMatch) {
+        return { fi: prevMatch.fi, start: prevMatch.start, end: prevMatch.start + frState.query.length };
+    }
+    const el = document.activeElement;
+    if (el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT')) {
+        const fi = frState.fields.findIndex(f => frFieldElement(f) === el);
+        if (fi >= 0) return { fi, start: el.selectionStart || 0, end: el.selectionEnd || 0 };
+    }
+    if (frState.anchor) return frState.anchor;
+    return { fi: 0, start: 0, end: 0 };
+}
+
+// 由 anchor 往 dir 方向（1=下一個 / -1=上一個）尋找最近的一筆命中，找不到就繞回頭尾
+function frSeek(a, dir) {
+    if (!frState.matches.length) {
+        frState.current = -1;
+        frUpdateCount();
+        frSetStatus(frState.query ? '找不到符合的文字' : '請先輸入要尋找的文字');
+        return;
+    }
+    let idx;
+    if (dir > 0) {
+        idx = frState.matches.findIndex(m => m.fi > a.fi || (m.fi === a.fi && m.start >= a.end));
+        if (idx < 0) idx = 0;                              // 已到最後 → 繞回第一筆
+    } else {
+        for (idx = frState.matches.length - 1; idx >= 0; idx--) {
+            const m = frState.matches[idx];
+            if (m.fi < a.fi || (m.fi === a.fi && m.start < a.start)) break;
+        }
+        if (idx < 0) idx = frState.matches.length - 1;     // 已到最前 → 繞回最後一筆
+    }
+    frGoToMatch(idx);
+}
+
+// 停到第 idx 筆命中：反白、捲動、更新計數與狀態列
+function frGoToMatch(idx) {
+    frState.current = idx;
+    const m = frState.matches[idx];
+    const f = frState.fields[m.fi];
+    frFocusField(f, m.start, m.start + frState.query.length);
+    frUpdateCount();
+    frSetStatus(`命中位置：${f.label}`);
+}
+
+// 「上一個 / 下一個」的進入點
+function frGo(dir) {
+    if (frState.scope === 'fs' && !isFullscreenEditOpen()) {
+        frSetStatus('⚠️ 全畫面編輯彈窗已關閉，請重新開啟尋找面板');
+        return;
+    }
+    // 關鍵字沒變才有「上一筆命中」可以接續；每次都重新掃描，確保位置永遠對應最新內容
+    const q = qs('#findrep-find-input').value;
+    const prevMatch = (q === frState.query && frState.current >= 0)
+        ? frState.matches[frState.current] : null;
+    frRescan();
+    frSeek(frAnchor(prevMatch), dir);
+}
+
+// ── 取代 ───────────────────────────────────────────────────────
+
+// 取代目前反白的這一筆，然後自動跳到下一筆
+function frReplaceOne() {
+    if (!frState.query || frState.current < 0) { frGo(1); return; }   // 還沒定位 → 先幫使用者找一筆
+
+    const m = frState.matches[frState.current];
+    const f = frState.fields[m.fi];
+    const rep = qs('#findrep-replace-input').value;
+    const text = frGetText(f);
+
+    // 保險：定位後若內容又被改過，位置可能已失效，寧可不動也不要改錯地方
+    if (text.substr(m.start, frState.query.length).toLowerCase() !== frState.query.toLowerCase()) {
+        frSetStatus('⚠️ 內容已變動，請重新按「下一個」定位');
+        return;
+    }
+
+    frSetText(f, text.slice(0, m.start) + rep + text.slice(m.start + frState.query.length));
+    appendLog(`📝 尋找／取代：於「${f.label}」將「${frState.query}」取代為「${rep}」1 處。`);
+
+    // 從剛取代完的文字尾端繼續往下找（避免取代結果本身又被找到）
+    const resumeAt = m.start + rep.length;
+    frRescan();
+    frSeek({ fi: m.fi, start: resumeAt, end: resumeAt }, 1);
+}
+
+// 把「目前作用範圍內」所有命中一次取代掉（不分大小寫）。⚠️ 無法復原
+function frReplaceAll() {
+    if (frState.scope === 'fs' && !isFullscreenEditOpen()) {
+        frSetStatus('⚠️ 全畫面編輯彈窗已關閉，請重新開啟尋找面板');
+        return;
+    }
+    const q = qs('#findrep-find-input').value;
+    if (!q) { alert('請先在「尋找」欄輸入要被取代的文字。'); return; }
+    const rep = qs('#findrep-replace-input').value;
+
+    const scopeDesc = (frState.scope === 'fs')
+        ? '全畫面編輯彈窗內的所有「小節描述」與「內文」'
+        : '主介面的「粗綱／章標題／章描述／小節大綱／內文」';
+    if (!confirm(
+        `⚠️ 警告：即將把 ${scopeDesc} 中\n所有的「${q}」全部取代成「${rep}」。\n\n` +
+        `此操作【無法復原】（不能用 Ctrl+Z 還原），請謹慎使用！\n\n確定要執行嗎？`
+    )) return;
+
+    const fields = frBuildFields(frState.scope);
+    const rx = new RegExp(gsEscapeRegExp(q), 'gi');
+    let count = 0;
+    fields.forEach(f => {
+        const text = frGetText(f);
+        if (!text) return;
+        rx.lastIndex = 0;
+        const next = text.replace(rx, () => { count++; return rep; });
+        if (next !== text) frSetText(f, next, true);   // silent：先全部寫完，最後統一重繪
+    });
+
+    // 主介面情境才需要重繪（全畫面欄位在 frSetText 內已即時更新 textarea）
+    if (frState.scope !== 'fs') { renderChapters(); renderEditor(); }
+
+    appendLog(`📝 尋找／取代（${frState.scope === 'fs' ? '全畫面編輯' : '主介面'}）：` +
+        `已將「${q}」取代為「${rep}」，共 ${count} 處。`);
+    alert(`✅ 已完成取代，共 ${count} 處。`);
+
+    frRescan();
+    frUpdateCount();
+    frSetStatus(`已取代 ${count} 處`);
+}
+
+// ── 面板顯示 ───────────────────────────────────────────────────
+
+function frSetStatus(msg) {
+    const el = qs('#findrep-status');
+    if (el) el.textContent = msg;
+}
+
+// 更新「第幾筆 / 共幾筆」
+function frUpdateCount() {
+    const el = qs('#findrep-count');
+    if (!el) return;
+    el.textContent = frState.matches.length
+        ? `${frState.current >= 0 ? frState.current + 1 : 0} / ${frState.matches.length}`
+        : '';
+}
+
+// 展開／收合取代列
+function frToggleReplaceRow(show) {
+    const row = qs('#findrep-replace-row');
+    const open = (show !== undefined) ? show : (row.style.display === 'none');
+    row.style.display = open ? 'flex' : 'none';
+    qs('#findrep-toggle').textContent = open ? '▴' : '▾';
+}
+
+/**
+ * 開啟尋找／取代面板。
+ * @param {string} scope       'main' | 'fs'
+ * @param {boolean} showReplace true = 直接展開取代列（由「📝 取代...」進入）
+ * @param {HTMLElement} srcEl  開啟當下游標所在的輸入框，作為第一次搜尋的起點
+ */
+function openFindReplacePanel(scope, showReplace, srcEl) {
+    frState.scope = scope;
+    frState.fields = frBuildFields(scope);
+    frState.matches = [];
+    frState.current = -1;
+    frState.query = '';
+    frState.anchor = null;
+
+    // 記下開啟當下的游標位置：按下「下一個」時就從這裡開始往後找
+    if (srcEl) {
+        const fi = frState.fields.findIndex(f => frFieldElement(f) === srcEl);
+        if (fi >= 0) {
+            frState.anchor = { fi, start: srcEl.selectionStart || 0, end: srcEl.selectionEnd || 0 };
+        }
+    }
+
+    qs('#findrep-scope').textContent = (scope === 'fs') ? '（全畫面編輯彈窗）' : '（主介面）';
+    frToggleReplaceRow(!!showReplace);
+    frUpdateCount();
+    frSetStatus('尚未搜尋');
+
+    qs('#find-replace-panel').classList.remove('hidden');
+    const input = qs('#findrep-find-input');
+    input.focus();
+    input.select();
+}
+
+function closeFindReplacePanel() {
+    qs('#find-replace-panel')?.classList.add('hidden');
+}
+
+// ── 快顯功能表選單 ─────────────────────────────────────────────
+
+// 開啟選單當下鎖定的情境：{ scope, field, el, selStart, selEnd }
+let quickMenuCtx = null;
+
+/**
+ * 把彈出元素放到游標附近。
+ * 垂直位置沿用專案既有量法：把 textarea 內容截到游標處，此時 scrollHeight
+ * 就是游標所在行的像素高度；量完務必還原文字、選取範圍與捲動位置。
+ */
+function frPlaceAtCaret(box, el) {
+    // 先歸零再量尺寸，避免用到上次殘留的位置
+    box.style.left = '0px';
+    box.style.top = '0px';
+    const w = box.offsetWidth, h = box.offsetHeight;
+
+    let x, y;
+    if (el && el.tagName === 'TEXTAREA') {
+        const rect = el.getBoundingClientRect();
+        const full = el.value, ss = el.selectionStart, se = el.selectionEnd, st = el.scrollTop;
+        el.value = full.substring(0, ss);
+        const caretY = el.scrollHeight;
+        el.value = full;
+        el.setSelectionRange(ss, se);
+        el.scrollTop = st;
+        x = rect.left + 24;
+        y = rect.top + Math.min(rect.height, Math.max(0, caretY - st)) + 4;
+    } else if (el) {
+        const rect = el.getBoundingClientRect();
+        x = rect.left + 24;
+        y = rect.bottom + 4;
+    } else {
+        // 焦點不在任何輸入框 → 放在畫面中央偏上
+        x = window.innerWidth / 2 - w / 2;
+        y = window.innerHeight * 0.2;
+    }
+    box.style.left = Math.max(4, Math.min(window.innerWidth - w - 4, x)) + 'px';
+    box.style.top = Math.max(4, Math.min(window.innerHeight - h - 4, y)) + 'px';
+}
+
+function openQuickMenu() {
+    // 作用範圍：全畫面編輯彈窗開著就一律歸它，與主介面的任何輸入框無關
+    const scope = isFullscreenEditOpen() ? 'fs' : 'main';
+    const field = detectRefineField();
+
+    // 開啟當下就把欄位與選取範圍記起來：
+    // 之後點選單項目時焦點已離開原輸入框，屆時再抓就抓不到選取文字了
+    quickMenuCtx = {
+        scope, field,
+        el: field ? field.el : (document.activeElement?.tagName === 'TEXTAREA' ? document.activeElement : null),
+        selStart: field ? field.el.selectionStart : 0,
+        selEnd: field ? field.el.selectionEnd : 0
+    };
+
+    qs('#quick-menu-scope').textContent =
+        (scope === 'fs') ? '作用範圍：全畫面編輯彈窗' : '作用範圍：主介面';
+
+    const menu = qs('#quick-menu');
+    // 「全面搜尋」本質上是跨全部欄位的全域功能，無法侷限在全畫面編輯彈窗內，
+    // 且其面板 z-index(90) 低於彈窗，開了也會被蓋住 → 全畫面情境下直接隱藏此項
+    menu.querySelector('[data-action="global"]').style.display = (scope === 'fs') ? 'none' : 'flex';
+
+    menu.classList.remove('hidden');
+    frPlaceAtCaret(menu, quickMenuCtx.el);
+}
+
+function closeQuickMenu() {
+    qs('#quick-menu')?.classList.add('hidden');
+}
+
+// 執行選單項目
+function runQuickMenuAction(action) {
+    closeQuickMenu();
+    const ctx = quickMenuCtx || { scope: 'main', field: null, el: null, selStart: 0, selEnd: 0 };
+
+    if (action === 'global') { openGlobalSearchPanel(); return; }
+
+    // 尋找／取代不需要事先反白選取，隨時可開
+    if (action === 'find' || action === 'replace') {
+        openFindReplacePanel(ctx.scope, action === 'replace', ctx.el);
+        return;
+    }
+
+    // 四種 AI 加工：沿用熱鍵版的前提，必須先在輸入框中反白選取一段文字
+    const field = ctx.field;
+    if (!field) { alert('請先把游標放進可編輯的文字框，再使用加工功能。'); return; }
+    if (ctx.selStart === ctx.selEnd) { alert('請先在輸入框中反白選取一段文字，再使用加工功能。'); return; }
+
+    field.selStart = ctx.selStart;
+    field.selEnd = ctx.selEnd;
+    field.fullValue = field.el.value;
+    field.selectedText = field.fullValue.slice(ctx.selStart, ctx.selEnd);
+    openRefineModal(action, field);
+}
+
+// 初始化：Alt+A 熱鍵、選單點擊、尋找／取代面板的各按鈕
+function initQuickMenuAndFindReplace() {
+    // Alt+A 開啟快顯功能表（capture 階段攔截，避免被其他監聽器搶先）
+    document.addEventListener('keydown', (e) => {
+        if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+        if ((e.key || '').toLowerCase() !== 'a') return;
+        e.preventDefault();
+        e.stopPropagation();
+        openQuickMenu();
+    }, true);
+
+    // Esc 關閉快顯選單（面板本身有自己的關閉鈕，不在此一併關掉）
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeQuickMenu();
+    });
+
+    // 點選單以外的地方就收合
+    document.addEventListener('mousedown', (e) => {
+        const menu = qs('#quick-menu');
+        if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target)) closeQuickMenu();
+    });
+
+    // 選單項目：以事件委派處理，動作名稱寫在 data-action
+    qs('#quick-menu').addEventListener('click', (e) => {
+        const btn = e.target.closest('.qk-item');
+        if (btn) runQuickMenuAction(btn.dataset.action);
+    });
+
+    // 尋找／取代面板
+    qs('#findrep-next').addEventListener('click', () => frGo(1));
+    qs('#findrep-prev').addEventListener('click', () => frGo(-1));
+    qs('#findrep-close').addEventListener('click', closeFindReplacePanel);
+    qs('#findrep-toggle').addEventListener('click', () => frToggleReplaceRow());
+    qs('#findrep-btn-replace').addEventListener('click', frReplaceOne);
+    qs('#findrep-btn-replace-all').addEventListener('click', frReplaceAll);
+    qs('#findrep-find-input').addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        frGo(e.shiftKey ? -1 : 1);   // Enter = 下一個、Shift+Enter = 上一個
+    });
+
+    makePanelDraggable(qs('#find-replace-panel'), qs('#findrep-header'));
 }

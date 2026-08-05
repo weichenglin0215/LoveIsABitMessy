@@ -1018,7 +1018,7 @@
     </div>
   </div>
 
-  <!-- ── 彈窗：選取文字 AI 加工（擴寫／精簡／對白／視覺化改寫，由 Alt+P/S/T/A 觸發） ── -->
+  <!-- ── 彈窗：選取文字 AI 加工（擴寫／精簡／對白／視覺化改寫，由 Alt+P/S/T/Q 或 Alt+A 快顯功能表觸發） ── -->
   <div id="modal-refine" class="modal-overlay hidden">
     <div class="modal-box"
       style="width:min(94vw,1200px); max-width:none; padding:8px 24px; display:flex; flex-direction:column; gap:6px;">
@@ -1141,6 +1141,58 @@
     </div>
     <!-- 結果清單：依六大主要項目分組顯示 -->
     <div class="gs-results" id="gsearch-results"></div>
+  </div>
+
+  <!-- ── 快顯功能表選單（Alt+A 於游標附近彈出） ──
+       集中「尋找／取代／全面搜尋／四種 AI 加工」入口。
+       作用範圍由開啟當下決定：若「全畫面編輯」彈窗開著且焦點在其中，
+       則所有功能都只作用於該彈窗；否則作用於主介面的編輯欄位。 -->
+  <div id="quick-menu" class="qk-menu hidden">
+    <div class="qk-scope"><span class="title-hint" id="quick-menu-scope">主介面</span></div>
+    <button class="qk-item" data-action="find"><span>🔍 尋找...</span><span class="qk-key"></span></button>
+    <button class="qk-item" data-action="replace"><span>📝 取代...</span><span class="qk-key"></span></button>
+    <button class="qk-item" data-action="global"><span>🔎📝 全面搜尋/取代</span><span class="qk-key">Ctrl + Shift +
+        F</span></button>
+    <button class="qk-item" data-action="expand"><span>✨ 擴寫／優化</span><span class="qk-key">Alt + P</span></button>
+    <button class="qk-item" data-action="visual"><span>🎬 視覺化改寫</span><span class="qk-key">Alt + Q</span></button>
+    <button class="qk-item" data-action="condense"><span>✂️ 精簡字數</span><span class="qk-key">Alt + S</span></button>
+    <button class="qk-item" data-action="dialogue"><span>💬 對白優化</span><span class="qk-key">Alt + T</span></button>
+  </div>
+
+  <!-- ── 浮動小面板：尋找／取代（由快顯功能表的「🔍 尋找...」「📝 取代...」呼叫） ──
+       尋找列永遠顯示；取代列預設收合，選「📝 取代...」進入時自動展開。
+       搜尋順序：從目前游標所在欄位開始往下，找完自動接續下一個欄位並循環。 -->
+  <div id="find-replace-panel" class="fr-panel hidden">
+    <!-- 標題列：兼作拖曳把手，右側顯示目前作用範圍 -->
+    <div class="gs-header" id="findrep-header">
+      <span class="title-md">🔍 尋找／取代</span>
+      <span class="title-hint" id="findrep-scope">（主介面）</span>
+      <button class="btn-icon btn-icon-white" id="findrep-close" title="關閉此面板">❌</button>
+    </div>
+    <!-- 尋找列：關鍵字 + 上／下一個 + 命中計數 + 關閉 -->
+    <div class="gs-row">
+      <input type="text" id="findrep-find-input" class="w-fill" placeholder="尋找…（Enter 下一個）">
+      <span id="findrep-count" class="log-search-count"></span>
+      <button class="btn-icon btn-icon-white" id="findrep-prev" title="上一個（Shift+Enter）">▲</button>
+      <button class="btn-icon btn-icon-white" id="findrep-next" title="下一個（Enter）">▼</button>
+
+    </div>
+    <!-- 摺疊切換列：控制下方「取代列」的顯示與否 -->
+    <div class="gs-row">
+      <button class="btn-icon btn-icon-white" id="findrep-toggle" title="展開／收合取代列">▼</button>
+      <span class="title-hint">取代</span>
+    </div>
+    <!-- 取代列：預設收合 -->
+    <div class="gs-row" id="findrep-replace-row" style="display:none;">
+      <input type="text" id="findrep-replace-input" class="w-fill" placeholder="取代成…（可留空表示刪除）">
+      <button class="btn secondary-btn size-md" id="findrep-btn-replace" title="取代目前反白的這一筆，並跳到下一筆">取代</button>
+      <button class="btn secondary-btn size-md" id="findrep-btn-replace-all"
+        title="取代目前作用範圍內的全部命中（此操作無法復原）">全部取代</button>
+    </div>
+    <!-- 狀態列：顯示目前命中的位置說明 -->
+    <div class="gs-row">
+      <span class="title-hint" id="findrep-status">尚未搜尋</span>
+    </div>
   </div>
 
   <!-- 主要商業邏輯：AI呼叫、資料讀寫、角色卡渲染、章節樹狀結構管理等皆在此檔案中實作 -->

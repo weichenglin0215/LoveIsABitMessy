@@ -43,6 +43,8 @@ description: 開始任何任務前必讀，所有修改必須符合本規範
 | **比對欄內標籤** | `.cd-col-label` (+`.with-top`) `.cd-col-textarea` | daily_run 比對日記彈窗內，「故事 / 圖片提示詞 / AI 參數」三段標籤與平面 textarea |
 | **全面搜尋面板** | `.gs-panel` (+`.hidden`) `.gs-header` `.gs-row` `.gs-results` `.gs-cat-header` `.gs-cat-count` `.gs-item` `.gs-loc` | novel_generator 的 Ctrl+Shift+F 浮動搜尋面板（非 modal、可拖曳；`z-index:90` 低於 `.modal-overlay`。因專案 `.hidden` 僅對 `.modal-overlay` 生效，故另定義 `.gs-panel.hidden`） |
 | **全畫面編輯** | `.fs-body` `.fs-row` `.fs-chapter` `.fs-desc` `.fs-content` `.fs-row-resizer` | novel_generator「全畫面編輯」彈窗：每小節一橫行（章編號直排／小節描述 1/3 寬／內文），行間夾可上下拖曳的分隔線；外層沿用既有 `.cmp-modal` + `.cmp-toolbar`，`.fs-body` 捲動軸覆寫為 12px |
+| **尋找／取代面板** | `.fr-panel` (+`.hidden`) | novel_generator 由 Alt+A 快顯功能表呼叫的小型浮動面板（420px 寬、可拖曳）；內部列沿用 `.gs-header` / `.gs-row`。`z-index:120` **高於** `.modal-overlay`(100)，這樣「全畫面編輯」彈窗開著時仍能操作 |
+| **快顯功能表選單** | `.qk-menu` (+`.hidden`) `.qk-scope` `.qk-item` `.qk-key` | novel_generator 的 Alt+A 選單，於游標附近彈出；`.qk-scope` 顯示作用範圍（主介面／全畫面編輯），`.qk-item` 左名稱右熱鍵（`.qk-key`）。`z-index:130` 高於 `.fr-panel` |
 
 ### 三、新增 class 的時機與規範
 
