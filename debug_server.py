@@ -613,8 +613,6 @@ def _ollama_generate_direct(model, prompt, options=None, images=None, on_chunk=N
         "top_k": 40,
         "top_p": 0.9,
         "num_gpu": 999, #強制所有資料放入GPU跟VRAM。
-        "think": False, #不顯示運算過程，沒作用。
-        "thinking": False #不顯示運算過程，沒作用。
     }
     
     # 合併外部傳入的 options（不修改原始 dict）
@@ -641,6 +639,10 @@ def _ollama_generate_direct(model, prompt, options=None, images=None, on_chunk=N
     #"keep_alive": -1,
     "keep_alive": "10m",
     "stream": stream_val,
+    # think 是與 options 同層的頂層參數（非 sampling 超參數），放進 options 裡 Ollama 會直接忽略。
+    # 對支援 thinking 開關的模型（qwen3、deepseek-r1 等）有效：關閉後思考內容不會混進 response，
+    # 從源頭避免 <think>...</think> 污染回傳文字，不再只能仰賴 _try_repair_json() 事後剝除。
+    "think": False,
     "options": default_options
     }
 
