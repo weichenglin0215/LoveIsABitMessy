@@ -45,6 +45,8 @@ description: 開始任何任務前必讀，所有修改必須符合本規範
 | **全畫面編輯** | `.fs-body` `.fs-row` `.fs-chapter` `.fs-desc` `.fs-content` `.fs-row-resizer` | novel_generator「全畫面編輯」彈窗：每小節一橫行（章編號直排／小節描述 1/3 寬／內文），行間夾可上下拖曳的分隔線；外層沿用既有 `.cmp-modal` + `.cmp-toolbar`，`.fs-body` 捲動軸覆寫為 12px |
 | **尋找／取代面板** | `.fr-panel` (+`.hidden`) | novel_generator 由 Alt+A 快顯功能表呼叫的小型浮動面板（420px 寬、可拖曳）；內部列沿用 `.gs-header` / `.gs-row`。`z-index:120` **高於** `.modal-overlay`(100)，這樣「全畫面編輯」彈窗開著時仍能操作 |
 | **快顯功能表選單** | `.qk-menu` (+`.hidden`) `.qk-scope` `.qk-item` `.qk-key` | novel_generator 的 Alt+A 選單，於游標附近彈出；`.qk-scope` 顯示作用範圍（主介面／全畫面編輯），`.qk-item` 左名稱右熱鍵（`.qk-key`）。`z-index:130` 高於 `.fr-panel` |
+| **內文編輯器橫向分隔線** | `.editor-side-resizer` | novel_generator「🖋️內文」欄，`#active-section-title`（節標題）與 `#main-editor`（內文）之間可拖曳的分隔線，外觀沿用全畫面編輯 `.fs-row-resizer` 的樣式；預設節標題佔 1/3、內文佔 2/3（`#editor-side` 改為直向 flex 容器，欄位本身不再捲動） |
+| **全畫面編輯章編號 tooltip** | `.fs-chapter-tooltip` (+`.hidden`) | novel_generator 全畫面編輯彈窗，滑鼠移入左側「第X章」直排欄時顯示的自訂浮動框（跟隨游標定位），取代原生 `title` 屬性以便控制字級（`--font-size-lg`）；內容含章節編號／章標題／章描述，`white-space:pre-line` 換行顯示 |
 
 ### 三、新增 class 的時機與規範
 

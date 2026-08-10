@@ -533,6 +533,9 @@ function renderCharacters() {
 // 繪製左側章節/小節列表，包含拖曳排序把手、鎖定按鈕、AI大綱按鈕、刪除按鈕
 function renderChapters() {
     const container = qs('#chapter-list');
+    // 重繪前先記住每個「章描述」目前的實際高度（使用者可能用 resize 把手手動調整過），
+    // 重繪後依相同順序還原，避免點選任何小節都會讓已調整過的高度被打回原狀
+    const descHeights = Array.from(container.querySelectorAll('.chapter-desc')).map(ta => ta.offsetHeight);
     container.innerHTML = "";
     state.chapters.forEach((ch, chIdx) => {
         const div = document.createElement('div');
@@ -582,6 +585,10 @@ function renderChapters() {
             </div>
         `;
         container.appendChild(div);
+    });
+    // 還原重繪前記住的「章描述」高度（沒有記錄到的新章節維持 CSS 預設高度）
+    container.querySelectorAll('.chapter-desc').forEach((ta, idx) => {
+        if (descHeights[idx]) ta.style.height = descHeights[idx] + 'px';
     });
 }
 
@@ -813,6 +820,7 @@ function setupEventListeners() {
     qs('#webre-search-prev').addEventListener('click', () => goToWebRewriteMatch(webRewriteCurrentMatch - 1));
     qs('#webre-search-next').addEventListener('click', () => goToWebRewriteMatch(webRewriteCurrentMatch + 1));
     initWebRewriteResizer();
+    initEditorSideResizer();
 
     // 🔎 全面搜尋（Ctrl+Shift+F）：熱鍵、面板按鈕、結果點擊、拖曳
     initGlobalSearch();
@@ -3822,6 +3830,46 @@ function goToWebRewriteMatch(idx) {
 }
 
 // 上下欄拖曳分隔
+/**
+ * 「🖋️內文」欄：節標題／內文之間的拖曳分隔線。
+ * 拖曳時把兩個 textarea 都改成固定像素高度（flex:0 0 Npx），跳脫預設的 1/3｜2/3 比例，
+ * 做法與 initWebRewriteResizer() / review-resizer 相同。
+ */
+function initEditorSideResizer() {
+    const resizer = qs('#editor-side-resizer');
+    const topBox = qs('#active-section-title');
+    const botBox = qs('#main-editor');
+    const container = qs('#editor-side');
+    if (!resizer || !topBox || !botBox || !container) return;
+
+    resizer.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        resizer.classList.add('resizing');
+        document.body.style.userSelect = 'none';
+
+        const containerRect = container.getBoundingClientRect();
+        const resizerH = resizer.offsetHeight;
+
+        const onMove = (ev) => {
+            const relY = ev.clientY - containerRect.top;
+            const total = containerRect.height - resizerH;
+            const minH = 60;
+            const topH = Math.max(minH, Math.min(relY, total - minH));
+            const botH = total - topH;
+            topBox.style.flex = `0 0 ${topH}px`;
+            botBox.style.flex = `0 0 ${botH}px`;
+        };
+        const onUp = () => {
+            resizer.classList.remove('resizing');
+            document.body.style.userSelect = '';
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+}
+
 function initWebRewriteResizer() {
     const resizer = qs('#webre-resizer');
     const topCol = qs('#webre-col-instruction');
@@ -4688,7 +4736,9 @@ function renderFullscreenEditor() {
             const chapterCell = document.createElement('div');
             chapterCell.className = 'fs-chapter';
             chapterCell.textContent = `第${fsNumberToChinese(ci + 1)}章`;
-            chapterCell.title = `第${ci + 1}章 第${si + 1}節：${ch.title || ''}`;
+            // 用自訂 tooltip 取代原生 title：原生 title 的字級無法用 CSS 控制，
+            // 而使用者要求 tooltip 文字改用 --font-size-lg，故改存在 data 屬性，交給 fs-chapter-tooltip 顯示
+            chapterCell.dataset.tooltip = `第${ci + 1}章 第${si + 1}節：${ch.title || ''}\n${ch.description || ''}`;
 
             // 中：小節描述（對應 sec.title）
             const descTa = document.createElement('textarea');
@@ -4806,6 +4856,7 @@ function closeFullscreenEditModal() {
     // 若「尋找／取代」面板正作用於本彈窗，一併關閉；否則它記錄的欄位全部失效
     if (frState.scope === 'fs') closeFindReplacePanel();
     closeQuickMenu();
+    qs('#fsedit-chapter-tooltip')?.classList.add('hidden');
     // 關閉時整批重繪主介面，讓章節樹的完成狀態(✓)與編輯器內容完全同步
     renderChapters();
     renderEditor();
@@ -4859,6 +4910,26 @@ function goToFullscreenEditMatch(idx) {
     qs('#fsedit-search-count').textContent = `${fsEditCurrentMatch + 1} / ${fsEditMatches.length}`;
 }
 
+// 取得（必要時建立）「第X章」自訂 tooltip 的浮動框元素，全彈窗共用同一個
+function fsChapterTooltipEl() {
+    let el = qs('#fsedit-chapter-tooltip');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'fsedit-chapter-tooltip';
+        el.className = 'fs-chapter-tooltip hidden';
+        document.body.appendChild(el);
+    }
+    return el;
+}
+
+// 依游標位置定位 tooltip，並保留 8px 邊界避免超出視窗
+function fsPositionChapterTooltip(el, e) {
+    const x = Math.min(window.innerWidth - el.offsetWidth - 8, e.clientX + 16);
+    const y = Math.min(window.innerHeight - el.offsetHeight - 8, e.clientY + 16);
+    el.style.left = Math.max(8, x) + 'px';
+    el.style.top = Math.max(8, y) + 'px';
+}
+
 // 初始化全畫面編輯：開關按鈕、輸入同步、搜尋列
 function initFullscreenEdit() {
     qs('#btn-fullscreen-edit').addEventListener('click', openFullscreenEditModal);
@@ -4872,6 +4943,26 @@ function initFullscreenEdit() {
     });
     qs('#fsedit-search-prev').addEventListener('click', () => goToFullscreenEditMatch(fsEditCurrentMatch - 1));
     qs('#fsedit-search-next').addEventListener('click', () => goToFullscreenEditMatch(fsEditCurrentMatch + 1));
+
+    // 「第X章」自訂 tooltip：事件委派，滑入顯示／跟隨游標移動／滑出隱藏
+    const body = qs('#fsedit-body');
+    body.addEventListener('mouseover', (e) => {
+        const cell = e.target.closest('.fs-chapter');
+        if (!cell) return;
+        const tip = fsChapterTooltipEl();
+        tip.textContent = cell.dataset.tooltip || '';
+        tip.classList.remove('hidden');
+        fsPositionChapterTooltip(tip, e);
+    });
+    body.addEventListener('mousemove', (e) => {
+        const cell = e.target.closest('.fs-chapter');
+        if (!cell) return;
+        fsPositionChapterTooltip(fsChapterTooltipEl(), e);
+    });
+    body.addEventListener('mouseout', (e) => {
+        const cell = e.target.closest('.fs-chapter');
+        if (cell && !cell.contains(e.relatedTarget)) fsChapterTooltipEl().classList.add('hidden');
+    });
 }
 
 

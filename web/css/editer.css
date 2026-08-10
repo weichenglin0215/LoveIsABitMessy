@@ -900,7 +900,8 @@ textarea#main-editor:focus {
 /* .story-premise-textarea：故事粗綱，撐滿 */
 .story-premise-textarea {
   height: 100%;
-  padding: 15px;
+  width: 96%;
+  padding: var(--pad-both-md);
   box-sizing: border-box;
   color: #eee;
 }
@@ -1410,10 +1411,15 @@ body.daily-page .ai-btn {
   position: relative;
 }
 
-/* 收合狀態：隱藏標題與捲動內容區 */
+/* 收合狀態：隱藏標題與粗綱文字框（textarea 已直接是 .col 的子層，不再另包一層 .scroll-area） */
 #story-premise-container.collapsed .col-header h3,
-#story-premise-container.collapsed .scroll-area {
+#story-premise-container.collapsed #story-premise {
   display: none;
+}
+
+/* 粗綱文字框直接當 .col 的 flex 子層撐滿高度＋自帶捲動軸，外圍補回原本 .scroll-area 的留白 */
+#story-premise {
+  margin: var(--pad-both-md);
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -1720,10 +1726,6 @@ body.daily-page .ai-btn {
   align-items: center;
   gap: var(--gap-sm);
   margin-left: auto;
-}
-
-#active-section-title {
-  height: 300px;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -2804,9 +2806,9 @@ body.daily-page .ai-btn {
   box-sizing: border-box;
 }
 
-/* 最左側章編號：僅一個字寬，文字直排顯示（例：第十五章） */
+/* 最左側章編號：僅一個字寬，文字直排顯示（例：第十五章）；字級放大方便辨識，寬度隨之加大避免擠壓 */
 .fs-chapter {
-  flex: 0 0 1.6rem;
+  flex: 0 0 2.6rem;
   writing-mode: vertical-rl;
   text-orientation: upright;
   letter-spacing: 1px;
@@ -2814,7 +2816,7 @@ body.daily-page .ai-btn {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xl);
   color: var(--c-accent-field-label);
   background: var(--c-bg-card);
   border-radius: var(--radius-2xs);
@@ -2930,4 +2932,65 @@ body.daily-page .ai-btn {
   color: var(--c-text-sec);
   font-family: var(--font-mono);
   font-weight: bold;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   54. 內文編輯器欄：節標題／內文之間的可拖曳分隔線（novel_generator）
+        ── #editor-side 改為直向 flex 容器，兩個 textarea 撐滿整欄、
+           欄本身不再捲動；預設節標題佔 1/3、內文佔 2/3，
+           中間夾一條可上下拖曳的分隔線調整比例（外觀沿用全畫面編輯的橫行分隔線）──
+───────────────────────────────────────────────────────────── */
+#editor-side {
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+}
+
+/* 節標題：預設佔 1/3 高度；改用拖曳分隔線調整，故關閉原生 resize 把手 */
+#active-section-title {
+  flex: 0 0 33%;
+  resize: none;
+}
+
+/* 內文：flex:1（沿用既有規則）吃掉剩餘 2/3 高度；同樣關閉原生 resize 把手 */
+#editor-side textarea#main-editor {
+  resize: none;
+}
+
+.editor-side-resizer {
+  height: 6px;
+  flex-shrink: 0;
+  cursor: row-resize;
+  background: var(--c-border);
+  opacity: 0.5;
+}
+
+.editor-side-resizer:hover,
+.editor-side-resizer.resizing {
+  opacity: 1;
+  background: var(--c-accent);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   55. 全畫面編輯「第X章」自訂 tooltip（novel_generator）
+        ── 原生 title 屬性字級無法用 CSS 調整，改用滑鼠移入時顯示的自訂浮動框，
+           跟隨游標定位，文字尺寸可控（--font-size-lg）──
+───────────────────────────────────────────────────────────── */
+.fs-chapter-tooltip {
+  position: fixed;
+  z-index: 140;
+  max-width: 480px;
+  padding: var(--pad-both-sm);
+  background: var(--c-bg-panel);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.66);
+  font-size: var(--font-size-lg);
+  color: var(--c-text-main);
+  white-space: pre-line;
+  pointer-events: none;
+}
+
+.fs-chapter-tooltip.hidden {
+  display: none;
 }
