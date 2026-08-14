@@ -786,14 +786,18 @@
           <div class="cmp-col-header">
             <span class="title-md">✏️ 使用者編輯提示詞（勾選「使用者編輯提示詞」時送給 AI，專案儲存內容）</span>
             <label class="cmp-label" style="margin-left:12px;">評論立場：</label>
-            <label class="checkbox-label review-mode-toggle" title="使用 NovelReviewSkill 目錄中勾選的 .md 提示詞來評審（與右側選項二擇一）">
-              <input type="checkbox" id="review-use-skills" checked>
-              <span>使用NovelReviewSkill列表</span>
-            </label>
-            <label class="checkbox-label review-mode-toggle" title="使用下方文字框中由使用者自行編輯的提示詞來評審（與左側選項二擇一）">
-              <input type="checkbox" id="review-use-custom">
-              <span>使用者編輯提示詞</span>
-            </label>
+            <!-- 兩者互斥的模式切換：外觀改為膠囊型分段按鈕（參考 Japanese50Sounds 的 .script-toggle/.toggle-btn 樣式，
+                 顏色沿用本專案 .secondary-btn），底層仍是兩個 checkbox（用 CSS 隱藏），JS 讀寫邏輯完全不變 -->
+            <div class="review-stance-toggle-group" role="group" aria-label="評論立場切換">
+              <label class="review-stance-toggle" title="使用 NovelReviewSkill 目錄中勾選的 .md 提示詞來評審（與右側選項二擇一）">
+                <input type="checkbox" id="review-use-skills" checked>
+                <span>使用NovelReviewSkill列表</span>
+              </label>
+              <label class="review-stance-toggle" title="使用下方文字框中由使用者自行編輯的提示詞來評審（與左側選項二擇一）">
+                <input type="checkbox" id="review-use-custom">
+                <span>使用者編輯提示詞</span>
+              </label>
+            </div>
             <button class="btn secondary-btn" id="btn-open-review-skills"
               title="開啟 NovelReviewSkill 提示詞清單，勾選要參與評審的立場">📋 開啟NovelReviewSkill列表</button>
             <button class="btn secondary-btn" id="btn-reset-review-prompt" title="將下方「使用者編輯提示詞」重置為程式預設骨架">♻️
@@ -843,11 +847,11 @@
           <div id="review-skills-list" class="cmp-content" style="overflow-y:auto; padding:6px;"></div>
           <!-- 左下方兩個附加選項 -->
           <div class="cmp-col-header" style="flex-direction:column; align-items:stretch; gap:4px;">
-            <label class="checkbox-label review-mode-toggle" title="除了上方勾選的 .md，另把「使用者編輯提示詞」也當成一位評審">
+            <label class="checkbox-label review-option-toggle" title="除了上方勾選的 .md，另把「使用者編輯提示詞」也當成一位評審">
               <input type="checkbox" id="review-include-custom" checked>
               <span>加入「評論使用者自訂提示詞」</span>
             </label>
-            <label class="checkbox-label review-mode-toggle" title="全部評審跑完後，再請 AI 把所有意見整合成一份最終評審意見">
+            <label class="checkbox-label review-option-toggle" title="全部評審跑完後，再請 AI 把所有意見整合成一份最終評審意見">
               <input type="checkbox" id="review-final-synthesis" checked>
               <span>將以上評論意見整合成一份「最終評審意見」</span>
             </label>

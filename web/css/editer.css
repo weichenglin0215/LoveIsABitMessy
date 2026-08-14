@@ -56,8 +56,9 @@
   /* hover 反色文字 */
 
   /* ── 狀態色 ── */
-  --c-ok: #4caf50;
-  --c-err: #f44336;
+  --c-ok: hsl(122, 39%, 50%);
+  --c-err: hsl(4, 90%, 60%);
+  --c-err-dark: hsl(4, 90%, 20%);
   --c-log-text: hsl(120, 50%, 70%);
 
   /* ── 訊息氣泡（loveline）── */
@@ -640,12 +641,12 @@ input.input-num-sm {
   border-radius: 0;
 }
 
-/* 評論小說：「使用NovelReviewSkill列表」／「使用者編輯提示詞」互斥 Toggle 標籤，字級與勾選框同步放大以利辨識 */
-.review-mode-toggle {
+/* 評論小說：「加入使用者自訂提示詞」／「整合最終評審意見」兩個獨立勾選框，字級與勾選框同步放大以利辨識 */
+.review-option-toggle {
   font-size: var(--font-size-lg);
 }
 
-.review-mode-toggle input[type="checkbox"] {
+.review-option-toggle input[type="checkbox"] {
   width: var(--font-size-lg);
   height: var(--font-size-lg);
 }
@@ -1100,10 +1101,11 @@ body.daily-page .ai-btn {
 }
 
 /* ── 幽靈圖示按鈕（透明底，hover 微亮）──
-   .btn-icon / .btn-lock-ch / .sec-lock / .btn-remove-char */
+   .btn-icon / .btn-lock-ch / .sec-lock / .btn-remove-char / .no-export-toggle */
 .btn-icon,
 .btn-lock-ch,
 .sec-lock,
+.no-export-toggle,
 .btn-remove-char {
   background: none;
   border: none;
@@ -1119,8 +1121,11 @@ body.daily-page .ai-btn {
   color: var(--c-text-main);
 }
 
+/* .no-export-toggle（🔕）與鎖頭按鈕尺寸一致：同字級、同 padding，僅以亮度(opacity，由 JS 內嵌 style 控制)表示開關狀態，
+   不使用勾選框，外觀與 .btn-lock-ch / .sec-lock 完全對齊 */
 .btn-lock-ch,
-.sec-lock {
+.sec-lock,
+.no-export-toggle {
   color: var(--c-text-sec);
   padding: 0 var(--gap-sm);
 }
@@ -2993,4 +2998,79 @@ body.daily-page .ai-btn {
 
 .fs-chapter-tooltip.hidden {
   display: none;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   56. 🔕 禁止匯出（novel_generator）
+        ── 章／小節各自獨立的旗標，只影響「📤 匯出小說」，
+           與儲存本機／雲端檔案無關（被標記的內容仍會完整存檔）──
+───────────────────────────────────────────────────────────── */
+/* 章標題列與小節列上的 🔕 按鈕：外觀與尺寸已併入上方 § 15「幽靈圖示按鈕」共用規則
+   （.btn-icon / .btn-lock-ch / .sec-lock / .no-export-toggle），與 🔓/🔒 鎖頭按鈕完全同尺寸；
+   開關狀態純以 opacity 表示（值由 JS 內嵌 style 決定），不使用勾選框 */
+
+/* 全畫面編輯：禁止匯出的橫行，大綱與內文欄一律改用紅色邊框提醒 */
+.fs-row.no-export .fs-desc,
+.fs-row.no-export .fs-content {
+  border-color: var(--c-err-dark);
+}
+
+/* 全畫面編輯：章編號框上緣的 🔕 標記（純顯示，不可勾選） */
+.fs-chapter {
+  position: relative;
+}
+
+.fs-noexport-badge {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  /* 章編號是直排（vertical-rl + upright），標記本身要轉回橫排才不會被旋轉 */
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
+  font-size: var(--font-size-md);
+  line-height: 1;
+  pointer-events: none;
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   57. 評論小說「評論立場」互斥切換：膠囊型分段按鈕（novel_generator）
+        ── 「使用NovelReviewSkill列表」／「使用者編輯提示詞」二擇一，
+           外觀參考 Japanese50Sounds 的 .script-toggle/.toggle-btn（外框膠囊＋選中反白），
+           顏色沿用本專案 .secondary-btn 的配色；底層仍是兩個 checkbox（用 CSS 隱藏），
+           JS 的讀寫邏輯（qs('#review-use-skills').checked 等）完全不受影響 ──
+───────────────────────────────────────────────────────────── */
+.review-stance-toggle-group {
+  display: inline-flex;
+  border: 0.125rem solid var(--c-secondary-light);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.review-stance-toggle {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: var(--pad-both-xs) var(--pad-both-md);
+  font-size: var(--font-size-md);
+  color: var(--c-secondary-light);
+  background: var(--c-bg-card);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+/* 勾選框本身完全隱藏，只保留在 DOM 中供 JS 讀寫狀態 */
+.review-stance-toggle input[type="checkbox"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 目前選中的那一項：底色轉為 secondary 主色、文字轉白，與未選中的項目做出對比 */
+.review-stance-toggle:has(input:checked) {
+  background: var(--c-secondary);
+  color: var(--c-text-main);
 }

@@ -548,6 +548,9 @@ function renderChapters() {
                 <span class="chapter-drag-handle" title="拖曳以調整章的順序"
                       draggable="true" ondragstart="handleChapterDragStart(event, ${chIdx})"
                       style="cursor:grab; user-select:none; padding:0 4px;">⠿</span>
+                <span class="lock-btn no-export-toggle" title="🔕 禁止匯出：點擊切換後，本章（含所有小節）在「📤 匯出小說」時會被略過。此設定不影響儲存檔案，章節內容仍會完整存進本機與雲端。"
+                      style="opacity: ${ch.noExport ? '1' : '0.5'}"
+                      onclick="toggleChapterNoExport(${chIdx})">🔕</span>
                 <span class="lock-btn btn-lock-ch" title="鎖定後將不會被 AI 覆蓋章標題、章描述、小節大綱（並會一併鎖定/解鎖本章所有小節）"
                       style="opacity: ${ch.locked ? '1' : '0.5'}"
                       onclick="toggleChapterLock(${chIdx})">
@@ -559,11 +562,14 @@ function renderChapters() {
             </div>
             <textarea class="chapter-desc" placeholder="輸入本章大綱說明（AI 將以此產生小節）..." 
                       onchange="state.chapters[${chIdx}].description = this.value">${ch.description || ""}</textarea>
-            <div class="section-list">
+            <div class="section-list"
+                 ondragover="event.preventDefault()"
+                 ondrop="handleSectionDropToChapter(event, ${chIdx})">
                 ${ch.sections.map((sec, secIdx) => `
-                    <div class="section-item ${state.activeIndex.chapter === chIdx && state.activeIndex.section === secIdx ? 'active' : ''}" 
+                    <div class="section-item ${state.activeIndex.chapter === chIdx && state.activeIndex.section === secIdx ? 'active' : ''}"
                          draggable="true"
                          ondragstart="handleDragStart(event, ${chIdx}, ${secIdx})"
+                         ondragend="dragData = null"
                          ondragover="event.preventDefault()"
                          ondrop="handleDrop(event, ${chIdx}, ${secIdx})"
                          onclick="setActive(${chIdx}, ${secIdx})">
@@ -572,6 +578,10 @@ function renderChapters() {
                         </span>
                         <span class="sec-status-icon" style="color:${sec.content ? 'var(--c-ok)' : '#666'};">${sec.content ? '✓' : '...'}</span>
                         <div class="sec-actions">
+                            <span class="lock-btn sec-lock no-export-toggle"
+                                  title="🔕 禁止匯出：點擊切換後，本小節（大綱與內文）在「📤 匯出小說」時會被略過。此設定不影響儲存檔案，內容仍會完整存進本機與雲端。"
+                                  style="opacity: ${sec.noExport ? '1' : '0.5'}"
+                                  onclick="event.stopPropagation(); toggleSectionNoExport(${chIdx}, ${secIdx})">🔕</span>
                             <span class="lock-btn sec-lock" title="鎖定後將不會被 AI 重寫"
                                   style="opacity: ${sec.locked ? '1' : '0.5'}" 
                                   onclick="event.stopPropagation(); toggleLock(${chIdx}, ${secIdx})">
@@ -994,6 +1004,32 @@ function toggleChapterLock(chIdx) {
     renderChapters();
 }
 
+// ── 🔕 禁止匯出 ──
+// ⚠️ 這個旗標「只」影響「📤 匯出小說」，與儲存本機／雲端檔案完全無關：
+//    被標記的章節仍會完整存進 state 與 edit_data，只是匯出成品小說時會被略過，
+//    讓作者可以保留還在猶豫、不想放進成品的段落。
+
+// 切換整章是否禁止匯出（不連動小節，兩者為各自獨立的旗標）；外觀比照鎖頭按鈕，點擊即切換
+function toggleChapterNoExport(chIdx) {
+    const ch = state.chapters[chIdx];
+    if (!ch) return;
+    ch.noExport = !ch.noExport;
+    renderChapters();
+}
+
+// 切換單一小節（大綱與內文）是否禁止匯出
+function toggleSectionNoExport(chIdx, secIdx) {
+    const sec = state.chapters[chIdx]?.sections?.[secIdx];
+    if (!sec) return;
+    sec.noExport = !sec.noExport;
+    renderChapters();
+}
+
+// 該小節「實際上」會不會被匯出：整章被標記時，章內所有小節一律視為禁止匯出
+function isSectionNoExport(ch, sec) {
+    return !!(ch?.noExport || sec?.noExport);
+}
+
 // 一次上鎖所有章與所有小節；若目前全部已上鎖則改為全部解鎖
 function toggleAllLocks() {
     const allLocked = state.chapters.length > 0 &&
@@ -1046,36 +1082,65 @@ let dragData = null; // 暫存目前正在拖曳的小節（章節索引＋小�
 function handleDragStart(e, chIdx, secIdx) {
     dragData = { chIdx, secIdx };
     e.dataTransfer.setData('text/plain', ''); // 必需
+    e.dataTransfer.effectAllowed = 'move';
 }
 
-// 放開拖曳的小節：僅允許同一章內搬移順序，並同步更新目前選取索引
+// 放開拖曳的小節到另一個小節上：插入到該小節的位置（可跨章）
 function handleDrop(e, chIdx, targetSecIdx) {
     if (!dragData) return; // 若是拖曳整章則交由 chapter-card 的 handleChapterDrop 處理
     e.preventDefault();
     e.stopPropagation(); // 小節拖放時避免同時觸發整章的放置處理
-    if (dragData.chIdx !== chIdx) {
-        alert("目前僅支援在同一個章節內移動小節位置。");
-        return;
-    }
-
-    const sections = state.chapters[chIdx].sections;
-    const item = sections.splice(dragData.secIdx, 1)[0];
-    sections.splice(targetSecIdx, 0, item);
-
-    // 如果移動的是當前選取的 section，更新 activeIndex
-    if (state.activeIndex.chapter === chIdx) {
-        if (state.activeIndex.section === dragData.secIdx) {
-            state.activeIndex.section = targetSecIdx;
-        } else if (dragData.secIdx < state.activeIndex.section && targetSecIdx >= state.activeIndex.section) {
-            state.activeIndex.section--;
-        } else if (dragData.secIdx > state.activeIndex.section && targetSecIdx <= state.activeIndex.section) {
-            state.activeIndex.section++;
-        }
-    }
-
+    moveSection(dragData.chIdx, dragData.secIdx, chIdx, targetSecIdx);
     dragData = null;
+}
+
+/**
+ * 放開拖曳的小節到某一章的小節清單「空白處」：附加到該章最後（可跨章）。
+ * 沒有這個放置區的話，空章節（一個小節都沒有）就永遠無法被拖入小節。
+ */
+function handleSectionDropToChapter(e, chIdx) {
+    if (!dragData) return;
+    e.preventDefault();
+    e.stopPropagation();
+    // 同章拖到自己章的空白處視為「移到最後」；跨章則附加到目標章末端
+    const dst = state.chapters[chIdx]?.sections;
+    if (dst) moveSection(dragData.chIdx, dragData.secIdx, chIdx, dst.length);
+    dragData = null;
+}
+
+/**
+ * 把小節從 (fromCh, fromSec) 搬到 (toCh, toSec)，支援跨章搬移。
+ * ⚠️ 搬移後「目前選取的小節」以物件參照重新定位，而不是用索引加減推算——
+ *    跨章搬移時前後索引關係太複雜，用參照比對才不會選錯節。
+ */
+function moveSection(fromCh, fromSec, toCh, toSec) {
+    const srcSections = state.chapters[fromCh]?.sections;
+    const dstSections = state.chapters[toCh]?.sections;
+    if (!srcSections || !dstSections) return;
+    if (fromCh === toCh && fromSec === toSec) return;
+
+    // 先記住目前選取的小節物件本身（搬移後再找回它的新位置）
+    const activeSec = state.chapters[state.activeIndex.chapter]?.sections?.[state.activeIndex.section] || null;
+
+    const item = srcSections.splice(fromSec, 1)[0];
+    dstSections.splice(toSec, 0, item);
+
+    restoreActiveSectionByRef(activeSec);
+
     renderChapters();
     renderEditor();
+}
+
+// 依小節物件參照，重新找出它現在位於第幾章第幾節並更新 state.activeIndex
+function restoreActiveSectionByRef(secRef) {
+    if (!secRef) return;
+    for (let ci = 0; ci < state.chapters.length; ci++) {
+        const si = (state.chapters[ci].sections || []).indexOf(secRef);
+        if (si >= 0) {
+            state.activeIndex = { chapter: ci, section: si };
+            return;
+        }
+    }
 }
 
 // ====== AI 功能 (串接 debug_server.py) ======
@@ -1553,17 +1618,41 @@ async function aiGenChaptersFromPremise(skipConfirm = false) {
     }
 }
 
+// 統計本次匯出被「🔕 禁止匯出」略過的章數與節數，用來在 LOG 提醒使用者
+function countNoExportSkipped() {
+    let chapters = 0, sections = 0;
+    (state.chapters || []).forEach(ch => {
+        if (ch.noExport) {
+            chapters++;
+            sections += (ch.sections || []).length;   // 整章略過 = 章內所有小節都沒匯出
+        } else {
+            sections += (ch.sections || []).filter(sec => sec.noExport).length;
+        }
+    });
+    return { chapters, sections };
+}
+
+// 在 LOG 補上一行略過統計（沒有任何項目被略過時不輸出，避免洗版）
+function logNoExportSkipped() {
+    const { chapters, sections } = countNoExportSkipped();
+    if (!chapters && !sections) return;
+    appendLog(`>> 🔕 禁止匯出：本次略過 ${chapters} 章、${sections} 個小節（內容仍完整保留在專案中，不影響儲存）。`);
+}
+
 // 匯出「章標題 + 內文」的一般小說格式（不含粗綱、章描述、節標題、作者備註）
 function exportNovelSimple() {
     let md = `# ${state.bookTitle}\n\n`;
     state.chapters.forEach(ch => {
+        if (ch.noExport) return;                       // 🔕 整章禁止匯出
         md += `## ${ch.title}\n\n`;
         ch.sections.forEach(sec => {
+            if (sec.noExport) return;                  // 🔕 單一小節禁止匯出
             if (sec.content && sec.content.trim()) md += `${sec.content.trim()}\n\n`;
         });
     });
     downloadMarkdown(`${sanitizeFilename(state.bookTitle) || 'novel'}.md`, md);
     appendLog(">> 小說已匯出（章標題＋內文，一般小說格式）。");
+    logNoExportSkipped();
 }
 
 // 匯出完整資料：粗綱 + 各章（章描述）+ 各節（節標題）+ 內文 + 作者備註
@@ -1572,9 +1661,11 @@ function exportNovelFull() {
     md += `## 故事粗綱\n${state.storyPremise}\n\n`;
 
     state.chapters.forEach(ch => {
+        if (ch.noExport) return;                       // 🔕 整章禁止匯出
         md += `## ${ch.title}\n`;
         md += `> ${ch.description}\n\n`;
         ch.sections.forEach(sec => {
+            if (sec.noExport) return;                  // 🔕 單一小節禁止匯出
             md += `### ${sec.title}\n\n`;
             md += `${sec.content || "*(未生成內容)*"}\n\n`;
         });
@@ -1588,6 +1679,7 @@ function exportNovelFull() {
 
     downloadMarkdown(`${sanitizeFilename(state.bookTitle) || 'novel'}.md`, md);
     appendLog(">> 小說已匯出（粗綱＋章＋節＋內文＋作者備註）。");
+    logNoExportSkipped();
 }
 
 // 呼叫 AI 為「目前選取中」的小節（state.activeIndex）產生正文內容，
@@ -4728,8 +4820,11 @@ function renderFullscreenEditor() {
 
     (state.chapters || []).forEach((ch, ci) => {
         (ch.sections || []).forEach((sec, si) => {
+            // 該節實際上會不會被匯出（整章被標記時，章內所有小節一律視為禁止匯出）
+            const noExport = isSectionNoExport(ch, sec);
+
             const row = document.createElement('div');
-            row.className = 'fs-row';
+            row.className = 'fs-row' + (noExport ? ' no-export' : '');
             row.style.height = fsEstimateRowHeight(sec) + 'px';
 
             // 左：章編號（直排，僅一字寬）
@@ -4738,7 +4833,16 @@ function renderFullscreenEditor() {
             chapterCell.textContent = `第${fsNumberToChinese(ci + 1)}章`;
             // 用自訂 tooltip 取代原生 title：原生 title 的字級無法用 CSS 控制，
             // 而使用者要求 tooltip 文字改用 --font-size-lg，故改存在 data 屬性，交給 fs-chapter-tooltip 顯示
-            chapterCell.dataset.tooltip = `第${ci + 1}章 第${si + 1}節：${ch.title || ''}\n${ch.description || ''}`;
+            chapterCell.dataset.tooltip = `第${ci + 1}章 第${si + 1}節：${ch.title || ''}\n${ch.description || ''}`
+                + (noExport ? '\n🔕 已設定禁止匯出（僅不匯出，內容仍會正常儲存）' : '');
+
+            // 禁止匯出時，在章編號框的上緣掛一個 🔕 標記（純顯示，不可在此勾選）
+            if (noExport) {
+                const badge = document.createElement('span');
+                badge.className = 'fs-noexport-badge';
+                badge.textContent = '🔕';
+                chapterCell.appendChild(badge);
+            }
 
             // 中：小節描述（對應 sec.title）
             const descTa = document.createElement('textarea');
