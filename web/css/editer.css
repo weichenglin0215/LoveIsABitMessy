@@ -3074,3 +3074,16 @@ body.daily-page .ai-btn {
   background: var(--c-secondary);
   color: var(--c-text-main);
 }
+
+/* ─────────────────────────────────────────────────────────────
+   58. 修正「全畫面編輯」彈窗蓋住「選取文字 AI 加工」彈窗（novel_generator）
+        ── #modal-fullscreen-edit 與 #modal-refine 都只套用 .modal-overlay
+           基底的 z-index:100，同層時後蓋前、依 DOM 順序決定疊放，
+           而 #modal-fullscreen-edit 在 HTML 中排在 #modal-refine 之後，
+           導致在全畫面編輯彈窗內按 Alt+A 叫出「✨ 擴寫／優化」/「🎬 視覺化改寫」
+           （兩者共用 #modal-refine）時反而被蓋住。此處單獨墊高，
+           數值卡在 .modal-overlay(100) 與 .fr-panel(120) 之間 ──
+───────────────────────────────────────────────────────────── */
+#modal-refine {
+  z-index: 110;
+}
