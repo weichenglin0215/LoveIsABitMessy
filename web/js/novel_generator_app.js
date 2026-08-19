@@ -3001,7 +3001,7 @@ async function runReviewJob(fullText, docName, opts = {}) {
     const doSynthesis = state.reviewFinalSynthesis !== false;
     if (doSynthesis && collected.length > 1) {
         appendLog('🎯 開始整理「最終評審意見」...');
-        finalText = await runFinalSynthesis(docName, collected);
+        finalText = await runFinalSynthesis(docName, collected, fullText);
     }
     appendLog('✅ 所有評審立場與最終評審意見皆已完成。');
 
@@ -3069,16 +3069,24 @@ async function runSingleReview(fullText, docName, userRequest, roleLabel) {
 
 /**
  * H 模式加碼功能：把 A~G 七種立場的評審全文合併，再請 AI 整理成一份「最終評審意見」。
- * 規則：依重要性(被越多評審提到)排序，每條意見分別列出正面評論／反面評論／修改建議，
- *       類似看法的意見會合併並標注是哪幾位評審提出。
+ * 規則：依「原文（小說）內容出現順序」排列，方便使用者對照原文；每條意見另外標註「重要性」供參考，
+ *       類似看法的意見會合併並標注是哪幾位評審提出。原文全文會一併送給 AI，供其判斷順序與對照上下文。
  */
-async function runFinalSynthesis(docName, collected) {
+async function runFinalSynthesis(docName, collected, fullText) {
     const combinedReviews = collected.map(c => `===== 【${c.label}】 =====\n${c.text}`).join('\n\n');
-    const synthesisInstructions = `你是一位經驗豐富的出版總監，收到了以下 ${collected.length} 位不同立場的評審針對同一份稿件所寫的評論意見（各自代表完全不同的審讀角度）。
+    // 原文過長時同樣截斷，並在 LOG 標註（與 runSingleReview 的截斷規則對齊）
+    const MAX_LEN = 100000;
+    let sourceText = fullText || '';
+    if (sourceText.length > MAX_LEN) {
+        sourceText = sourceText.slice(0, MAX_LEN);
+        appendLog(`⚠️ 【最終評審意見】原文長度 ${fullText.length} 字,超過 ${MAX_LEN} 字,已截斷。`);
+    }
+    const synthesisInstructions = `你是一位經驗豐富的出版總監，收到了以下 ${collected.length} 位不同立場的評審針對同一份稿件所寫的評論意見（各自代表完全不同的審讀角度）。文末另外附上稿件原文，供你對照。
 
 請將這些評論意見整合成一份「最終評審意見」，規則如下：
-1. 以條列式列出整合後的意見，並依照「重要性」排序——越多位評審提到、或越多評審強調的意見，排序越前面。
+1. 以條列式列出整合後的意見，並依照「原文（稿件）內容出現的先後順序」排列——意見所對應、談論到的段落在原文越前面，就排越前面；讓使用者可以一邊對照原文一邊閱讀評審意見。若某條意見是針對全篇的整體評論（無法對應到特定段落），則統一放在最前面或最後面（擇一，並在該區塊內自行維持順序一致）。
 2. 每一條意見都需要分別列出：
+   【重要性】(標示為「高」/「中」/「低」，依被提及的評審人數與強調程度判斷，供使用者參考)
    【正面評論】(可能有多個，若這條意見完全沒有正面觀點可省略)
    【反面評論】(可能有多個，若這條意見完全沒有反面觀點可省略)
    【修改建議】(可能有多個，若無具體建議可省略)
@@ -3089,7 +3097,7 @@ async function runFinalSynthesis(docName, collected) {
 
 ${combinedReviews}
 
-請開始撰寫「最終評審意見」：`;
+請開始撰寫「最終評審意見」（稿件原文將附加於本提示詞之後，供你對照段落順序）：`;
 
     const timestamp = new Date().toLocaleString('zh-TW', { hour12: false });
     const header = `\n\n===== 【最終評審意見】 ${timestamp} =====\n`;
@@ -3099,7 +3107,7 @@ ${combinedReviews}
 
     try {
         const payload = {
-            text_content: combinedReviews,
+            text_content: sourceText,
             user_request: synthesisInstructions,
             doc_name: docName,
             model: state.currentModel || 'gemma4',

@@ -686,6 +686,7 @@ def _ollama_generate_direct(model, prompt, options=None, images=None, on_chunk=N
                     return f">>>> Error {resp.status}: {err_body}"
 
                 # 逐行讀取串流回應
+                final_chunk = None
                 for raw_line in resp:
                     line = raw_line.strip()
                     if line:
@@ -698,6 +699,7 @@ def _ollama_generate_direct(model, prompt, options=None, images=None, on_chunk=N
                         if on_chunk:
                             on_chunk(content, thinking)
                         if chunk.get('done'):
+                            final_chunk = chunk
                             break
         except Exception as e:
             _log_print(job_id, f"\n>>>> [EXCEPTION] Ollama 呼叫失敗: {str(e)}")
@@ -705,6 +707,17 @@ def _ollama_generate_direct(model, prompt, options=None, images=None, on_chunk=N
             traceback.print_exc()
             return f"（連線錯誤：{str(e)}）"
         _log_print(job_id, "\n" + "(O)"*15 + "流式生成文字結束" + "(O)"*15)
+        # Ollama 在最後一個 done:true 的 chunk 附上實際 token 用量：
+        # prompt_eval_count（prompt 實際吃掉幾個 token）、eval_count（輸出吃掉幾個 token）。
+        # num_ctx 是兩者共用的總額度，印出來就能直接判斷這次呼叫有沒有逼近/超出視窗，不必再用字元數用猜的。
+        if final_chunk:
+            prompt_tokens = final_chunk.get('prompt_eval_count', 0)
+            completion_tokens = final_chunk.get('eval_count', 0)
+            total_tokens = prompt_tokens + completion_tokens
+            ctx = default_options['num_ctx']
+            remaining = ctx - total_tokens
+            warn = "　⚠️ 已逼近/超出 num_ctx，輸出很可能被截斷！" if remaining <= 0 else ""
+            _log_print(job_id, f">>>> Token 用量：prompt_eval_count={prompt_tokens}（輸入）+ eval_count={completion_tokens}（輸出）= {total_tokens} tokens，num_ctx={ctx}，剩餘={remaining} tokens{warn}")
         return "".join(full_response).strip()
     except urllib.error.HTTPError as e:
         err_body = e.read().decode('utf-8', errors='replace')
