@@ -820,6 +820,9 @@ function setupEventListeners() {
         });
     }
 
+    // 🈶 所有欄位的簡體轉換成繁體（OpenCC）
+    qs('#btn-s2t-convert').addEventListener('click', convertAllFieldsToTraditional);
+
     // 🌐 網路搜尋並依序改寫：按鈕與彈窗事件
     qs('#btn-web-rewrite').addEventListener('click', openWebRewriteModal);
     qs('#btn-webre-start').addEventListener('click', startWebRewrite);
@@ -4670,6 +4673,181 @@ function replaceAllGlobalSearch() {
 
     // 替換後重新搜尋，讓結果清單反映最新狀態
     runGlobalSearch(gsearchState.unlimited);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   🈶 所有欄位的簡體轉換成繁體（OpenCC）
+   掃描「故事粗綱／章標題／章描述／小節大綱／內文／作者備註」六大項目，
+   把其中的簡體字就地轉成繁體字（台灣正體，含台灣慣用詞彙轉換），
+   等同 OpenCC 的 s2twp 設定，例如「软件」→「軟體」、「出租车」→「計程車」。
+   （寫法參考 comfyui-flower-tools/FlowerTCSCConverter.py 的 s2twp 模式）
+   s2twp 轉換完成後，再串接一份自訂例外詞表修正過度轉換（見 S2T_EXCEPTION_DICT）。
+   ⚠️ 與「全面搜尋的全部替換」相同，此操作無法用 Ctrl+Z 還原。
+   ═══════════════════════════════════════════════════════════════ */
+
+// OpenCC 函式庫置於本機 web/js/lib/opencc-full.js（離線亦可使用，不依賴 CDN）。
+// 字典檔約 1.1MB，採「按下按鈕才載入」的延遲載入策略，避免拖慢開頁速度
+const OPENCC_SCRIPT_URL = 'js/lib/opencc-full.js';
+let openccLoadPromise = null;      // 載入中／已載入的 Promise（避免重複插入 <script>）
+let openccS2TConverter = null;     // 簡(cn) → 繁(twp) 轉換函式，第一次使用時才建立
+let openccExceptionConverter = null;  // 例外詞表轉換函式，第一次使用時才建立
+
+/**
+ * 自訂例外詞表：修正 OpenCC s2twp 的過度轉換。
+ *
+ * 格式為 [被取代的字詞, 取代成的字詞]，交給 OpenCC.CustomConverter 建成字典樹，
+ * 【以最長匹配優先】，因此可以先寫一條「大範圍規則」，再用更長的詞把不該改的情況擋回去。
+ * 表中沒列到的字詞完全不受影響，會原樣通過。
+ *
+ * 目前處理的是「台」字家族：s2twp 會把所有「台」轉成「臺」或「檯」，
+ * 但台灣小說慣用寫法多為「台」（台灣／平台／這台電腦／舞台），
+ * 只有少數詞才用「檯」（檯燈／櫃檯／吧檯／檯面），故先全部轉回「台」再把這幾個詞保留原樣。
+ *
+ * 👉 日後若發現其他過度轉換，直接在這個陣列加一行即可，例如：
+ *    ['瞭解', '了解'],   // 想統一用「了解」時取消註解
+ */
+const S2T_EXCEPTION_DICT = [
+    ['臺', '台'],        // 臺灣→台灣、平臺→平台、這臺電腦→這台電腦、舞臺→舞台
+    ['檯', '台'],        // 這檯筆記本→這台筆記本（s2twp 偶爾誤判量詞「台」為「檯」）
+    // ↓ 以下為「例外中的例外」：詞比單字長，最長匹配會優先命中，等於保留原樣不改
+    ['檯燈', '檯燈'],
+    ['櫃檯', '櫃檯'],
+    ['吧檯', '吧檯'],
+    ['檯面', '檯面']
+];
+
+// 動態插入本機 OpenCC 的 <script>，載入完成後 window.OpenCC 才會存在
+function loadOpenCCLibrary() {
+    if (window.OpenCC) return Promise.resolve();
+    if (openccLoadPromise) return openccLoadPromise;
+    openccLoadPromise = new Promise((resolve, reject) => {
+        const el = document.createElement('script');
+        el.src = OPENCC_SCRIPT_URL;
+        el.onload = () => resolve();
+        el.onerror = () => {
+            openccLoadPromise = null;  // 失敗後允許再次嘗試
+            reject(new Error('OpenCC 函式庫載入失敗（請確認 web/js/lib/opencc-full.js 是否存在）'));
+        };
+        document.head.appendChild(el);
+    });
+    return openccLoadPromise;
+}
+
+/**
+ * 列出所有要檢查的文字欄位。
+ * 每個項目提供 label（顯示在 LOG 的位置說明）與 get/set 存取器，
+ * 直接讀寫 state，順序與「全面搜尋」的六大分類一致。
+ */
+function collectConvertibleFields() {
+    const fields = [
+        { label: '故事粗綱', get: () => state.storyPremise, set: v => { state.storyPremise = v; } }
+    ];
+    (state.chapters || []).forEach((ch, ci) => {
+        fields.push({ label: `第${ci + 1}章 章標題`, get: () => ch.title, set: v => { ch.title = v; } });
+        fields.push({ label: `第${ci + 1}章 章描述`, get: () => ch.description, set: v => { ch.description = v; } });
+        (ch.sections || []).forEach((sec, si) => {
+            fields.push({ label: `第${ci + 1}章 第${si + 1}節 小節大綱`, get: () => sec.title, set: v => { sec.title = v; } });
+            fields.push({ label: `第${ci + 1}章 第${si + 1}節 內文`, get: () => sec.content, set: v => { sec.content = v; } });
+        });
+    });
+    fields.push({ label: '作者備註', get: () => state.authorNotes, set: v => { state.authorNotes = v; } });
+    return fields;
+}
+
+/**
+ * 單一字串的簡→繁轉換：先跑 OpenCC s2twp，再套用自訂例外詞表修正過度轉換。
+ * 兩個轉換器都由 convertAllFieldsToTraditional() 在載入 OpenCC 後建立。
+ */
+function convertTextS2T(text) {
+    return openccExceptionConverter(openccS2TConverter(text));
+}
+
+/**
+ * 比對轉換前後的字串，回傳被改動的字數。
+ * twp 模式含詞彙轉換（例如「鼠标」→「滑鼠」、「出租车」→「計程車」），
+ * 前後長度多半一致但不保證，長度不同時改以較長的一方粗估改動字數。
+ */
+function countChangedChars(before, after) {
+    if (before.length !== after.length) return Math.max(before.length, after.length);
+    let n = 0;
+    for (let i = 0; i < before.length; i++) {
+        if (before[i] !== after[i]) n++;
+    }
+    return n;
+}
+
+/**
+ * 「🈶 所有欄位的簡體轉換成繁體」按鈕的主流程：
+ * 載入 OpenCC → 試算哪些欄位含簡體字 → 跳出確認 → 寫回 state 並重繪畫面。
+ */
+async function convertAllFieldsToTraditional() {
+    appendLog('🈶 簡→繁：正在載入 OpenCC 轉換字典…');
+    try {
+        await loadOpenCCLibrary();
+    } catch (err) {
+        appendLog(`❌ 簡→繁：${err.message}`);
+        alert(`❌ ${err.message}`);
+        return;
+    }
+    // from:'cn'（簡體）→ to:'twp'（台灣正體＋台灣慣用詞彙），等同 OpenCC 的 s2twp 設定
+    if (!openccS2TConverter) {
+        openccS2TConverter = window.OpenCC.Converter({ from: 'cn', to: 'twp' });
+        openccExceptionConverter = window.OpenCC.CustomConverter(S2T_EXCEPTION_DICT);
+    }
+
+    // ── 第一輪：只試算，不寫回，統計有幾個欄位／幾個字需要轉換 ──
+    const fields = collectConvertibleFields();
+    const pending = [];   // [{ field, converted, chars }]
+    let totalChars = 0;
+    fields.forEach(f => {
+        const before = f.get();
+        if (!before) return;
+        const after = convertTextS2T(String(before));
+        if (after === String(before)) return;
+        const chars = countChangedChars(String(before), after);
+        totalChars += chars;
+        pending.push({ field: f, converted: after, chars });
+    });
+
+    if (pending.length === 0) {
+        appendLog('🈶 簡→繁：所有欄位皆為繁體，無需轉換。');
+        alert('✅ 所有欄位皆為繁體字，無需轉換。');
+        return;
+    }
+
+    if (!confirm(
+        `🈶 即將把「粗綱／章標題／章描述／小節大綱／內文／作者備註」中的簡體字轉成繁體字。\n` +
+        `（台灣正體＋台灣慣用詞彙轉換，例如「软件」→「軟體」、「出租车」→「計程車」）\n\n` +
+        `共有 ${pending.length} 個欄位、約 ${totalChars} 個字需要轉換。\n\n` +
+        `此操作【無法復原】（不能用 Ctrl+Z 還原），請謹慎使用！\n\n確定要執行嗎？`
+    )) {
+        appendLog('🈶 簡→繁：使用者取消轉換。');
+        return;
+    }
+
+    // ── 第二輪：實際寫回 state，並在 LOG 逐欄列出轉換位置 ──
+    pending.forEach(p => {
+        p.field.set(p.converted);
+        appendLog(`　🈶 ${p.field.label}：轉換 ${p.chars} 字`);
+    });
+
+    // 同步畫面（粗綱／章節樹／內文編輯器）
+    qs('#story-premise').value = state.storyPremise || '';
+    renderChapters();
+    renderEditor();
+    // 作者備註彈窗若正開著，同步其 textarea 內容
+    const notesModal = qs('#modal-author-notes');
+    if (notesModal && !notesModal.classList.contains('hidden')) {
+        qs('#author-notes-text').value = state.authorNotes || '';
+    }
+    // 全畫面編輯彈窗若正開著，重繪所有橫行
+    const fsModal = qs('#modal-fullscreen-edit');
+    if (fsModal && !fsModal.classList.contains('hidden')) {
+        renderFullscreenEditor();
+    }
+
+    appendLog(`✅ 簡→繁：已完成轉換，共 ${pending.length} 個欄位、${totalChars} 個字。`);
+    alert(`✅ 已完成簡體轉繁體，共 ${pending.length} 個欄位、${totalChars} 個字。`);
 }
 
 function openGlobalSearchPanel() {

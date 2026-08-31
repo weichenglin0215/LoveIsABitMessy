@@ -74,6 +74,10 @@
             多文改寫</button>
           <button class="btn secondary-btn" id="btn-web-rewrite" title="依工作項目自動上網搜尋資料，並依序讓 AI 產生對應的內容">🌐
             網路搜尋並依序改寫</button>
+          <!-- 簡→繁轉換：以 OpenCC 掃描主介面所有文字欄位（粗綱／章標題／章描述／小節大綱／內文）與作者備註，
+               將其中的簡體字就地轉成繁體字（台灣標準字形）。此操作無法復原，執行前會跳出確認視窗。 -->
+          <button class="btn secondary-btn" id="btn-s2t-convert" title="用 OpenCC 把粗綱／章標題／章描述／小節大綱／內文／作者備註中的簡體字轉成繁體字（無法復原）">🈶
+            所有欄位的簡體轉換成繁體</button>
         </div>
       </div>
       <button class="ai-btn-bluepink" id="btn-ai-gen-full-auto" title=" AI全自動生成所有文字：依粗綱生成章節→節大綱→節內文（跳過已鎖定）">🚀
@@ -1199,7 +1203,7 @@
   </div>
 
   <!-- 主要商業邏輯：AI呼叫、資料讀寫、角色卡渲染、章節樹狀結構管理等皆在此檔案中實作 -->
-  <script src="js/novel_generator_app.js?v=0.12.18.0" defer></script>
+  <script src="js/novel_generator_app.js?v=0.12.20.0" defer></script>
   <!-- ── 彈窗：系統訊息 LOG（大型LOG顯示視窗，支援關鍵字搜尋與上下筆跳轉） ── -->
   <div id="modal-system-log" class="modal-overlay hidden">
     <div class="modal"
