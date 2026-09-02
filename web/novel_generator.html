@@ -133,6 +133,18 @@
           </select>
           <button id="btn-add-model-option" class="ai-btn size-md">+編輯</button>
         </div>
+        <!-- 🎲 AI 亂數種子：控制 AI 產出時的變化，方便固定其他參數只測試不同提示詞。
+             規則：亂數(每次呼叫前重新產生)／固定(直接用目前數值)／每次加一(每次呼叫後遞增) -->
+        <div class="model-container-row">
+          <label class="model-label">🎲亂數種子：</label>
+          <input class="w-80 input-num" type="number" id="seed-value" step="1" value="123456"
+            title="送給 AI 的亂數種子（僅整數）">
+          <select id="seed-mode" title="亂數種子的產生規則">
+            <option value="random" selected>亂數</option>
+            <option value="fixed">固定</option>
+            <option value="increment">每次加一</option>
+          </select>
+        </div>
         <!-- 寫作風格一、二、三：可各自套用不同寫作風格範本，一併送給AI參考 -->
         <div class="model-container-row">
           <label class="model-label">🖋️ 寫作風格一：</label>
@@ -1055,6 +1067,17 @@
             <option value="">預設</option>
           </select>
         </div>
+        <!-- 🎲 AI 亂數種子：獨立於左側主介面的另一組，規則同主介面（亂數／固定／每次加一） -->
+        <div class="model-container-row">
+          <label class="model-label">🎲亂數種子：</label>
+          <input class="w-80 input-num" type="number" id="refine-seed-value" step="1" value="123456"
+            title="送給 AI 的亂數種子（僅整數）">
+          <select id="refine-seed-mode" title="亂數種子的產生規則">
+            <option value="random" selected>亂數</option>
+            <option value="fixed">固定</option>
+            <option value="increment">每次加一</option>
+          </select>
+        </div>
         <div class="model-container-row">
           <label class="model-label">🖋️ 風格一：</label>
           <select id="refine-style-1" class="refine-style-dropdown">
@@ -1160,6 +1183,7 @@
     <button class="qk-item" data-action="replace"><span>📝 取代...</span><span class="qk-key"></span></button>
     <button class="qk-item" data-action="global"><span>🔎📝 全面搜尋/取代</span><span class="qk-key">Ctrl + Shift +
         F</span></button>
+    <button class="qk-item" data-action="s2t"><span>🈶 簡體轉成繁體</span><span class="qk-key"></span></button>
     <button class="qk-item" data-action="expand"><span>✨ 擴寫／優化</span><span class="qk-key">Alt + P</span></button>
     <button class="qk-item" data-action="visual"><span>🎬 視覺化改寫</span><span class="qk-key">Alt + Q</span></button>
     <button class="qk-item" data-action="condense"><span>✂️ 精簡字數</span><span class="qk-key">Alt + S</span></button>
@@ -1203,7 +1227,7 @@
   </div>
 
   <!-- 主要商業邏輯：AI呼叫、資料讀寫、角色卡渲染、章節樹狀結構管理等皆在此檔案中實作 -->
-  <script src="js/novel_generator_app.js?v=0.12.20.0" defer></script>
+  <script src="js/novel_generator_app.js?v=0.12.21.0" defer></script>
   <!-- ── 彈窗：系統訊息 LOG（大型LOG顯示視窗，支援關鍵字搜尋與上下筆跳轉） ── -->
   <div id="modal-system-log" class="modal-overlay hidden">
     <div class="modal"

@@ -62,6 +62,8 @@ let state = {
     ],
     aiModel: "gemma4",
     modelOptions: "",
+    seedValue: 123456,   // 🎲 亂數種子數值（僅整數）
+    seedMode: "random",  // 🎲 亂數種子規則：random(亂數)／fixed(固定)／increment(每次加一)
     writerStyle1: "",
     writerStyle2: "",
     writerStyle3: "",
@@ -124,6 +126,58 @@ let state = {
     // 「選取文字 AI 加工」四種功能各自記住的參數（隨小說存檔），詳見 ensureRefineParams()
     refineParams: null
 };
+
+// ============================================================================
+// 🎲 AI 亂數種子：控制 AI 大模型產出時的變化，方便固定其他參數只測試「不同提示詞」的效果。
+// 主介面（#seed-value/#seed-mode）與「選取文字 AI 加工」彈窗（#refine-seed-value/#refine-seed-mode）
+// 各自獨立一組，互不影響。規則三選一：
+//   random(亂數)     → 每次呼叫 AI 前重新產生一組亂數，並回寫到數值輸入欄。
+//   fixed(固定)      → 直接使用數值輸入欄目前的值，不做任何異動。
+//   increment(每次加一) → 本次呼叫使用目前的值，並把數值輸入欄加 1，供下一次呼叫使用。
+// ============================================================================
+
+// 產生 1 ~ 2147483647 之間的亂數整數（配合 Ollama seed 的 32 位元整數上限）
+function randomSeedInt() {
+    return Math.floor(Math.random() * 2147483647) + 1;
+}
+
+// 依「亂數規則」下拉選單目前的選擇，計算本次呼叫要送給 AI 的種子值，
+// 並視規則同步更新畫面上的數值輸入欄，讓使用者看得到目前實際使用的種子。
+function resolveSeedForCall(valueSelId, modeSelId) {
+    const valueEl = qs(valueSelId);
+    const modeEl = qs(modeSelId);
+    if (!valueEl) return undefined;
+    const mode = modeEl ? modeEl.value : 'random';
+    let current = parseInt(valueEl.value, 10);
+    if (isNaN(current)) current = 123456;
+
+    let seed = current;
+    if (mode === 'random') {
+        seed = randomSeedInt();
+        valueEl.value = seed;
+    } else if (mode === 'increment') {
+        seed = current;
+        valueEl.value = current + 1; // 這次先用目前值，欄位改成下一次要用的值
+    } else {
+        valueEl.value = current; // 固定：直接使用目前值，不異動
+    }
+    return seed;
+}
+
+// 主介面用：組出附帶亂數種子的 model_options payload（合併現有模型參數表 + seed）
+function buildModelOptionsWithSeed() {
+    const base = (window.getModelOptionsPayload && window.getModelOptionsPayload()) || {};
+    const seed = resolveSeedForCall('#seed-value', '#seed-mode');
+    return (seed === undefined) ? base : { ...base, seed };
+}
+
+// 「選取文字 AI 加工」彈窗用：組出附帶（彈窗自己那組）亂數種子的 model_options payload
+function buildRefineModelOptionsWithSeed() {
+    const base = (window.resolveModelOptionsByName &&
+        window.resolveModelOptionsByName(qs('#refine-model-options-select').value)) || {};
+    const seed = resolveSeedForCall('#refine-seed-value', '#refine-seed-mode');
+    return (seed === undefined) ? base : { ...base, seed };
+}
 
 // ====== genParams 輔助 ======
 
@@ -474,6 +528,9 @@ function renderAll() {
     // 恢復 AI 設定 (如果存在)
     if (state.aiModel) qs('#model-select').value = state.aiModel;
     if (state.modelOptions) qs('#model-options-select').value = state.modelOptions;
+    // 🎲 亂數種子：還原數值與規則（缺值時沿用 HTML 內建的預設 123456／亂數）
+    if (state.seedValue !== undefined && state.seedValue !== null) qs('#seed-value').value = state.seedValue;
+    if (state.seedMode) qs('#seed-mode').value = state.seedMode;
     // 支援舊格式 writerStyle → 還原至風格一
     if (!state.writerStyle1 && state.writerStyle) state.writerStyle1 = state.writerStyle;
     if (state.writerStyle1) qs('#writer-style-select-1').value = state.writerStyle1;
@@ -1231,7 +1288,7 @@ async function aiGenChapterOutline(chIdx) {
             character_ids: state.characters.map(getCharId).filter(Boolean),
             role_names: state.characters.filter(c => getCharId(c)).map(getCharRoleName),
             model: state.currentModel || 'gemma4',
-            model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
+            model_options: buildModelOptionsWithSeed(),
             writer_settings: (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || null,
             section_count: state.genParams.chapterOutlineSectionCount,
             words_per_section: state.genParams.chapterOutlineWordsPerSection
@@ -1565,7 +1622,7 @@ async function aiGenChaptersFromPremise(skipConfirm = false) {
             role_names: state.characters.filter(c => getCharId(c)).map(getCharRoleName),
             locked_chapters,
             model: state.currentModel || 'gemma4',
-            model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
+            model_options: buildModelOptionsWithSeed(),
             writer_settings: (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || null,
             chapter_count: state.genParams.chaptersFromPremiseCount,
             words_per_chapter: state.genParams.chaptersFromPremiseWordsPerChapter
@@ -1726,7 +1783,7 @@ async function aiGenSectionContent() {
             character_ids: state.characters.map(getCharId).filter(Boolean),
             role_names: state.characters.filter(c => getCharId(c)).map(getCharRoleName),
             model: state.currentModel || qs('#model-select')?.value || 'gemma4',
-            model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
+            model_options: buildModelOptionsWithSeed(),
             writer_settings: (window.WriterSettingsApp && window.WriterSettingsApp.getSelectedContext()) || null,
             story_premise: state.storyPremise,
             words_per_section: state.genParams.sectionContentWords,
@@ -1845,7 +1902,7 @@ async function storyFileToPremise(event) {
         const payload = {
             text_content: textContent,
             model: state.currentModel || 'gemma4',
-            model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
+            model_options: buildModelOptionsWithSeed(),
             chapter_count: state.genParams.storyToPremiseChapters,
             words_per_chapter: state.genParams.storyToPremiseWordsPerChapter
         };
@@ -1924,7 +1981,7 @@ async function storyFileToBulletPremise(event) {
         const payload = {
             text_content: textContent,
             model: state.currentModel || 'gemma4',
-            model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
+            model_options: buildModelOptionsWithSeed(),
             chapter_count: state.genParams.storyToBulletChapters,
             words_per_chapter: state.genParams.storyToBulletWordsPerChapter
         };
@@ -2409,6 +2466,8 @@ async function confirmSaveProject() {
     // 同步當前選中的 AI 設定到 state
     state.aiModel = qs('#model-select').value;
     state.modelOptions = qs('#model-options-select').value;
+    state.seedValue = parseInt(qs('#seed-value').value, 10) || 123456;
+    state.seedMode = qs('#seed-mode').value;
     state.writerStyle1 = qs('#writer-style-select-1')?.value || '';
     state.writerStyle2 = qs('#writer-style-select-2')?.value || '';
     state.writerStyle3 = qs('#writer-style-select-3')?.value || '';
@@ -3044,7 +3103,7 @@ async function runSingleReview(fullText, docName, userRequest, roleLabel) {
             user_request: userRequest,
             doc_name: docName,
             model: state.currentModel || 'gemma4',
-            model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null
+            model_options: buildModelOptionsWithSeed()
         };
         const result = await callDebugServerAsync('/api/review_novel_async', payload);
         // 移除佔位符,寫入實際結果
@@ -3114,7 +3173,7 @@ ${combinedReviews}
             user_request: synthesisInstructions,
             doc_name: docName,
             model: state.currentModel || 'gemma4',
-            model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null
+            model_options: buildModelOptionsWithSeed()
         };
         const result = await callDebugServerAsync('/api/review_novel_async', payload);
         if (placeholderStart >= 0) el.value = el.value.slice(0, placeholderStart);
@@ -3584,7 +3643,7 @@ async function startMultiRewrite() {
                 user_request: userRequest,
                 doc_name: item.name,
                 model: state.currentModel || 'gemma4',
-                model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
+                model_options: buildModelOptionsWithSeed(),
                 // 🌐 網路搜尋參數：後端會依旗標決定是否呼叫 DDG / Tavily / 抓取指定網址
                 use_duckduckgo: useDDG,
                 use_tavily: useTavily,
@@ -3869,7 +3928,7 @@ async function startWebRewrite() {
                 user_request: userRequest,
                 doc_name: topic,
                 model: state.currentModel || 'gemma4',
-                model_options: (window.getModelOptionsPayload && window.getModelOptionsPayload()) || null,
+                model_options: buildModelOptionsWithSeed(),
                 use_duckduckgo: useDDG,
                 use_tavily: useTavily,
                 tavily_api_key: useTavily ? tavilyApiKey : '',
@@ -4210,7 +4269,9 @@ function readRefineModalParams() {
         extra: qs('#refine-extra').value,
         styles: [qs('#refine-style-1').value, qs('#refine-style-2').value, qs('#refine-style-3').value],
         sample: qs('#refine-sample-select').value,
-        modelOptions: qs('#refine-model-options-select').value
+        modelOptions: qs('#refine-model-options-select').value,
+        seedValue: qs('#refine-seed-value').value,
+        seedMode: qs('#refine-seed-mode').value
     };
 }
 
@@ -4267,7 +4328,9 @@ function openRefineModal(mode, field) {
                 qs('#writer-style-select-3')?.value || ''
             ],
             sample: qs('#writer-sample-select')?.value || '',
-            modelOptions: qs('#model-options-select')?.value || ''
+            modelOptions: qs('#model-options-select')?.value || '',
+            seedValue: qs('#seed-value')?.value || 123456,
+            seedMode: qs('#seed-mode')?.value || 'random'
         };
     }
 
@@ -4277,6 +4340,8 @@ function openRefineModal(mode, field) {
     fillDropdown(qs('#refine-style-3'), styleNames, p.styles?.[2], '無');
     fillDropdown(qs('#refine-sample-select'), sampleNames, p.sample, '無');
     fillDropdown(qs('#refine-model-options-select'), moNames, p.modelOptions, '預設');
+    qs('#refine-seed-value').value = p.seedValue || 123456;
+    qs('#refine-seed-mode').value = p.seedMode || 'random';
 
     // 尚未生成 → 停用套用按鈕
     qs('#btn-refine-replace').disabled = true;
@@ -4307,8 +4372,7 @@ async function runRefineGenerate() {
         target_words: targetWords,
         characters: buildCharactersPayload(),
         model: state.currentModel || qs('#model-select')?.value || 'gemma4',
-        model_options: (window.resolveModelOptionsByName &&
-            window.resolveModelOptionsByName(qs('#refine-model-options-select').value)) || null,
+        model_options: buildRefineModelOptionsWithSeed(),
         writer_settings: resolveRefineWriterSettings()
     };
 
@@ -4848,6 +4912,38 @@ async function convertAllFieldsToTraditional() {
 
     appendLog(`✅ 簡→繁：已完成轉換，共 ${pending.length} 個欄位、${totalChars} 個字。`);
     alert(`✅ 已完成簡體轉繁體，共 ${pending.length} 個欄位、${totalChars} 個字。`);
+}
+
+/**
+ * Alt+A 快顯功能表的「🈶 簡體轉成繁體」：只轉換使用者目前反白選取的這段文字，
+ * 就地替換、不影響同一欄位以外的任何欄位，也不彈出確認視窗（與四種 AI 加工的操作前提一致，
+ * 差別在於這是純本機字元轉換，不需要呼叫 AI）。
+ */
+async function convertSelectionToTraditional(field) {
+    const { selStart, selEnd, fullValue, selectedText } = field;
+
+    appendLog('🈶 簡→繁：正在載入 OpenCC 轉換字典…');
+    try {
+        await loadOpenCCLibrary();
+    } catch (err) {
+        appendLog(`❌ 簡→繁：${err.message}`);
+        alert(`❌ ${err.message}`);
+        return;
+    }
+    if (!openccS2TConverter) {
+        openccS2TConverter = window.OpenCC.Converter({ from: 'cn', to: 'twp' });
+        openccExceptionConverter = window.OpenCC.CustomConverter(S2T_EXCEPTION_DICT);
+    }
+
+    const converted = convertTextS2T(selectedText);
+    if (converted === selectedText) {
+        appendLog('🈶 簡→繁：選取文字已為繁體，無需轉換。');
+        return;
+    }
+
+    const newFull = fullValue.slice(0, selStart) + converted + fullValue.slice(selEnd);
+    writeBackRefine(field, newFull);
+    appendLog(`🈶 簡→繁：已將選取的 ${selectedText.length} 字轉換成繁體。`);
 }
 
 function openGlobalSearchPanel() {
@@ -5728,15 +5824,20 @@ function runQuickMenuAction(action) {
         return;
     }
 
-    // 四種 AI 加工：沿用熱鍵版的前提，必須先在輸入框中反白選取一段文字
+    // 🈶 簡體轉成繁體／四種 AI 加工：都沿用熱鍵版的前提，必須先在輸入框中反白選取一段文字
     const field = ctx.field;
-    if (!field) { alert('請先把游標放進可編輯的文字框，再使用加工功能。'); return; }
-    if (ctx.selStart === ctx.selEnd) { alert('請先在輸入框中反白選取一段文字，再使用加工功能。'); return; }
+    const actionLabel = (action === 's2t') ? '此功能' : '加工功能';
+    if (!field) { alert(`請先把游標放進可編輯的文字框，再使用${actionLabel}。`); return; }
+    if (ctx.selStart === ctx.selEnd) { alert(`請先在輸入框中反白選取一段文字，再使用${actionLabel}。`); return; }
 
     field.selStart = ctx.selStart;
     field.selEnd = ctx.selEnd;
     field.fullValue = field.el.value;
     field.selectedText = field.fullValue.slice(ctx.selStart, ctx.selEnd);
+
+    // 🈶 簡體轉成繁體：只轉換選取的這段文字，直接就地替換，不彈出確認視窗、不影響其他欄位
+    if (action === 's2t') { convertSelectionToTraditional(field); return; }
+
     openRefineModal(action, field);
 }
 
