@@ -1542,11 +1542,12 @@ async function autoSaveBook(bookTitle, password) {
             const sb = window.SupabaseClient && window.SupabaseClient.getClient();
             if (sb) {
                 appendLog(`☁️ 正在將《${bookTitle}》儲存至雲端...`);
-                const fullText = getNovelMarkdown();
+                // novel_title 欄位已是書名的唯一來源，edit_data 不再重複儲存 bookTitle
+                const cloudEditData = JSON.parse(JSON.stringify(state));
+                delete cloudEditData.bookTitle;
                 const { error } = await sb.from('novel_entries').insert({
                     novel_title: bookTitle,
-                    edit_data: JSON.parse(JSON.stringify(state)),
-                    novel_full_text: fullText,
+                    edit_data: cloudEditData,
                     password: password,
                     updated_at: new Date()
                 });
@@ -2478,11 +2479,12 @@ async function confirmSaveProject() {
         const sb = window.SupabaseClient.getClient();
         if (sb) {
             appendLog("☁️ 正在同步小說至雲端...");
-            const fullText = getNovelMarkdown();
+            // novel_title 欄位已是書名的唯一來源，edit_data 不再重複儲存 bookTitle
+            const cloudEditData = JSON.parse(JSON.stringify(state));
+            delete cloudEditData.bookTitle;
             const { data, error } = await sb.from('novel_entries').insert({
                 novel_title: state.bookTitle,
-                edit_data: state,
-                novel_full_text: fullText,
+                edit_data: cloudEditData,
                 password: password, // 儲存密碼到資料表
                 updated_at: new Date()
             });
@@ -2643,7 +2645,7 @@ async function confirmLoadCloudNovel() {
                 throw new Error("載入的資料格式不完整 (缺少 chapters 陣列)");
             }
 
-            appendLog(`>> 小說標題: ${loadedState.bookTitle || '未命名'}`);
+            appendLog(`>> 小說標題: ${data.novel_title || '未命名'}`);
             appendLog(`>> 章節數量: ${loadedState.chapters.length}`);
 
             // 為了確保所有引用此物件的地方都能同步更新，使用屬性覆蓋而非變數重新賦值
@@ -2655,6 +2657,9 @@ async function confirmLoadCloudNovel() {
             }
             // 寫入新狀態
             Object.assign(state, loadedState);
+            // 書名一律以 novel_title 欄位為準（edit_data 不再重複儲存 bookTitle；
+            // 舊資料若仍帶有 edit_data.bookTitle 也一併覆蓋，確保兩者不會不同步）
+            state.bookTitle = data.novel_title || '未命名小說';
             state.characters = normalizeCharacters(state.characters);
 
             try {
