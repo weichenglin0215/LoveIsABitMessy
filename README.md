@@ -116,6 +116,8 @@
     -   執行 `loveline.html`：選擇角色，進行 AI 角色文字互動。
 6.  **創作小說**
     -   開啟 `novel_generator.html` 規劃您的故事長篇。
+7.  **閱讀小說**
+    -   開啟 `novel_reader.html` 閱讀您的故事長篇。
 
 ---
 

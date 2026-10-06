@@ -20,7 +20,9 @@
        標楷體沒有網路字型可用，只在裝置本身有楷體時才會顯示（Windows／macOS／iOS 有，多數 Android 沒有） -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Noto+Serif+TC:wght@400;700;900&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Noto+Serif+TC:wght@400;700;900&display=swap"
+    rel="stylesheet">
 
   <!-- Supabase JS 官方 UMD 版函式庫 + 專案共用的客戶端封裝（讀取 published_novels） -->
   <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
@@ -86,7 +88,9 @@
         <button class="rd-close" type="button" data-close aria-label="關閉">✕</button>
       </div>
       <div class="rd-modal-body rd-qr-body">
-        <div class="rd-qr-frame"><div id="rd-qrcode"></div></div>
+        <div class="rd-qr-frame">
+          <div id="rd-qrcode"></div>
+        </div>
         <p class="rd-qr-hint">用手機掃描，就能開啟「花小說」</p>
         <p class="rd-qr-url" id="rd-qr-url"></p>
       </div>

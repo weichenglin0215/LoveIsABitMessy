@@ -21,64 +21,64 @@
   --rd-radius: 0.5rem;
 
   /* 預設主題：淺黃底黑字 */
-  --rd-bg: #f8f1c8;
-  --rd-text: #1a1a1a;
-  --rd-bar-bg: #ebe0a4;
-  --rd-panel-bg: #fffbe6;
-  --rd-border: rgba(0, 0, 0, 0.25);
-  --rd-hover: rgba(0, 0, 0, 0.08);
-  --rd-muted: rgba(0, 0, 0, 0.6);
-  --rd-accent: #8a4b00;
-  --rd-accent-text: #fffbe6;
-  --rd-overlay: rgba(0, 0, 0, 0.45);
+  --rd-bg: hsl(51, 77%, 88%);
+  --rd-text: hsl(0, 0%, 10%);
+  --rd-bar-bg: hsl(51, 64%, 78%);
+  --rd-panel-bg: hsl(50, 100%, 95%);
+  --rd-border: hsla(0, 0%, 0%, 0.25);
+  --rd-hover: hsla(0, 0%, 0%, 0.08);
+  --rd-muted: hsla(0, 0%, 0%, 0.6);
+  --rd-accent: hsl(33, 100%, 27%);
+  --rd-accent-text: hsl(50, 100%, 95%);
+  --rd-overlay: hsla(0, 0%, 0%, 0.45);
 
   --rd-font: var(--rd-font-sans);
 
   /* 閱讀文字粗細：標準／粗體／超粗體（章標題固定比內文再重一級） */
-  --rd-weight: 400;
-  --rd-weight-heading: 700;
+  --rd-weight: 300;
+  --rd-weight-heading: 600;
 }
 
 /* 黑底淺黃字：連標題列、彈窗一併變色 */
 :root[data-theme="dark"] {
   --rd-bg: #000;
-  --rd-text: #f3e9b3;
-  --rd-bar-bg: #141414;
-  --rd-panel-bg: #1a1a1a;
-  --rd-border: rgba(243, 233, 179, 0.3);
-  --rd-hover: rgba(243, 233, 179, 0.14);
-  --rd-muted: rgba(243, 233, 179, 0.65);
-  --rd-accent: #f3e9b3;
-  --rd-accent-text: #000;
+  --rd-text: hsl(51, 73%, 83%);
+  --rd-bar-bg: hsl(0, 0%, 8%);
+  --rd-panel-bg: hsl(0, 0%, 10%);
+  --rd-border: hsla(51, 73%, 83%, 0.302);
+  --rd-hover: hsla(51, 73%, 83%, 0.141);
+  --rd-muted: hsla(51, 73%, 83%, 0.65);
+  --rd-accent: hsl(51, 73%, 83%);
+  --rd-accent-text: hsl(0, 0%, 0%);
   --rd-overlay: rgba(0, 0, 0, 0.7);
 }
 
 /* 白底黑字 */
 :root[data-theme="white"] {
-  --rd-bg: #fff;
-  --rd-text: #000;
-  --rd-bar-bg: #ececec;
-  --rd-panel-bg: #fff;
-  --rd-border: rgba(0, 0, 0, 0.3);
-  --rd-hover: rgba(0, 0, 0, 0.08);
-  --rd-muted: rgba(0, 0, 0, 0.6);
-  --rd-accent: #222;
-  --rd-accent-text: #fff;
-  --rd-overlay: rgba(0, 0, 0, 0.5);
+  --rd-bg: hsl(0, 0%, 100%);
+  --rd-text: hsl(0, 0%, 0%);
+  --rd-bar-bg: hsl(0, 0%, 94%);
+  --rd-panel-bg: hsl(0, 0%, 100%);
+  --rd-border: hsla(0, 0%, 0%, 0.302);
+  --rd-hover: hsla(0, 0%, 0%, 0.08);
+  --rd-muted: hsla(0, 0%, 0%, 0.6);
+  --rd-accent: hsl(0, 0%, 10%);
+  --rd-accent-text: hsl(0, 0%, 100%);
+  --rd-overlay: hsla(0, 0%, 0%, 0.5);
 }
 
 /* 黑底白字 */
 :root[data-theme="black"] {
-  --rd-bg: #000;
-  --rd-text: #fff;
-  --rd-bar-bg: #141414;
-  --rd-panel-bg: #1a1a1a;
-  --rd-border: rgba(255, 255, 255, 0.3);
-  --rd-hover: rgba(255, 255, 255, 0.14);
-  --rd-muted: rgba(255, 255, 255, 0.65);
-  --rd-accent: #fff;
-  --rd-accent-text: #000;
-  --rd-overlay: rgba(0, 0, 0, 0.7);
+  --rd-bg: hsl(0, 0%, 0%);
+  --rd-text: hsl(0, 0%, 100%);
+  --rd-bar-bg: hsl(0, 0%, 8%);
+  --rd-panel-bg: hsl(0, 0%, 10%);
+  --rd-border: hsla(0, 0%, 100%, 0.302);
+  --rd-hover: hsla(0, 0%, 100%, 0.141);
+  --rd-muted: hsla(0, 0%, 100%, 0.65);
+  --rd-accent: hsl(0, 0%, 100%);
+  --rd-accent-text: hsl(0, 0%, 0%);
+  --rd-overlay: hsla(0, 0%, 0%, 0.7);
 }
 
 :root[data-font="serif"] {
@@ -90,13 +90,13 @@
 }
 
 :root[data-weight="bold"] {
-  --rd-weight: 700;
+  --rd-weight: 600;
   --rd-weight-heading: 900;
 }
 
 :root[data-weight="xbold"] {
   --rd-weight: 900;
-  --rd-weight-heading: 900;
+  --rd-weight-heading: 1200;
 }
 
 /* ─────────────────────────────────────────────
@@ -201,7 +201,8 @@ button {
   width: 100%;
   padding: 1rem 1.25rem;
   text-align: left;
-  font-size: 1.5rem; /* 原 1rem 的 150% */
+  font-size: 1.5rem;
+  /* 原 1rem 的 150% */
   background: none;
   border: none;
   border-bottom: 1px solid var(--rd-border);
@@ -232,7 +233,7 @@ button {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--rd-muted);
-  font-size: 0.95rem;
+  font-size: 1.25rem;
 }
 
 /* ─────────────────────────────────────────────
@@ -290,7 +291,8 @@ button {
    不能有 margin／padding，否則行格對不齊整數行，頁尾會切到半行 */
 .rd-text p {
   margin: 0;
-  text-indent: calc(var(--rd-adv, 20px) * 2); /* 縮排兩個字：字寬＋字距，才會與下方各行對齊 */
+  text-indent: calc(var(--rd-adv, 20px) * 2);
+  /* 縮排兩個字：字寬＋字距，才會與下方各行對齊 */
 }
 
 /* 章標題：區塊高度固定為「整數行」（上 2 行留白 + 標題行 + 下 1 行留白） */
@@ -311,7 +313,7 @@ button {
   padding: 0.35rem 1rem;
   padding-bottom: calc(0.35rem + env(safe-area-inset-bottom));
   text-align: center;
-  font-size: 0.85rem;
+  font-size: 1.5rem;
   color: var(--rd-muted);
 }
 
@@ -343,21 +345,21 @@ button {
 }
 
 .rd-modal-sm {
-  max-width: 22rem;
+  max-width: 28rem;
 }
 
 .rd-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0.9rem 1.1rem;
+  gap: 0.5rem;
+  padding: 0.5rem 0.5rem;
   border-bottom: 1px solid var(--rd-border);
 }
 
 .rd-modal-header h2 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.5rem;
 }
 
 .rd-close {
@@ -376,7 +378,7 @@ button {
 }
 
 .rd-modal-body {
-  padding: 1rem 1.1rem;
+  padding: 1rem 1rem;
   overflow-y: auto;
   line-height: 1.75;
 }
@@ -390,7 +392,7 @@ button {
 
 .rd-btn {
   padding: 0.5rem 1.4rem;
-  font-size: 1rem;
+  font-size: 1.5rem;
   color: var(--rd-accent-text);
   background: var(--rd-accent);
   border: none;
@@ -409,13 +411,13 @@ button {
 }
 
 .rd-modal-big .rd-modal-header h2 {
-  font-size: 1.725rem;
+  font-size: 1.6rem;
 }
 
 .rd-modal-big .rd-close {
   width: 3.3rem;
   height: 3.3rem;
-  font-size: 1.65rem;
+  font-size: 2.0rem;
 }
 
 .rd-modal-big .rd-modal-body {
@@ -464,7 +466,7 @@ button {
   flex-direction: column;
   gap: 0.15rem;
   width: 100%;
-  padding: 0.7rem 0.9rem;
+  padding: 0.5rem 0.9rem;
   text-align: left;
   background: transparent;
   border: 1px solid var(--rd-border);
@@ -482,12 +484,12 @@ button {
 }
 
 .rd-novel-name {
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: 1.5rem;
+  font-weight: 500;
 }
 
 .rd-novel-meta {
-  font-size: 0.85rem;
+  font-size: 1.2rem;
   color: var(--rd-muted);
 }
 
@@ -509,11 +511,12 @@ button {
 
 .rd-qr-hint,
 .rd-qr-url {
+  font-size: 1.2rem;
   margin: 0;
 }
 
 .rd-qr-url {
-  font-size: 0.8rem;
+  font-size: 1.2rem;
   color: var(--rd-muted);
   word-break: break-all;
 }
@@ -526,20 +529,21 @@ button {
   gap: 1rem 1rem;
 }
 
-.rd-options-grid > label,
-.rd-options-grid > .rd-opt-label {
-  font-weight: 700;
+.rd-options-grid>label,
+.rd-options-grid>.rd-opt-label {
+  font-weight: 500;
 }
 
 /* 分段式單選按鈕（黑體／宋體、橫式／直式、配色） */
 .rd-seg-group {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.6rem;
 }
 
 .rd-seg {
   position: relative;
+  padding: 0.25rem 0.5rem;
 }
 
 /* 原生 radio 隱藏但保留鍵盤操作 */
@@ -549,23 +553,24 @@ button {
   inset: 0;
   margin: 0;
   cursor: pointer;
+  padding: 0.2rem 0.5rem;
 }
 
 .rd-seg span {
   display: block;
-  padding: 0.4rem 0.9rem;
+  padding: 0.2rem 1.0rem;
   border: 1px solid var(--rd-border);
   border-radius: var(--rd-radius);
   cursor: pointer;
 }
 
-.rd-seg input:checked + span {
+.rd-seg input:checked+span {
   color: var(--rd-accent-text);
   background: var(--rd-accent);
   border-color: var(--rd-accent);
 }
 
-.rd-seg input:focus-visible + span {
+.rd-seg input:focus-visible+span {
   outline: 2px solid var(--rd-accent);
   outline-offset: 2px;
 }
@@ -595,7 +600,8 @@ button {
 /* ── 關於 ── */
 .rd-about-body h3 {
   margin: 1rem 0 0.3rem;
-  font-size: 1em; /* 與內文同大，靠粗體區分；大字彈窗內即為 1.5rem */
+  font-size: 1em;
+  /* 與內文同大，靠粗體區分；大字彈窗內即為 1.5rem */
 }
 
 .rd-about-body h3:first-child {
@@ -611,11 +617,12 @@ button {
 @media (max-width: 40rem) {
   .rd-options-grid {
     grid-template-columns: 1fr;
-    gap: 0.4rem;
+    gap: 0.1rem;
+    font-size: 75%;
   }
 
-  .rd-options-grid > label,
-  .rd-options-grid > .rd-opt-label {
-    margin-top: 0.6rem;
+  .rd-options-grid>label,
+  .rd-options-grid>.rd-opt-label {
+    margin-top: 0.4rem;
   }
 }

@@ -106,12 +106,18 @@
   // 滑桿項目：欄位、最小／最大值、步進、數值顯示格式。
   //   inputId 對應 <input type="range">，valueId 對應旁邊顯示數值的 <span>
   const SLIDER_OPTIONS = [
-    { key: 'fontSize', inputId: 'opt-font-size', valueId: 'opt-font-size-value',
-      min: FONT_SIZE_MIN, max: FONT_SIZE_MAX, step: 1, format: (v) => v + ' px' },
-    { key: 'letterSpacing', inputId: 'opt-letter-spacing', valueId: 'opt-letter-spacing-value',
-      min: LETTER_SPACING_MIN, max: LETTER_SPACING_MAX, step: 0.05, format: (v) => v.toFixed(2) + ' em' },
-    { key: 'lineSpacing', inputId: 'opt-line-spacing', valueId: 'opt-line-spacing-value',
-      min: LINE_SPACING_MIN, max: LINE_SPACING_MAX, step: 0.1, format: (v) => v.toFixed(1) + ' 倍' }
+    {
+      key: 'fontSize', inputId: 'opt-font-size', valueId: 'opt-font-size-value',
+      min: FONT_SIZE_MIN, max: FONT_SIZE_MAX, step: 1, format: (v) => v + ' px'
+    },
+    {
+      key: 'letterSpacing', inputId: 'opt-letter-spacing', valueId: 'opt-letter-spacing-value',
+      min: LETTER_SPACING_MIN, max: LETTER_SPACING_MAX, step: 0.05, format: (v) => v.toFixed(2) + ' em'
+    },
+    {
+      key: 'lineSpacing', inputId: 'opt-line-spacing', valueId: 'opt-line-spacing-value',
+      min: LINE_SPACING_MIN, max: LINE_SPACING_MAX, step: 0.1, format: (v) => v.toFixed(1) + ' 倍'
+    }
   ];
 
   // 把數值夾在範圍內並對齊步進（消除 0.1+0.2 這類浮點誤差，只留 2 位小數）
@@ -506,7 +512,7 @@
     if (typeof QRCode === 'undefined') return; // QRCode.js 沒載入（離線）時只顯示網址文字
     qrCreated = true;
     new QRCode($('rd-qrcode'), {
-      text: QR_URL, width: 200, height: 200,
+      text: QR_URL, width: 300, height: 300,
       colorDark: '#000000', colorLight: '#ffffff',
       correctLevel: QRCode.CorrectLevel.H
     });
