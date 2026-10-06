@@ -987,6 +987,19 @@ function setupEventListeners() {
     });
     qs('#btn-save-confirm').addEventListener('click', confirmSaveProject);
 
+    // 「變更輸出的小說名稱」視窗（發佈到花小說）：取消／確定輸出至雲端／在輸入欄按 Enter
+    qs('#btn-publish-cancel').addEventListener('click', () => {
+        qs('#modal-novel-publish').classList.add('hidden');
+    });
+    qs('#btn-publish-confirm').addEventListener('click', confirmPublishNovelToCloud);
+    qs('#publish-novel-name').addEventListener('keydown', e => {
+        // 中文輸入法選字時按的 Enter（isComposing）不能當成送出
+        if (e.key === 'Enter' && !e.isComposing) {
+            e.preventDefault();
+            confirmPublishNovelToCloud();
+        }
+    });
+
     // 讀取雲端小說時的密碼輸入視窗（Load Password Modal）
     qs('#btn-password-cancel').addEventListener('click', () => {
         qs('#modal-novel-password').classList.add('hidden');
@@ -1751,15 +1764,16 @@ function exportNovelFull() {
 // published_novels 資料表，供 novel_reader.html 讀取。
 // 與「💾 儲存雲端小說」(novel_entries) 不同：這裡只存讀者看得到的成品，
 // 不含粗綱／章描述／節大綱／作者備註／AI 設定／密碼；同名小說會覆蓋（id 不變，讀者的閱讀位置仍有效）。
-async function publishNovelToCloud() {
-    const title = (state.bookTitle || '').trim();
-    if (!title) {
-        alert("請先輸入小說名稱。");
-        return;
-    }
+//
+// 流程分三步：
+//   ① publishNovelToCloud()        按下匯出選單按鈕：檢查有內文後，開啟「變更輸出的小說名稱」彈窗
+//   ② 使用者在彈窗確認或修改名稱
+//   ③ confirmPublishNovelToCloud() 按「確定輸出至雲端」：以彈窗內的名稱寫入雲端
+// 彈窗內的名稱只是「輸出用名稱」，全程不會更動 state.bookTitle（編輯中的小說名稱）。
 
-    // 整理成 [{ title, paragraphs[] }]：略過「🔕 禁止匯出」的章／節，內文依換行切成段落、去除空白段。
-    // charCount = 各章標題＋各段落字數加總，計算方式必須與 novel_reader_app.js 的 renderBook() 一致
+// 整理成 [{ title, paragraphs[] }]：略過「🔕 禁止匯出」的章／節，內文依換行切成段落、去除空白段。
+// charCount = 各章標題＋各段落字數加總，計算方式必須與 novel_reader_app.js 的 renderBook() 一致
+function buildPublishPayload() {
     const chapters = [];
     let charCount = 0;
     state.chapters.forEach(ch => {
@@ -1777,7 +1791,33 @@ async function publishNovelToCloud() {
         chapters.push({ title: chapterTitle, paragraphs });
         charCount += chapterTitle.length + paragraphs.reduce((sum, p) => sum + p.length, 0);
     });
+    return { chapters, charCount };
+}
+
+// ① 開啟「變更輸出的小說名稱」彈窗：輸入欄預設為目前編輯中的小說名稱
+function publishNovelToCloud() {
+    if (!buildPublishPayload().chapters.length) {
+        alert("目前沒有可發佈的內文。");
+        return;
+    }
+    qs('#publish-novel-name').value = (state.bookTitle || '').trim();
+    qs('#modal-novel-publish').classList.remove('hidden');
+}
+
+// ③ 以彈窗內的名稱把小說寫入雲端
+async function confirmPublishNovelToCloud() {
+    const nameInput = qs('#publish-novel-name');
+    const title = nameInput.value.trim();
+    if (!title) {
+        alert("請輸入要輸出至雲端的小說名稱。");
+        nameInput.focus();
+        return;
+    }
+
+    const modal = qs('#modal-novel-publish');
+    const { chapters, charCount } = buildPublishPayload();   // 以「按下確定當下」的內容為準
     if (!chapters.length) {
+        modal.classList.add('hidden');
         alert("目前沒有可發佈的內文。");
         return;
     }
@@ -1788,8 +1828,11 @@ async function publishNovelToCloud() {
         return;
     }
 
+    const confirmBtn = qs('#btn-publish-confirm');
+    confirmBtn.disabled = true;                              // 寫入期間避免連按造成重複送出
     try {
-        // 先查雲端是否已有同名小說：有就先請使用者確認覆蓋
+        // 先查雲端是否已有同名小說：有就請使用者確認覆蓋。
+        // 若使用者按「取消」，彈窗保持開啟，方便直接改名後再送出
         const { data: existing, error: findError } = await sb
             .from('published_novels')
             .select('id, char_count, updated_at')
@@ -1797,14 +1840,12 @@ async function publishNovelToCloud() {
             .maybeSingle();
         if (findError) throw findError;
 
-        const confirmMsg = existing
-            ? `雲端「花小說」已有同名小說《${title}》（${existing.char_count} 字，更新於 ${new Date(existing.updated_at).toLocaleString()}）。\n\n要用目前的內容覆蓋嗎？`
-            : `要把《${title}》（${chapters.length} 章、${charCount} 字）發佈到「花小說」嗎？\n發佈後，任何人都能在花小說閱讀。`;
-        if (!confirm(confirmMsg)) {
-            appendLog(">> 已取消發佈到花小說。");
+        if (existing && !confirm(`雲端「花小說」已有同名小說《${title}》（${existing.char_count} 字，更新於 ${new Date(existing.updated_at).toLocaleString()}）。\n\n要用目前的內容覆蓋嗎？`)) {
+            appendLog(`>> 已取消覆蓋《${title}》，尚未輸出。`);
             return;
         }
 
+        modal.classList.add('hidden');
         appendLog(`☁️ 正在發佈《${title}》到花小說...`);
         const row = { title, chapters, char_count: charCount, updated_at: new Date().toISOString() };
         const { error } = existing
@@ -1815,8 +1856,11 @@ async function publishNovelToCloud() {
         appendLog(`✅ 《${title}》已${existing ? '覆蓋' : '發佈'}到花小說（${chapters.length} 章、${charCount} 字）。`);
         logNoExportSkipped();
     } catch (e) {
+        modal.classList.add('hidden');
         appendLog(`❌ 發佈到花小說失敗: ${e.message || JSON.stringify(e)}`);
         appendLog(">> 若尚未建立資料表，請先到 Supabase SQL Editor 執行 supabase/schema_published_novels.sql");
+    } finally {
+        confirmBtn.disabled = false;
     }
 }
 

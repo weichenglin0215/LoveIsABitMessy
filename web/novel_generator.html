@@ -59,7 +59,7 @@
           <button class="btn primary-btn" id="btn-export-full" title="匯出粗綱＋章＋節＋內文＋作者備註（完整資料）">📤 匯出小說
             粗綱+章+節+內文+作者備註</button>
           <!-- 發佈到雲端（Supabase published_novels 資料表），內容同「章標題+內文」；novel_reader.html（花小說）從該資料表讀取 -->
-          <button class="btn primary-btn" id="btn-export-cloud" title="把章標題＋內文發佈到雲端，讓「花小說」閱讀網頁（novel_reader.html）可以讀取；同名小說會覆蓋">☁️ 匯出小說 發佈到花小說（雲端）</button>
+          <button class="btn primary-btn" id="btn-export-cloud" title="把章標題＋內文發佈到雲端，讓「花小說」閱讀網頁（novel_reader.html）可以讀取；可先變更輸出的小說名稱，同名小說會覆蓋">☁️ 匯出小說 發佈到花小說（雲端）</button>
         </div>
       </div>
       <!-- 🧰 額外功能：點擊展開下方選單（下拉式選單，內含多項輔助工具按鈕） -->
@@ -274,6 +274,24 @@
       <div class="modal-actions">
         <button id="btn-save-cancel" class="btn-modal cancel">取消</button>
         <button id="btn-save-confirm" class="btn-modal primary">確定儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 彈窗：變更輸出的小說名稱（「☁️ 匯出小說 發佈到花小說」按下後先出現）──
+       名稱預設為目前編輯中的小說名稱，可改成別的；只影響「輸出到雲端」使用的名稱，
+       不會更動編輯中的小說名稱。多個寫作版本想共用同一個雲端名稱時，輸入相同名稱即可。 -->
+  <div id="modal-novel-publish" class="modal-overlay hidden">
+    <div class="modal-box modal-box-sm">
+      <h3 class="modal-title">☁️ 變更輸出的小說名稱</h3>
+      <p class="modal-desc">此名稱只用於輸出至雲端「花小說」，不會更動編輯中的小說名稱。雲端若已有同名小說，會再詢問是否覆蓋。</p>
+      <div class="modal-field-last">
+        <label class="modal-label" for="publish-novel-name">輸出的小說名稱：</label>
+        <input type="text" id="publish-novel-name">
+      </div>
+      <div class="modal-actions">
+        <button id="btn-publish-cancel" class="btn-modal cancel">取消</button>
+        <button id="btn-publish-confirm" class="btn-modal primary">確定輸出至雲端</button>
       </div>
     </div>
   </div>

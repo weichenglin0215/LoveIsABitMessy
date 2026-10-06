@@ -404,6 +404,19 @@ button {
   opacity: 0.85;
 }
 
+/* 次要按鈕（恢復預設值）：透明底＋邊框，靠左，與靠右的主要按鈕「完成」區隔 */
+.rd-btn-ghost {
+  margin-right: auto;
+  color: var(--rd-text);
+  background: transparent;
+  border: 1px solid var(--rd-border);
+}
+
+.rd-btn-ghost:hover {
+  opacity: 1;
+  background: var(--rd-hover);
+}
+
 /* ── 大字彈窗（選項、關於 花小說）：所有文字為原本的 150% ──
    標題 1.15rem → 1.725rem、內文 1rem → 1.5rem、✕ 與按鈕同步放大；寬度加大讓整列選項不擁擠 */
 .rd-modal-big {
@@ -519,6 +532,27 @@ button {
   font-size: 1.2rem;
   color: var(--rd-muted);
   word-break: break-all;
+}
+
+/* ── 選項彈窗：固定在螢幕下半段（下緣貼齊瀏覽器下緣、上緣在畫面正中間）──
+   上半段要空出來，讓使用者即時看到切換／調整參數後的畫面變化，所以：
+   ① 不壓暗背景（遮罩改為透明，主介面維持正常配色）
+   ② 遮罩本身不攔截滑鼠／觸控（pointer-events: none），只有彈窗本體可操作；
+      因此點上半段不會誤關彈窗，要關閉請按「完成」或 ✕（或 Esc）
+   ③ 外框改為 3px 粗線，與底下的閱讀區明確區隔 */
+#modal-options {
+  align-items: flex-end;
+  padding: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+#modal-options .rd-modal {
+  pointer-events: auto;
+  height: 50%;
+  max-height: 50%;
+  border: 3px solid var(--rd-accent);
+  border-radius: 0.75rem 0.75rem 0 0;
 }
 
 /* ── 選項 ── */

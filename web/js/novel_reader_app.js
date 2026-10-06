@@ -38,10 +38,11 @@
   const TAP_MAX_PX = 10;          // 移動不超過此距離視為「點擊」
   const TAP_ZONE_RATIO = 0.35;    // 畫面左／右 35% 為翻頁點擊區，中間不動作
 
-  // 選項預設值：黑體、標準粗細、20px、字距 0、行距 1.8 倍、橫式、淺黃底黑字
+  // 選項預設值：黑體、標準粗細、24px、字距 0.10、行距 1.5 倍、直式、淺黃底黑字
+  // （「恢復預設值」按鈕與「尚未儲存過選項」時都使用這組值）
   const DEFAULT_SETTINGS = {
-    font: 'sans', weight: 'normal', fontSize: 20, letterSpacing: 0, lineSpacing: 1.8,
-    writing: 'horizontal', theme: 'light'
+    font: 'sans', weight: 'normal', fontSize: 24, letterSpacing: 0.1, lineSpacing: 1.5,
+    writing: 'vertical', theme: 'light'
   };
   // 選項的合法值（讀 localStorage 時用來擋掉被竄改或舊版本的值）
   //   font：sans 黑體／serif 宋體／kai 標楷體；weight：normal 標準／bold 粗體／xbold 超粗體
@@ -92,6 +93,9 @@
   }
   function saveJson(key, value) {
     try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* 存不了就算了，不影響閱讀 */ }
+  }
+  function removeKey(key) {
+    try { localStorage.removeItem(key); } catch (e) { /* 同上 */ }
   }
 
   // ════════════════════════════════════════════════════════════
@@ -185,6 +189,17 @@
         applySliders();
       });
     });
+    $('btn-reset-options').addEventListener('click', resetSettings);
+  }
+
+  // 「恢復預設值」：全部選項（字型／粗細／字級／字距／行距／排列／配色）回到 DEFAULT_SETTINGS。
+  // 直接刪除已儲存的選項而不是把預設值寫進去：之後若再調整預設值，沒有自訂過的人會自動跟著更新。
+  // 排版會重算，但閱讀位置（currentOffset）不變，仍停在同一段文字。
+  function resetSettings() {
+    settings = Object.assign({}, DEFAULT_SETTINGS);
+    removeKey(SETTINGS_KEY);
+    syncOptionControls();
+    applySettings();
   }
 
   // ════════════════════════════════════════════════════════════
