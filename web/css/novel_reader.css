@@ -16,8 +16,11 @@
 :root {
   --rd-font-sans: 'Noto Sans TC', 'Microsoft JhengHei', 'PingFang TC', 'Heiti TC', sans-serif;
   --rd-font-serif: 'Noto Serif TC', 'PMingLiU', 'MingLiU', 'Songti TC', 'STSong', 'SimSun', serif;
-  /* 標楷體：Windows=標楷體/DFKai-SB、macOS/iOS=BiauKai/Kaiti TC；沒有楷體的裝置（多數 Android）退回宋體系 */
-  --rd-font-kai: '標楷體', 'DFKai-SB', 'BiauKai', 'Kaiti TC', 'KaiTi', 'STKaiti', 'AR PL UKai TW', 'Noto Serif TC', serif;
+  /* 標楷體：系統內建的標楷體（Windows＝標楷體／DFKai-SB、macOS＝BiauKai）優先；
+     沒有的裝置（例如手機）才使用「教育部標準楷書」（web/fonts/edukai-5.1_20251208.ttf，約 15MB），
+     字型名稱 EduKai 由 novel_reader_app.js 的 FontFace 在使用者第一次切換到「標楷體」且系統沒有標楷體時才下載並註冊；
+     下載完成前（或下載失敗時）先用裝置本身的其他楷體／宋體頂替。只有一種字重，粗體由瀏覽器合成 */
+  --rd-font-kai: '標楷體', 'DFKai-SB', 'BiauKai', 'EduKai', 'Kaiti TC', 'KaiTi', 'STKaiti', 'AR PL UKai TW', 'Noto Serif TC', serif;
   --rd-radius: 0.5rem;
 
   /* 預設主題：淺黃底黑字 */
@@ -532,6 +535,29 @@ button {
   font-size: 1.2rem;
   color: var(--rd-muted);
   word-break: break-all;
+}
+
+/* ── 下載字型彈窗（第一次切換到「標楷體」時顯示）── */
+#modal-font-download .rd-modal {
+  max-width: 28rem;
+}
+
+.rd-font-download-text {
+  margin: 0 0 0.8rem;
+}
+
+.rd-font-download-bar {
+  display: block;
+  width: 100%;
+  height: 1.2rem;
+  accent-color: var(--rd-accent);
+}
+
+.rd-font-download-status {
+  margin: 0.6rem 0 0;
+  font-size: 0.8em;
+  color: var(--rd-muted);
+  white-space: pre-line;
 }
 
 /* ── 選項彈窗：固定在螢幕下半段（下緣貼齊瀏覽器下緣、上緣在畫面正中間）──

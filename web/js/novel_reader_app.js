@@ -25,7 +25,11 @@
   const POSITIONS_KEY = 'novel_reader_positions_v1'; // localStorage：{ 小說id: { offset, savedAt } }
   const LAST_BOOK_KEY = 'novel_reader_last_book_v1'; // localStorage：上次閱讀的小說 id
   const NOVEL_TABLE = 'published_novels';            // Supabase 資料表（見 supabase/schema_published_novels.sql）
-  const QR_URL = 'https://weichenglin0215.github.io/LoveIsABitMessy/web/novel_reader.html'; // 與 lpas_v3.html 相同的發佈網址格式
+  const KAI_FONT_URL = 'fonts/edukai-5.1_20251208.ttf';    // 教育部標準楷書（與網頁同在 web/fonts/，不論伺服器根目錄設在哪都讀得到）
+  const KAI_SYSTEM_FONTS = ['標楷體', 'DFKai-SB', 'BiauKai']; // 系統內建的標楷體：Windows＝標楷體／DFKai-SB、macOS＝BiauKai
+  const KAI_FONT_FAMILY = 'EduKai';                        // 註冊的字型名稱，須與 css 的 --rd-font-kai 一致
+  const KAI_CACHED_KEY = 'novel_reader_edukai_cached_v1';  // localStorage：曾經下載完成的旗標
+  const QR_URL ='https://weichenglin0215.github.io/LoveIsABitMessy/web/novel_reader.html'; // 與 lpas_v3.html 相同的發佈網址格式
 
   const MAX_LINE_CHARS = 32;      // 每行最多字數：避免電腦寬螢幕一行過長不好讀
   const FONT_SIZE_MIN = 14;       // 字體尺寸範圍（px）
@@ -154,7 +158,106 @@
     // 手機瀏覽器的網址列顏色跟著標題列走
     const meta = $('meta-theme-color');
     if (meta) meta.content = getComputedStyle($('rd-topbar')).backgroundColor;
+    if (settings.font === 'kai') ensureKaiFont(); // 用到標楷體才下載字型檔（啟動時已存為標楷體、切換、重新整理都會經過這裡）
     relayout();
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // 標楷體：教育部標準楷書（fonts/edukai-5.1_20251208.ttf，約 15MB）
+  // ════════════════════════════════════════════════════════════
+  // 檔案很大，所以不隨網頁載入，而是第一次用到「標楷體」時才下載：
+  //   * 下載期間顯示「下載字型」彈窗與進度，完成後自動關閉並重新排版（閱讀位置不變）；
+  //   * 下載完成後記一筆旗標；之後再開網頁，檔案多半已在瀏覽器快取、瞬間讀完，
+  //     所以有旗標時彈窗延遲 0.6 秒才出現（讀得快就不會閃一下彈窗）；
+  //   * 下載期間／失敗時，CSS 字型清單會先用裝置本身的楷體或宋體頂替。
+  let kaiFontPromise = null;   // 已開始下載就不重複下載
+  let kaiFontFailed = false;   // 上次下載失敗：使用者再次選「標楷體」時才重試，避免每次調整滑桿都重試
+
+  function setKaiDownloadStatus(text, ratio) {
+    $('font-download-status').textContent = text;
+    const bar = $('font-download-bar');
+    if (ratio === null) bar.removeAttribute('value'); // 不知道總大小：顯示不確定進度的動畫條
+    else bar.value = Math.round(ratio * 100);
+  }
+
+  // 以串流下載字型檔並回報進度，回傳 ArrayBuffer（用 fetch 而不是 CSS @font-face，才拿得到進度）
+  async function fetchFontWithProgress(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const total = Number(res.headers.get('Content-Length')) || 0;
+    const reader = res.body.getReader();
+    const chunks = [];
+    let received = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      const mb = (received / 1048576).toFixed(1);
+      if (total) setKaiDownloadStatus(mb + ' / ' + (total / 1048576).toFixed(1) + ' MB', received / total);
+      else setKaiDownloadStatus('已下載 ' + mb + ' MB', null);
+    }
+    return new Blob(chunks).arrayBuffer();
+  }
+
+  // 偵測系統有沒有安裝某個字型：瀏覽器沒有直接詢問「有沒有這個字型」的 API，
+  // 所以用 canvas 畫同一串字，比較「指定字型」與「純 serif」兩張圖的像素——
+  // 字型不存在時瀏覽器會退回 serif，兩張圖一模一樣；存在時字形不同。
+  function hasSystemFont(names) {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 360;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const draw = (font) => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = font;
+        ctx.textBaseline = 'top';
+        ctx.fillText('標楷體永國龍書愛鬱', 0, 4);
+        return ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      };
+      const base = draw('48px serif');
+      return names.some((name) => {
+        const img = draw('48px "' + name + '", serif');
+        for (let i = 0; i < img.length; i++) if (img[i] !== base[i]) return true;
+        return false;
+      });
+    } catch (e) {
+      return false; // 偵測失敗（例如瀏覽器為防指紋而封鎖 canvas 讀取）就當作沒有，改走下載
+    }
+  }
+
+  function ensureKaiFont() {
+    if (kaiFontPromise) return kaiFontPromise;
+    // 系統已有標楷體（PC／Mac 常見）就直接用系統的，不下載 15MB 的教育部標準楷書
+    if (hasSystemFont(KAI_SYSTEM_FONTS)) {
+      kaiFontPromise = Promise.resolve();
+      return kaiFontPromise;
+    }
+    kaiFontFailed = false;
+    const knownCached = loadJson(KAI_CACHED_KEY, false);
+    setKaiDownloadStatus('準備下載…', null);
+    // 第一次下載：立刻顯示彈窗；曾經下載過：可能秒讀完，延遲 0.6 秒再顯示
+    const showModal = () => openModal('modal-font-download');
+    const timer = knownCached ? setTimeout(showModal, 600) : (showModal(), null);
+    kaiFontPromise = (async () => {
+      try {
+        const buffer = await fetchFontWithProgress(KAI_FONT_URL);
+        const face = new FontFace(KAI_FONT_FAMILY, buffer);
+        await face.load();
+        document.fonts.add(face);
+        saveJson(KAI_CACHED_KEY, true);
+        clearTimeout(timer);
+        closeModal('modal-font-download');   // 下載完成，自動關閉彈窗
+        relayout();                          // 字形換成楷書後重新排版，閱讀位置不變
+      } catch (e) {
+        clearTimeout(timer);
+        kaiFontFailed = true;
+        showModal();                         // 失敗時不自動關閉，讓使用者看到原因
+        setKaiDownloadStatus('下載失敗：' + errMsg(e) + '\n目前改用裝置內建的楷體／宋體顯示。', 0);
+      }
+    })();
+    return kaiFontPromise;
   }
 
   // 把目前選項同步到「選項」彈窗的控制項
@@ -176,6 +279,8 @@
           if (!radio.checked) return;
           settings[key] = radio.value;
           saveJson(SETTINGS_KEY, settings);
+          // 上次下載標楷體失敗，這次明確再選它就重試一次
+          if (key === 'font' && radio.value === 'kai' && kaiFontFailed) kaiFontPromise = null;
           applySettings();
         });
       });

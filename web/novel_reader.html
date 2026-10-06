@@ -17,7 +17,8 @@
   </script>
 
   <!-- 黑體 Noto Sans TC／宋體 Noto Serif TC（含 400 標準、700 粗體、900 超粗體）：Android 等沒有內建宋體的裝置也能一致顯示；離線時退回系統字型。
-       標楷體沒有網路字型可用，只在裝置本身有楷體時才會顯示（Windows／macOS／iOS 有，多數 Android 沒有） -->
+       標楷體不在這裡載入：系統有標楷體（Windows／Mac）就直接用系統的；沒有的裝置才使用教育部標準楷書
+       （fonts/edukai-5.1_20251208.ttf，約 15MB），由 js/novel_reader_app.js 在使用者第一次切換到「標楷體」時才下載（並顯示下載彈窗） -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -195,7 +196,7 @@
 
         <h3>選項</h3>
         <ul>
-          <li>字型：黑體（預設）／宋體／標楷體（需要裝置本身有楷體字型）。</li>
+          <li>字型：黑體（預設）／宋體／標楷體（裝置有標楷體就直接使用；沒有的才會下載教育部標準楷書，約 15MB，之後沿用瀏覽器快取）。</li>
           <li>粗細：標準（預設）／粗體／超粗體。</li>
           <li>字體尺寸：14～72（預設 24）。</li>
           <li>字距、行距：以滑桿調整，字距 0～0.5 個字寬（預設 0.10），行距 1.2～3 倍（預設 1.5 倍）。</li>
@@ -209,6 +210,23 @@
 
         <h3>操作小提醒</h3>
         <p>這個視窗內容較長，可用手指（電腦用滑鼠按住）上下拖曳來捲動。</p>
+
+        <p>教育部標準楷書 edukai-5.1_20251208.ttf　來源出處 教育部</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ 彈窗：下載字型（第一次切換到「標楷體」時顯示，下載完成自動關閉） ══════════════════════ -->
+  <div class="rd-modal-overlay rd-hidden" id="modal-font-download">
+    <div class="rd-modal rd-modal-sm rd-modal-big" role="dialog" aria-modal="true" aria-labelledby="font-download-title">
+      <div class="rd-modal-header">
+        <h2 id="font-download-title">⏬ 下載字型</h2>
+        <button class="rd-close" type="button" data-close aria-label="關閉">✕</button>
+      </div>
+      <div class="rd-modal-body">
+        <p class="rd-font-download-text">下載 教育部標準楷書，來源出處 教育部</p>
+        <progress class="rd-font-download-bar" id="font-download-bar" max="100"></progress>
+        <p class="rd-font-download-status" id="font-download-status">準備下載…</p>
       </div>
     </div>
   </div>
