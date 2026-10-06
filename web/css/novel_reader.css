@@ -1,0 +1,621 @@
+/* ============================================================
+   novel_reader.css ── 「花小說」（web/novel_reader.html）專用樣式
+   ------------------------------------------------------------
+   為什麼不用 editer.css：
+     editer.css 是為「深色編輯器」設計的（全域 body／按鈕／輸入欄都是深色），
+     閱讀頁需要「淺黃底黑字／黑底淺黃字」兩套可切換的主題，且要支援手機，
+     所以另立本檔；所有 class 以 rd- 為前綴，避免與其他頁面混淆。
+   單位：UI 一律 rem；唯獨「閱讀文字」的字級與行高由 JS 以整數 px 設定
+         （--rd-fs / --rd-lh），這樣每一頁剛好容納整數行，不會有半行被切掉。
+   佈局：flexbox（整體直向堆疊）＋ grid（選項彈窗的列）。
+   ============================================================ */
+
+/* ─────────────────────────────────────────────
+   1. 主題與字型變數（由 <html data-theme / data-font> 切換）
+   ───────────────────────────────────────────── */
+:root {
+  --rd-font-sans: 'Noto Sans TC', 'Microsoft JhengHei', 'PingFang TC', 'Heiti TC', sans-serif;
+  --rd-font-serif: 'Noto Serif TC', 'PMingLiU', 'MingLiU', 'Songti TC', 'STSong', 'SimSun', serif;
+  /* 標楷體：Windows=標楷體/DFKai-SB、macOS/iOS=BiauKai/Kaiti TC；沒有楷體的裝置（多數 Android）退回宋體系 */
+  --rd-font-kai: '標楷體', 'DFKai-SB', 'BiauKai', 'Kaiti TC', 'KaiTi', 'STKaiti', 'AR PL UKai TW', 'Noto Serif TC', serif;
+  --rd-radius: 0.5rem;
+
+  /* 預設主題：淺黃底黑字 */
+  --rd-bg: #f8f1c8;
+  --rd-text: #1a1a1a;
+  --rd-bar-bg: #ebe0a4;
+  --rd-panel-bg: #fffbe6;
+  --rd-border: rgba(0, 0, 0, 0.25);
+  --rd-hover: rgba(0, 0, 0, 0.08);
+  --rd-muted: rgba(0, 0, 0, 0.6);
+  --rd-accent: #8a4b00;
+  --rd-accent-text: #fffbe6;
+  --rd-overlay: rgba(0, 0, 0, 0.45);
+
+  --rd-font: var(--rd-font-sans);
+
+  /* 閱讀文字粗細：標準／粗體／超粗體（章標題固定比內文再重一級） */
+  --rd-weight: 400;
+  --rd-weight-heading: 700;
+}
+
+/* 黑底淺黃字：連標題列、彈窗一併變色 */
+:root[data-theme="dark"] {
+  --rd-bg: #000;
+  --rd-text: #f3e9b3;
+  --rd-bar-bg: #141414;
+  --rd-panel-bg: #1a1a1a;
+  --rd-border: rgba(243, 233, 179, 0.3);
+  --rd-hover: rgba(243, 233, 179, 0.14);
+  --rd-muted: rgba(243, 233, 179, 0.65);
+  --rd-accent: #f3e9b3;
+  --rd-accent-text: #000;
+  --rd-overlay: rgba(0, 0, 0, 0.7);
+}
+
+/* 白底黑字 */
+:root[data-theme="white"] {
+  --rd-bg: #fff;
+  --rd-text: #000;
+  --rd-bar-bg: #ececec;
+  --rd-panel-bg: #fff;
+  --rd-border: rgba(0, 0, 0, 0.3);
+  --rd-hover: rgba(0, 0, 0, 0.08);
+  --rd-muted: rgba(0, 0, 0, 0.6);
+  --rd-accent: #222;
+  --rd-accent-text: #fff;
+  --rd-overlay: rgba(0, 0, 0, 0.5);
+}
+
+/* 黑底白字 */
+:root[data-theme="black"] {
+  --rd-bg: #000;
+  --rd-text: #fff;
+  --rd-bar-bg: #141414;
+  --rd-panel-bg: #1a1a1a;
+  --rd-border: rgba(255, 255, 255, 0.3);
+  --rd-hover: rgba(255, 255, 255, 0.14);
+  --rd-muted: rgba(255, 255, 255, 0.65);
+  --rd-accent: #fff;
+  --rd-accent-text: #000;
+  --rd-overlay: rgba(0, 0, 0, 0.7);
+}
+
+:root[data-font="serif"] {
+  --rd-font: var(--rd-font-serif);
+}
+
+:root[data-font="kai"] {
+  --rd-font: var(--rd-font-kai);
+}
+
+:root[data-weight="bold"] {
+  --rd-weight: 700;
+  --rd-weight-heading: 900;
+}
+
+:root[data-weight="xbold"] {
+  --rd-weight: 900;
+  --rd-weight-heading: 900;
+}
+
+/* ─────────────────────────────────────────────
+   2. 整體框架：標題列 / 閱讀區 / 頁碼列 直向堆疊，永遠剛好一個螢幕高
+   ───────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--rd-bg);
+  color: var(--rd-text);
+  font-family: var(--rd-font-sans);
+  -webkit-text-size-adjust: 100%;
+}
+
+/* 通用隱藏（選單、彈窗、提示文字共用） */
+.rd-hidden {
+  display: none !important;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+}
+
+/* ─────────────────────────────────────────────
+   3. 標題列（含漢堡選單）
+   ───────────────────────────────────────────── */
+.rd-topbar {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  padding-top: calc(0.5rem + env(safe-area-inset-top));
+  background: var(--rd-bar-bg);
+  color: var(--rd-text);
+  border-bottom: 1px solid var(--rd-border);
+}
+
+.rd-menu-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* 漢堡按鈕：三條橫線 */
+.rd-hamburger {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.3rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--rd-border);
+  border-radius: var(--rd-radius);
+  cursor: pointer;
+}
+
+.rd-hamburger:hover {
+  background: var(--rd-hover);
+}
+
+.rd-hamburger span {
+  display: block;
+  width: 1.2rem;
+  height: 2px;
+  background: var(--rd-text);
+  border-radius: 2px;
+}
+
+/* 下拉選單 */
+.rd-dropdown {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  min-width: 18rem;
+  overflow: hidden;
+  background: var(--rd-panel-bg);
+  border: 1px solid var(--rd-border);
+  border-radius: var(--rd-radius);
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.35);
+}
+
+.rd-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 1rem 1.25rem;
+  text-align: left;
+  font-size: 1.5rem; /* 原 1rem 的 150% */
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--rd-border);
+  cursor: pointer;
+}
+
+.rd-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.rd-dropdown-item:hover {
+  background: var(--rd-hover);
+}
+
+.rd-app-title {
+  flex-shrink: 0;
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+/* 目前閱讀中的書名：靠右、過長以刪節號顯示 */
+.rd-book-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--rd-muted);
+  font-size: 0.95rem;
+}
+
+/* ─────────────────────────────────────────────
+   4. 閱讀區
+   ───────────────────────────────────────────── */
+.rd-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1rem;
+  /* 允許瀏覽器處理上下平移，但把「左右拖曳」留給我們翻頁 */
+  touch-action: pan-y;
+  cursor: pointer;
+}
+
+/* 尚未開啟小說／載入中／錯誤 時的提示文字 */
+.rd-status {
+  max-width: 30rem;
+  text-align: center;
+  line-height: 1.8;
+  white-space: pre-line;
+  color: var(--rd-muted);
+}
+
+.rd-status.rd-error {
+  color: var(--rd-text);
+}
+
+/* 閱讀視窗：寬高由 JS 依「整數字寬 × 整數行高」精算，overflow hidden 只靠程式翻頁 */
+.rd-viewport {
+  position: relative;
+  overflow: hidden;
+  font-family: var(--rd-font);
+  font-size: var(--rd-fs, 20px);
+  font-weight: var(--rd-weight);
+  line-height: var(--rd-lh, 36px);
+  letter-spacing: var(--rd-ls, 0px);
+  color: var(--rd-text);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  overflow-wrap: anywhere;
+}
+
+/* 直式：由右至左一行行排列；翻頁方向為「向左」 */
+:root[data-writing="vertical"] .rd-viewport {
+  writing-mode: vertical-rl;
+  text-combine-upright: digits 2;
+}
+
+/* 段落：不留段距，用「首行縮排兩字」分段（一般小說排版）。
+   不能有 margin／padding，否則行格對不齊整數行，頁尾會切到半行 */
+.rd-text p {
+  margin: 0;
+  text-indent: calc(var(--rd-adv, 20px) * 2); /* 縮排兩個字：字寬＋字距，才會與下方各行對齊 */
+}
+
+/* 章標題：區塊高度固定為「整數行」（上 2 行留白 + 標題行 + 下 1 行留白） */
+.rd-text h2 {
+  margin: 0;
+  padding-block: calc(var(--rd-lh, 36px) * 2) var(--rd-lh, 36px);
+  font-size: 1.25em;
+  font-weight: var(--rd-weight-heading);
+  line-height: var(--rd-lh, 36px);
+  text-align: center;
+}
+
+/* ─────────────────────────────────────────────
+   5. 頁碼列
+   ───────────────────────────────────────────── */
+.rd-footer {
+  flex-shrink: 0;
+  padding: 0.35rem 1rem;
+  padding-bottom: calc(0.35rem + env(safe-area-inset-bottom));
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--rd-muted);
+}
+
+/* ─────────────────────────────────────────────
+   6. 彈窗
+   ───────────────────────────────────────────── */
+.rd-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: var(--rd-overlay);
+}
+
+.rd-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 34rem;
+  max-height: 100%;
+  background: var(--rd-panel-bg);
+  color: var(--rd-text);
+  border: 1px solid var(--rd-border);
+  border-radius: 0.75rem;
+  box-shadow: 0 0.75rem 2.5rem rgba(0, 0, 0, 0.45);
+}
+
+.rd-modal-sm {
+  max-width: 22rem;
+}
+
+.rd-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid var(--rd-border);
+}
+
+.rd-modal-header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.rd-close {
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
+  font-size: 1.1rem;
+  background: transparent;
+  border: 1px solid var(--rd-border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.rd-close:hover {
+  background: var(--rd-hover);
+}
+
+.rd-modal-body {
+  padding: 1rem 1.1rem;
+  overflow-y: auto;
+  line-height: 1.75;
+}
+
+.rd-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.75rem 1.1rem;
+  border-top: 1px solid var(--rd-border);
+}
+
+.rd-btn {
+  padding: 0.5rem 1.4rem;
+  font-size: 1rem;
+  color: var(--rd-accent-text);
+  background: var(--rd-accent);
+  border: none;
+  border-radius: var(--rd-radius);
+  cursor: pointer;
+}
+
+.rd-btn:hover {
+  opacity: 0.85;
+}
+
+/* ── 大字彈窗（選項、關於 花小說）：所有文字為原本的 150% ──
+   標題 1.15rem → 1.725rem、內文 1rem → 1.5rem、✕ 與按鈕同步放大；寬度加大讓整列選項不擁擠 */
+.rd-modal-big {
+  max-width: 48rem;
+}
+
+.rd-modal-big .rd-modal-header h2 {
+  font-size: 1.725rem;
+}
+
+.rd-modal-big .rd-close {
+  width: 3.3rem;
+  height: 3.3rem;
+  font-size: 1.65rem;
+}
+
+.rd-modal-big .rd-modal-body {
+  font-size: 1.5rem;
+}
+
+.rd-modal-big .rd-btn {
+  font-size: 1.5rem;
+}
+
+/* 彈窗內容區：明確允許「上下拖曳」捲動（手指拖曳由瀏覽器原生處理）；
+   overscroll-behavior 避免捲到底時連帶拖動後面的頁面 */
+.rd-modal-body {
+  min-height: 0;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 「關於 花小說」：滑鼠按住拖曳捲動時顯示抓取游標，並避免拖曳時選取文字（拖曳邏輯見 enableDragScroll） */
+.rd-about-body {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.rd-about-body.rd-dragging {
+  cursor: grabbing;
+}
+
+/* ── 小說列表 ── */
+.rd-list-message {
+  margin: 0 0 0.5rem;
+  white-space: pre-line;
+  color: var(--rd-muted);
+}
+
+.rd-novel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.rd-novel-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  text-align: left;
+  background: transparent;
+  border: 1px solid var(--rd-border);
+  border-radius: var(--rd-radius);
+  cursor: pointer;
+}
+
+.rd-novel-item:hover {
+  background: var(--rd-hover);
+}
+
+.rd-novel-item[aria-current="true"] {
+  border-color: var(--rd-accent);
+  border-width: 2px;
+}
+
+.rd-novel-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.rd-novel-meta {
+  font-size: 0.85rem;
+  color: var(--rd-muted);
+}
+
+/* ── QR Code ── */
+.rd-qr-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  text-align: center;
+}
+
+/* QR Code 永遠黑碼白底（深色主題下也要能被手機掃描） */
+.rd-qr-frame {
+  padding: 0.75rem;
+  background: #fff;
+  border-radius: var(--rd-radius);
+}
+
+.rd-qr-hint,
+.rd-qr-url {
+  margin: 0;
+}
+
+.rd-qr-url {
+  font-size: 0.8rem;
+  color: var(--rd-muted);
+  word-break: break-all;
+}
+
+/* ── 選項 ── */
+.rd-options-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 1rem 1rem;
+}
+
+.rd-options-grid > label,
+.rd-options-grid > .rd-opt-label {
+  font-weight: 700;
+}
+
+/* 分段式單選按鈕（黑體／宋體、橫式／直式、配色） */
+.rd-seg-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.rd-seg {
+  position: relative;
+}
+
+/* 原生 radio 隱藏但保留鍵盤操作 */
+.rd-seg input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.rd-seg span {
+  display: block;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--rd-border);
+  border-radius: var(--rd-radius);
+  cursor: pointer;
+}
+
+.rd-seg input:checked + span {
+  color: var(--rd-accent-text);
+  background: var(--rd-accent);
+  border-color: var(--rd-accent);
+}
+
+.rd-seg input:focus-visible + span {
+  outline: 2px solid var(--rd-accent);
+  outline-offset: 2px;
+}
+
+.rd-size-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.rd-size-row input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--rd-accent);
+}
+
+.rd-size-value {
+  min-width: 3.2rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.rd-modal-big .rd-size-value {
+  min-width: 5.5rem;
+}
+
+/* ── 關於 ── */
+.rd-about-body h3 {
+  margin: 1rem 0 0.3rem;
+  font-size: 1em; /* 與內文同大，靠粗體區分；大字彈窗內即為 1.5rem */
+}
+
+.rd-about-body h3:first-child {
+  margin-top: 0;
+}
+
+.rd-about-body ul {
+  margin: 0;
+  padding-left: 1.3em;
+}
+
+/* 手機窄螢幕：選項改為單欄 */
+@media (max-width: 40rem) {
+  .rd-options-grid {
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+  }
+
+  .rd-options-grid > label,
+  .rd-options-grid > .rd-opt-label {
+    margin-top: 0.6rem;
+  }
+}

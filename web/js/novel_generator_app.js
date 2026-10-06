@@ -752,6 +752,7 @@ function setupEventListeners() {
     }
     qs('#btn-export-simple').addEventListener('click', exportNovelSimple);
     qs('#btn-export-full').addEventListener('click', exportNovelFull);
+    qs('#btn-export-cloud').addEventListener('click', publishNovelToCloud);
     qs('#btn-ai-gen-content').addEventListener('click', async () => {
         const ok = await openParamsModal({
             modalId: 'modal-params-sc', confirmBtnId: 'btn-sc-params-confirm', cancelBtnId: 'btn-sc-params-cancel',
@@ -879,6 +880,9 @@ function setupEventListeners() {
 
     // 🈶 所有欄位的簡體轉換成繁體（OpenCC）
     qs('#btn-s2t-convert').addEventListener('click', convertAllFieldsToTraditional);
+
+    // 📖 開啟小說閱讀網頁（花小說）：在新分頁開啟同目錄的 novel_reader.html
+    qs('#btn-open-reader').addEventListener('click', () => window.open('novel_reader.html', '_blank'));
 
     // 🌐 網路搜尋並依序改寫：按鈕與彈窗事件
     qs('#btn-web-rewrite').addEventListener('click', openWebRewriteModal);
@@ -1741,6 +1745,79 @@ function exportNovelFull() {
     downloadMarkdown(`${sanitizeFilename(state.bookTitle) || 'novel'}.md`, md);
     appendLog(">> 小說已匯出（粗綱＋章＋節＋內文＋作者備註）。");
     logNoExportSkipped();
+}
+
+// ☁️ 發佈到「花小說」：把已完成的小說（章標題＋內文，同「章標題+內文」匯出的範圍）存進 Supabase 的
+// published_novels 資料表，供 novel_reader.html 讀取。
+// 與「💾 儲存雲端小說」(novel_entries) 不同：這裡只存讀者看得到的成品，
+// 不含粗綱／章描述／節大綱／作者備註／AI 設定／密碼；同名小說會覆蓋（id 不變，讀者的閱讀位置仍有效）。
+async function publishNovelToCloud() {
+    const title = (state.bookTitle || '').trim();
+    if (!title) {
+        alert("請先輸入小說名稱。");
+        return;
+    }
+
+    // 整理成 [{ title, paragraphs[] }]：略過「🔕 禁止匯出」的章／節，內文依換行切成段落、去除空白段。
+    // charCount = 各章標題＋各段落字數加總，計算方式必須與 novel_reader_app.js 的 renderBook() 一致
+    const chapters = [];
+    let charCount = 0;
+    state.chapters.forEach(ch => {
+        if (ch.noExport) return;                           // 🔕 整章禁止匯出
+        const paragraphs = [];
+        ch.sections.forEach(sec => {
+            if (sec.noExport) return;                      // 🔕 單一小節禁止匯出
+            (sec.content || '').split(/\n+/).forEach(line => {
+                const text = line.trim();
+                if (text) paragraphs.push(text);
+            });
+        });
+        if (!paragraphs.length) return;                    // 整章沒有內文就不發佈，免得讀者看到空章
+        const chapterTitle = (ch.title || '').trim();
+        chapters.push({ title: chapterTitle, paragraphs });
+        charCount += chapterTitle.length + paragraphs.reduce((sum, p) => sum + p.length, 0);
+    });
+    if (!chapters.length) {
+        alert("目前沒有可發佈的內文。");
+        return;
+    }
+
+    const sb = window.SupabaseClient && window.SupabaseClient.getClient();
+    if (!sb) {
+        alert("Supabase 尚未初始化，無法發佈。");
+        return;
+    }
+
+    try {
+        // 先查雲端是否已有同名小說：有就先請使用者確認覆蓋
+        const { data: existing, error: findError } = await sb
+            .from('published_novels')
+            .select('id, char_count, updated_at')
+            .eq('title', title)
+            .maybeSingle();
+        if (findError) throw findError;
+
+        const confirmMsg = existing
+            ? `雲端「花小說」已有同名小說《${title}》（${existing.char_count} 字，更新於 ${new Date(existing.updated_at).toLocaleString()}）。\n\n要用目前的內容覆蓋嗎？`
+            : `要把《${title}》（${chapters.length} 章、${charCount} 字）發佈到「花小說」嗎？\n發佈後，任何人都能在花小說閱讀。`;
+        if (!confirm(confirmMsg)) {
+            appendLog(">> 已取消發佈到花小說。");
+            return;
+        }
+
+        appendLog(`☁️ 正在發佈《${title}》到花小說...`);
+        const row = { title, chapters, char_count: charCount, updated_at: new Date().toISOString() };
+        const { error } = existing
+            ? await sb.from('published_novels').update(row).eq('id', existing.id)
+            : await sb.from('published_novels').insert(row);
+        if (error) throw error;
+
+        appendLog(`✅ 《${title}》已${existing ? '覆蓋' : '發佈'}到花小說（${chapters.length} 章、${charCount} 字）。`);
+        logNoExportSkipped();
+    } catch (e) {
+        appendLog(`❌ 發佈到花小說失敗: ${e.message || JSON.stringify(e)}`);
+        appendLog(">> 若尚未建立資料表，請先到 Supabase SQL Editor 執行 supabase/schema_published_novels.sql");
+    }
 }
 
 // 呼叫 AI 為「目前選取中」的小節（state.activeIndex）產生正文內容，

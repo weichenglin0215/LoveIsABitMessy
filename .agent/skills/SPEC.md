@@ -16,6 +16,7 @@ description: 開始任何任務前必讀，所有修改必須符合本規範
 - 採用 web/css/editer.css
 - 使用 rem 單位
 - 使用 flexbox 和 grid 佈局
+- **例外：`novel_reader.html`（花小說閱讀網頁）** 不採用 editer.css，改用專屬的 `web/css/novel_reader.css`（class 一律以 `rd-` 為前綴）。原因：閱讀頁需要「淺黃底黑字／黑底淺黃字」兩套可切換的主題（以 `<html data-theme>` 切換）、直式排版與手機版面，與編輯器的深色介面不同。仍使用 rem 與 flexbox/grid；唯有閱讀文字的字級／行高／字距由 JS 以整數 px 設定（`--rd-fs`／`--rd-lh`／`--rd-ls`／`--rd-adv`），目的是讓一頁剛好容納整數行、一行剛好排滿整數個字，頁尾不切到半行，所以 `.rd-text` 內的 `p`／`h2` 不可加入非行高整數倍的 margin／padding。「選項」與「關於 花小說」彈窗（`.rd-modal-big`）及漢堡選單的文字為一般彈窗的 150%
 
 ## 介面樣式準則（characters_editor / daily_run / novel_generator / loveline 共用）
 
@@ -92,6 +93,7 @@ description: 開始任何任務前必讀，所有修改必須符合本規範
 - 使用 RLS (Row Level Security) 保護資料
 - 使用 anon 角色進行匿名存取
 - 角色卡、日記、小說、劇本都儲存本機與雲端兩份。
+- 「已完成、供閱讀」的小說另存於 `published_novels` 資料表（`supabase/schema_published_novels.sql`），由 novel_generator 發佈、novel_reader 唯讀讀取；與編輯用的 `novel_entries` 分開，只含書名與各章標題／段落。閱讀位置與閱讀選項只存在讀者瀏覽器的 localStorage（以字元位置記錄，不記頁碼），不寫回資料庫。
 
 ## 檔案命名規則
 - 角色卡：`characters/role_YYYY-MM-DD_角色id.json`

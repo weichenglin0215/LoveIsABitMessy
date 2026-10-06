@@ -58,6 +58,8 @@
           <button class="btn primary-btn" id="btn-export-simple" title="只匯出章標題與內文，等同一般小說格式">📤 匯出小說 章標題+內文</button>
           <button class="btn primary-btn" id="btn-export-full" title="匯出粗綱＋章＋節＋內文＋作者備註（完整資料）">📤 匯出小說
             粗綱+章+節+內文+作者備註</button>
+          <!-- 發佈到雲端（Supabase published_novels 資料表），內容同「章標題+內文」；novel_reader.html（花小說）從該資料表讀取 -->
+          <button class="btn primary-btn" id="btn-export-cloud" title="把章標題＋內文發佈到雲端，讓「花小說」閱讀網頁（novel_reader.html）可以讀取；同名小說會覆蓋">☁️ 匯出小說 發佈到花小說（雲端）</button>
         </div>
       </div>
       <!-- 🧰 額外功能：點擊展開下方選單（下拉式選單，內含多項輔助工具按鈕） -->
@@ -65,7 +67,7 @@
         <button class="btn secondary-btn" id="btn-extra-features" title="展開額外功能選單">🧰 額外功能🔽</button>
         <!-- 額外功能下拉選單本體，預設隱藏（display:none），由JS切換顯示 -->
         <div id="extra-features-menu"
-          style="display:none; position:absolute; top:100%; left:0; margin-top:4px; padding:8px; flex-direction:column; gap:6px; background:var(--c-bg-panel, hsla(240, 10%, 10%, 0.85)); border:2px solid var(--c-border, #555); border-bottom:5px solid var(--c-border, #555); border-radius:var(--radius-lg, 10px); z-index:100; white-space:nowrap; box-shadow:0 4px 12px rgba(0,0,0,0.3);">
+          style="display:none; position:absolute; top:100%; right:0; margin-top:4px; padding:8px; flex-direction:column; gap:6px; background:var(--c-bg-panel, hsla(240, 10%, 10%, 0.85)); border:2px solid var(--c-border, #555); border-bottom:5px solid var(--c-border, #555); border-radius:var(--radius-lg, 10px); z-index:100; white-space:nowrap; box-shadow:0 4px 12px rgba(0,0,0,0.3);">
           <button class="btn secondary-btn" id="btn-author-notes" title="撰寫作者備註，不會提供給 AI，但會隨小說一起儲存／讀取">📝 作者備註</button>
           <button class="btn secondary-btn" id="btn-compare-novels" title="並排比對四本雲端小說的內容">📚 比對多本小說(只能比對，無法儲存)</button>
           <button class="btn secondary-btn" id="btn-review-novel" title="以最嚴格的專業編輯身分審評小說，提前獲得真切的讀者/編輯回應">🎯
@@ -78,6 +80,9 @@
                將其中的簡體字就地轉成繁體字（台灣標準字形）。此操作無法復原，執行前會跳出確認視窗。 -->
           <button class="btn secondary-btn" id="btn-s2t-convert" title="用 OpenCC 把粗綱／章標題／章描述／小節大綱／內文／作者備註中的簡體字轉成繁體字（無法復原）">🈶
             所有欄位的簡體轉換成繁體</button>
+          <!-- 在新分頁開啟「花小說」閱讀網頁（與本頁同目錄的 novel_reader.html） -->
+          <button class="btn secondary-btn" id="btn-open-reader" title="在新的瀏覽器分頁開啟小說閱讀網頁「花小說」（novel_reader.html）">📖
+            開啟小說閱讀網頁 novel_reader.html</button>
         </div>
       </div>
       <button class="ai-btn-bluepink" id="btn-ai-gen-full-auto" title=" AI全自動生成所有文字：依粗綱生成章節→節大綱→節內文（跳過已鎖定）">🚀

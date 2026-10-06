@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" data-theme="light" data-writing="horizontal" data-font="sans">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!-- 手機瀏覽器網址列顏色：由 novel_reader_app.js 隨主題更新 -->
+  <meta name="theme-color" content="#ebe0a4" id="meta-theme-color">
+  <title>花小說</title>
+
+  <!-- 在畫面繪製前先套用「已儲存的配色」，避免選了黑底的人每次開啟都先閃一下亮黃色 -->
+  <script>
+    try {
+      var saved = JSON.parse(localStorage.getItem('novel_reader_settings_v1') || '{}');
+      if (['dark', 'white', 'black'].indexOf(saved.theme) >= 0) document.documentElement.dataset.theme = saved.theme;
+    } catch (e) { /* 讀不到就用預設的淺黃底黑字 */ }
+  </script>
+
+  <!-- 黑體 Noto Sans TC／宋體 Noto Serif TC（含 400 標準、700 粗體、900 超粗體）：Android 等沒有內建宋體的裝置也能一致顯示；離線時退回系統字型。
+       標楷體沒有網路字型可用，只在裝置本身有楷體時才會顯示（Windows／macOS／iOS 有，多數 Android 沒有） -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Noto+Serif+TC:wght@400;700;900&display=swap" rel="stylesheet">
+
+  <!-- Supabase JS 官方 UMD 版函式庫 + 專案共用的客戶端封裝（讀取 published_novels） -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
+  <script src="js/supabaseClient.js" defer></script>
+  <!-- QRCode.js：與 lpas_v3.html 相同的 QR Code 產生函式庫 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+
+  <link rel="stylesheet" href="css/novel_reader.css">
+  <!-- 閱讀頁邏輯（翻頁、記錄閱讀位置、選項、讀取雲端小說）。defer 會依序執行，所以在上面的 Supabase 腳本之後 -->
+  <script src="js/novel_reader_app.js" defer></script>
+</head>
+
+<body>
+  <!-- ══════════════════════ 標題列：漢堡選單 + 花小說 + 目前書名 ══════════════════════ -->
+  <header class="rd-topbar" id="rd-topbar">
+    <div class="rd-menu-wrapper">
+      <button class="rd-hamburger" id="rd-hamburger" type="button" aria-label="選單" aria-haspopup="true"
+        aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="rd-dropdown rd-hidden" id="rd-menu" role="menu">
+        <button class="rd-dropdown-item" id="menu-list" type="button" role="menuitem">📚 讀取小說</button>
+        <button class="rd-dropdown-item" id="menu-qrcode" type="button" role="menuitem">📱 分享 QR Code</button>
+        <button class="rd-dropdown-item" id="menu-options" type="button" role="menuitem">⚙️ 選項</button>
+        <button class="rd-dropdown-item" id="menu-about" type="button" role="menuitem">ℹ️ 關於 花小說</button>
+      </div>
+    </div>
+    <h1 class="rd-app-title">🌸 花小說</h1>
+    <span class="rd-book-title" id="rd-book-title"></span>
+  </header>
+
+  <!-- ══════════════════════ 閱讀區 ══════════════════════
+       點擊左右側／左右拖曳翻頁的事件綁在 #rd-stage（含四周留白，手指好點）。
+       #rd-viewport 的寬高由 JS 精算；#rd-text 內是依章節產生的 <h2>／<p>。 -->
+  <main class="rd-stage" id="rd-stage">
+    <p class="rd-status" id="rd-status"></p>
+    <div class="rd-viewport rd-hidden" id="rd-viewport">
+      <article class="rd-text" id="rd-text"></article>
+    </div>
+  </main>
+
+  <footer class="rd-footer" id="rd-footer"><span id="rd-progress"></span></footer>
+
+  <!-- ══════════════════════ 彈窗：讀取小說（小說列表） ══════════════════════ -->
+  <div class="rd-modal-overlay rd-hidden" id="modal-list">
+    <div class="rd-modal" role="dialog" aria-modal="true" aria-labelledby="list-title">
+      <div class="rd-modal-header">
+        <h2 id="list-title">📚 讀取小說</h2>
+        <button class="rd-close" type="button" data-close aria-label="關閉">✕</button>
+      </div>
+      <div class="rd-modal-body">
+        <p class="rd-list-message rd-hidden" id="rd-list-message"></p>
+        <div class="rd-novel-list" id="rd-novel-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ 彈窗：分享 QR Code ══════════════════════ -->
+  <div class="rd-modal-overlay rd-hidden" id="modal-qrcode">
+    <div class="rd-modal rd-modal-sm" role="dialog" aria-modal="true" aria-labelledby="qr-title">
+      <div class="rd-modal-header">
+        <h2 id="qr-title">📱 分享 QR Code</h2>
+        <button class="rd-close" type="button" data-close aria-label="關閉">✕</button>
+      </div>
+      <div class="rd-modal-body rd-qr-body">
+        <div class="rd-qr-frame"><div id="rd-qrcode"></div></div>
+        <p class="rd-qr-hint">用手機掃描，就能開啟「花小說」</p>
+        <p class="rd-qr-url" id="rd-qr-url"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ 彈窗：選項（字型／字體尺寸／排列方向／配色） ══════════════════════
+       任何變更都會「立即套用並存在這個瀏覽器」，不需要按儲存。 -->
+  <div class="rd-modal-overlay rd-hidden" id="modal-options">
+    <div class="rd-modal rd-modal-big" role="dialog" aria-modal="true" aria-labelledby="options-title">
+      <div class="rd-modal-header">
+        <h2 id="options-title">⚙️ 選項</h2>
+        <button class="rd-close" type="button" data-close aria-label="關閉">✕</button>
+      </div>
+      <div class="rd-modal-body">
+        <div class="rd-options-grid">
+          <span class="rd-opt-label">字型</span>
+          <div class="rd-seg-group">
+            <label class="rd-seg"><input type="radio" name="opt-font" value="sans"><span>黑體</span></label>
+            <label class="rd-seg"><input type="radio" name="opt-font" value="serif"><span>宋體</span></label>
+            <label class="rd-seg"><input type="radio" name="opt-font" value="kai"><span>標楷體</span></label>
+          </div>
+
+          <span class="rd-opt-label">粗細</span>
+          <div class="rd-seg-group">
+            <label class="rd-seg"><input type="radio" name="opt-weight" value="normal"><span>標準</span></label>
+            <label class="rd-seg"><input type="radio" name="opt-weight" value="bold"><span>粗體</span></label>
+            <label class="rd-seg"><input type="radio" name="opt-weight" value="xbold"><span>超粗體</span></label>
+          </div>
+
+          <label for="opt-font-size">字體尺寸</label>
+          <div class="rd-size-row">
+            <input type="range" id="opt-font-size" min="14" max="72" step="1">
+            <span class="rd-size-value" id="opt-font-size-value"></span>
+          </div>
+
+          <label for="opt-letter-spacing">字距</label>
+          <div class="rd-size-row">
+            <input type="range" id="opt-letter-spacing" min="0" max="0.5" step="0.05">
+            <span class="rd-size-value" id="opt-letter-spacing-value"></span>
+          </div>
+
+          <label for="opt-line-spacing">行距</label>
+          <div class="rd-size-row">
+            <input type="range" id="opt-line-spacing" min="1.2" max="3" step="0.1">
+            <span class="rd-size-value" id="opt-line-spacing-value"></span>
+          </div>
+
+          <span class="rd-opt-label">文字排列</span>
+          <div class="rd-seg-group">
+            <label class="rd-seg"><input type="radio" name="opt-writing" value="horizontal"><span>橫式</span></label>
+            <label class="rd-seg"><input type="radio" name="opt-writing" value="vertical"><span>直式</span></label>
+          </div>
+
+          <span class="rd-opt-label">配色</span>
+          <div class="rd-seg-group">
+            <label class="rd-seg"><input type="radio" name="opt-theme" value="light"><span>淺黃底黑字</span></label>
+            <label class="rd-seg"><input type="radio" name="opt-theme" value="dark"><span>黑底淺黃字</span></label>
+            <label class="rd-seg"><input type="radio" name="opt-theme" value="white"><span>白底黑字</span></label>
+            <label class="rd-seg"><input type="radio" name="opt-theme" value="black"><span>黑底白字</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="rd-modal-footer">
+        <button class="rd-btn" type="button" data-close>完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ 彈窗：關於 花小說 ══════════════════════ -->
+  <div class="rd-modal-overlay rd-hidden" id="modal-about">
+    <div class="rd-modal rd-modal-big" role="dialog" aria-modal="true" aria-labelledby="about-title">
+      <div class="rd-modal-header">
+        <h2 id="about-title">ℹ️ 關於 花小說</h2>
+        <button class="rd-close" type="button" data-close aria-label="關閉">✕</button>
+      </div>
+      <div class="rd-modal-body rd-about-body">
+        <h3>這是什麼</h3>
+        <p>「花小說」是閱讀「開心花園AI小說」已完成作品的網頁。小說由作者在「小說自動產生器」發佈到雲端後，就能在這裡閱讀。</p>
+
+        <h3>讀取小說</h3>
+        <ul>
+          <li>左上角選單 →「讀取小說」，從列表點選要讀的書。</li>
+          <li>下次開啟網頁，會自動回到上次讀的那一本。</li>
+        </ul>
+
+        <h3>翻頁</h3>
+        <ul>
+          <li>點擊畫面左側或右側，或是左右拖曳；電腦也能用鍵盤 ← → 、PageUp／PageDown、空白鍵。</li>
+          <li>橫式：點右側（或向左拖曳）＝下一頁。</li>
+          <li>直式：文字由右往左閱讀，所以點左側（或向右拖曳）＝下一頁。</li>
+        </ul>
+
+        <h3>自動記住閱讀位置</h3>
+        <ul>
+          <li>每一本小說各自記錄「讀到第幾個字」（以當時那一頁的第一個字為準）。</li>
+          <li>因為字體尺寸、直橫排會讓頁數改變，所以記的是字數而不是頁數，換了設定也能回到同一段文字。</li>
+          <li>閱讀位置與選項都只存在這個瀏覽器；換瀏覽器或清除網站資料就會歸零。</li>
+        </ul>
+
+        <h3>選項</h3>
+        <ul>
+          <li>字型：黑體（預設）／宋體／標楷體（需要裝置本身有楷體字型）。</li>
+          <li>粗細：標準（預設）／粗體／超粗體。</li>
+          <li>字體尺寸：14～72。</li>
+          <li>字距、行距：以滑桿調整，字距 0～0.5 個字寬，行距 1.2～3 倍。</li>
+          <li>文字排列：橫式／直式。</li>
+          <li>配色：淺黃底黑字（預設）／黑底淺黃字／白底黑字／黑底白字，標題列一併變色；淺黃色比純白更護眼。</li>
+        </ul>
+
+        <h3>分享</h3>
+        <p>選單 →「分享 QR Code」，讓朋友用手機掃描即可開啟。</p>
+
+        <h3>操作小提醒</h3>
+        <p>這個視窗內容較長，可用手指（電腦用滑鼠按住）上下拖曳來捲動。</p>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
