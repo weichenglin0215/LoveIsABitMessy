@@ -697,6 +697,91 @@ function renderEditor() {
     };
 }
 
+// ── 作者備註浮動視窗（非 modal：不壓暗主介面，可拖曳移動／四角縮放） ──
+const NOTES_MIN_W = 320;   // 視窗最小寬度（需與 CSS .notes-panel min-width 一致）
+const NOTES_MIN_H = 220;   // 視窗最小高度（需與 CSS .notes-panel min-height 一致）
+
+// 設定視窗位置與尺寸（px）
+function setNotesPanelRect(panel, left, top, width, height) {
+    panel.style.left = left + 'px';
+    panel.style.top = top + 'px';
+    panel.style.width = width + 'px';
+    panel.style.height = height + 'px';
+}
+
+// 回復預設：與原彈窗相同的寬度 min(94vw,1200px)，高度約 800px（不超過 90vh），置中
+function resetNotesPanel(panel) {
+    const w = Math.min(window.innerWidth * 0.94, 1200);
+    const h = Math.min(window.innerHeight * 0.9, 800);
+    setNotesPanelRect(panel, (window.innerWidth - w) / 2, (window.innerHeight - h) / 2, w, h);
+}
+
+// 縮小：瀏覽器 1/3 寬、1/2 高，緊靠左下角
+function minimizeNotesPanel(panel) {
+    const w = window.innerWidth / 3;
+    const h = window.innerHeight / 2;
+    setNotesPanelRect(panel, 0, window.innerHeight - h, w, h);
+}
+
+// 最大化：與瀏覽器視窗同尺寸
+function maximizeNotesPanel(panel) {
+    setNotesPanelRect(panel, 0, 0, window.innerWidth, window.innerHeight);
+}
+
+// 開啟作者備註視窗：帶入目前內容；首次開啟套用預設位置，之後保留使用者調整過的位置與尺寸
+function openAuthorNotesPanel() {
+    const panel = qs('#modal-author-notes');
+    qs('#author-notes-text').value = state.authorNotes || '';
+    if (!panel.style.width) {
+        resetNotesPanel(panel);
+    }
+    panel.classList.remove('hidden');
+}
+
+// 拖曳四個角落縮放：以拖曳開始時的矩形為基準，對應邊跟著游標移動，並限制最小尺寸與畫面範圍
+function makeNotesPanelResizable(panel) {
+    panel.querySelectorAll('.notes-resizer').forEach(handle => {
+        handle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const corner = handle.dataset.corner;       // nw / ne / sw / se
+            const r = panel.getBoundingClientRect();
+            const startX = e.clientX, startY = e.clientY;
+
+            const onMove = (ev) => {
+                const dx = ev.clientX - startX;
+                const dy = ev.clientY - startY;
+                let left = r.left, top = r.top, right = r.right, bottom = r.bottom;
+                // 西側角落動左邊、東側角落動右邊；北側動上邊、南側動下邊
+                if (corner.includes('w')) left = Math.min(Math.max(0, r.left + dx), right - NOTES_MIN_W);
+                if (corner.includes('e')) right = Math.max(Math.min(window.innerWidth, r.right + dx), left + NOTES_MIN_W);
+                if (corner.includes('n')) top = Math.min(Math.max(0, r.top + dy), bottom - NOTES_MIN_H);
+                if (corner.includes('s')) bottom = Math.max(Math.min(window.innerHeight, r.bottom + dy), top + NOTES_MIN_H);
+                setNotesPanelRect(panel, left, top, right - left, bottom - top);
+            };
+            const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+    });
+}
+
+// 初始化作者備註視窗：標題列拖曳（沿用 makePanelDraggable）、四角縮放、縮小／預設／最大化按鈕
+function initAuthorNotesPanel() {
+    const panel = qs('#modal-author-notes');
+    const header = qs('#author-notes-header');
+    // 按在標題列按鈕上時不可啟動拖曳（makePanelDraggable 會 preventDefault 吃掉 click）
+    header.querySelectorAll('button').forEach(b => b.addEventListener('mousedown', e => e.stopPropagation()));
+    makePanelDraggable(panel, header);
+    makeNotesPanelResizable(panel);
+    qs('#btn-author-notes-min').addEventListener('click', () => minimizeNotesPanel(panel));
+    qs('#btn-author-notes-default').addEventListener('click', () => resetNotesPanel(panel));
+    qs('#btn-author-notes-max').addEventListener('click', () => maximizeNotesPanel(panel));
+}
+
 // 事件處理
 function setupEventListeners() {
     qs('#add-char').addEventListener('click', () => {
@@ -716,10 +801,8 @@ function setupEventListeners() {
     });
 
     // 作者備註
-    qs('#btn-author-notes').addEventListener('click', () => {
-        qs('#author-notes-text').value = state.authorNotes || '';
-        qs('#modal-author-notes').classList.remove('hidden');
-    });
+    qs('#btn-author-notes').addEventListener('click', openAuthorNotesPanel);
+    initAuthorNotesPanel();
     qs('#btn-author-notes-cancel').addEventListener('click', () => {
         qs('#modal-author-notes').classList.add('hidden');
     });
@@ -4811,8 +4894,7 @@ function jumpToSearchResult(item) {
         }
         case 'authorNotes': {
             // 作者備註在彈窗內，先開啟彈窗並帶入目前內容
-            qs('#author-notes-text').value = state.authorNotes || '';
-            qs('#modal-author-notes').classList.remove('hidden');
+            openAuthorNotesPanel();
             gsFocusAndSelect(qs('#author-notes-text'), item.start, item.end);
             break;
         }

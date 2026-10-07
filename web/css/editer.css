@@ -3087,3 +3087,90 @@ body.daily-page .ai-btn {
 #modal-refine {
   z-index: 110;
 }
+
+/* ─────────────────────────────────────────────────────────────
+   59. 作者備註浮動視窗（novel_generator 專用）
+        ── 非 modal：不壓暗主介面、可同時操作主介面與備註，
+           可由標題列拖曳移動、四個角落拖曳縮放，
+           位置／尺寸由 JS 以 inline left/top/width/height 控制。
+           z-index:105 高於 .modal-overlay(100)、低於 #modal-refine(110) ──
+───────────────────────────────────────────────────────────── */
+/* 視窗本體：fixed 定位 + 直向 flex（標題列／文字區／底列） */
+.notes-panel {
+  position: fixed;
+  z-index: 105;
+  display: flex;
+  flex-direction: column;
+  min-width: 320px;
+  min-height: 220px;
+  background: #222;
+  color: #eee;
+  border: 2px solid var(--c-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+/* 隱藏狀態（專案的 .hidden 僅對 .modal-overlay 生效，故此處自行定義） */
+.notes-panel.hidden {
+  display: none;
+}
+
+/* 標題列：兼作拖曳把手，右側放縮小／預設／最大化按鈕 */
+.notes-header {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  padding: var(--pad-both-sm);
+  background: var(--c-accent-subtle);
+  border-bottom: 1px solid var(--c-border);
+  cursor: move;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.notes-header .modal-title {
+  margin: 0;
+  flex: 1;
+}
+
+/* 備註文字區：填滿剩餘高度，尺寸由視窗決定（關閉 textarea 自帶的拖曳縮放） */
+.notes-text {
+  flex: 1;
+  min-height: 0;
+  margin: var(--gap-sm);
+  box-sizing: border-box;
+  resize: none;
+}
+
+/* 捲動軸寬度為預設（6px）的 300% = 18px */
+.notes-text::-webkit-scrollbar {
+  width: 18px;
+}
+
+/* 底列：左側說明文字、右側按鈕，同一水平位置 */
+.notes-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--pad-both-md);
+  padding: var(--pad-both-sm);
+  flex-shrink: 0;
+}
+
+.notes-footer .modal-desc {
+  flex: 1;
+  margin: 0;
+}
+
+/* 四個角落的縮放把手：正方形透明區塊，疊在視窗四角 */
+.notes-resizer {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  z-index: 1;
+}
+
+.notes-resizer.nw { top: 0; left: 0; cursor: nwse-resize; }
+.notes-resizer.ne { top: 0; right: 0; cursor: nesw-resize; }
+.notes-resizer.sw { bottom: 0; left: 0; cursor: nesw-resize; }
+.notes-resizer.se { bottom: 0; right: 0; cursor: nwse-resize; }

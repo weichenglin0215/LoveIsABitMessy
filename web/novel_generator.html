@@ -297,14 +297,24 @@
   </div>
 
   <!-- ── 彈窗：作者備註（僅隨小說資料儲存，不會傳送給AI） ── -->
-  <div id="modal-author-notes" class="modal-overlay hidden">
-    <div class="modal-box" style="width:min(94vw,1200px); max-width:none; padding: 24px;">
+  <!-- 非 modal 浮動視窗：不壓暗主介面，可同時操作主介面與備註；
+       標題列可拖曳移動、四角可拖曳縮放，標題列右側三顆按鈕：縮小／回復預設／最大化 -->
+  <div id="modal-author-notes" class="notes-panel hidden">
+    <div class="notes-resizer nw" data-corner="nw"></div>
+    <div class="notes-resizer ne" data-corner="ne"></div>
+    <div class="notes-resizer sw" data-corner="sw"></div>
+    <div class="notes-resizer se" data-corner="se"></div>
+    <div class="notes-header" id="author-notes-header">
       <h3 class="modal-title">📝 作者備註</h3>
+      <button id="btn-author-notes-min" class="btn-icon btn-icon-white" title="縮小（瀏覽器左下角，1/3 寬 × 1/2 高）">🗕</button>
+      <button id="btn-author-notes-default" class="btn-icon btn-icon-white" title="回復預設尺寸與位置">🗗</button>
+      <button id="btn-author-notes-max" class="btn-icon btn-icon-white" title="最大化（與瀏覽器同尺寸）">🗖</button>
+    </div>
+    <textarea class="textarea w-fill notes-text" id="author-notes-text" placeholder="在此撰寫作者備註..."></textarea>
+    <div class="notes-footer">
       <p class="modal-desc">
         此備註不會提供給 AI 模型，但會隨小說資料一同儲存（雲端／本機）。
       </p>
-      <textarea class="textarea w-fill" id="author-notes-text" placeholder="在此撰寫作者備註..."
-        style="min-height:600px; box-sizing:border-box; resize:vertical"></textarea>
       <div class="modal-actions">
         <button id="btn-author-notes-cancel" class="btn-modal cancel">取消</button>
         <button id="btn-author-notes-ok" class="btn-modal primary">確定</button>

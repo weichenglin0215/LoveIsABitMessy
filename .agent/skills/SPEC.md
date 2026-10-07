@@ -51,6 +51,7 @@ description: 開始任何任務前必讀，所有修改必須符合本規範
 | **評論小說立場切換** | `.review-stance-toggle-group` `.review-stance-toggle` | novel_generator「🎯評論小說」彈窗，「使用NovelReviewSkill列表」／「使用者編輯提示詞」互斥切換，外觀為膠囊型分段按鈕（參考 `Japanese50Sounds/index.html` 的 `.script-toggle`/`.toggle-btn`），選中項底色 `var(--c-secondary)`＋白字、未選中項卡片底色＋`var(--c-secondary-light)` 文字；底層仍是兩個 `<input type="checkbox">`（用絕對定位＋`opacity:0` 隱藏，不影響既有 `qs('#review-use-skills').checked` 之類的讀寫邏輯）。同彈窗另外兩個獨立勾選框（加入使用者自訂提示詞／整合最終評審意見）改用 `.review-option-toggle`（原 `.review-mode-toggle` 更名，外觀不變：字級與勾選框同步放大為 `--font-size-lg`），與這組分段按鈕互不干擾 |
 | **全畫面編輯章編號 tooltip** | `.fs-chapter-tooltip` (+`.hidden`) | novel_generator 全畫面編輯彈窗，滑鼠移入左側「第X章」直排欄時顯示的自訂浮動框（跟隨游標定位），取代原生 `title` 屬性以便控制字級（`--font-size-lg`）；內容含章節編號／章標題／章描述，`white-space:pre-line` 換行顯示 |
 | **選取文字 AI 加工彈窗 z-index 修正** | `#modal-refine`（z-index 覆寫） | novel_generator：`#modal-fullscreen-edit` 與 `#modal-refine`（Alt+A「✨ 擴寫／優化」「🎬 視覺化改寫」共用）都套用 `.modal-overlay` 基底 z-index:100，同層時依 DOM 順序疊放，導致全畫面編輯彈窗內叫出的加工彈窗反被蓋住；`#modal-refine` 單獨墊高為 `z-index:110`，卡在 `.modal-overlay`(100) 與 `.fr-panel`(120) 之間 |
+| **作者備註浮動視窗** | `.notes-panel` (+`.hidden`) `.notes-header` `.notes-text` `.notes-footer` `.notes-resizer`(`.nw/.ne/.sw/.se`) | novel_generator「📝 作者備註」改為非 modal 的常駐浮動視窗（不壓暗主介面，可同時操作主介面）：`.notes-header` 為拖曳把手（右側 🗕縮小＝左下角 1/3 寬×1/2 高／🗗回復預設／🗖最大化），四角 `.notes-resizer` 拖曳縮放，位置尺寸由 JS 以 inline left/top/width/height 控制；`.notes-text` 捲動軸 18px（預設 6px 的 300%）；底列 `.notes-footer` 左側說明文字、右側取消／確定。`z-index:105` 高於 `.modal-overlay`(100)、低於 `#modal-refine`(110) |
 
 ### 三、新增 class 的時機與規範
 
