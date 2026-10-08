@@ -28,6 +28,8 @@ from prompt_utils import (
     build_story_to_premise_prompt,       #將故事原文濃縮成故事粗綱
     build_story_to_bullet_premise_prompt, #將故事原文轉成條列式故事粗綱
     build_novel_review_prompt,           #以嚴格編輯身分評審小說
+    build_mood_axis_prompt,              #心情軸線：逐段標記讀者感受強度的提示詞
+    build_mood_axis_schema,              #心情軸線：限制 AI 回傳格式的 JSON Schema
     build_rewrite_content_prompt,        #批次改寫外部文檔（翻譯 / 改寫等）
     build_json_repair_chapters_prompt,   #JSON格式修復：章標題與描述
     build_json_repair_sections_prompt,   #JSON格式修復：各小節大綱
@@ -552,7 +554,7 @@ def _make_stream_callback(job_id: str, time_start: float):
 
 
 def _ollama_with_heartbeat(job_id: str, model: str, prompt: str,
-                           options=None, images=None, time_start: float = None):
+                           options=None, images=None, time_start: float = None, response_format=None):
     """
     呼叫 Ollama 並確保整個過程（含 prefill 長時間零輸出期間）都有心跳更新，
     防止前端輪詢因無活動超時而提前結束。
@@ -589,7 +591,8 @@ def _ollama_with_heartbeat(job_id: str, model: str, prompt: str,
             options=options,
             images=images,
             on_chunk=on_chunk,
-            job_id=job_id          # 讓 generate 函式的參數 LOG 也同步到瀏覽器
+            job_id=job_id,         # 讓 generate 函式的參數 LOG 也同步到瀏覽器
+            response_format=response_format
         )
         on_chunk.flush()           # 強制輸出串流結束時緩衝區殘餘的文字
         return result
@@ -597,7 +600,7 @@ def _ollama_with_heartbeat(job_id: str, model: str, prompt: str,
         stop.set()  # 確保 Ollama 結束後背景執行緒立即停止
 
 
-def _ollama_generate_direct(model, prompt, options=None, images=None, on_chunk=None, job_id=None):
+def _ollama_generate_direct(model, prompt, options=None, images=None, on_chunk=None, job_id=None, response_format=None):
     """直接呼叫 Ollama API 並回傳結果字串 (支援流式傳輸以免超時)"""
     #####################################################################################
     # 直接呼叫 Ollama API 並回傳結果字串 (支援流式傳輸以免超時)
@@ -648,6 +651,11 @@ def _ollama_generate_direct(model, prompt, options=None, images=None, on_chunk=N
 
     if images:
         payload["images"] = images
+    # 結構化輸出：response_format 為 "json" 或 JSON Schema（dict）時，Ollama 會在解碼階段強制輸出符合格式的 JSON。
+    # 沒傳就不加 format 欄位，其餘既有功能完全不受影響。
+    if response_format:
+        payload["format"] = response_format
+        _log_print(job_id, ">>>> 已啟用結構化輸出（JSON Schema）")
     
     _log_print(job_id, f">>>> 模型: {model}")
     _log_print(job_id, f">>>> 以流式回傳結果: {stream_val}")
@@ -1266,6 +1274,100 @@ def _run_review_novel_job(job_id: str, params: dict):
     except Exception as e:
         import traceback
         _log_print(job_id, f"[ERROR] _run_review_novel_job failed: {e}\n{traceback.format_exc()}")
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["status"]     = "error"
+                JOBS[job_id]["updated_at"] = time.time()
+
+
+def _run_mood_axis_job(job_id: str, params: dict):
+    """非同步執行「心情軸線」的單一批次分析：請 AI 逐段標記讀者感受強度，回傳符合 JSON Schema 的資料。
+
+    一整本小說會被前端切成很多批（每批約數千字、十幾個段落），前端逐批呼叫本任務，
+    並把前一批整理出來的「已知角色／已知伏筆／最近幾段結果」帶進下一批，讓 AI 前後連貫、名稱一致。
+    ⚠️ 指標清單（metrics）與段落內容皆由前端傳入，後端不寫死。
+    """
+    #####################################################################################
+    # 非同步執行「心情軸線」單一批次：提示詞 + JSON Schema（Ollama 結構化輸出）
+    #####################################################################################
+    try:
+        metrics        = params.get('metrics') or []
+        segments       = params.get('segments') or []
+        if not metrics or not segments:
+            raise ValueError("缺少 metrics 或 segments")
+        known_chars    = params.get('known_characters') or []
+        known_fores    = params.get('known_foreshadows') or []
+        model_name     = params.get('model', 'gemma4')
+        doc_name       = params.get('doc_name', '') or ''
+        total_segments = int(params.get('total_segments') or 0)
+
+        prompt = build_mood_axis_prompt(
+            doc_name, metrics, known_chars, known_fores,
+            params.get('recent') or [], segments, total_segments,
+            leads=params.get('leads') or {}
+        )
+        schema = build_mood_axis_schema(
+            metrics, [s['id'] for s in segments], [f.get('name') for f in known_fores if f.get('name')]
+        )
+
+        # ── 模型參數：沿用使用者選的參數表，但「評分」這類結構化任務需要穩定，以下幾項由後端強制覆寫 ──
+        opts = dict(params.get('model_options') or {})
+        # 溫度壓低：同一段落每次評分才不會差太多
+        opts['temperature'] = min(float(opts.get('temperature', 0.2) or 0.2), 0.2)
+        # 重複懲罰關閉：評分的數字本來就會一再重複（例如連續幾段都是 4），
+        # 若沿用 1.1 之類的懲罰，會「懲罰重複的數字」，讓分數被硬拉開，失去真實性
+        opts['repeat_penalty'] = 1.0
+        # 輸出長度：每段約 100~250 tokens，依段落數估算；不沿用使用者的 num_predict（-1 無上限在此不安全）
+        n_seg = len(segments)
+        opts['num_predict'] = max(2048, n_seg * 320 + 400)
+        # 上下文視窗：至少 16384，且要容納「提示詞 + 輸出」。
+        # ⚠️ 同一次分析的所有批次必須使用相同 num_ctx，否則 Ollama 每批都要重新載入模型，所以只往上取整不隨批次浮動
+        need_ctx = len(prompt) + opts['num_predict'] + 512      # 中文約 1 字 ≤ 1 token，採保守估計
+        user_ctx = int(opts.get('num_ctx') or 0)
+        num_ctx = max(user_ctx, 16384)
+        if need_ctx > num_ctx:
+            num_ctx = ((need_ctx + 4095) // 4096) * 4096
+        opts['num_ctx'] = min(num_ctx, 262144)
+
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        first_id, last_id = segments[0]['id'], segments[-1]['id']
+        total_chars = sum(len(s.get('text', '')) for s in segments)
+        _log_print(job_id, "=" * 50)
+        _log_print(job_id, f"[{timestamp}] debug_server.py：【非同步】心情軸線 —「{doc_name}」第 {first_id}～{last_id} 段（共 {n_seg} 段、{total_chars} 字）")
+        _log_print(job_id, f">> 模型：{model_name}，num_predict：{opts['num_predict']}，num_ctx：{opts['num_ctx']}，溫度：{opts['temperature']}，提示詞長度：{len(prompt)} 字")
+        # 完整提示詞很長，只有前端要求（通常是第一批）才印出，避免 LOG 欄被洗版
+        if params.get('debug_prompt'):
+            _log_print(job_id, "=" * 20 + " 以下是送給 AI 的完整提示詞 " + "=" * 20)
+            _log_print(job_id, prompt)
+            _log_print(job_id, "=" * 20 + " 提示詞結束 " + "=" * 20)
+        _log_print(job_id, ">> 正在呼叫 Ollama 逐段標記讀者感受強度（結構化輸出，請稍候）...")
+
+        timeStartSec = time.time()
+        response_text = _ollama_with_heartbeat(
+            job_id, model_name, prompt, options=opts, time_start=timeStartSec, response_format=schema
+        )
+        duration = int(time.time() - timeStartSec)
+        timestamp = time.strftime("%H:%M:%S", time.localtime())
+        _log_print(job_id, f"[{timestamp}] 總共花費 {duration} 秒，心情軸線批次完成，回傳長度：{len(response_text)} 字元")
+        if not response_text.strip():
+            _log_print(job_id, ">> [警告] 模型回傳空字串！")
+
+        # 解析 JSON：有結構化輸出時幾乎一定合法；若輸出被截斷，_try_repair_json 會盡量補齊，
+        # 補不起來時前端還有「逐筆搶救」的第二道防線（raw 一併回傳）
+        mood = None
+        try:
+            mood = json.loads(_try_repair_json(response_text))
+        except Exception as e:
+            _log_print(job_id, f">> [警告] 回傳內容無法解析為 JSON：{e}（交由前端嘗試搶救）")
+
+        with JOBS_LOCK:
+            if job_id in JOBS:
+                JOBS[job_id]["result"]     = {"mood": mood, "raw": response_text, "debug_prompt": prompt if params.get('debug_prompt') else ""}
+                JOBS[job_id]["status"]     = "done"
+                JOBS[job_id]["updated_at"] = time.time()
+    except Exception as e:
+        import traceback
+        _log_print(job_id, f"[ERROR] _run_mood_axis_job failed: {e}\n{traceback.format_exc()}")
         with JOBS_LOCK:
             if job_id in JOBS:
                 JOBS[job_id]["status"]     = "error"
@@ -2504,6 +2606,30 @@ class DebugHandler(http.server.SimpleHTTPRequestHandler):
                     }
                 threading.Thread(
                     target=_run_review_novel_job,
+                    args=(job_id, params),
+                    daemon=True
+                ).start()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"job_id": job_id, "status": "running"}, ensure_ascii=False).encode('utf-8'))
+
+            elif self.path == '/api/mood_axis_async':
+                ############################################################################
+                # 非同步：心情軸線單一批次分析（逐段標記讀者感受強度；前端逐批呼叫並累積結果）
+                ############################################################################
+                job_id = str(uuid.uuid4())
+                with JOBS_LOCK:
+                    JOBS[job_id] = {
+                        "status": "running",
+                        "logs": [">> 任務啟動：正在逐段分析讀者感受（心情軸線）..."],
+                        "result": None,
+                        "created_at": time.time(),
+                        "last_activity": time.time(),
+                        "updated_at": time.time()
+                    }
+                threading.Thread(
+                    target=_run_mood_axis_job,
                     args=(job_id, params),
                     daemon=True
                 ).start()

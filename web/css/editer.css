@@ -3089,14 +3089,14 @@ body.daily-page .ai-btn {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   59. 作者備註浮動視窗（novel_generator 專用）
+   59. 浮動視窗共用外框（novel_generator 專用；作者備註、心情軸線共用）
         ── 非 modal：不壓暗主介面、可同時操作主介面與備註，
            可由標題列拖曳移動、四個角落拖曳縮放，
            位置／尺寸由 JS 以 inline left/top/width/height 控制。
            z-index:105 高於 .modal-overlay(100)、低於 #modal-refine(110) ──
 ───────────────────────────────────────────────────────────── */
 /* 視窗本體：fixed 定位 + 直向 flex（標題列／文字區／底列） */
-.notes-panel {
+.float-panel {
   position: fixed;
   z-index: 105;
   display: flex;
@@ -3112,12 +3112,12 @@ body.daily-page .ai-btn {
 }
 
 /* 隱藏狀態（專案的 .hidden 僅對 .modal-overlay 生效，故此處自行定義） */
-.notes-panel.hidden {
+.float-panel.hidden {
   display: none;
 }
 
-/* 標題列：兼作拖曳把手，右側放縮小／預設／最大化按鈕 */
-.notes-header {
+/* 標題列：兼作拖曳把手，右側放 只剩標題列／縮小／預設／最大化 按鈕 */
+.float-header {
   display: flex;
   align-items: center;
   gap: var(--gap-sm);
@@ -3129,9 +3129,25 @@ body.daily-page .ai-btn {
   flex-shrink: 0;
 }
 
-.notes-header .modal-title {
+.float-header .modal-title {
   margin: 0;
   flex: 1;
+}
+
+/* 只剩標題列（標題列上的 ⬒ 按鈕，JS 加上 .collapsed 並把高度設成標題列的高度；寬度與位置不變）：
+   取消最小高度限制；標題列以外的內容與縮放把手改成 visibility:hidden——不佔點擊、也不會被 Tab 鍵 focus 到
+   （否則 focus 會把標題列捲出視窗），但版面仍在，所以展開後圖表的捲動位置、文字框的內容與游標都還在 */
+.float-panel.collapsed {
+  min-height: 0;
+}
+
+.float-panel.collapsed > :not(.float-header) {
+  visibility: hidden;
+}
+
+/* 標題列已是整個視窗，拿掉它下緣的分隔線（避免與視窗外框重疊成雙線） */
+.float-panel.collapsed .float-header {
+  border-bottom: none;
 }
 
 /* 備註文字區：填滿剩餘高度，尺寸由視窗決定（關閉 textarea 自帶的拖曳縮放） */
@@ -3163,14 +3179,259 @@ body.daily-page .ai-btn {
 }
 
 /* 四個角落的縮放把手：正方形透明區塊，疊在視窗四角 */
-.notes-resizer {
+.float-resizer {
   position: absolute;
   width: 16px;
   height: 16px;
   z-index: 1;
 }
 
-.notes-resizer.nw { top: 0; left: 0; cursor: nwse-resize; }
-.notes-resizer.ne { top: 0; right: 0; cursor: nesw-resize; }
-.notes-resizer.sw { bottom: 0; left: 0; cursor: nesw-resize; }
-.notes-resizer.se { bottom: 0; right: 0; cursor: nwse-resize; }
+.float-resizer.nw {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+
+.float-resizer.ne {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+
+.float-resizer.sw {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+}
+
+.float-resizer.se {
+  bottom: 0;
+  right: 0;
+  cursor: nwse-resize;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   60. 心情軸線（novel_generator 專用）
+        ── 非 modal 浮動視窗，外框沿用 §59 的 .float-panel；本節只定義圖表內容。
+           橫向＝時間軸，縱向＝多項指標，顏色＝強度（紅最高／綠普通／紫最低；
+           七彩色由 JS 依分數以 inline background 填入，是資料驅動的數值，不屬於主題色）──
+───────────────────────────────────────────────────────────── */
+/* 視窗上方工具列：精細度、縮放、對比增強、讀入／匯出、停止、進度、色階圖例 */
+.mood-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-sm);
+  padding: var(--pad-both-sm);
+  border-bottom: 1px solid var(--c-border);
+  flex-shrink: 0;
+}
+
+/* 色階圖例：七個色塊靠右 */
+.mood-legend {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.mood-swatch {
+  min-width: 26px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xs);
+  border-radius: var(--radius-2xs);
+}
+
+/* 圖表捲動區（雙向捲動；捲動軸加寬方便拖曳） */
+.mood-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--c-bg-main);
+}
+
+.mood-scroll::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+
+/* 圖表本體：一張 CSS grid，第一欄是指標名稱（sticky 固定在左），其後每欄是一個時間點；
+   每一欄寬度固定（JS 設定 --mood-col-w，不隨欄數或章／節／段落精細度伸縮），欄數多就由 .mood-scroll 橫向捲動；
+   --mood-text-scale 是「段落內容」文字的倍率（JS 依縮放倍率設定，放大時同比例放大、縮小時維持 1） */
+.mood-grid {
+  --mood-label-w: 168px;
+  --mood-col-w: 24px;
+  --mood-text-scale: 1;
+  --mood-row-h: 22px;
+  --mood-h1-h: 26px;
+  display: grid;
+  align-content: start;
+  width: max-content;
+  min-width: 100%;
+}
+
+/* 左側指標名稱欄：橫向捲動時固定不動 */
+.mood-label {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 0 var(--gap-sm);
+  background: var(--c-bg-panel);
+  border-right: 2px solid var(--c-border);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 表頭兩列（章、節）：縱向捲動時固定在上方；左上角兩格同時固定上與左，層級最高 */
+.mood-head {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  /* 不可用 overflow:hidden（會讓內部 sticky 文字失效），改用 clip-path 裁掉超出格子的文字 */
+  clip-path: inset(0);
+  box-shadow: inset -1px -1px 0 rgba(0, 0, 0, 0.35);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.mood-h1 {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  height: var(--mood-h1-h);
+  background: var(--c-accent-bg);
+}
+
+.mood-h2 {
+  position: sticky;
+  top: var(--mood-h1-h);
+  z-index: 4;
+  height: var(--mood-row-h);
+  background: color-mix(in srgb, var(--c-accent-bg) 45%, var(--c-bg-panel));
+}
+
+.mood-label.mood-h1,
+.mood-label.mood-h2 {
+  cursor: default;
+}
+
+.mood-corner {
+  z-index: 5;
+}
+
+/* 單欄表頭（章／節層級）只放編號：置中、取消 sticky 與左右留白，24px 寬的格子才放得下兩位數 */
+.mood-head-num {
+  justify-content: center;
+}
+
+.mood-head-num .mood-head-text {
+  position: static;
+  padding: 0;
+}
+
+/* 章／節標題文字：橫向捲動時黏在指標名稱欄右邊，不會捲出畫面 */
+.mood-head-text {
+  position: sticky;
+  left: calc(var(--mood-label-w) + 6px);
+  padding: 0 var(--gap-sm);
+  white-space: nowrap;
+}
+
+/* 群組標題列（劇情／讀者情緒／角色關愛／伏筆追蹤） */
+.mood-label.mood-group {
+  background: var(--c-accent-bg);
+  font-weight: bold;
+}
+
+.mood-group-fill {
+  height: var(--mood-row-h);
+  background: color-mix(in srgb, var(--c-accent-bg) 40%, var(--c-bg-main));
+}
+
+/* 一個時間點 × 一項指標的格子；底色（七彩）由 JS 以 inline style 填入 */
+.mood-cell {
+  height: var(--mood-row-h);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: inset -1px -1px 0 rgba(0, 0, 0, 0.35);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* 伏筆追蹤列的格子：「埋／應／收」字體放大為原本（--font-size-xs）的 160% */
+.mood-cell.mood-fs {
+  font-size: calc(var(--font-size-xs) * 1.6);
+}
+
+/* 無資料（角色沒登場、這段沒有伏筆）：留白 */
+.mood-cell.empty {
+  background: transparent;
+}
+
+/* 尚未分析（產生中、已停止、或該批分析失敗）：斜線底紋 */
+.mood-cell.na {
+  background: repeating-linear-gradient(135deg, var(--c-bg-ghost-hover) 0 3px, transparent 3px 7px);
+}
+
+/* 伏筆懸而未決（已埋下、尚未回收）：細橫線連接前後事件 */
+.mood-cell.latent::after {
+  content: '';
+  width: 100%;
+  height: 2px;
+  background: var(--c-text-sec);
+  opacity: 0.6;
+}
+
+/* 滑鼠停留的整欄（時間點）加外框；點擊後的整欄加粗外框 */
+.mood-cell.hl,
+.mood-head.hl {
+  box-shadow: inset 0 0 0 1px var(--c-text-muted);
+}
+
+.mood-cell.sel,
+.mood-head.sel {
+  box-shadow: inset 0 0 0 2px var(--c-text-main);
+}
+
+/* 段落內容摘要列：直排文字，一個時間點一欄；高度由最長的文字撐開 */
+.mood-cell.mood-sum {
+  height: auto;
+  align-items: flex-start;
+  padding: var(--gap-xs) 0;
+}
+
+/* 字級＝基本字級 × --mood-text-scale；nowrap：過長直接截斷，不折成第二條直排行（欄寬固定，第二行會被切掉一半） */
+.mood-vtext {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  white-space: nowrap;
+  max-height: 20em;
+  overflow: hidden;
+  line-height: 1.15;
+  font-size: calc(var(--font-size-sm) * var(--mood-text-scale, 1));
+  color: var(--c-text-main);
+}
+
+/* 底部說明列：滑鼠停留格子的位置、摘要與分數 */
+.mood-info {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  min-height: 2.5em;
+  padding: var(--pad-both-xs);
+  border-top: 1px solid var(--c-border);
+  font-size: var(--font-size-md);
+  overflow: hidden;
+}

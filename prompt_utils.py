@@ -1136,6 +1136,283 @@ def build_novel_review_prompt(text_content: str, user_request: str, doc_name: st
     )
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 心情軸線（Mood Axis）
+#   把小說切成時間軸上的許多「段落」，請 AI 逐段標記「一般讀者讀到該段時的感受強度」，
+#   前端再把結果畫成「橫向＝時間、縱向＝多項指標、顏色＝強度」的七彩熱度圖。
+#
+#   為了讓本機 LLM 穩定回傳符合規格的資料，這裡採「雙保險」：
+#     ① build_mood_axis_schema()：產生 JSON Schema，由 debug_server 以 Ollama 的 format 參數傳入，
+#        由 Ollama 在解碼階段強制輸出「結構合法、欄位齊全、分數只能是 1~7、id 只能是本批編號」的 JSON，
+#        模型不可能少欄位、寫出 8 分或亂寫標點。
+#     ② build_mood_axis_prompt()：Schema 只限制「長相」，並不會被模型當成文字讀到，
+#        所以提示詞仍須用文字交代每個欄位的意義、評分基準與留白規則（本函式負責）。
+#   指標清單（metrics）由前端傳入（含名稱、定義與 1／4／7 分的錨點），後端不寫死，
+#   日後增減指標只需改前端設定。
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# 所有指標共用的分數：1~7，對應紅橙黃綠藍靛紫七彩（7=紅=最高、4=綠=普通、1=紫=最低）
+MOOD_SCORE_LEVELS = [1, 2, 3, 4, 5, 6, 7]
+# 伏筆事件的三種動作
+MOOD_FORESHADOW_ACTIONS = ["埋下", "呼應", "回收"]
+# 每個段落摘要／角色名／伏筆名的長度上限（Schema 的 maxLength，避免模型寫成長篇大論）
+MOOD_SUMMARY_MAX_LEN = 24
+MOOD_NAME_MAX_LEN = 12
+MOOD_NOTE_MAX_LEN = 30
+
+
+def build_mood_axis_schema(metrics: list, segment_ids: list, known_foreshadow_names: list = None) -> dict:
+    """建立「心情軸線」單一批次回傳資料的 JSON Schema（交給 Ollama 的 format 參數）。
+
+    欄位順序刻意安排成：id → summary → characters → 各項指標 → foreshadows。
+    Ollama 會依 Schema 的屬性順序逐欄生成，所以模型一定是「先用一句話複述這段發生什麼事（summary）、
+    再列出這一段登場的人物（characters）、最後才打分數」，等於讓它先讀懂再評分，比直接丟數字準確。
+    characters 排在各項指標之前，是為了「男主角處境」「女主角處境」這類可能沒登場的指標：
+    模型得先寫出誰在場，打分時才看得出該主角在不在場（光在說明裡寫「沒登場填 0」，小模型常常忘記）。
+
+    參數 metrics：指標清單，每筆至少含 id（英文小寫識別字）；
+    參數 segment_ids：本批待分析段落的編號，Schema 會限制 id 只能是其中之一，且筆數剛好等於段落數。
+    參數 known_foreshadow_names：目前已追蹤的伏筆名稱。小模型很容易把同一條伏筆在不同批次取成不同名字
+        （例如「神祕的信」→「夾著的另一封信」），導致追蹤斷掉。所以伏筆事件做成兩種形狀（anyOf）：
+          ① 既有伏筆：name 只能從已知名單中選（enum），action 只能是「呼應」或「回收」；
+          ② 全新伏筆：name 自取，action 固定為「埋下」，並附 note 說明。
+        如此「是不是同一條伏筆」就變成模型必須明確選擇的事，而不是自由發揮。
+    指標若標記 nullable（例如「男主角處境」「女主角處境」：該主角這一段可能根本沒登場），
+        分數 enum 多一個 0，代表「沒登場／無法判斷」，前端會把 0 當成留白，而不是硬湊一個分數。
+    """
+    score_schema = {"type": "integer", "enum": list(MOOD_SCORE_LEVELS)}
+    props = {
+        "id": {"type": "integer", "enum": [int(i) for i in segment_ids]},
+        "summary": {"type": "string", "minLength": 4, "maxLength": MOOD_SUMMARY_MAX_LEN},
+    }
+    # 角色關愛：只列「本段有登場」的角色，沒登場就不列（前端會把沒列出的格子留白）
+    props["characters"] = {
+        "type": "array",
+        "maxItems": 6,
+        "items": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "minLength": 1, "maxLength": MOOD_NAME_MAX_LEN},
+                "score": dict(score_schema),
+            },
+            "required": ["name", "score"],
+            "additionalProperties": False,
+        },
+    }
+    for m in metrics:
+        if m.get("nullable"):
+            props[m["id"]] = {"type": "integer", "enum": [0] + list(MOOD_SCORE_LEVELS)}
+        else:
+            props[m["id"]] = dict(score_schema)
+    # 伏筆事件：沒有就是空陣列（前端會把該段的伏筆格子留白）。
+    # name 的 minLength 與 summary 的 minLength 都是為了擋掉小模型常見的佔位符（例如 "-"）。
+    # 屬性順序刻意把 action 放在 name 前面：Ollama 依屬性順序逐欄生成，模型得「先決定這一段對伏筆做了什麼事」，
+    # 文法才會依 action 分岔——選「呼應／回收」時 name 只能從已知名單挑；選「埋下」時才能自取新名稱。
+    # （若 name 在前，模型會直接寫已知名稱、再隨手選「埋下」，同一條伏筆就被誤判成新伏筆。）
+    new_variant = {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["埋下"]},
+            "name": {"type": "string", "minLength": 2, "maxLength": MOOD_NAME_MAX_LEN},
+            "note": {"type": "string", "maxLength": MOOD_NOTE_MAX_LEN},
+            "strength": dict(score_schema),
+        },
+        "required": ["action", "name", "note", "strength"],
+        "additionalProperties": False,
+    }
+    variants = []
+    names = []
+    for nm in (known_foreshadow_names or []):
+        if nm and nm not in names:
+            names.append(nm)
+    if names:
+        variants.append({
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "enum": ["呼應", "回收"]},
+                "name": {"type": "string", "enum": names},
+                "strength": dict(score_schema),
+            },
+            "required": ["action", "name", "strength"],
+            "additionalProperties": False,
+        })
+    variants.append(new_variant)
+    props["foreshadows"] = {
+        "type": "array",
+        "maxItems": 2,
+        "items": variants[0] if len(variants) == 1 else {"anyOf": variants},
+    }
+    n = len(segment_ids)
+    return {
+        "type": "object",
+        "properties": {
+            "segments": {
+                "type": "array",
+                "minItems": n,
+                "maxItems": n,
+                "items": {
+                    "type": "object",
+                    "properties": props,
+                    "required": list(props.keys()),
+                    "additionalProperties": False,
+                },
+            }
+        },
+        "required": ["segments"],
+        "additionalProperties": False,
+    }
+
+
+def _mood_format_recent(recent: list, metrics: list) -> str:
+    """把「最近幾段的摘要與評分」排成一行一段的文字，供下一批保持評分尺度連續。"""
+    lines = []
+    for r in recent or []:
+        scores = r.get("scores") or {}
+        parts = []
+        for m in metrics:
+            v = scores.get(m["id"])
+            if v is not None:
+                parts.append(f"{m['label']}={v}")
+        score_text = ("（" + "、".join(parts) + "）") if parts else ""
+        lines.append(f"#{r.get('id')}「{r.get('summary') or '（無摘要）'}」{score_text}")
+    return "\n".join(lines) if lines else "（這是第一批，尚無前情）"
+
+
+def build_mood_axis_prompt(book_title: str, metrics: list, known_characters: list,
+                           known_foreshadows: list, recent: list, segments: list,
+                           total_segments: int = 0, leads: dict = None) -> str:
+    """建立「心情軸線」單一批次的提示詞。
+
+    參數：
+      book_title         書名／文件名稱
+      metrics            指標清單：[{id, group, label, hint, low, mid, high}, ...]
+      known_characters   目前已出現過的主要角色名稱（讓 AI 沿用同一寫法）
+      known_foreshadows  已追蹤的伏筆：[{name, note, resolved}, ...]
+      recent             前面最近幾段的結果：[{id, summary, scores}, ...]（供銜接與校準尺度）
+      segments           本批待分析段落：[{id, title, text}, ...]，title 為「第N章〈…〉／第M節〈…〉」
+      total_segments     全書總段落數（用來告訴 AI 這批落在全書的哪個位置，判斷是否可能是高潮）
+      leads              男女主角姓名 {"male": "阿哲", "female": "小晴"}（取自角色卡性別；未知則為空字串，由 AI 依文意判斷）
+    """
+    # ── 各指標的定義與 1／4／7 分錨點：有具體的「例子」，AI 才不會每個指標都給一樣的分數 ──
+    metric_lines = []
+    for m in metrics:
+        line = (
+            f"■ {m['id']}｜{m['label']}：{m.get('hint', '')}\n"
+            f"　1分＝{m.get('low', '最低')}　／　4分＝{m.get('mid', '普通')}　／　7分＝{m.get('high', '最高')}"
+        )
+        if m.get("nullable"):
+            # 可能沒登場的對象（例如男／女主角）：沒登場就填 0，前端會留白，不要硬給一個分數
+            line += "\n　※ 先看你上面寫的 characters 欄位：若這個人物沒有出現在這一段（characters 裡沒有他／她），輸出 0（代表圖表留白）；有出現才給 1～7。"
+        metric_lines.append(line)
+    metric_block = "\n".join(metric_lines)
+    has_nullable = any(m.get("nullable") for m in metrics)
+    # 男／女主角姓名（若指標有 lead 屬性）：給了名字，AI 只要檢查名字有沒有出現在這一段，比「判斷誰是男主角」容易得多
+    leads_text = ""
+    if any(m.get("lead") for m in metrics):
+        leads = leads or {}
+        unknown = "（未指定，請依文意判斷：通常是故事中最重要的{}性人物）"
+        leads_text = (
+            f"男主角：{(leads.get('male') or '').strip() or unknown.format('男')}\n"
+            f"女主角：{(leads.get('female') or '').strip() or unknown.format('女')}\n"
+        )
+    metric_ids = "、".join(m["id"] for m in metrics)
+
+    # ── 格式範本：刻意用〈〉佔位，而不是放真實數字，避免模型照抄範例的分數 ──
+    metric_template = ",".join(
+        f'"{m["id"]}":' + ('〈1~7，沒登場填 0〉' if m.get("nullable") else '〈1~7〉') for m in metrics
+    )
+    format_template = (
+        '{"segments":[{"id":〈段落編號〉,"summary":"〈6~14字摘要〉",'
+        '"characters":[{"name":"〈角色名〉","score":〈1~7〉}],' + metric_template + ','
+        '"foreshadows":[{"action":"〈埋下|呼應|回收〉","name":"〈伏筆名〉","note":"〈12字內說明，僅「埋下」時有此欄〉","strength":〈1~7〉}]（沒有伏筆就是 []）},'
+        '…每個待分析段落各一筆，順序與段落編號相同…]}'
+    )
+
+    # ── 前情狀態 ──
+    chars_text = "、".join(known_characters) if known_characters else "（尚無，請依文中出現的人名自行判斷）"
+    if known_foreshadows:
+        fs_lines = []
+        for f in known_foreshadows:
+            status = "已回收" if f.get("resolved") else "進行中"
+            note = f"：{f['note']}" if f.get("note") else ""
+            fs_lines.append(f"・{f['name']}（{status}{note}）")
+        fs_text = "\n".join(fs_lines)
+    else:
+        fs_text = "（尚無）"
+    recent_text = _mood_format_recent(recent, metrics)
+
+    # ── 本批位置（全書進度），提醒 AI 不要在全書很前面就把「最終高潮」的 7 分用掉 ──
+    ids = [s["id"] for s in segments]
+    first_id, last_id = (min(ids), max(ids)) if ids else (0, 0)
+    if total_segments and total_segments > 0:
+        pos_text = (f"本批是全書第 {first_id}～{last_id} 段（共 {total_segments} 段），"
+                    f"約位於全書的 {round(first_id * 100 / total_segments)}%～{round(last_id * 100 / total_segments)}%。")
+    else:
+        pos_text = f"本批是全書第 {first_id}～{last_id} 段。"
+
+    # ── 待分析段落（每段附編號與所屬章節，編號就是回傳資料的 id） ──
+    seg_blocks = []
+    for s in segments:
+        seg_blocks.append(f"【段落 {s['id']}】{s.get('title', '')}\n{s.get('text', '')}")
+    segments_text = "\n\n".join(seg_blocks)
+
+    n = len(segments)
+    id_list = "、".join(str(i) for i in ids)
+    title_line = f"《{book_title}》\n\n" if book_title else ""
+    # 規則 1 的例外說明：只有存在 nullable 指標時才加，避免多餘的干擾
+    zero_note = "（唯一的例外：標註「沒登場填 0」的指標，該人物沒有登場（沒列在你寫的 characters 裡）時請輸出 0。）" if has_nullable else ""
+
+    return f"""你是一位資深小說編輯，同時擔任「讀者體驗分析師」。你的工作不是評論文筆好壞，而是替下方每一個【待分析段落】標記「一位一般讀者讀到那一段時的感受強度」，讓作者能畫出整本小說的「心情軸線」圖表，看出讀者情緒的起伏。
+
+{title_line}【評分規則】（務必遵守）
+1. 所有分數都是 1～7 的整數，對應七種顏色：7＝紅（最高）、6＝橙、5＝黃、4＝綠（普通）、3＝藍、2＝靛、1＝紫（最低）。{zero_note}
+2. 分數只代表「強度」，沒有好壞之分。悲劇的低迷、平淡日常的低分都是正確的標示，請照實給分，不要為了討好作者而美化，也不要因為你喜不喜歡那段文字而加分或扣分。
+3. 以「整部小說」為尺度評分：4 代表普通、一般水準；只有真正的高潮、最強烈處才給 7；只有真正的谷底，或完全沒有該情緒時才給 1。請善用 1～7 的完整範圍，不要讓所有段落都擠在 3～5；相鄰段落只有在真的很相近時才給相同的分數。
+4. 只根據【待分析段落】裡實際寫出來的文字評分。【前情狀態】只是幫助你理解上下文與保持評分尺度一致，不可拿來替沒寫在該段落裡的內容加分。
+5. 每個指標都要獨立判斷：同一段落可以「劇情很平淡（plot 低）」但「很感人（joy 高）」，不要讓所有指標一起漲跌。
+6. 全部使用繁體中文，禁止使用中文簡體字。
+7. 只輸出符合下方【輸出格式】的 JSON，不要輸出任何說明、前言、註解或程式碼框；JSON 請輸出成緊湊的單行，不要縮排、不要多餘的空白與換行。
+
+【各指標的定義與評分基準】（欄位名稱＝英文識別字）
+{metric_block}
+
+【角色關愛指數（characters 欄位）】
+- 只列出「在這個段落裡實際登場（出現、說話、被明確描寫）」且有名字、對劇情有份量的主要角色；路人與沒有登場的角色絕對不要列出，留白代表該段沒有這個角色。
+- score＝讀者此刻對該角色的「關愛程度」：7＝非常喜愛、心疼、想守護、為他加油；4＝普通、沒有特別感覺；1＝強烈反感、討厭、厭惡。
+- 名稱請使用文中的人名；若已列在【已知主要角色】中，必須沿用完全相同的寫法。若全文以第一人稱「我」敘事，敘事者就以「我」為名。最多列 6 位。
+
+【伏筆追蹤（foreshadows 欄位）】
+- 伏筆＝作者特意留給後面劇情使用的「具體線索」（被特別強調的物件、意味深長的台詞、不合常理的異狀、懸而未決的疑問、預告）。判斷方法：如果日後劇情完全沒用到這個細節，讀者也不會覺得缺了什麼，那它就不是伏筆。一部小說通常只有 3～8 條主要伏筆，寧缺勿濫。
+- 以下【都不是】伏筆，請不要列入：情緒或氣氛的描寫、天氣與景色的象徵意義、角色單純的情緒爆發或衝突、普通的情節推進、在同一段裡就已經交代完的事。
+- 伏筆的名稱必須是「具體的事物、線索或疑問」（例：神祕的信、斷掉的鑰匙、他沒說完的那句話），不可以是「…的象徵意義」「…的轉折」「…的氛圍」這種抽象概念。
+- 只列出「這個段落裡」出現的伏筆事件；這一段沒有任何伏筆就輸出空陣列 []，絕對不要用 "-"、"無" 之類的佔位文字湊數。每段最多 2 筆。
+- 如果這一段提到、呼應或揭曉了【已知伏筆】清單裡的事物：action 用「呼應」（再次提起、加深、暗示）或「回收」（謎底揭曉、兌現），name 必須從已知清單中挑選，不可另取新名字。
+- 只有「全新、之前沒出現過」的伏筆，才用 action＝「埋下」，並自取 2～8 個字的名詞片語當 name（例：神祕的信、斷掉的鑰匙），note 用 12 字內說明它是什麼。
+- 同一批裡，後面的段落若又提到前面段落「剛埋下」的伏筆（還不在已知清單裡），name 請寫成與前面段落完全相同的名稱（action 仍寫「埋下」即可，系統會自動歸為呼應），不要為同一件事另取新名字。
+- strength：該伏筆在這一段的份量與醒目程度（1＝一筆帶過、4＝明確提及、7＝整段的核心）。
+
+【段落摘要（summary 欄位）】
+- 用 6～14 個字描述這段「發生了什麼事」，要具體（例：「小美雨中等候」「兩人圖書館爭吵」）。不要加標點，不要寫「本段」「描述」之類的字眼。
+
+【輸出格式】
+輸出一個 JSON 物件，欄位依序為 id、summary、characters、{metric_ids}、foreshadows，格式如下（〈〉是說明，請換成實際的值）：
+{format_template}
+
+━━━━━━━━━━ 前情狀態 ━━━━━━━━━━
+已知主要角色：{chars_text}
+{leads_text}已知伏筆：
+{fs_text}
+最近幾段的結果（只供銜接與校準評分尺度，不要照抄）：
+{recent_text}
+{pos_text}
+
+━━━━━━━━━━ 待分析段落（共 {n} 段） ━━━━━━━━━━
+{segments_text}
+━━━━━━━━━━ 待分析段落結束 ━━━━━━━━━━
+
+請為上面 {n} 個段落（編號：{id_list}）各輸出一筆資料，id 必須與段落編號相同，並依編號由小到大排列。現在請直接輸出 JSON："""
+
+
 def build_rewrite_content_prompt(text_content: str, user_request: str, doc_name: str = "", search_context: str = "") -> str:
     """建立「多文改寫」提示詞（例如：翻譯成英文、改寫成小紅書風、擴寫、濃縮…等）。
 

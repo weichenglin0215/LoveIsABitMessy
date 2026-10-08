@@ -697,50 +697,58 @@ function renderEditor() {
     };
 }
 
-// ── 作者備註浮動視窗（非 modal：不壓暗主介面，可拖曳移動／四角縮放） ──
-const NOTES_MIN_W = 320;   // 視窗最小寬度（需與 CSS .notes-panel min-width 一致）
-const NOTES_MIN_H = 220;   // 視窗最小高度（需與 CSS .notes-panel min-height 一致）
+// ── 浮動視窗共用工具（非 modal：不壓暗主介面，可拖曳移動／四角縮放；「作者備註」與「心情軸線」共用） ──
+const FLOAT_MIN_W = 320;   // 視窗最小寬度（需與 CSS .float-panel min-width 一致）
+const FLOAT_MIN_H = 220;   // 視窗最小高度（需與 CSS .float-panel min-height 一致）
 
-// 設定視窗位置與尺寸（px）
-function setNotesPanelRect(panel, left, top, width, height) {
+// 設定視窗位置與尺寸（px）。重新設定尺寸（縮小／回復預設／最大化／拖曳縮放）一律視為「展開」，
+// 若視窗正處於「只剩標題列」，會一併取消收合狀態。
+function setFloatPanelRect(panel, left, top, width, height) {
+    panel.classList.remove('collapsed');
+    delete panel.dataset.expandedHeight;
     panel.style.left = left + 'px';
     panel.style.top = top + 'px';
     panel.style.width = width + 'px';
     panel.style.height = height + 'px';
 }
 
-// 回復預設：與原彈窗相同的寬度 min(94vw,1200px)，高度約 800px（不超過 90vh），置中
-function resetNotesPanel(panel) {
-    const w = Math.min(window.innerWidth * 0.94, 1200);
-    const h = Math.min(window.innerHeight * 0.9, 800);
-    setNotesPanelRect(panel, (window.innerWidth - w) / 2, (window.innerHeight - h) / 2, w, h);
+// 只剩標題列（標題列上的 ⬒ 按鈕）：高度縮到標題列的高度，寬度與位置不變；再按一次展開回收合前的高度。
+// 收合時標題列以外的內容只是 visibility:hidden（見 CSS .float-panel.collapsed），版面還在，
+// 所以展開後圖表的捲動位置、文字框的內容與游標都不會跑掉。
+function collapseFloatPanel(panel) {
+    if (panel.classList.contains('collapsed')) return;
+    panel.dataset.expandedHeight = panel.style.height || '';      // 記住收合前的高度（含 px 單位）
+    panel.classList.add('collapsed');                              // 先加 class（標題列下緣線會被拿掉），再量標題列高度
+    const header = panel.querySelector('.float-header');
+    // 視窗高度＝標題列高度＋視窗上下框線（offsetHeight 與 clientHeight 的差）
+    panel.style.height = (header.offsetHeight + panel.offsetHeight - panel.clientHeight) + 'px';
 }
 
-// 縮小：瀏覽器 1/3 寬、1/2 高，緊靠左下角
-function minimizeNotesPanel(panel) {
-    const w = window.innerWidth / 3;
-    const h = window.innerHeight / 2;
-    setNotesPanelRect(panel, 0, window.innerHeight - h, w, h);
+// 展開：回到收合前的高度。收合期間視窗可能被拖到畫面下方，所以展開後若超出畫面就往上挪（再不夠才縮短高度）
+function expandFloatPanel(panel) {
+    if (!panel.classList.contains('collapsed')) return;
+    panel.classList.remove('collapsed');
+    const h = Math.min(parseFloat(panel.dataset.expandedHeight) || FLOAT_MIN_H, window.innerHeight);
+    const top = parseFloat(panel.style.top) || 0;
+    panel.style.height = h + 'px';
+    panel.style.top = Math.max(0, Math.min(top, window.innerHeight - h)) + 'px';
+    delete panel.dataset.expandedHeight;
 }
 
-// 最大化：與瀏覽器視窗同尺寸
-function maximizeNotesPanel(panel) {
-    setNotesPanelRect(panel, 0, 0, window.innerWidth, window.innerHeight);
+function toggleFloatPanelCollapse(panel) {
+    if (panel.classList.contains('collapsed')) expandFloatPanel(panel);
+    else collapseFloatPanel(panel);
 }
 
-// 開啟作者備註視窗：帶入目前內容；首次開啟套用預設位置，之後保留使用者調整過的位置與尺寸
-function openAuthorNotesPanel() {
-    const panel = qs('#modal-author-notes');
-    qs('#author-notes-text').value = state.authorNotes || '';
-    if (!panel.style.width) {
-        resetNotesPanel(panel);
-    }
-    panel.classList.remove('hidden');
+// 把視窗叫到最上層：所有 .float-panel 預設 z-index 105，被點到的那個改為 106，點哪個哪個在上
+function bringFloatPanelToFront(panel) {
+    document.querySelectorAll('.float-panel').forEach(p => { p.style.zIndex = ''; });
+    panel.style.zIndex = '106';
 }
 
 // 拖曳四個角落縮放：以拖曳開始時的矩形為基準，對應邊跟著游標移動，並限制最小尺寸與畫面範圍
-function makeNotesPanelResizable(panel) {
-    panel.querySelectorAll('.notes-resizer').forEach(handle => {
+function makeFloatPanelResizable(panel) {
+    panel.querySelectorAll('.float-resizer').forEach(handle => {
         handle.addEventListener('mousedown', (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -753,11 +761,11 @@ function makeNotesPanelResizable(panel) {
                 const dy = ev.clientY - startY;
                 let left = r.left, top = r.top, right = r.right, bottom = r.bottom;
                 // 西側角落動左邊、東側角落動右邊；北側動上邊、南側動下邊
-                if (corner.includes('w')) left = Math.min(Math.max(0, r.left + dx), right - NOTES_MIN_W);
-                if (corner.includes('e')) right = Math.max(Math.min(window.innerWidth, r.right + dx), left + NOTES_MIN_W);
-                if (corner.includes('n')) top = Math.min(Math.max(0, r.top + dy), bottom - NOTES_MIN_H);
-                if (corner.includes('s')) bottom = Math.max(Math.min(window.innerHeight, r.bottom + dy), top + NOTES_MIN_H);
-                setNotesPanelRect(panel, left, top, right - left, bottom - top);
+                if (corner.includes('w')) left = Math.min(Math.max(0, r.left + dx), right - FLOAT_MIN_W);
+                if (corner.includes('e')) right = Math.max(Math.min(window.innerWidth, r.right + dx), left + FLOAT_MIN_W);
+                if (corner.includes('n')) top = Math.min(Math.max(0, r.top + dy), bottom - FLOAT_MIN_H);
+                if (corner.includes('s')) bottom = Math.max(Math.min(window.innerHeight, r.bottom + dy), top + FLOAT_MIN_H);
+                setFloatPanelRect(panel, left, top, right - left, bottom - top);
             };
             const onUp = () => {
                 document.removeEventListener('mousemove', onMove);
@@ -769,17 +777,69 @@ function makeNotesPanelResizable(panel) {
     });
 }
 
-// 初始化作者備註視窗：標題列拖曳（沿用 makePanelDraggable）、四角縮放、縮小／預設／最大化按鈕
-function initAuthorNotesPanel() {
-    const panel = qs('#modal-author-notes');
-    const header = qs('#author-notes-header');
+/**
+ * 初始化一個浮動視窗：標題列拖曳移動、四角縮放、點擊置頂，以及 只剩標題列／縮小／回復預設／最大化 四顆按鈕。
+ * @param {object} cfg
+ *   panel, header                 視窗本體與標題列（拖曳把手）
+ *   btnCollapse                   「只剩標題列」按鈕：按一下收成只剩標題列（寬度與位置不變），再按一下展開
+ *   btnMin, btnDefault, btnMax    三顆尺寸按鈕
+ *   defaultRect()                 回傳「回復預設」的 [left, top, width, height]
+ *   minimizeRect()                回傳「縮小」的 [left, top, width, height]
+ */
+function initFloatPanel(cfg) {
+    const { panel, header } = cfg;
     // 按在標題列按鈕上時不可啟動拖曳（makePanelDraggable 會 preventDefault 吃掉 click）
     header.querySelectorAll('button').forEach(b => b.addEventListener('mousedown', e => e.stopPropagation()));
     makePanelDraggable(panel, header);
-    makeNotesPanelResizable(panel);
-    qs('#btn-author-notes-min').addEventListener('click', () => minimizeNotesPanel(panel));
-    qs('#btn-author-notes-default').addEventListener('click', () => resetNotesPanel(panel));
-    qs('#btn-author-notes-max').addEventListener('click', () => maximizeNotesPanel(panel));
+    makeFloatPanelResizable(panel);
+    // 用 capture 階段，這樣連按在縮放把手（會 stopPropagation）上也會置頂
+    panel.addEventListener('mousedown', () => bringFloatPanelToFront(panel), true);
+    if (cfg.btnCollapse) cfg.btnCollapse.addEventListener('click', () => toggleFloatPanelCollapse(panel));
+    cfg.btnMin.addEventListener('click', () => setFloatPanelRect(panel, ...cfg.minimizeRect()));
+    cfg.btnDefault.addEventListener('click', () => setFloatPanelRect(panel, ...cfg.defaultRect()));
+    // 最大化：與瀏覽器視窗同尺寸
+    cfg.btnMax.addEventListener('click', () => setFloatPanelRect(panel, 0, 0, window.innerWidth, window.innerHeight));
+}
+
+// ── 作者備註浮動視窗 ──
+// 預設：與原彈窗相同，寬 min(94vw,1200px)、高約 800px（不超過 90vh），置中
+function notesDefaultRect() {
+    const w = Math.min(window.innerWidth * 0.94, 1200);
+    const h = Math.min(window.innerHeight * 0.9, 800);
+    return [(window.innerWidth - w) / 2, (window.innerHeight - h) / 2, w, h];
+}
+
+// 縮小：瀏覽器 1/3 寬、1/2 高，緊靠左下角（心情軸線縮小時靠左上角，兩個視窗可同時並排檢視）
+function notesMinimizeRect() {
+    const w = window.innerWidth / 3;
+    const h = window.innerHeight / 2;
+    return [0, window.innerHeight - h, w, h];
+}
+
+// 開啟作者備註視窗：帶入目前內容；首次開啟套用預設位置，之後保留使用者調整過的位置與尺寸
+function openAuthorNotesPanel() {
+    const panel = qs('#modal-author-notes');
+    qs('#author-notes-text').value = state.authorNotes || '';
+    if (!panel.style.width) {
+        setFloatPanelRect(panel, ...notesDefaultRect());
+    }
+    panel.classList.remove('hidden');
+    expandFloatPanel(panel);          // 上次若收成「只剩標題列」，重新開啟時展開，才看得到備註內容
+    bringFloatPanelToFront(panel);
+}
+
+// 初始化作者備註視窗：拖曳、縮放、只剩標題列／縮小／預設／最大化按鈕
+function initAuthorNotesPanel() {
+    initFloatPanel({
+        panel: qs('#modal-author-notes'),
+        header: qs('#author-notes-header'),
+        btnCollapse: qs('#btn-author-notes-collapse'),
+        btnMin: qs('#btn-author-notes-min'),
+        btnDefault: qs('#btn-author-notes-default'),
+        btnMax: qs('#btn-author-notes-max'),
+        defaultRect: notesDefaultRect,
+        minimizeRect: notesMinimizeRect
+    });
 }
 
 // 事件處理
@@ -917,6 +977,7 @@ function setupEventListeners() {
     });
     qs('#review-include-custom').addEventListener('change', e => { state.reviewIncludeCustom = e.target.checked; });
     qs('#review-final-synthesis').addEventListener('change', e => { state.reviewFinalSynthesis = e.target.checked; });
+    qs('#review-mood-axis').addEventListener('change', e => { state.reviewMoodAxis = e.target.checked; });
     qs('#btn-reset-review-prompt').addEventListener('click', resetReviewPrompt);
     qs('#btn-toggle-review-request').addEventListener('click',
         () => toggleReviewSection('review-col-request', 'btn-toggle-review-request'));
@@ -3058,6 +3119,8 @@ async function openReviewSkillsModal() {
     const finEl = qs('#review-final-synthesis');
     if (incEl) incEl.checked = state.reviewIncludeCustom !== false;
     if (finEl) finEl.checked = state.reviewFinalSynthesis !== false;
+    const moodEl = qs('#review-mood-axis');
+    if (moodEl) moodEl.checked = state.reviewMoodAxis === true;
     renderReviewSkillList();
     qs('#modal-review-skills').classList.remove('hidden');
 }
@@ -3157,7 +3220,7 @@ async function reviewCurrentNovel() {
     const bookTitle = (state.bookTitle || '').trim() || '未命名小說';
     qs('#review-doc-name').value = bookTitle;
     const fullText = assembleCurrentNovelText();
-    await runReviewJob(fullText, bookTitle);
+    await runReviewJob(fullText, bookTitle, { sourceType: 'novel' });
 }
 
 // 評論使用者選取的外部 .txt/.md 檔案（可多選），逐一讀取、評審並自動匯出結果
@@ -3198,7 +3261,7 @@ async function reviewExternalFile(event) {
         // 覆寫文件名稱為外部檔名（去掉副檔名）
         const baseName = file.name.replace(/\.(txt|md)$/i, '');
         qs('#review-doc-name').value = baseName;
-        await runReviewJob(textContent, baseName, { autoExport: true });
+        await runReviewJob(textContent, baseName, { autoExport: true, sourceType: 'file' });
     }
     appendLog('✅ 所有已選取的外部文檔評審完畢。');
 }
@@ -3221,7 +3284,9 @@ function appendReviewFeedback(text) {
  * 全部評審跑完後，若勾選「整合成一份最終評審意見」，會再請 AI 統整一次。
  * @param {string} fullText 待審稿件全文
  * @param {string} docName  文件名稱
- * @param {{autoExport?: boolean}} [opts] autoExport: 評審完成後是否自動匯出合併 .md
+ * @param {{autoExport?: boolean, sourceType?: 'novel'|'file'}} [opts]
+ *   autoExport: 評審完成後是否自動匯出合併 .md；
+ *   sourceType: 稿件來源（novel＝目前編輯中的小說、file＝外部文檔），供後續「心情軸線」決定如何切段
  */
 async function runReviewJob(fullText, docName, opts = {}) {
     const autoExport = !!opts.autoExport;
@@ -3255,12 +3320,16 @@ async function runReviewJob(fullText, docName, opts = {}) {
         if (customPrompt.trim()) jobs.push({ label: '使用者自訂提示詞', prompt: customPrompt });
     }
 
-    if (!jobs.length) {
+    // 「心情軸線」（novel_mood_axis.js）：原有評論全部完成後才接著產生；
+    // 若完全沒選評審立場但勾了心情軸線，就只產生心情軸線。
+    const wantMood = state.reviewMoodAxis === true && typeof runMoodAxisAfterReview === 'function';
+    if (!jobs.length && !wantMood) {
         alert('❌ 沒有任何可用的評審立場。請勾選「使用NovelReviewSkill列表」並在列表中選取項目，或改用「使用者編輯提示詞」。');
         return;
     }
 
-    appendLog(`🎯 本次共有 ${jobs.length} 位評審立場，將依序執行。`);
+    if (jobs.length) appendLog(`🎯 本次共有 ${jobs.length} 位評審立場，將依序執行。`);
+    else appendLog('ℹ️ 未選任何評審立場，本次只產生「心情軸線」。');
     const collected = []; // { label, text }：蒐集每位評審的全文，供最終整合與匯出使用
     for (const job of jobs) {
         const text = await runSingleReview(fullText, docName, job.prompt, job.label);
@@ -3274,9 +3343,9 @@ async function runReviewJob(fullText, docName, opts = {}) {
         appendLog('🎯 開始整理「最終評審意見」...');
         finalText = await runFinalSynthesis(docName, collected, fullText);
     }
-    appendLog('✅ 所有評審立場與最終評審意見皆已完成。');
+    if (jobs.length) appendLog('✅ 所有評審立場與最終評審意見皆已完成。');
 
-    if (autoExport) {
+    if (autoExport && collected.length) {
         // 一律匯出「單一份」合併 .md（各立場 + 最終評審意見）
         const sections = collected.map(c => '## 【' + c.label + '】\n\n' + c.text + '\n').join('\n---\n\n');
         let md = '# 🎯 小說評審報告：' + docName + '\n\n' + sections;
@@ -3285,6 +3354,9 @@ async function runReviewJob(fullText, docName, opts = {}) {
         downloadMarkdown(filename, md);
         appendLog(`📤 已自動匯出合併評審報告：${filename}`);
     }
+
+    // 原有評論（含最終評審意見與自動匯出）都已完成，才開始產生心情軸線
+    if (wantMood) await runMoodAxisAfterReview(fullText, docName, opts.sourceType || 'file');
 }
 
 // 以指定立場的提示詞（userRequest）呼叫 AI 對稿件（fullText）進行單一次評審，並將結果附加到輸出框
